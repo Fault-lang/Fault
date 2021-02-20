@@ -1,0 +1,1 @@
+spec_;import"";const__defthis,ਭ௪=stock{}
