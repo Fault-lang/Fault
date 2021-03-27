@@ -9,10 +9,10 @@ import (
 var TYPES = map[string]int{ //Convertible Types
 	"STRING":    0, //Not convertible
 	"BOOL":      1,
-	"UNCERTAIN": 2,
-	"NATURAL":   3,
-	"FLOAT":     4,
-	"INT":       5,
+	"NATURAL":   2,
+	"FLOAT":     3,
+	"INT":       4,
+	"UNCERTAIN": 5,
 }
 
 var COMPARE = map[string]bool{
@@ -24,112 +24,119 @@ var COMPARE = map[string]bool{
 	">=": true,
 	"&&": true,
 	"||": true,
+	"!":  true, //Prefix
 }
 
 type Checker struct {
-	Symbols map[string]interface{}
-	AST     *ast.Spec
-	scope   string
+	SymbolTypes map[string]interface{}
+	scope       string
 }
 
 func (c *Checker) Check(a *ast.Spec) error {
-	c.Symbols = make(map[string]interface{})
-	spec, err := c.assigntype(a)
-	c.AST = spec.(*ast.Spec)
+	c.SymbolTypes = make(map[string]interface{})
+
+	// Pass one, globals and constants
+	err := c.assigntype(a, 1)
+
+	if err != nil {
+		return err
+	}
+
+	// Pass two, stock/flow properties
+	err = c.assigntype(a, 2)
 	return err
 }
 
-func (c *Checker) assigntype(exp interface{}) (interface{}, error) {
+func (c *Checker) assigntype(exp interface{}, pass int) error {
 	var err error
 	switch node := exp.(type) {
 	case *ast.Spec:
-		for k, v := range node.Statements {
-			var statement interface{}
-			statement, err = c.assigntype(v)
-			node.Statements[k] = statement.(ast.Statement)
+		for _, v := range node.Statements {
+			err = c.assigntype(v, pass)
 		}
-		return node, err
+		return err
 
 	case *ast.SpecDeclStatement:
-		return node, nil
+		return nil
 
 	case *ast.ConstantStatement:
-		id := node.Name.String()
-		var valtype string
-		if c.isValue(node.Value) {
-			valtype, err = c.infer(node.Value, make(map[string]ast.Expression))
-		} else {
-			var n interface{}
-			n, valtype, err = c.inferFunction(node.Value, make(map[string]ast.Expression))
-			node.Value = n.(ast.Expression)
+		if pass == 1 {
+			id := node.Name.String()
+			var valtype string
+			if c.isValue(node.Value) {
+				valtype, err = c.infer(node.Value, make(map[string]ast.Expression))
+			} else {
+				valtype, err = c.inferFunction(node.Value, make(map[string]ast.Expression))
+			}
+			c.SymbolTypes[id] = valtype
 		}
-		c.Symbols[id] = valtype
-		return node, err
+		return err
 
 	case *ast.DefStatement:
 		c.scope = node.Name.String()
-		value, err := c.assigntype(node.Value)
-		node.Value = value.(ast.Expression)
-		return node, err
+		err = c.assigntype(node.Value, pass)
+		return err
 
 	case *ast.StockLiteral:
-		newcontext := make(map[string]string)
-		newcontext["__type"] = "STOCK"
-		c.Symbols[c.scope] = newcontext
-		properties := c.preparse(node.Pairs)
-		for k, v := range node.Pairs {
-			id := k.String()
-			var valtype string
-			if c.isValue(v) {
-				valtype, err = c.infer(v, properties)
-			} else {
-				var n interface{}
-				n, valtype, err = c.inferFunction(v, properties)
-				node.Pairs[k] = n.(ast.Expression)
+		if pass == 1 {
+			newcontext := make(map[string]string)
+			newcontext["__type"] = "STOCK"
+			c.SymbolTypes[c.scope] = newcontext
+		} else {
+			properties := c.preparse(node.Pairs)
+			for k, v := range node.Pairs {
+				id := k.String()
+				var valtype string
+				if c.isValue(v) {
+					valtype, err = c.infer(v, properties)
+				} else {
+					valtype, err = c.inferFunction(v, properties)
+				}
+				c.SymbolTypes[c.scope].(map[string]string)[id] = valtype
 			}
-			c.Symbols[c.scope].(map[string]string)[id] = valtype
 		}
 		c.scope = ""
-		return node, err
+		return err
 
 	case *ast.FlowLiteral:
-		newcontext := make(map[string]string)
-		newcontext["__type"] = "FLOW"
-		c.Symbols[c.scope] = newcontext
-		properties := c.preparse(node.Pairs)
-		for k, v := range node.Pairs {
-			id := k.String()
-			var valtype string
-			if c.isValue(v) {
-				valtype, err = c.infer(v, properties)
-			} else {
-				var n interface{}
-				n, valtype, err = c.inferFunction(v, properties)
-				node.Pairs[k] = n.(ast.Expression)
+		if pass == 1 {
+			newcontext := make(map[string]string)
+			newcontext["__type"] = "FLOW"
+			c.SymbolTypes[c.scope] = newcontext
+		} else {
+			properties := c.preparse(node.Pairs)
+			for k, v := range node.Pairs {
+				id := k.String()
+				var valtype string
+				if c.isValue(v) {
+					valtype, err = c.infer(v, properties)
+				} else {
+					valtype, err = c.inferFunction(v, properties)
+				}
+				c.SymbolTypes[c.scope].(map[string]string)[id] = valtype
 			}
-			c.Symbols[c.scope].(map[string]string)[id] = valtype
 		}
 		c.scope = ""
-		return node, err
+		return err
 
 	case *ast.AssertionStatement:
-		var valtype string
-		if c.isValue(node.Expression) {
-			valtype, err = c.infer(node.Expression, make(map[string]ast.Expression))
-		} else {
-			_, valtype, err = c.inferFunction(node.Expression, make(map[string]ast.Expression))
-		}
+		if pass == 1 {
+			var valtype string
+			if c.isValue(node.Expression) {
+				valtype, err = c.infer(node.Expression, make(map[string]ast.Expression))
+			} else {
+				valtype, err = c.inferFunction(node.Expression, make(map[string]ast.Expression))
+			}
 
-		if valtype != "BOOLEAN" {
-			return node, fmt.Errorf("Assert statement not testing a Boolean expression. got=%s", valtype)
+			if valtype != "BOOL" {
+				return fmt.Errorf("Assert statement not testing a Boolean expression. got=%s", valtype)
+			}
 		}
-
-		return node, err
+		return err
 
 	default:
-		return node, fmt.Errorf("Unimplemented: %T", node)
+		return fmt.Errorf("Unimplemented: %T", node)
 	}
-	return exp, nil
 }
 
 func (c *Checker) isValue(exp interface{}) bool {
@@ -143,6 +150,10 @@ func (c *Checker) isValue(exp interface{}) bool {
 	case *ast.StringLiteral:
 		return true
 	case *ast.Identifier:
+		return true
+	case *ast.Natural:
+		return true
+	case *ast.Uncertain:
 		return true
 	default:
 		return false
@@ -180,10 +191,14 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Expression) (string, e
 		return "FLOAT", nil
 	case *ast.StringLiteral:
 		return "STRING", nil
+	case *ast.Natural:
+		return "NATURAL", nil
+	case *ast.Uncertain:
+		return "UNCERTAIN", nil
 	case *ast.Identifier:
 		id := strings.Split(node.Value, ".")
 
-		if s, ok := c.Symbols[id[0]]; ok {
+		if s, ok := c.SymbolTypes[id[0]]; ok {
 			if ty, ok := s.(string); ok {
 
 				return ty, nil
@@ -191,7 +206,7 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Expression) (string, e
 			return s.(map[string]string)[id[1]], nil
 		}
 		stock := p[id[0]].String()
-		if s, ok := c.Symbols[stock]; ok {
+		if s, ok := c.SymbolTypes[stock]; ok {
 			if ty, ok := s.(string); ok {
 
 				return ty, nil
@@ -207,7 +222,7 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Expression) (string, e
 	}
 }
 
-func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (ast.Expression, string, error) {
+func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (string, error) {
 	var err error
 	switch node := f.(type) {
 	case *ast.FunctionLiteral:
@@ -215,54 +230,62 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (
 		body := node.Body.Statements
 		if len(body) == 1 && c.isValue(body[0].(*ast.ExpressionStatement).Expression) {
 			valtype, err = c.infer(body[0].(*ast.ExpressionStatement).Expression, p)
-			return node, valtype, err
+			return valtype, err
 		}
 
-		var n ast.Expression
 		for i := 0; i < len(body); i++ {
-			n, valtype, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression, p)
+			valtype, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression, p)
 		}
-		return n, valtype, err
+		return valtype, err
 
 	case *ast.InstanceExpression:
-		return node, "STOCK", nil
+		return "STOCK", nil
 
 	case *ast.InfixExpression:
 		if COMPARE[node.Operator] {
-			return node, "BOOLEAN", err
+			return "BOOL", err
 		}
 
 		var left, right string
 		if c.isValue(node.Left) {
 			left, err = c.infer(node.Left, p)
 		} else {
-			var n ast.Expression
-			n, left, err = c.inferFunction(node.Left, p)
-			node.Left = n.(ast.Expression)
+			left, err = c.inferFunction(node.Left, p)
 		}
 
 		if c.isValue(node.Right) {
 			right, err = c.infer(node.Right, p)
 
 		} else {
-			var n ast.Expression
-			n, right, err = c.inferFunction(node.Right, p)
-			node.Right = n.(ast.Expression)
+			right, err = c.inferFunction(node.Right, p)
 		}
 
 		if left != right {
 			if TYPES[left] == 0 || TYPES[right] == 0 {
-				return node, "", fmt.Errorf("type mismatch: got=%s,%s", left, right)
+				return "", fmt.Errorf("type mismatch: got=%s,%s", left, right)
 			}
 			if TYPES[left] > TYPES[right] {
-				return node, right, err
+				return right, err
 			} else {
-				return node, left, err
+				return left, err
 			}
 		}
-		return node, left, err
+		return left, err
+
+	case *ast.PrefixExpression:
+		if COMPARE[node.Operator] {
+			return "BOOL", err
+		}
+		var right string
+		if c.isValue(node.Right) {
+			right, err = c.infer(node.Right, p)
+
+		} else {
+			right, err = c.inferFunction(node.Right, p)
+		}
+		return right, err
 	}
-	return f, "", nil
+	return "", nil
 }
 
 // func (c *Checker) convert(n ast.Expression, newType string) ast.Expression {
@@ -288,7 +311,7 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (
 // 				Value: float64(node.Value),
 // 			}
 // 		} else { //Otherwise Identifier
-// 			c.Symbols[n.(*ast.Identifier).Value] = "FLOAT"
+// 			c.SymbolTypes[n.(*ast.Identifier).Value] = "FLOAT"
 
 // 		}
 // 	}

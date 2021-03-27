@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fault/ast"
 	"fault/listener"
 	"fault/parser"
 	"testing"
@@ -15,8 +14,7 @@ func TestAddOK(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	spec := checker.AST
-	sym := checker.Symbols
+	sym := checker.SymbolTypes
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -24,10 +22,6 @@ func TestAddOK(t *testing.T) {
 
 	if sym["x"] != "INT" {
 		t.Fatalf("Constant x does not have an int type. got=%s", sym["x"])
-	}
-
-	if spec == nil {
-		t.Fatalf("prepTest() returned nil")
 	}
 
 }
@@ -39,7 +33,7 @@ func TestAddOK(t *testing.T) {
 // 	checker, err := prepTest(test)
 
 // 	spec := checker.AST
-// 	sym := checker.Symbols
+// 	sym := checker.SymbolTypes
 
 // 	if err != nil {
 // 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -76,8 +70,7 @@ func TestComplex(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	spec := checker.AST
-	sym := checker.Symbols
+	sym := checker.SymbolTypes
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -85,15 +78,6 @@ func TestComplex(t *testing.T) {
 
 	if sym["x"] != "FLOAT" {
 		t.Fatalf("Constant x does not have an float type. got=%s", sym["x"])
-	}
-
-	if spec == nil {
-		t.Fatalf("prepTest() returned nil")
-	}
-
-	_, ok := spec.Statements[1].(*ast.ConstantStatement).Value.(*ast.InfixExpression).Left.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("Complex structure not maintained. got=%T", spec.Statements[1].(*ast.ConstantStatement).Value.(*ast.InfixExpression).Left)
 	}
 
 }
@@ -104,7 +88,7 @@ func TestComplex(t *testing.T) {
 // 			const x = 2+a;
 // 	`
 // 	checker, err := prepTest(test)
-// 	sym := checker.Symbols
+// 	sym := checker.SymbolTypes
 
 // 	if err != nil {
 // 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -137,7 +121,7 @@ func TestTypesInStruct(t *testing.T) {
 			};
 	`
 	checker, err := prepTest(test)
-	sym := checker.Symbols
+	sym := checker.SymbolTypes
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -181,11 +165,11 @@ func TestTypesInStruct(t *testing.T) {
 func TestInvalidAssert(t *testing.T) {
 	test := `spec test1;
 			const a = 2.3;
-			
+
 			assert a + 5;
 	`
 	_, err := prepTest(test)
-	//sym := checker.Symbols
+	//sym := checker.SymbolTypes
 
 	actual := "Assert statement not testing a Boolean expression. got=FLOAT"
 
@@ -209,7 +193,47 @@ func TestValidAssert(t *testing.T) {
 
 }
 
+func TestPrefix(t *testing.T) {
+	test := `spec test1;
+			const a = !2.3;
+			const b = -2.3;
+	`
+	checker, err := prepTest(test)
+	sym := checker.SymbolTypes
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	if sym["a"] != "BOOL" {
+		t.Fatalf("Constant a does not have an boolean type. got=%s", sym["a"])
+	}
+
+	if sym["b"] != "FLOAT" {
+		t.Fatalf("Constant a does not have an float type. got=%s", sym["b"])
+	}
+
+}
+
+func TestNatural(t *testing.T) {
+	test := `spec test1;
+			const a = natural(2);
+	`
+	checker, err := prepTest(test)
+	sym := checker.SymbolTypes
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	if sym["a"] != "NATURAL" {
+		t.Fatalf("Constant a does not have an natural type. got=%s", sym["a"])
+	}
+
+}
+
 // Infix, Prefix, ... what other types of expressions?
+// "ignore x=5" <-- syntax to remove scenarios from the model checker?
 
 func prepTest(test string) (*Checker, error) {
 	is := antlr.NewInputStream(test)
