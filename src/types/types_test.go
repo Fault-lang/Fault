@@ -20,39 +20,11 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["x"] != "INT" {
-		t.Fatalf("Constant x does not have an int type. got=%s", sym["x"])
+	if sym["x"].(*Type).Type != "INT" {
+		t.Fatalf("Constant x does not have an int type. got=%s", sym["x"].(*Type).Type)
 	}
 
 }
-
-// func TestAddConvert(t *testing.T) {
-// 	test := `spec test1;
-// 			const x = 2+2.3;
-// 	`
-// 	checker, err := prepTest(test)
-
-// 	spec := checker.AST
-// 	sym := checker.SymbolTypes
-
-// 	if err != nil {
-// 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
-// 	}
-
-// 	if sym["x"] != "FLOAT" {
-// 		t.Fatalf("Constant x does not have an float type. got=%s", sym["x"])
-// 	}
-
-// 	if spec == nil {
-// 		t.Fatalf("prepTest() returned nil")
-// 	}
-
-// 	_, ok := spec.Statements[1].(*ast.ConstantStatement).Value.(*ast.InfixExpression).Left.(*ast.FloatLiteral)
-// 	if !ok {
-// 		t.Fatalf("Left node not converted to float type. got=%T", spec.Statements[1].(*ast.ConstantStatement).Value.(*ast.InfixExpression).Left)
-// 	}
-
-//}
 
 func TestTypeError(t *testing.T) {
 	test := `spec test1;
@@ -76,32 +48,61 @@ func TestComplex(t *testing.T) {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["x"] != "FLOAT" {
-		t.Fatalf("Constant x does not have an float type. got=%s", sym["x"])
+	if sym["x"].(*Type).Type != "FLOAT" {
+		t.Fatalf("Constant x does not have an float type. got=%s", sym["x"].(*Type).Type)
+	}
+
+	if sym["x"].(*Type).Scope != 10 {
+		t.Fatalf("Constant x has the wrong scope. got=%d", sym["x"].(*Type).Scope)
 	}
 
 }
 
-// func TestConvertWithVariable(t *testing.T) {
-// 	test := `spec test1;
-// 			const a = 2.3;
-// 			const x = 2+a;
-// 	`
-// 	checker, err := prepTest(test)
-// 	sym := checker.SymbolTypes
+func TestScopes(t *testing.T) {
+	test := `spec test1;
+			const x = 2.2;
+			const y = 2.0200;
+			const z = uncertain(10, 5.2);
+			const a = .005;
+			const b = 103.40000;
+	`
+	checker, err := prepTest(test)
 
-// 	if err != nil {
-// 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
-// 	}
+	sym := checker.SymbolTypes
 
-// 	if sym["a"] != "FLOAT" {
-// 		t.Fatalf("Constant a does not have an float type. got=%s", sym["a"])
-// 	}
+	if err != nil {
+		t.Fatalf("Type checking failed on valid expression. got=%s", err)
+	}
 
-// 	if sym["x"] != "FLOAT" {
-// 		t.Fatalf("Constant x does not have an float type. got=%s", sym["x"])
-// 	}
-// }
+	if sym["x"].(*Type).Scope != 10 {
+		t.Fatalf("Constant x has the wrong scope. got=%d", sym["x"].(*Type).Scope)
+	}
+
+	if sym["y"].(*Type).Scope != 100 {
+		t.Fatalf("Constant y has the wrong scope. got=%d", sym["y"].(*Type).Scope)
+	}
+
+	if sym["z"].(*Type).Scope != 0 {
+		t.Fatalf("Constant z has the wrong scope. got=%d", sym["z"].(*Type).Scope)
+	}
+
+	if sym["z"].(*Type).Parameters[0].Scope != 1 {
+		t.Fatalf("Constant z mean has the wrong scope. got=%d", sym["z"].(*Type).Parameters[0].Scope)
+	}
+
+	if sym["z"].(*Type).Parameters[1].Scope != 10 {
+		t.Fatalf("Constant z sigma has the wrong scope. got=%d", sym["z"].(*Type).Parameters[1].Scope)
+	}
+
+	if sym["a"].(*Type).Scope != 1000 {
+		t.Fatalf("Constant a has the wrong scope. got=%d", sym["a"].(*Type).Scope)
+	}
+
+	if sym["b"].(*Type).Scope != 10 {
+		t.Fatalf("Constant b has the wrong scope. got=%d", sym["b"].(*Type).Scope)
+	}
+
+}
 
 func TestTypesInStruct(t *testing.T) {
 	test := `spec test1;
@@ -127,38 +128,38 @@ func TestTypesInStruct(t *testing.T) {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["a"] != "FLOAT" {
-		t.Fatalf("Constant a does not have an float type. got=%s", sym["a"])
+	if sym["a"].(*Type).Type != "FLOAT" {
+		t.Fatalf("Constant a does not have an float type. got=%s", sym["a"].(*Type).Type)
 	}
 
-	fooStock, ok := sym["foo"].(map[string]string)
+	fooStock, ok := sym["foo"].(map[string]*Type)
 	if !ok {
 		t.Fatalf("stock foo not stored in symbol table correctly. got=%T", sym["foo"])
 	}
 
-	if fooStock["foosh"] != "INT" {
-		t.Fatalf("stock property not typed correctly. got=%s", fooStock["foosh"])
+	if fooStock["foosh"].Type != "INT" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["foosh"].Type)
 	}
 
-	if fooStock["bar"] != "STRING" {
-		t.Fatalf("stock property not typed correctly. got=%s", fooStock["bar"])
+	if fooStock["bar"].Type != "STRING" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["bar"].Type)
 	}
 
-	if fooStock["fizz"] != "FLOAT" {
-		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz"])
+	if fooStock["fizz"].Type != "FLOAT" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz"].Type)
 	}
 
-	zooFlow, ok := sym["zoo"].(map[string]string)
+	zooFlow, ok := sym["zoo"].(map[string]*Type)
 	if !ok {
 		t.Fatalf("flow zoo not stored in symbol table correctly. got=%T", sym["zoo"])
 	}
 
-	if zooFlow["con"] != "STOCK" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["con"])
+	if zooFlow["con"].Type != "STOCK" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["con"].Type)
 	}
 
-	if zooFlow["rate"] != "INT" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"])
+	if zooFlow["rate"].Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].Type)
 	}
 }
 
@@ -205,12 +206,12 @@ func TestPrefix(t *testing.T) {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
 	}
 
-	if sym["a"] != "BOOL" {
-		t.Fatalf("Constant a does not have an boolean type. got=%s", sym["a"])
+	if sym["a"].(*Type).Type != "BOOL" {
+		t.Fatalf("Constant a does not have an boolean type. got=%s", sym["a"].(*Type).Type)
 	}
 
-	if sym["b"] != "FLOAT" {
-		t.Fatalf("Constant a does not have an float type. got=%s", sym["b"])
+	if sym["b"].(*Type).Type != "FLOAT" {
+		t.Fatalf("Constant a does not have an float type. got=%s", sym["b"].(*Type).Type)
 	}
 
 }
@@ -226,8 +227,42 @@ func TestNatural(t *testing.T) {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
 	}
 
-	if sym["a"] != "NATURAL" {
-		t.Fatalf("Constant a does not have an natural type. got=%s", sym["a"])
+	if sym["a"].(*Type).Type != "NATURAL" {
+		t.Fatalf("Constant a does not have an natural type. got=%s", sym["a"].(*Type).Type)
+	}
+
+}
+
+func TestBoolean(t *testing.T) {
+	test := `spec test1;
+			const a = true;
+	`
+	checker, err := prepTest(test)
+	sym := checker.SymbolTypes
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	if sym["a"].(*Type).Type != "BOOL" {
+		t.Fatalf("Constant a does not have an Boolean type. got=%s", sym["a"].(*Type).Type)
+	}
+
+}
+
+func TestString(t *testing.T) {
+	test := `spec test1;
+			const a = "Hello!";
+	`
+	checker, err := prepTest(test)
+	sym := checker.SymbolTypes
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	if sym["a"].(*Type).Type != "STRING" {
+		t.Fatalf("Constant a does not have a string type. got=%s", sym["a"].(*Type).Type)
 	}
 
 }

@@ -3,6 +3,7 @@ package types
 import (
 	"fault/ast"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -25,6 +26,12 @@ var COMPARE = map[string]bool{
 	"&&": true,
 	"||": true,
 	"!":  true, //Prefix
+}
+
+type Type struct {
+	Type       string
+	Scope      int32
+	Parameters []Type
 }
 
 type Checker struct {
@@ -62,7 +69,7 @@ func (c *Checker) assigntype(exp interface{}, pass int) error {
 	case *ast.ConstantStatement:
 		if pass == 1 {
 			id := node.Name.String()
-			var valtype string
+			var valtype *Type
 			if c.isValue(node.Value) {
 				valtype, err = c.infer(node.Value, make(map[string]ast.Expression))
 			} else {
@@ -79,20 +86,20 @@ func (c *Checker) assigntype(exp interface{}, pass int) error {
 
 	case *ast.StockLiteral:
 		if pass == 1 {
-			newcontext := make(map[string]string)
-			newcontext["__type"] = "STOCK"
+			newcontext := make(map[string]*Type)
+			newcontext["__type"] = &Type{"STOCK", 0, nil}
 			c.SymbolTypes[c.scope] = newcontext
 		} else {
 			properties := c.preparse(node.Pairs)
 			for k, v := range node.Pairs {
 				id := k.String()
-				var valtype string
+				var valtype *Type
 				if c.isValue(v) {
 					valtype, err = c.infer(v, properties)
 				} else {
 					valtype, err = c.inferFunction(v, properties)
 				}
-				c.SymbolTypes[c.scope].(map[string]string)[id] = valtype
+				c.SymbolTypes[c.scope].(map[string]*Type)[id] = valtype
 			}
 		}
 		c.scope = ""
@@ -100,20 +107,20 @@ func (c *Checker) assigntype(exp interface{}, pass int) error {
 
 	case *ast.FlowLiteral:
 		if pass == 1 {
-			newcontext := make(map[string]string)
-			newcontext["__type"] = "FLOW"
+			newcontext := make(map[string]*Type)
+			newcontext["__type"] = &Type{"FLOW", 0, nil}
 			c.SymbolTypes[c.scope] = newcontext
 		} else {
 			properties := c.preparse(node.Pairs)
 			for k, v := range node.Pairs {
 				id := k.String()
-				var valtype string
+				var valtype *Type
 				if c.isValue(v) {
 					valtype, err = c.infer(v, properties)
 				} else {
 					valtype, err = c.inferFunction(v, properties)
 				}
-				c.SymbolTypes[c.scope].(map[string]string)[id] = valtype
+				c.SymbolTypes[c.scope].(map[string]*Type)[id] = valtype
 			}
 		}
 		c.scope = ""
@@ -121,15 +128,15 @@ func (c *Checker) assigntype(exp interface{}, pass int) error {
 
 	case *ast.AssertionStatement:
 		if pass == 1 {
-			var valtype string
+			var valtype *Type
 			if c.isValue(node.Expression) {
 				valtype, err = c.infer(node.Expression, make(map[string]ast.Expression))
 			} else {
 				valtype, err = c.inferFunction(node.Expression, make(map[string]ast.Expression))
 			}
 
-			if valtype != "BOOL" {
-				return fmt.Errorf("Assert statement not testing a Boolean expression. got=%s", valtype)
+			if valtype.Type != "BOOL" {
+				return fmt.Errorf("Assert statement not testing a Boolean expression. got=%s", valtype.Type)
 			}
 		}
 		return err
@@ -181,52 +188,54 @@ func (c *Checker) preparseWalk(tree *ast.FunctionLiteral) ast.Expression {
 	return nil
 }
 
-func (c *Checker) infer(exp interface{}, p map[string]ast.Expression) (string, error) {
+func (c *Checker) infer(exp interface{}, p map[string]ast.Expression) (*Type, error) {
 	switch node := exp.(type) {
 	case *ast.IntegerLiteral:
-		return "INT", nil
+		return &Type{"INT", 1, nil}, nil
 	case *ast.Boolean:
-		return "BOOL", nil
+		return &Type{"BOOL", 0, nil}, nil
 	case *ast.FloatLiteral:
-		return "FLOAT", nil
+		scope := c.inferScope(node.Value)
+		return &Type{"FLOAT", scope, nil}, nil
 	case *ast.StringLiteral:
-		return "STRING", nil
+		return &Type{"STRING", 0, nil}, nil
 	case *ast.Natural:
-		return "NATURAL", nil
+		return &Type{"NATURAL", 1, nil}, nil
 	case *ast.Uncertain:
-		return "UNCERTAIN", nil
+		params := c.inferUncertain(node)
+		return &Type{"UNCERTAIN", 0, params}, nil
 	case *ast.Identifier:
 		id := strings.Split(node.Value, ".")
 
 		if s, ok := c.SymbolTypes[id[0]]; ok {
-			if ty, ok := s.(string); ok {
+			if ty, ok := s.(*Type); ok {
 
 				return ty, nil
 			}
-			return s.(map[string]string)[id[1]], nil
+			return s.(map[string]*Type)[id[1]], nil
 		}
 		stock := p[id[0]].String()
 		if s, ok := c.SymbolTypes[stock]; ok {
-			if ty, ok := s.(string); ok {
+			if ty, ok := s.(*Type); ok {
 
 				return ty, nil
 			}
-			return s.(map[string]string)[id[1]], nil
+			return s.(map[string]*Type)[id[1]], nil
 		}
 
 		pos := node.Position()
-		return "", fmt.Errorf("Unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
+		return nil, fmt.Errorf("Unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
 	default:
 		pos := node.(ast.Node).Position()
-		return "", fmt.Errorf("Unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
+		return nil, fmt.Errorf("Unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
 	}
 }
 
-func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (string, error) {
+func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (*Type, error) {
 	var err error
 	switch node := f.(type) {
 	case *ast.FunctionLiteral:
-		var valtype string
+		var valtype *Type
 		body := node.Body.Statements
 		if len(body) == 1 && c.isValue(body[0].(*ast.ExpressionStatement).Expression) {
 			valtype, err = c.infer(body[0].(*ast.ExpressionStatement).Expression, p)
@@ -239,14 +248,14 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (
 		return valtype, err
 
 	case *ast.InstanceExpression:
-		return "STOCK", nil
+		return &Type{"STOCK", 0, nil}, nil
 
 	case *ast.InfixExpression:
 		if COMPARE[node.Operator] {
-			return "BOOL", err
+			return &Type{"BOOL", 0, nil}, err
 		}
 
-		var left, right string
+		var left, right *Type
 		if c.isValue(node.Left) {
 			left, err = c.infer(node.Left, p)
 		} else {
@@ -261,10 +270,10 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (
 		}
 
 		if left != right {
-			if TYPES[left] == 0 || TYPES[right] == 0 {
-				return "", fmt.Errorf("type mismatch: got=%s,%s", left, right)
+			if TYPES[left.Type] == 0 || TYPES[right.Type] == 0 {
+				return nil, fmt.Errorf("type mismatch: got=%s,%s", left.Type, right.Type)
 			}
-			if TYPES[left] > TYPES[right] {
+			if TYPES[left.Type] > TYPES[right.Type] {
 				return right, err
 			} else {
 				return left, err
@@ -274,9 +283,9 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (
 
 	case *ast.PrefixExpression:
 		if COMPARE[node.Operator] {
-			return "BOOL", err
+			return &Type{"BOOL", 0, nil}, err
 		}
-		var right string
+		var right *Type
 		if c.isValue(node.Right) {
 			right, err = c.infer(node.Right, p)
 
@@ -285,36 +294,29 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Expression) (
 		}
 		return right, err
 	}
-	return "", nil
+	return nil, nil
 }
 
-// func (c *Checker) convert(n ast.Expression, newType string) ast.Expression {
-// 	//Needs to handle complex expressions too
-// 	if !c.isValue(n) {
-// 		switch node := n.(type) {
-// 		case *ast.InfixExpression:
-// 			node.Left = c.convert(node.Left, newType)
-// 			node.Right = c.convert(node.Right, newType)
-// 			return node
-// 		case *ast.PrefixExpression:
-// 			node.Right = c.convert(node.Right, newType)
-// 			return node
-// 		}
-// 	}
+func (c *Checker) inferScope(fl float64) int32 {
+	s := strings.Split(fmt.Sprintf("%f", fl), ".")
+	base := c.calculateBase(s[1])
+	return int32(base)
+}
 
-// 	switch newType {
-// 	case "FLOAT":
-// 		node, ok := n.(*ast.IntegerLiteral)
-// 		if ok {
-// 			return &ast.FloatLiteral{
-// 				Token: node.Token,
-// 				Value: float64(node.Value),
-// 			}
-// 		} else { //Otherwise Identifier
-// 			c.SymbolTypes[n.(*ast.Identifier).Value] = "FLOAT"
-
-// 		}
-// 	}
-
-// 	return n
-//}
+func (c *Checker) inferUncertain(node *ast.Uncertain) []Type {
+	return []Type{
+		{"MEAN", c.inferScope(node.Mean), nil},
+		{"SIGMA", c.inferScope(node.Sigma), nil},
+	}
+}
+func (c *Checker) calculateBase(s string) int32 {
+	rns := []rune(s) // convert to rune
+	zero := []rune("0")
+	for i := len(rns) - 1; i >= 0; i = i - 1 {
+		if rns[i] != zero[0] {
+			base := math.Pow10(i + 1)
+			return int32(base)
+		}
+	}
+	return 1
+}
