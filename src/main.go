@@ -3,6 +3,7 @@ package main
 import (
 	"fault/listener"
 	"fault/parser"
+	"fault/types"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
@@ -22,6 +23,12 @@ func main() {
 	listener := &listener.FaultListener{}
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
+	// Infer Types and Build Symbol Table
+	ty := &types.Checker{}
+	err := ty.Check(listener.AST)
+	if err != nil {
+		print(err)
+	}
 	print(listener.AST.String())
 
 }

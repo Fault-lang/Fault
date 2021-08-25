@@ -59,9 +59,6 @@ type FaultParserListener interface {
 	// EnterPropVar is called when entering the PropVar production.
 	EnterPropVar(c *PropVarContext)
 
-	// EnterInstance is called when entering the instance production.
-	EnterInstance(c *InstanceContext)
-
 	// EnterInitDecl is called when entering the initDecl production.
 	EnterInitDecl(c *InitDeclContext)
 
@@ -101,8 +98,17 @@ type FaultParserListener interface {
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
+	// EnterFaultType is called when entering the faultType production.
+	EnterFaultType(c *FaultTypeContext)
+
+	// EnterTyped is called when entering the Typed production.
+	EnterTyped(c *TypedContext)
+
 	// EnterExpr is called when entering the Expr production.
 	EnterExpr(c *ExprContext)
+
+	// EnterRunStepExpr is called when entering the runStepExpr production.
+	EnterRunStepExpr(c *RunStepExprContext)
 
 	// EnterLrExpr is called when entering the lrExpr production.
 	EnterLrExpr(c *LrExprContext)
@@ -113,8 +119,20 @@ type FaultParserListener interface {
 	// EnterOperand is called when entering the operand production.
 	EnterOperand(c *OperandContext)
 
-	// EnterOperandName is called when entering the operandName production.
-	EnterOperandName(c *OperandNameContext)
+	// EnterOpName is called when entering the OpName production.
+	EnterOpName(c *OpNameContext)
+
+	// EnterOpParam is called when entering the OpParam production.
+	EnterOpParam(c *OpParamContext)
+
+	// EnterOpThis is called when entering the OpThis production.
+	EnterOpThis(c *OpThisContext)
+
+	// EnterOpClock is called when entering the OpClock production.
+	EnterOpClock(c *OpClockContext)
+
+	// EnterOpInstance is called when entering the OpInstance production.
+	EnterOpInstance(c *OpInstanceContext)
 
 	// EnterNumeric is called when entering the numeric production.
 	EnterNumeric(c *NumericContext)
@@ -191,9 +209,6 @@ type FaultParserListener interface {
 	// ExitPropVar is called when exiting the PropVar production.
 	ExitPropVar(c *PropVarContext)
 
-	// ExitInstance is called when exiting the instance production.
-	ExitInstance(c *InstanceContext)
-
 	// ExitInitDecl is called when exiting the initDecl production.
 	ExitInitDecl(c *InitDeclContext)
 
@@ -233,8 +248,17 @@ type FaultParserListener interface {
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
 
+	// ExitFaultType is called when exiting the faultType production.
+	ExitFaultType(c *FaultTypeContext)
+
+	// ExitTyped is called when exiting the Typed production.
+	ExitTyped(c *TypedContext)
+
 	// ExitExpr is called when exiting the Expr production.
 	ExitExpr(c *ExprContext)
+
+	// ExitRunStepExpr is called when exiting the runStepExpr production.
+	ExitRunStepExpr(c *RunStepExprContext)
 
 	// ExitLrExpr is called when exiting the lrExpr production.
 	ExitLrExpr(c *LrExprContext)
@@ -245,8 +269,20 @@ type FaultParserListener interface {
 	// ExitOperand is called when exiting the operand production.
 	ExitOperand(c *OperandContext)
 
-	// ExitOperandName is called when exiting the operandName production.
-	ExitOperandName(c *OperandNameContext)
+	// ExitOpName is called when exiting the OpName production.
+	ExitOpName(c *OpNameContext)
+
+	// ExitOpParam is called when exiting the OpParam production.
+	ExitOpParam(c *OpParamContext)
+
+	// ExitOpThis is called when exiting the OpThis production.
+	ExitOpThis(c *OpThisContext)
+
+	// ExitOpClock is called when exiting the OpClock production.
+	ExitOpClock(c *OpClockContext)
+
+	// ExitOpInstance is called when exiting the OpInstance production.
+	ExitOpInstance(c *OpInstanceContext)
 
 	// ExitNumeric is called when exiting the numeric production.
 	ExitNumeric(c *NumericContext)

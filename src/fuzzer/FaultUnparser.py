@@ -44,8 +44,8 @@ class FaultUnparser(Grammarinator):
     def importDecl(self):
         current = self.create_node(UnparserRule(name='importDecl'))
         current += self.create_node(UnlexerRule(src='import'))
-        choice = self.choice([0 if [4, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_393', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_393', choice)] = self.unlexer.weights.get(('alt_393', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [4, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_398', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_398', choice)] = self.unlexer.weights.get(('alt_398', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.importSpec()
         elif choice == 1:
@@ -64,8 +64,8 @@ class FaultUnparser(Grammarinator):
         current = self.create_node(UnparserRule(name='importSpec'))
         if self.unlexer.max_depth >= 0:
             for _ in self.zero_or_one():
-                choice = self.choice([0 if [0, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_400', i), 1) for i, w in enumerate([1, 1])])
-                self.unlexer.weights[('alt_400', choice)] = self.unlexer.weights.get(('alt_400', choice), 1) * self.unlexer.cooldown
+                choice = self.choice([0 if [0, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_405', i), 1) for i, w in enumerate([1, 1])])
+                self.unlexer.weights[('alt_405', choice)] = self.unlexer.weights.get(('alt_405', choice), 1) * self.unlexer.cooldown
                 if choice == 0:
                     current += self.create_node(UnlexerRule(src='.'))
                 elif choice == 1:
@@ -85,8 +85,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def declaration(self):
         current = self.create_node(UnparserRule(name='declaration'))
-        choice = self.choice([0 if [1, 4, 5][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_404', i), 1) for i, w in enumerate([1, 1, 1])])
-        self.unlexer.weights[('alt_404', choice)] = self.unlexer.weights.get(('alt_404', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 4, 5][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_409', i), 1) for i, w in enumerate([1, 1, 1])])
+        self.unlexer.weights[('alt_409', choice)] = self.unlexer.weights.get(('alt_409', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.constDecl()
         elif choice == 1:
@@ -100,8 +100,8 @@ class FaultUnparser(Grammarinator):
     def constDecl(self):
         current = self.create_node(UnparserRule(name='constDecl'))
         current += self.create_node(UnlexerRule(src='const'))
-        choice = self.choice([0 if [4, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_409', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_409', choice)] = self.unlexer.weights.get(('alt_409', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [4, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_414', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_414', choice)] = self.unlexer.weights.get(('alt_414', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.constSpec()
             current += self.eos()
@@ -166,8 +166,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def structType(self):
         current = self.create_node(UnparserRule(name='structType'))
-        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_423', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_423', choice)] = self.unlexer.weights.get(('alt_423', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_428', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_428', choice)] = self.unlexer.weights.get(('alt_428', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current = self.structType_Flow()
         elif choice == 1:
@@ -206,8 +206,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def structProperties(self):
         current = self.create_node(UnparserRule(name='structProperties'))
-        choice = self.choice([0 if [4, 3, 3, 3][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_436', i), 1) for i, w in enumerate([1, 1, 1, 1])])
-        self.unlexer.weights[('alt_436', choice)] = self.unlexer.weights.get(('alt_436', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [4, 3, 3, 4][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_441', i), 1) for i, w in enumerate([1, 1, 1, 1])])
+        self.unlexer.weights[('alt_441', choice)] = self.unlexer.weights.get(('alt_441', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current = self.structProperties_PropInt()
         elif choice == 1:
@@ -251,13 +251,20 @@ class FaultUnparser(Grammarinator):
         current = self.create_node(UnparserRule(name='structProperties_PropVar'))
         current += self.unlexer.IDENT()
         current += self.create_node(UnlexerRule(src=':'))
+        current += self.instance()
+        return current
+    structProperties_PropVar.min_depth = 3
+
+    @depthcontrol
+    def instance(self):
+        current = self.create_node(UnparserRule(name='instance'))
         if self.unlexer.max_depth >= 0:
-            for _ in self.zero_or_one():
+            for _ in self.zero_or_more():
                 current += self.create_node(UnlexerRule(src='new'))
 
         current += self.operandName()
         return current
-    structProperties_PropVar.min_depth = 2
+    instance.min_depth = 2
 
     @depthcontrol
     def initDecl(self):
@@ -293,8 +300,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def statement(self):
         current = self.create_node(UnparserRule(name='statement'))
-        choice = self.choice([0 if [1, 3, 2, 1, 5][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_451', i), 1) for i, w in enumerate([1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_451', choice)] = self.unlexer.weights.get(('alt_451', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 3, 2, 1, 5][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_456', i), 1) for i, w in enumerate([1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_456', choice)] = self.unlexer.weights.get(('alt_456', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.constDecl()
         elif choice == 1:
@@ -312,8 +319,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def simpleStmt(self):
         current = self.create_node(UnparserRule(name='simpleStmt'))
-        choice = self.choice([0 if [4, 5, 6, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_457', i), 1) for i, w in enumerate([1, 1, 1, 1])])
-        self.unlexer.weights[('alt_457', choice)] = self.unlexer.weights.get(('alt_457', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [4, 5, 7, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_462', i), 1) for i, w in enumerate([1, 1, 1, 1])])
+        self.unlexer.weights[('alt_462', choice)] = self.unlexer.weights.get(('alt_462', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.expression()
         elif choice == 1:
@@ -329,8 +336,8 @@ class FaultUnparser(Grammarinator):
     def incDecStmt(self):
         current = self.create_node(UnparserRule(name='incDecStmt'))
         current += self.expression()
-        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_462', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_462', choice)] = self.unlexer.weights.get(('alt_462', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_467', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_467', choice)] = self.unlexer.weights.get(('alt_467', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.PLUS_PLUS()
         elif choice == 1:
@@ -341,12 +348,7 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def accessHistory(self):
         current = self.create_node(UnparserRule(name='accessHistory'))
-        current += self.unlexer.IDENT()
-        if self.unlexer.max_depth >= 2:
-            for _ in self.zero_or_one():
-                current += self.create_node(UnlexerRule(src='.'))
-                current += self.unlexer.IDENT()
-
+        current += self.operandName()
         if self.unlexer.max_depth >= 0:
             for _ in self.one_or_more():
                 current += self.create_node(UnlexerRule(src='['))
@@ -367,31 +369,23 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def assignment(self):
         current = self.create_node(UnparserRule(name='assignment'))
-        current += self.expressionList()
-        current += self.assign_op()
-        current += self.expressionList()
-        return current
-    assignment.min_depth = 5
-
-    @depthcontrol
-    def assign_op(self):
-        current = self.create_node(UnparserRule(name='assign_op'))
-        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_470', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_470', choice)] = self.unlexer.weights.get(('alt_470', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [6, 6][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_473', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_473', choice)] = self.unlexer.weights.get(('alt_473', choice), 1) * self.unlexer.cooldown
         if choice == 0:
-            current = self.assign_op_MiscAssign()
+            current = self.assignment_MiscAssign()
         elif choice == 1:
-            current = self.assign_op_FaultAssign()
+            current = self.assignment_FaultAssign()
         return current
-    assign_op.min_depth = 1
+    assignment.min_depth = 6
 
     @depthcontrol
-    def assign_op_MiscAssign(self):
-        current = self.create_node(UnparserRule(name='assign_op_MiscAssign'))
+    def assignment_MiscAssign(self):
+        current = self.create_node(UnparserRule(name='assignment_MiscAssign'))
+        current += self.expressionList()
         if self.unlexer.max_depth >= 0:
             for _ in self.zero_or_one():
-                choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_474', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])])
-                self.unlexer.weights[('alt_474', choice)] = self.unlexer.weights.get(('alt_474', choice), 1) * self.unlexer.cooldown
+                choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_477', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])])
+                self.unlexer.weights[('alt_477', choice)] = self.unlexer.weights.get(('alt_477', choice), 1) * self.unlexer.cooldown
                 if choice == 0:
                     current += self.create_node(UnlexerRule(src='+'))
                 elif choice == 1:
@@ -414,20 +408,23 @@ class FaultUnparser(Grammarinator):
                     current += self.create_node(UnlexerRule(src='&^'))
 
         current += self.create_node(UnlexerRule(src='='))
+        current += self.expressionList()
         return current
-    assign_op_MiscAssign.min_depth = 0
+    assignment_MiscAssign.min_depth = 5
 
     @depthcontrol
-    def assign_op_FaultAssign(self):
-        current = self.create_node(UnparserRule(name='assign_op_FaultAssign'))
-        choice = self.choice([0 if [0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_496', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_496', choice)] = self.unlexer.weights.get(('alt_496', choice), 1) * self.unlexer.cooldown
+    def assignment_FaultAssign(self):
+        current = self.create_node(UnparserRule(name='assignment_FaultAssign'))
+        current += self.expressionList()
+        choice = self.choice([0 if [0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_499', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_499', choice)] = self.unlexer.weights.get(('alt_499', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src='->'))
         elif choice == 1:
             current += self.create_node(UnlexerRule(src='<-'))
+        current += self.expressionList()
         return current
-    assign_op_FaultAssign.min_depth = 0
+    assignment_FaultAssign.min_depth = 5
 
     @depthcontrol
     def emptyStmt(self):
@@ -450,8 +447,8 @@ class FaultUnparser(Grammarinator):
         if self.unlexer.max_depth >= 1:
             for _ in self.zero_or_one():
                 current += self.create_node(UnlexerRule(src='else'))
-                choice = self.choice([0 if [5, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_507', i), 1) for i, w in enumerate([1, 1])])
-                self.unlexer.weights[('alt_507', choice)] = self.unlexer.weights.get(('alt_507', choice), 1) * self.unlexer.cooldown
+                choice = self.choice([0 if [5, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_510', i), 1) for i, w in enumerate([1, 1])])
+                self.unlexer.weights[('alt_510', choice)] = self.unlexer.weights.get(('alt_510', choice), 1) * self.unlexer.cooldown
                 if choice == 0:
                     current += self.ifStmt()
                 elif choice == 1:
@@ -472,16 +469,36 @@ class FaultUnparser(Grammarinator):
     forStmt.min_depth = 2
 
     @depthcontrol
+    def faultType(self):
+        current = self.create_node(UnparserRule(name='faultType'))
+        choice = self.choice([0 if [1, 1, 1, 1, 1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_515', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_515', choice)] = self.unlexer.weights.get(('alt_515', choice), 1) * self.unlexer.cooldown
+        if choice == 0:
+            current += self.unlexer.TY_STRING()
+        elif choice == 1:
+            current += self.unlexer.TY_BOOL()
+        elif choice == 2:
+            current += self.unlexer.TY_INT()
+        elif choice == 3:
+            current += self.unlexer.TY_FLOAT()
+        elif choice == 4:
+            current += self.unlexer.TY_NATURAL()
+        elif choice == 5:
+            current += self.unlexer.TY_UNCERTAIN()
+        return current
+    faultType.min_depth = 1
+
+    @depthcontrol
     def expression(self):
         current = self.create_node(UnparserRule(name='expression'))
-        choice = self.choice([0 if [3, 5, 5, 5, 5, 5, 5, 5][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_512', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_512', choice)] = self.unlexer.weights.get(('alt_512', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [3, 3, 5, 5, 5, 5, 5, 5, 5][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_522', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_522', choice)] = self.unlexer.weights.get(('alt_522', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current = self.expression_Expr()
         elif choice == 1:
-            current = self.expression_Prefix()
+            current = self.expression_Typed()
         elif choice == 2:
-            current = self.expression_lrExpr()
+            current = self.expression_Prefix()
         elif choice == 3:
             current = self.expression_lrExpr()
         elif choice == 4:
@@ -491,6 +508,8 @@ class FaultUnparser(Grammarinator):
         elif choice == 6:
             current = self.expression_lrExpr()
         elif choice == 7:
+            current = self.expression_lrExpr()
+        elif choice == 8:
             current = self.expression_lrExpr()
         return current
     expression.min_depth = 3
@@ -503,10 +522,25 @@ class FaultUnparser(Grammarinator):
     expression_Expr.min_depth = 2
 
     @depthcontrol
+    def expression_Typed(self):
+        current = self.create_node(UnparserRule(name='expression_Typed'))
+        current += self.faultType()
+        current += self.create_node(UnlexerRule(src='('))
+        current += self.operand()
+        if self.unlexer.max_depth >= 2:
+            for _ in self.zero_or_more():
+                current += self.create_node(UnlexerRule(src=','))
+                current += self.operand()
+
+        current += self.create_node(UnlexerRule(src=')'))
+        return current
+    expression_Typed.min_depth = 2
+
+    @depthcontrol
     def expression_Prefix(self):
         current = self.create_node(UnparserRule(name='expression_Prefix'))
-        choice = self.choice([0 if [0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_521', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_521', choice)] = self.unlexer.weights.get(('alt_521', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_536', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_536', choice)] = self.unlexer.weights.get(('alt_536', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src='+'))
         elif choice == 1:
@@ -536,8 +570,8 @@ class FaultUnparser(Grammarinator):
     def expression_lrExpr(self):
         current = self.create_node(UnparserRule(name='expression_lrExpr'))
         current += self.expression()
-        choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_535', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_535', choice)] = self.unlexer.weights.get(('alt_535', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_550', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_550', choice)] = self.unlexer.weights.get(('alt_550', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src='*'))
         elif choice == 1:
@@ -560,8 +594,8 @@ class FaultUnparser(Grammarinator):
     def expression_lrExpr(self):
         current = self.create_node(UnparserRule(name='expression_lrExpr'))
         current += self.expression()
-        choice = self.choice([0 if [0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_550', i), 1) for i, w in enumerate([1, 1, 1])])
-        self.unlexer.weights[('alt_550', choice)] = self.unlexer.weights.get(('alt_550', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_565', i), 1) for i, w in enumerate([1, 1, 1])])
+        self.unlexer.weights[('alt_565', choice)] = self.unlexer.weights.get(('alt_565', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src='+'))
         elif choice == 1:
@@ -576,8 +610,8 @@ class FaultUnparser(Grammarinator):
     def expression_lrExpr(self):
         current = self.create_node(UnparserRule(name='expression_lrExpr'))
         current += self.expression()
-        choice = self.choice([0 if [0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_557', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_557', choice)] = self.unlexer.weights.get(('alt_557', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_572', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_572', choice)] = self.unlexer.weights.get(('alt_572', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src='=='))
         elif choice == 1:
@@ -615,8 +649,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def operand(self):
         current = self.create_node(UnparserRule(name='operand'))
-        choice = self.choice([0 if [1, 3, 2, 2, 2, 5, 4][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_572', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_572', choice)] = self.unlexer.weights.get(('alt_572', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 3, 2, 2, 3, 2, 5, 4][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_587', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_587', choice)] = self.unlexer.weights.get(('alt_587', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.NIL()
         elif choice == 1:
@@ -626,10 +660,12 @@ class FaultUnparser(Grammarinator):
         elif choice == 3:
             current += self.bool_()
         elif choice == 4:
-            current += self.operandName()
+            current += self.instance()
         elif choice == 5:
-            current += self.accessHistory()
+            current += self.operandName()
         elif choice == 6:
+            current += self.accessHistory()
+        elif choice == 7:
             current += self.create_node(UnlexerRule(src='('))
             current += self.expression()
             current += self.create_node(UnlexerRule(src=')'))
@@ -639,8 +675,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def operandName(self):
         current = self.create_node(UnparserRule(name='operandName'))
-        choice = self.choice([0 if [2, 2, 1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_582', i), 1) for i, w in enumerate([1, 1, 1, 1])])
-        self.unlexer.weights[('alt_582', choice)] = self.unlexer.weights.get(('alt_582', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [2, 2, 2, 1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_598', i), 1) for i, w in enumerate([1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_598', choice)] = self.unlexer.weights.get(('alt_598', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.IDENT()
         elif choice == 1:
@@ -651,17 +687,34 @@ class FaultUnparser(Grammarinator):
                     current += self.unlexer.IDENT()
 
         elif choice == 2:
-            current += self.unlexer.THIS()
+            current += self.create_node(UnlexerRule(src='new'))
+            current += self.unlexer.IDENT()
         elif choice == 3:
+            current += self.unlexer.THIS()
+        elif choice == 4:
             current += self.unlexer.CLOCK()
         return current
     operandName.min_depth = 1
 
     @depthcontrol
+    def numeric(self):
+        current = self.create_node(UnparserRule(name='numeric'))
+        choice = self.choice([0 if [2, 3, 3][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_607', i), 1) for i, w in enumerate([1, 1, 1])])
+        self.unlexer.weights[('alt_607', choice)] = self.unlexer.weights.get(('alt_607', choice), 1) * self.unlexer.cooldown
+        if choice == 0:
+            current += self.integer()
+        elif choice == 1:
+            current += self.negative()
+        elif choice == 2:
+            current += self.float_()
+        return current
+    numeric.min_depth = 2
+
+    @depthcontrol
     def integer(self):
         current = self.create_node(UnparserRule(name='integer'))
-        choice = self.choice([0 if [1, 1, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_589', i), 1) for i, w in enumerate([1, 1, 1])])
-        self.unlexer.weights[('alt_589', choice)] = self.unlexer.weights.get(('alt_589', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_611', i), 1) for i, w in enumerate([1, 1, 1])])
+        self.unlexer.weights[('alt_611', choice)] = self.unlexer.weights.get(('alt_611', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.DECIMAL_LIT()
         elif choice == 1:
@@ -672,25 +725,31 @@ class FaultUnparser(Grammarinator):
     integer.min_depth = 1
 
     @depthcontrol
-    def numeric(self):
-        current = self.create_node(UnparserRule(name='numeric'))
-        choice = self.choice([0 if [2, 2, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_593', i), 1) for i, w in enumerate([1, 1, 1])])
-        self.unlexer.weights[('alt_593', choice)] = self.unlexer.weights.get(('alt_593', choice), 1) * self.unlexer.cooldown
+    def negative(self):
+        current = self.create_node(UnparserRule(name='negative'))
+        choice = self.choice([0 if [2, 3][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_615', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_615', choice)] = self.unlexer.weights.get(('alt_615', choice), 1) * self.unlexer.cooldown
         if choice == 0:
+            current += self.create_node(UnlexerRule(src='-'))
             current += self.integer()
         elif choice == 1:
             current += self.create_node(UnlexerRule(src='-'))
-            current += self.integer()
-        elif choice == 2:
-            current += self.unlexer.FLOAT_LIT()
+            current += self.float_()
         return current
-    numeric.min_depth = 2
+    negative.min_depth = 2
+
+    @depthcontrol
+    def float_(self):
+        current = self.create_node(UnparserRule(name='float_'))
+        current += self.unlexer.FLOAT_LIT()
+        return current
+    float_.min_depth = 2
 
     @depthcontrol
     def string_(self):
         current = self.create_node(UnparserRule(name='string_'))
-        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_598', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_598', choice)] = self.unlexer.weights.get(('alt_598', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_620', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_620', choice)] = self.unlexer.weights.get(('alt_620', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.RAW_STRING_LIT()
         elif choice == 1:
@@ -701,8 +760,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def bool_(self):
         current = self.create_node(UnparserRule(name='bool_'))
-        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_601', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_601', choice)] = self.unlexer.weights.get(('alt_601', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_623', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_623', choice)] = self.unlexer.weights.get(('alt_623', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.TRUE()
         elif choice == 1:
@@ -721,8 +780,8 @@ class FaultUnparser(Grammarinator):
     @depthcontrol
     def eos(self):
         current = self.create_node(UnparserRule(name='eos'))
-        choice = self.choice([0 if [0, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_605', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_605', choice)] = self.unlexer.weights.get(('alt_605', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_627', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_627', choice)] = self.unlexer.weights.get(('alt_627', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src=';'))
         elif choice == 1:

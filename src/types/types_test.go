@@ -268,6 +268,8 @@ func TestString(t *testing.T) {
 }
 
 // Infix, Prefix, ... what other types of expressions?
+// Type check init matches expression type. init cannot be an uncertain. Uncertains are immutable... can only be declared as constants?
+// check float + float returns a the larger scope
 // "ignore x=5" <-- syntax to remove scenarios from the model checker?
 
 func prepTest(test string) (*Checker, error) {

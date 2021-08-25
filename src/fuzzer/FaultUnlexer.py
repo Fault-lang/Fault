@@ -439,13 +439,6 @@ class FaultUnlexer(Grammarinator):
     THIS.min_depth = 0
 
     @depthcontrol
-    def UNCERTAIN(self):
-        current = self.create_node(UnlexerRule(name='UNCERTAIN'))
-        current += self.create_node(UnlexerRule(src='uncertain'))
-        return current
-    UNCERTAIN.min_depth = 0
-
-    @depthcontrol
     def NIL(self):
         current = self.create_node(UnlexerRule(name='NIL'))
         current += self.create_node(UnlexerRule(src='nil'))
@@ -467,13 +460,55 @@ class FaultUnlexer(Grammarinator):
     FALSE.min_depth = 0
 
     @depthcontrol
+    def TY_STRING(self):
+        current = self.create_node(UnlexerRule(name='TY_STRING'))
+        current += self.create_node(UnlexerRule(src='string'))
+        return current
+    TY_STRING.min_depth = 0
+
+    @depthcontrol
+    def TY_BOOL(self):
+        current = self.create_node(UnlexerRule(name='TY_BOOL'))
+        current += self.create_node(UnlexerRule(src='bool'))
+        return current
+    TY_BOOL.min_depth = 0
+
+    @depthcontrol
+    def TY_INT(self):
+        current = self.create_node(UnlexerRule(name='TY_INT'))
+        current += self.create_node(UnlexerRule(src='int'))
+        return current
+    TY_INT.min_depth = 0
+
+    @depthcontrol
+    def TY_FLOAT(self):
+        current = self.create_node(UnlexerRule(name='TY_FLOAT'))
+        current += self.create_node(UnlexerRule(src='float'))
+        return current
+    TY_FLOAT.min_depth = 0
+
+    @depthcontrol
+    def TY_NATURAL(self):
+        current = self.create_node(UnlexerRule(name='TY_NATURAL'))
+        current += self.create_node(UnlexerRule(src='natural'))
+        return current
+    TY_NATURAL.min_depth = 0
+
+    @depthcontrol
+    def TY_UNCERTAIN(self):
+        current = self.create_node(UnlexerRule(name='TY_UNCERTAIN'))
+        current += self.create_node(UnlexerRule(src='uncertain'))
+        return current
+    TY_UNCERTAIN.min_depth = 0
+
+    @depthcontrol
     def IDENT(self):
         current = self.create_node(UnlexerRule(name='IDENT'))
         current += self.unlexer.LETTER()
         if self.unlexer.max_depth >= 1:
             for _ in self.zero_or_more():
-                choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_23', i), 1) for i, w in enumerate([1, 1])])
-                self.unlexer.weights[('alt_23', choice)] = self.unlexer.weights.get(('alt_23', choice), 1) * self.unlexer.cooldown
+                choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_28', i), 1) for i, w in enumerate([1, 1])])
+                self.unlexer.weights[('alt_28', choice)] = self.unlexer.weights.get(('alt_28', choice), 1) * self.unlexer.cooldown
                 if choice == 0:
                     current += self.unlexer.LETTER()
                 elif choice == 1:
@@ -764,12 +799,12 @@ class FaultUnlexer(Grammarinator):
     @depthcontrol
     def FLOAT_LIT(self):
         current = self.create_node(UnlexerRule(name='FLOAT_LIT'))
-        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_65', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_65', choice)] = self.unlexer.weights.get(('alt_65', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_70', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_70', choice)] = self.unlexer.weights.get(('alt_70', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.DECIMALS()
-            choice = self.choice([0 if [0, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_68', i), 1) for i, w in enumerate([1, 1])])
-            self.unlexer.weights[('alt_68', choice)] = self.unlexer.weights.get(('alt_68', choice), 1) * self.unlexer.cooldown
+            choice = self.choice([0 if [0, 2][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_73', i), 1) for i, w in enumerate([1, 1])])
+            self.unlexer.weights[('alt_73', choice)] = self.unlexer.weights.get(('alt_73', choice), 1) * self.unlexer.cooldown
             if choice == 0:
                 current += self.create_node(UnlexerRule(src='.'))
                 if self.unlexer.max_depth >= 1:
@@ -810,8 +845,8 @@ class FaultUnlexer(Grammarinator):
         current += self.create_node(UnlexerRule(src='"'))
         if self.unlexer.max_depth >= 0:
             for _ in self.zero_or_more():
-                choice = self.choice([0 if [0, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_81', i), 1) for i, w in enumerate([1, 1])])
-                self.unlexer.weights[('alt_81', choice)] = self.unlexer.weights.get(('alt_81', choice), 1) * self.unlexer.cooldown
+                choice = self.choice([0 if [0, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_86', i), 1) for i, w in enumerate([1, 1])])
+                self.unlexer.weights[('alt_86', choice)] = self.unlexer.weights.get(('alt_86', choice), 1) * self.unlexer.cooldown
                 if choice == 0:
                     current += UnlexerRule(src=self.char_from_list(charset_4))
                 elif choice == 1:
@@ -868,8 +903,8 @@ class FaultUnlexer(Grammarinator):
     def ESCAPED_VALUE(self):
         current = self.create_node(UnlexerRule(name='ESCAPED_VALUE'))
         current += self.create_node(UnlexerRule(src='\\'))
-        choice = self.choice([0 if [1, 1, 0, 1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_91', i), 1) for i, w in enumerate([1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_91', choice)] = self.unlexer.weights.get(('alt_91', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 1, 0, 1, 1][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_96', i), 1) for i, w in enumerate([1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_96', choice)] = self.unlexer.weights.get(('alt_96', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src='u'))
             current += self.unlexer.HEX_DIGIT()
@@ -938,8 +973,8 @@ class FaultUnlexer(Grammarinator):
     @depthcontrol
     def LETTER(self):
         current = self.create_node(UnlexerRule(name='LETTER'))
-        choice = self.choice([0 if [1, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_101', i), 1) for i, w in enumerate([1, 1])])
-        self.unlexer.weights[('alt_101', choice)] = self.unlexer.weights.get(('alt_101', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [1, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_106', i), 1) for i, w in enumerate([1, 1])])
+        self.unlexer.weights[('alt_106', choice)] = self.unlexer.weights.get(('alt_106', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.unlexer.UNICODE_LETTER()
         elif choice == 1:
@@ -950,8 +985,8 @@ class FaultUnlexer(Grammarinator):
     @depthcontrol
     def UNICODE_DIGIT(self):
         current = self.create_node(UnlexerRule(name='UNICODE_DIGIT'))
-        choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_105', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_105', choice)] = self.unlexer.weights.get(('alt_105', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_110', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_110', choice)] = self.unlexer.weights.get(('alt_110', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src=self.char_from_list(charset_14)))
         elif choice == 1:
@@ -998,8 +1033,8 @@ class FaultUnlexer(Grammarinator):
     @depthcontrol
     def UNICODE_LETTER(self):
         current = self.create_node(UnlexerRule(name='UNICODE_LETTER'))
-        choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_126', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])])
-        self.unlexer.weights[('alt_126', choice)] = self.unlexer.weights.get(('alt_126', choice), 1) * self.unlexer.cooldown
+        choice = self.choice([0 if [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0][i] > self.unlexer.max_depth else w * self.unlexer.weights.get(('alt_131', i), 1) for i, w in enumerate([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])])
+        self.unlexer.weights[('alt_131', choice)] = self.unlexer.weights.get(('alt_131', choice), 1) * self.unlexer.cooldown
         if choice == 0:
             current += self.create_node(UnlexerRule(src=self.char_from_list(charset_34)))
         elif choice == 1:

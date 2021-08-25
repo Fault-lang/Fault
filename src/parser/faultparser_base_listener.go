@@ -123,12 +123,6 @@ func (s *BaseFaultParserListener) EnterPropVar(ctx *PropVarContext) {}
 // ExitPropVar is called when production PropVar is exited.
 func (s *BaseFaultParserListener) ExitPropVar(ctx *PropVarContext) {}
 
-// EnterInstance is called when production instance is entered.
-func (s *BaseFaultParserListener) EnterInstance(ctx *InstanceContext) {}
-
-// ExitInstance is called when production instance is exited.
-func (s *BaseFaultParserListener) ExitInstance(ctx *InstanceContext) {}
-
 // EnterInitDecl is called when production initDecl is entered.
 func (s *BaseFaultParserListener) EnterInitDecl(ctx *InitDeclContext) {}
 
@@ -207,11 +201,29 @@ func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
 // ExitForStmt is called when production forStmt is exited.
 func (s *BaseFaultParserListener) ExitForStmt(ctx *ForStmtContext) {}
 
+// EnterFaultType is called when production faultType is entered.
+func (s *BaseFaultParserListener) EnterFaultType(ctx *FaultTypeContext) {}
+
+// ExitFaultType is called when production faultType is exited.
+func (s *BaseFaultParserListener) ExitFaultType(ctx *FaultTypeContext) {}
+
+// EnterTyped is called when production Typed is entered.
+func (s *BaseFaultParserListener) EnterTyped(ctx *TypedContext) {}
+
+// ExitTyped is called when production Typed is exited.
+func (s *BaseFaultParserListener) ExitTyped(ctx *TypedContext) {}
+
 // EnterExpr is called when production Expr is entered.
 func (s *BaseFaultParserListener) EnterExpr(ctx *ExprContext) {}
 
 // ExitExpr is called when production Expr is exited.
 func (s *BaseFaultParserListener) ExitExpr(ctx *ExprContext) {}
+
+// EnterRunStepExpr is called when production runStepExpr is entered.
+func (s *BaseFaultParserListener) EnterRunStepExpr(ctx *RunStepExprContext) {}
+
+// ExitRunStepExpr is called when production runStepExpr is exited.
+func (s *BaseFaultParserListener) ExitRunStepExpr(ctx *RunStepExprContext) {}
 
 // EnterLrExpr is called when production lrExpr is entered.
 func (s *BaseFaultParserListener) EnterLrExpr(ctx *LrExprContext) {}
@@ -231,11 +243,35 @@ func (s *BaseFaultParserListener) EnterOperand(ctx *OperandContext) {}
 // ExitOperand is called when production operand is exited.
 func (s *BaseFaultParserListener) ExitOperand(ctx *OperandContext) {}
 
-// EnterOperandName is called when production operandName is entered.
-func (s *BaseFaultParserListener) EnterOperandName(ctx *OperandNameContext) {}
+// EnterOpName is called when production OpName is entered.
+func (s *BaseFaultParserListener) EnterOpName(ctx *OpNameContext) {}
 
-// ExitOperandName is called when production operandName is exited.
-func (s *BaseFaultParserListener) ExitOperandName(ctx *OperandNameContext) {}
+// ExitOpName is called when production OpName is exited.
+func (s *BaseFaultParserListener) ExitOpName(ctx *OpNameContext) {}
+
+// EnterOpParam is called when production OpParam is entered.
+func (s *BaseFaultParserListener) EnterOpParam(ctx *OpParamContext) {}
+
+// ExitOpParam is called when production OpParam is exited.
+func (s *BaseFaultParserListener) ExitOpParam(ctx *OpParamContext) {}
+
+// EnterOpThis is called when production OpThis is entered.
+func (s *BaseFaultParserListener) EnterOpThis(ctx *OpThisContext) {}
+
+// ExitOpThis is called when production OpThis is exited.
+func (s *BaseFaultParserListener) ExitOpThis(ctx *OpThisContext) {}
+
+// EnterOpClock is called when production OpClock is entered.
+func (s *BaseFaultParserListener) EnterOpClock(ctx *OpClockContext) {}
+
+// ExitOpClock is called when production OpClock is exited.
+func (s *BaseFaultParserListener) ExitOpClock(ctx *OpClockContext) {}
+
+// EnterOpInstance is called when production OpInstance is entered.
+func (s *BaseFaultParserListener) EnterOpInstance(ctx *OpInstanceContext) {}
+
+// ExitOpInstance is called when production OpInstance is exited.
+func (s *BaseFaultParserListener) ExitOpInstance(ctx *OpInstanceContext) {}
 
 // EnterNumeric is called when production numeric is entered.
 func (s *BaseFaultParserListener) EnterNumeric(ctx *NumericContext) {}

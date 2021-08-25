@@ -47,7 +47,7 @@ expressionList
     ;
 
 structDecl
-    : 'def' identList '=' structType eos
+    : 'def' IDENT '=' structType eos
     ;
 
 structType
@@ -59,11 +59,7 @@ structProperties
     : IDENT ':' numeric #PropInt 
     | IDENT ':' string_ #PropString
     | IDENT ':' functionLit #PropFunc
-    | IDENT ':' instance #PropVar
-    ;
-
-instance
-    : 'new' operandName
+    | IDENT ':' operandName #PropVar
     ;
 
 initDecl
@@ -122,8 +118,18 @@ forStmt
     : 'for' integer 'run' block eos
     ;
 
+faultType
+    : TY_STRING
+    | TY_BOOL
+    | TY_INT
+    | TY_FLOAT
+    | TY_NATURAL
+    | TY_UNCERTAIN
+    ;
+
 expression
     : operand                                                            #Expr
+    | faultType '(' operand (',' operand)* ')'                                          #Typed
     | ('+' | '-' | '!' | '^' | '*' | '&') expression                     #Prefix
     | expression '**' expression                                         #lrExpr
     | expression ('*' | '/' | '%' | '<<' | '>>' | '&' | '&^') expression #lrExpr
@@ -131,6 +137,7 @@ expression
     | expression ('==' | '!=' | '<' | '<=' | '>' | '>=') expression      #lrExpr
     | expression '&&' expression                                         #lrExpr
     | expression '||' expression                                         #lrExpr
+    | expression '|' expression                                          #runStepExpr
     ;
 
 operand
@@ -138,18 +145,17 @@ operand
     | numeric
     | string_
     | bool_
-    | instance
     | operandName
     | accessHistory
     | '(' expression ')'
     ;
 
 operandName
-    : IDENT
-    | IDENT ('.' IDENT)?
-    | 'new' IDENT
-    | THIS
-    | CLOCK
+    : IDENT                     #OpName
+    | IDENT ('.' IDENT)?        #OpParam
+    | THIS                      #OpThis
+    | CLOCK                     #OpClock
+    | 'new' IDENT               #OpInstance
     ;
 
 numeric

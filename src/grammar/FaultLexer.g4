@@ -30,11 +30,19 @@ RUN: 'run';
 SPEC: 'spec';
 STOCK: 'stock';
 THIS: 'this';
-UNCERTAIN: 'uncertain';
 
 NIL: 'nil';
 TRUE: 'true';
 FALSE: 'false';
+
+// Types
+
+TY_STRING : 'string';
+TY_BOOL: 'bool';
+TY_INT: 'int';
+TY_FLOAT: 'float';
+TY_NATURAL: 'natural';
+TY_UNCERTAIN: 'uncertain';
 
 IDENT: LETTER (LETTER | UNICODE_DIGIT)*;
 
@@ -66,6 +74,7 @@ LESS_OR_EQUALS: '<=';
 GREATER: '>';
 GREATER_OR_EQUALS: '>=';
 OR: '||';
+PIPE: '|';
 
 
 // Arithmetic

@@ -6,7 +6,6 @@ import (
 	"fault/ast"
 	"fault/parser"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -17,6 +16,7 @@ type FaultListener struct {
 	*parser.BaseFaultParserListener
 	stack []interface{}
 	AST   *ast.Spec
+	scope string
 }
 
 func (l *FaultListener) push(n interface{}) {
@@ -101,16 +101,12 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 	right := l.pop()
 	val := right
 	if val == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-		)
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 	}
 
 	path, ok := val.(*ast.StringLiteral)
 	if !ok {
-		log.Fatal(
-			fmt.Errorf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-		)
+		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 	}
 
 	// If no ident, create one from import path
@@ -148,9 +144,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 	right := l.pop()
 	val := right
 	if val == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-		)
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 	}
 	var items int
 	identlist, ok := c.GetChild(0).(*parser.IdentListContext)
@@ -165,14 +159,10 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 		left := l.pop()
 		ident, ok := left.(*ast.Identifier)
 		if ident == nil {
-			log.Fatal(
-				fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-			)
+			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
 		}
 		if !ok {
-			log.Fatal(
-				fmt.Errorf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-			)
+			panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
 		}
 		var temp []interface{}
 		temp = append(temp, &ast.ConstantStatement{
@@ -191,6 +181,10 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 
 }
 
+func (l *FaultListener) EnterStructDecl(c *parser.StructDeclContext) {
+	l.scope = c.GetChild(1).(antlr.TerminalNode).GetText()
+}
+
 func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 	token := ast.Token{
 		Type:    "ASSIGN",
@@ -201,7 +195,6 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 			c.GetStop().GetColumn(),
 		},
 	}
-
 	right := l.pop()
 	var val ast.Expression
 	switch right.(type) {
@@ -209,26 +202,23 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 		val = right.(ast.Expression)
 	default:
 		if right == nil {
-			log.Fatal(
-				fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-			)
+			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 		}
-		log.Fatal(
-			fmt.Errorf("def can only be used to define a valid stock or flow: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()),
-		)
+		panic(fmt.Sprintf("def can only be used to define a valid stock or flow: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
-	left := l.pop()
-	ident, ok := left.(*ast.Identifier)
-	if ident == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-		)
+	token2 := ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
 	}
-	if !ok {
-		log.Fatal(
-			fmt.Errorf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-		)
+	ident := &ast.Identifier{
+		Token: token2,
+		Value: c.IDENT().GetText(),
 	}
 
 	l.push(
@@ -237,7 +227,7 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 			Name:  ident,
 			Value: val,
 		})
-
+	l.scope = ""
 }
 
 func (l *FaultListener) ExitStock(c *parser.StockContext) {
@@ -281,28 +271,6 @@ func (l *FaultListener) ExitFlow(c *parser.FlowContext) {
 
 func (l *FaultListener) ExitPropInt(c *parser.PropIntContext) {
 	val := l.pop()
-	token1 := ast.Token{
-		Type:    "FUNCTION",
-		Literal: "FUNCTION",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	}
-
-	statement := &ast.ExpressionStatement{
-		Token:      token1,
-		Expression: val.(ast.Expression),
-	}
-
-	f := &ast.FunctionLiteral{
-		Token: token1,
-		Body: &ast.BlockStatement{
-			Token:      token1,
-			Statements: []ast.Statement{statement},
-		},
-	}
 
 	token2 := ast.Token{
 		Type:    "IDENT",
@@ -318,33 +286,11 @@ func (l *FaultListener) ExitPropInt(c *parser.PropIntContext) {
 		Value: c.IDENT().GetText(),
 	})
 
-	l.push(f)
+	l.push(val)
 }
 
 func (l *FaultListener) ExitPropString(c *parser.PropStringContext) {
 	val := l.pop()
-	token1 := ast.Token{
-		Type:    "FUNCTION",
-		Literal: "FUNCTION",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	}
-
-	statement := &ast.ExpressionStatement{
-		Token:      token1,
-		Expression: val.(ast.Expression),
-	}
-
-	f := &ast.FunctionLiteral{
-		Token: token1,
-		Body: &ast.BlockStatement{
-			Token:      token1,
-			Statements: []ast.Statement{statement},
-		},
-	}
 
 	token2 := ast.Token{
 		Type:    "IDENT",
@@ -361,25 +307,11 @@ func (l *FaultListener) ExitPropString(c *parser.PropStringContext) {
 	},
 	)
 
-	l.push(f)
+	l.push(val)
 }
 
 func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
-	val := l.pop()
-	token1 := ast.Token{
-		Type:    "FUNCTION",
-		Literal: "FUNCTION",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	}
-
-	f := &ast.InstanceExpression{
-		Token: token1,
-		Stock: val.(ast.Expression),
-	}
+	f := l.pop()
 
 	token2 := ast.Token{
 		Type:    "IDENT",
@@ -395,8 +327,42 @@ func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
 		Value: c.IDENT().GetText(),
 	},
 	)
+	switch v := f.(type) {
+	case *ast.Instance:
+		v.Name = c.IDENT().GetText()
+		l.push(v)
+	case *ast.Identifier:
+		l.push(v)
+	default:
+		panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), f))
+	}
+}
 
-	l.push(f)
+// func (l *FaultListener) ExitInstance(c *parser.InstanceContext) {
+// 	node := c.GetText()
+// 	if len(node) > 3 && node[0:3] == "new" {
+// 		val := l.pop()
+// 		token := ast.Token{
+// 			Type:    "FUNCTION",
+// 			Literal: "FUNCTION",
+// 			Position: []int{c.GetStart().GetLine(),
+// 				c.GetStart().GetColumn(),
+// 				c.GetStop().GetLine(),
+// 				c.GetStop().GetColumn(),
+// 			},
+// 		}
+
+// 		f := &ast.InstanceExpression{
+// 			Token: token,
+// 			Stock: val.(ast.Expression),
+// 		}
+// 		l.push(f)
+// 	}
+
+//}
+
+func (l *FaultListener) EnterPropFunc(c *parser.PropFuncContext) {
+	l.scope = fmt.Sprint(l.scope, ".", c.IDENT().GetText())
 }
 
 func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
@@ -415,7 +381,6 @@ func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
 		Value: c.IDENT().GetText(),
 	},
 	)
-
 	l.push(val)
 }
 
@@ -472,18 +437,17 @@ func (l *FaultListener) ExitStatementList(c *parser.StatementListContext) {
 			}
 			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
 		default:
-			log.Fatal(
-				fmt.Errorf("Neither statement nor expression got=%T", v),
-			)
+			panic(fmt.Sprintf("Neither statement nor expression got=%T", v))
 		}
 	}
 	l.push(sl)
 }
 
 func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
+	operator := c.GetChild(1).(antlr.TerminalNode).GetText()
 	token := ast.Token{
 		Type:    "ASSIGN",
-		Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Literal: operator,
 		Position: []int{c.GetStart().GetLine(),
 			c.GetStart().GetColumn(),
 			c.GetStop().GetLine(),
@@ -491,37 +455,51 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 		},
 	}
 
+	var receiver ast.Expression
+	var sender ast.Expression
+	var ok bool
+
 	right := l.pop()
-	receiver, ok := right.(*ast.Identifier)
-	if receiver == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-		)
-	}
-	if !ok {
-		log.Fatal(
-			fmt.Errorf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-		)
+	left := l.pop()
+	if operator == "->" {
+		switch right.(type) {
+		case *ast.ParameterCall:
+			receiver = right.(ast.Expression)
+		case *ast.Identifier:
+			receiver = right.(ast.Expression)
+		default:
+			panic(fmt.Sprintf("right side of expression should be a parameter call or identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+		}
+
+		sender, ok = left.(ast.Expression)
+		if !ok {
+			panic(fmt.Sprintf("left side of expression should be an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+		}
+
+	} else if operator == "<-" {
+		switch left.(type) {
+		case *ast.ParameterCall:
+			receiver = left.(ast.Expression)
+		case *ast.Identifier:
+			receiver = left.(ast.Expression)
+		default:
+			panic(fmt.Sprintf("left side of expression should be a parameter call or identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+		}
+		sender, ok = right.(ast.Expression)
+		if !ok {
+			panic(fmt.Sprintf("right side of expression should be an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+		}
+
+	} else {
+		panic(fmt.Sprintf("Invalid operator %s in expression", operator))
 	}
 
-	left := l.pop()
-	sender, ok := left.(*ast.Identifier)
-	if sender == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-		)
-	}
-	if !ok {
-		log.Fatal(
-			fmt.Errorf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-		)
-	}
 	l.push(
 		&ast.InfixExpression{
 			Token:    token,
-			Left:     sender,
-			Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
-			Right:    receiver,
+			Left:     receiver,
+			Operator: "<-", // "->" converted automatically by swapping order
+			Right:    sender,
 		})
 
 }
@@ -539,34 +517,55 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 
 	right := l.pop()
 	if right == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right),
-		)
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 	}
 
 	left := l.pop()
 	ident, ok := left.(*ast.Identifier)
-	if ident == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-		)
-	}
 	if !ok {
-		log.Fatal(
-			fmt.Errorf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left),
-		)
+		panic(fmt.Sprintf("left side of expression should be an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+	}
+
+	// If a new instance is initialized in the run block
+	// the listener needs to add the name
+	switch inst := right.(type) {
+	case *ast.Instance:
+		inst.Name = ident.Value
+		right = inst
 	}
 
 	l.push(
-		&ast.DefStatement{
-			Token: token,
-			Name:  ident,
-			Value: right.(ast.Expression),
-		},
-	)
+		&ast.InfixExpression{
+			Token:    token,
+			Left:     ident,
+			Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+			Right:    right.(ast.Expression),
+		})
 }
 
 func (l *FaultListener) ExitLrExpr(c *parser.LrExprContext) {
+	token := ast.Token{
+		Type:    ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()],
+		Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+
+	rght := l.pop()
+	lft := l.pop()
+	e := &ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Right:    rght.(ast.Expression),
+	}
+	l.push(e)
+}
+
+func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 	token := ast.Token{
 		Type:    ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()],
 		Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
@@ -608,6 +607,62 @@ func (l *FaultListener) ExitPrefix(c *parser.PrefixContext) {
 	l.push(e)
 }
 
+func (l *FaultListener) ExitTyped(c *parser.TypedContext) {
+	switch c.FaultType().GetText() {
+	case "natural":
+		token := ast.Token{
+			Type:    "NATURAL",
+			Literal: "NATURAL",
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+
+		value := l.pop()
+		nat, ok := value.(*ast.IntegerLiteral)
+
+		if !ok {
+			panic(fmt.Sprintf("Invalid value cast to type natural. got=%T at line %d col %d", value, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		}
+
+		l.push(&ast.Natural{
+			Token: token,
+			Value: nat.Value,
+		})
+
+	case "uncertain":
+		token := ast.Token{
+			Type:    "UNCERTAIN",
+			Literal: "UNCERTAIN",
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+
+		v1 := l.pop()
+		sigma, err := l.intOrFloatOk(v1)
+		if err != nil {
+			panic(fmt.Sprintf("Invalid value for sigma of type uncertain. got=%T at: line %d col %d", v1, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		}
+
+		v2 := l.pop()
+		mean, err := l.intOrFloatOk(v2)
+		if err != nil {
+			panic(fmt.Sprintf("Invalid value for mean of type uncertain. got=%T at: line %d col %d", v2, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		}
+
+		l.push(&ast.Uncertain{
+			Token: token,
+			Mean:  mean,
+			Sigma: sigma,
+		})
+	}
+}
+
 func (l *FaultListener) ExitIncDecStmt(c *parser.IncDecStmtContext) {
 	var tType ast.TokenType
 	var tLit string
@@ -618,9 +673,7 @@ func (l *FaultListener) ExitIncDecStmt(c *parser.IncDecStmtContext) {
 		tType = "MINUS"
 		tLit = "-"
 	} else {
-		log.Fatal(
-			fmt.Errorf("Illegal operation: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()),
-		)
+		panic(fmt.Sprintf("Illegal operation: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
 	token := ast.Token{
@@ -706,7 +759,7 @@ func (l *FaultListener) ExitAccessHistory(c *parser.AccessHistoryContext) {
 
 }
 
-func (l *FaultListener) ExitOperandName(c *parser.OperandNameContext) {
+func (l *FaultListener) ExitOpName(c *parser.OpNameContext) {
 	token := ast.Token{
 		Type:    "IDENT",
 		Literal: "IDENT",
@@ -719,6 +772,82 @@ func (l *FaultListener) ExitOperandName(c *parser.OperandNameContext) {
 	l.push(&ast.Identifier{
 		Token: token,
 		Value: c.GetText(),
+	},
+	)
+}
+
+func (l *FaultListener) ExitOpParam(c *parser.OpParamContext) {
+	token := ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+	v := c.GetText()
+	param := strings.Split(v, ".")
+
+	l.push(&ast.ParameterCall{
+		Token: token,
+		Value: param,
+	},
+	)
+}
+
+func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
+	token := ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+	ident := &ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+	}
+
+	l.push(&ast.Instance{
+		Token: token,
+		Value: ident,
+	},
+	)
+}
+
+func (l *FaultListener) ExitOpThis(c *parser.OpThisContext) {
+	token := ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+	l.push(&ast.This{
+		Token: token,
+		Value: strings.Split(l.scope, "."),
+	},
+	)
+}
+
+func (l *FaultListener) ExitOpClock(c *parser.OpClockContext) {
+	token := ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+	l.push(&ast.Clock{
+		Token: token,
+		Value: l.scope,
 	},
 	)
 }
@@ -754,9 +883,7 @@ func (l *FaultListener) ExitInteger(c *parser.IntegerContext) {
 
 	v, err := strconv.ParseInt(c.GetText(), 10, 64)
 	if err != nil {
-		log.Fatal(
-			fmt.Errorf("integer value detected but not parsable: line %d col %d got=%s", c.GetStart().GetLine(), c.GetStart().GetColumn(), c.GetText()),
-		)
+		panic(fmt.Sprintf("integer value detected but not parsable: line %d col %d got=%s", c.GetStart().GetLine(), c.GetStart().GetColumn(), c.GetText()))
 	}
 
 	l.push(&ast.IntegerLiteral{
@@ -804,9 +931,7 @@ func (l *FaultListener) ExitNegative(c *parser.NegativeContext) {
 		l.push(i)
 
 	default:
-		log.Fatal(
-			fmt.Errorf("top of stack not an integer or a float got=%T", base),
-		)
+		panic(fmt.Sprintf("top of stack not an integer or a float got=%T", base))
 	}
 
 }
@@ -824,9 +949,7 @@ func (l *FaultListener) ExitFloat_(c *parser.Float_Context) {
 
 	v, err := strconv.ParseFloat(c.GetText(), 64)
 	if err != nil {
-		log.Fatal(
-			fmt.Errorf("float value detected but not parsable: line %d col %d got=%s", c.GetStart().GetLine(), c.GetStart().GetColumn(), c.GetText()),
-		)
+		panic(fmt.Sprintf("float value detected but not parsable: line %d col %d got=%s", c.GetStart().GetLine(), c.GetStart().GetColumn(), c.GetText()))
 	}
 
 	l.push(&ast.FloatLiteral{
@@ -867,9 +990,7 @@ func (l *FaultListener) ExitBool_(c *parser.Bool_Context) {
 
 	v, err := strconv.ParseBool(c.GetText())
 	if err != nil {
-		log.Fatal(
-			fmt.Errorf("Detected boolean will not parse: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()),
-		)
+		panic(fmt.Sprintf("Detected boolean will not parse: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
 	l.push(&ast.Boolean{
@@ -908,9 +1029,7 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 	}
 	init := l.pop()
 	if init == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init),
-		)
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
 	}
 	l.push(&ast.InitExpression{
 		Token:      token,
@@ -934,29 +1053,21 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	lf := l.pop()
 
 	if rg == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg),
-		)
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
 	}
 
 	block, ok := rg.(*ast.BlockStatement)
 	if !ok {
-		log.Fatal(
-			fmt.Errorf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg),
-		)
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
 	}
 
 	if lf == nil {
-		log.Fatal(
-			fmt.Errorf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf),
-		)
+		panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
 	}
 
 	rounds, ok := lf.(*ast.IntegerLiteral)
 	if !ok {
-		log.Fatal(
-			fmt.Errorf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf),
-		)
+		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
 	}
 
 	forSt := &ast.ForStatement{
@@ -991,26 +1102,31 @@ func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expres
 	for i := 0; i < p; i++ {
 		right := l.pop()
 		if right == nil {
-			log.Fatal(
-				fmt.Errorf("top of stack not an expression: line %d col %d type %T", pos[0], pos[1], right),
-			)
+			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", pos[0], pos[1], right))
 		}
 
 		left := l.pop()
 		ident, ok := left.(*ast.Identifier)
 		if ident == nil {
-			log.Fatal(
-				fmt.Errorf("top of stack not an expression: line %d col %d type %T", pos[0], pos[1], left),
-			)
+			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", pos[0], pos[1], left))
 		}
 		if !ok {
-			log.Fatal(
-				fmt.Errorf("top of stack not an identifier: line %d col %d type %T", pos[0], pos[1], left),
-			)
+			panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", pos[0], pos[1], left))
 		}
 		pairs[ident] = right.(ast.Expression)
 	}
 	return pairs
+}
+
+func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
+	switch val := v.(type) {
+	case *ast.FloatLiteral:
+		return val.Value, nil
+	case *ast.IntegerLiteral:
+		return float64(val.Value), nil
+	default:
+		return 0, fmt.Errorf("Invalid input type. Should be float or int got=%T", v)
+	}
 }
 
 func pathToIdent(path string) string {

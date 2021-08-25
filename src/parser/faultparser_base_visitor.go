@@ -76,10 +76,6 @@ func (v *BaseFaultParserVisitor) VisitPropVar(ctx *PropVarContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitInstance(ctx *InstanceContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseFaultParserVisitor) VisitInitDecl(ctx *InitDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -132,7 +128,19 @@ func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitFaultType(ctx *FaultTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitTyped(ctx *TypedContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitExpr(ctx *ExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -148,7 +156,23 @@ func (v *BaseFaultParserVisitor) VisitOperand(ctx *OperandContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitOperandName(ctx *OperandNameContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitOpName(ctx *OpNameContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitOpParam(ctx *OpParamContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitOpThis(ctx *OpThisContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitOpClock(ctx *OpClockContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitOpInstance(ctx *OpInstanceContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

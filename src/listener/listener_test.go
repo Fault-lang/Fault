@@ -129,13 +129,39 @@ func TestStockDecl(t *testing.T) {
 
 	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
 	for _, v := range stock {
-		f, ok := v.(*ast.FunctionLiteral)
+		_, ok := v.(*ast.IntegerLiteral)
 		if !ok {
-			t.Fatalf("Stock property is not wrapped in a function. got=%T", v)
+			t.Fatalf("Property is not an integer. got=%T", v)
 		}
-		_, ok = f.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IntegerLiteral)
+	}
+}
+
+func TestStockDeclFloat(t *testing.T) {
+	test := `spec test1;
+			 def foo = stock{
+				value: 10.0,
+			 };
+			`
+	spec := prepTest(test)
+
+	if spec == nil {
+		t.Fatalf("prepTest() returned nil")
+	}
+	if len(spec.Statements) != 2 {
+		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
+	}
+	if spec.Statements[1].TokenLiteral() != "=" {
+		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
+	}
+	if spec.Statements[1].(*ast.DefStatement).Name.String() != "foo" {
+		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.String())
+	}
+
+	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
+	for _, v := range stock {
+		_, ok := v.(*ast.FloatLiteral)
 		if !ok {
-			t.Fatalf("Function does not return integer. got=%T", f.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+			t.Fatalf("Property is not a float. got=%T", v)
 		}
 	}
 }
@@ -163,13 +189,9 @@ func TestFlowDecl(t *testing.T) {
 
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
-		f, ok := v.(*ast.FunctionLiteral)
+		_, ok := v.(*ast.StringLiteral)
 		if !ok {
-			t.Fatalf("Flow property is not wrapped in a function. got=%T", v)
-		}
-		_, ok = f.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StringLiteral)
-		if !ok {
-			t.Fatalf("Function does not return string. got=%T", f.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+			t.Fatalf("Property is not a string. got=%T", v)
 		}
 	}
 }
@@ -183,16 +205,12 @@ func TestStockConnection(t *testing.T) {
 	spec := prepTest(test)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
-		f, ok := v.(*ast.InstanceExpression)
+		f, ok := v.(*ast.Instance)
 		if !ok {
 			t.Fatalf("Property is not an instance. got=%T", v)
 		}
-		i, ok := f.Stock.(*ast.Identifier)
-		if !ok {
-			t.Fatalf("Function parameter is not an identifier. got=%T", f.Stock)
-		}
-		if i.Value != "fizz" {
-			t.Fatalf("wrong element in call expression. got=%s", i.Value)
+		if f.Value.Value != "fizz" {
+			t.Fatalf("wrong element in call expression. got=%s", f.Value.Value)
 		}
 	}
 }
@@ -457,12 +475,12 @@ func TestRunBlock(t *testing.T) {
 		t.Fatalf("forSt.Body.Statements[1] is not an ExpressionStatement. got=%T", forSt.Body.Statements[1])
 	}
 
-	id, ok := expr.Expression.(*ast.Identifier)
+	id, ok := expr.Expression.(*ast.ParameterCall)
 	if !ok {
-		t.Fatalf("expr.Expression is not an Identifier. got=%T", expr.Expression)
+		t.Fatalf("expr.Expression is not an function call. got=%T", expr.Expression)
 	}
 
-	if id.Value != "d.fn" {
+	if id.Value[0] != "d" && id.Value[0] != "fn" {
 		t.Fatalf("Identifier is not d.fn. got=%s", id.Value)
 	}
 
@@ -559,14 +577,14 @@ func TestFaultAssign(t *testing.T) {
 		if !ok {
 			t.Fatalf("Function body missing InfixExpression. got=%T", s.Expression)
 		}
-		if assign.Left.String() != "fizz" {
+		if assign.Right.String() != "fizz" {
 			t.Fatalf("Left value is not fizz. got=%s", assign.Left.String())
 		}
-		if assign.Right.String() != "buzz" {
+		if assign.Left.String() != "buzz" {
 			t.Fatalf("Right value is not buzz. got=%s", assign.Right.String())
 		}
-		if assign.Operator != "->" {
-			t.Fatalf("Operator is not ->. got=%s", assign.Operator)
+		if assign.Operator != "<-" {
+			t.Fatalf("Operator is not <-. got=%s", assign.Operator)
 		}
 	}
 }
@@ -692,12 +710,50 @@ func TestNegFloat(t *testing.T) {
 	}
 }
 
+func TestDeclaredType(t *testing.T) {
+	test := `spec test1;
+			 const a = natural(1);
+			 const b = uncertain(10, 2.3);
+			`
+	spec := prepTest(test)
+	con, ok := spec.Statements[1].(*ast.ConstantStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
+	}
+
+	nat, ok := con.Value.(*ast.Natural)
+	if !ok {
+		t.Fatalf("Constant is not a Natural. got=%T", con.Value)
+	}
+
+	if nat.Value != 1 {
+		t.Fatalf("Natural is not 1. got=%d", nat.Value)
+	}
+
+	con1, ok := spec.Statements[2].(*ast.ConstantStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[2] is not a ConstantStatement. got=%T", spec.Statements[2])
+	}
+
+	uncer, ok := con1.Value.(*ast.Uncertain)
+	if !ok {
+		t.Fatalf("Constant is not an Uncertain. got=%T", con1.Value)
+	}
+
+	if uncer.Mean != 10 {
+		t.Fatalf("Uncertain mean is not 10. got=%f", uncer.Mean)
+	}
+
+	if uncer.Sigma != 2.3 {
+		t.Fatalf("Uncertain sigma is not 2.3. got=%f", uncer.Sigma)
+	}
+}
+
 /* THINGS TO TEST:
 - check String() in ast does not return Token Literal
 - Could DefStatement be Infix Expressions
 - Check grammar for ?*+ and handle as list of branches
 - Check Position() is declared for all
-- Fault types (non-negative, non-zero)
 - How do Constants works in Go? (Barak)
 */
 

@@ -1,6 +1,6 @@
-.PHONY: all java go gui fuzz clean
+.PHONY: all java golang gui fuzz clean
 
-all: java go fuzz
+all: java golang fuzz
 
 java:
 	@command -v antlr >/dev/null 2>&1 || { echo >&2 "I require antlr but it's not installed or not in PATH.  Aborting."; exit 1; }
@@ -8,7 +8,7 @@ java:
 	antlr FaultParser.g4
 	javac -classpath /usr/local/Cellar/antlr/4.8_1/antlr-4.8-complete.jar *.java
 
-go:
+golang:
 	@command -v antlr >/dev/null 2>&1 || { echo >&2 "I require antlr but it's not installed or not in PATH.  Aborting."; exit 1; }
 	antlr FaultLexer.g4 -Dlanguage=Go -o ../parser
 	antlr FaultParser.g4 -Dlanguage=Go -visitor -o ../parser

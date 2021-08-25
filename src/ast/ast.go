@@ -35,6 +35,7 @@ var OPS = map[string]TokenType{
 	">=": "GTE",
 	"&&": "AND",
 	"||": "OR",
+	"|":  "PARA",
 }
 
 type Node interface {
@@ -62,6 +63,14 @@ func (s *Spec) TokenLiteral() string {
 		return s.Statements[0].TokenLiteral()
 	} else {
 		return ""
+	}
+}
+
+func (s *Spec) Position() []int {
+	if len(s.Statements) > 0 {
+		return s.Statements[0].Position()
+	} else {
+		return []int{0, 0, 0, 0}
 	}
 }
 
@@ -208,6 +217,42 @@ func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) Position() []int      { return i.Token.Position }
 func (i *Identifier) String() string       { return i.Value }
 
+type ParameterCall struct {
+	Token Token
+	Value []string
+}
+
+func (p *ParameterCall) expressionNode()      {}
+func (p *ParameterCall) TokenLiteral() string { return p.Token.Literal }
+func (p *ParameterCall) Position() []int      { return p.Token.Position }
+func (p *ParameterCall) String() string {
+	var out bytes.Buffer
+
+	for _, s := range p.Value {
+		out.WriteString(s)
+	}
+
+	return out.String()
+}
+
+type Instance struct {
+	Token Token
+	Value *Identifier
+	Name  string
+}
+
+func (i *Instance) expressionNode()      {}
+func (i *Instance) TokenLiteral() string { return i.Token.Literal }
+func (i *Instance) Position() []int      { return i.Token.Position }
+func (i *Instance) String() string {
+	var out bytes.Buffer
+	out.WriteString(i.Name)
+	out.WriteString("= new ")
+	out.WriteString(i.Value.String())
+
+	return out.String()
+}
+
 type ExpressionStatement struct {
 	Token      Token
 	Expression Expression
@@ -243,6 +288,35 @@ func (fl *FloatLiteral) expressionNode()      {}
 func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FloatLiteral) Position() []int      { return fl.Token.Position }
 func (fl *FloatLiteral) String() string       { return fl.Token.Literal }
+
+type Natural struct {
+	Token Token
+	Value int64
+}
+
+func (n *Natural) expressionNode()      {}
+func (n *Natural) TokenLiteral() string { return n.Token.Literal }
+func (n *Natural) String() string       { return strconv.FormatInt(n.Value, 10) }
+func (n *Natural) Position() []int      { return n.Token.Position }
+
+type Uncertain struct {
+	Token Token
+	Mean  float64
+	Sigma float64
+}
+
+func (u *Uncertain) expressionNode()      {}
+func (u *Uncertain) TokenLiteral() string { return u.Token.Literal }
+func (u *Uncertain) String() string {
+	var out bytes.Buffer
+	out.WriteString("Mean: ")
+	out.WriteString(strconv.FormatFloat(u.Mean, 'f', 6, 64))
+	out.WriteString("Sigma: ")
+	out.WriteString(strconv.FormatFloat(u.Sigma, 'f', 6, 64))
+	out.WriteString(";")
+	return out.String()
+}
+func (u *Uncertain) Position() []int { return u.Token.Position }
 
 type PrefixExpression struct {
 	Token    Token
@@ -295,6 +369,26 @@ func (b *Boolean) expressionNode()      {}
 func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
 func (b *Boolean) Position() []int      { return b.Token.Position }
 func (b *Boolean) String() string       { return b.Token.Literal }
+
+type This struct {
+	Token Token
+	Value []string
+}
+
+func (t *This) expressionNode()      {}
+func (t *This) TokenLiteral() string { return t.Token.Literal }
+func (t *This) Position() []int      { return t.Token.Position }
+func (t *This) String() string       { return t.Token.Literal }
+
+type Clock struct {
+	Token Token
+	Value string
+}
+
+func (c *Clock) expressionNode()      {}
+func (c *Clock) TokenLiteral() string { return c.Token.Literal }
+func (c *Clock) Position() []int      { return c.Token.Position }
+func (c *Clock) String() string       { return c.Token.Literal }
 
 type Nil struct {
 	Token Token

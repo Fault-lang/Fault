@@ -59,9 +59,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#PropVar.
 	VisitPropVar(ctx *PropVarContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#instance.
-	VisitInstance(ctx *InstanceContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#initDecl.
 	VisitInitDecl(ctx *InitDeclContext) interface{}
 
@@ -101,8 +98,17 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#faultType.
+	VisitFaultType(ctx *FaultTypeContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#Typed.
+	VisitTyped(ctx *TypedContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#Expr.
 	VisitExpr(ctx *ExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runStepExpr.
+	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#lrExpr.
 	VisitLrExpr(ctx *LrExprContext) interface{}
@@ -113,8 +119,20 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#operand.
 	VisitOperand(ctx *OperandContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#operandName.
-	VisitOperandName(ctx *OperandNameContext) interface{}
+	// Visit a parse tree produced by FaultParser#OpName.
+	VisitOpName(ctx *OpNameContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#OpParam.
+	VisitOpParam(ctx *OpParamContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#OpThis.
+	VisitOpThis(ctx *OpThisContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#OpClock.
+	VisitOpClock(ctx *OpClockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#OpInstance.
+	VisitOpInstance(ctx *OpInstanceContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#numeric.
 	VisitNumeric(ctx *NumericContext) interface{}
