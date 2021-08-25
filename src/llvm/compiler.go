@@ -17,6 +17,11 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
+// Cribs a bit from https://github.com/zegl/tre
+// Will likely remove most of that influence over
+// time. For now Tre is copyright (c) 2018
+// Gustav Westling <gustav@westling.xyz>
+
 type Compiler struct {
 	module *ir.Module
 
@@ -32,10 +37,9 @@ type Compiler struct {
 
 	contextFuncName string
 
-	initGlobalsFunc *ir.Func
-	runBlock        *ir.Func
-	runRound        int16
-	funcStatePos    map[string]map[string]interface{}
+	runBlock     *ir.Func
+	runRound     int16
+	funcStatePos map[string]map[string]interface{}
 
 	// Stack of return values pointers, is used both used if a function returns more
 	// than one value (arg pointers), and single stack based returns
@@ -191,11 +195,6 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
 		}
 
-		// p := c.fetchAllocation(fvn)
-		// if p == nil {
-		// 	panic(fmt.Sprintf("variable %s not found. line: %d, col: %d", fvn, pos[0], pos[1]))
-		// }
-		// c.contextBlock.NewStore(r, p)
 		id, s := c.GetSpec(fvn)
 		s.DefineSpecVar(id, r)
 		c.allocVariable(fvn, r, pos)
@@ -359,15 +358,10 @@ func (c *Compiler) addGlobal() {
 
 	c.specs["__global"] = global
 
-	// c.initGlobalsFunc = c.module.NewFunc(name.Var("__init"), irtypes.Void)
-	// b := c.initGlobalsFunc.NewBlock(name.Block())
-	// b.NewRet(nil)
-
 	// run block
 	c.runBlock = c.module.NewFunc("__run", irtypes.Void)
 	mainBlock := c.runBlock.NewBlock(name.Block())
 	mainBlock.NewRet(nil)
-	//mainBlock.NewCall(c.initGlobalsFunc)
 	c.contextBlock = mainBlock
 }
 
@@ -499,13 +493,6 @@ func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
 		if ok {
 			return c.compileValue(init.Expression)
 		}
-		//infix, ok := exp.(*ast.InfixExpression)
-		/*if ok && (infix.Operator == "=" || infix.Operator == "<-") {
-			c.compileFunctionBody(exp)
-			retValue = constant.NewFloat(irtypes.Double, 0)
-			break
-		}*/
-
 	}
 	retValue = constant.NewFloat(irtypes.Double, 0.0)
 	c.contextBlock.NewRet(retValue)
@@ -589,16 +576,6 @@ func (c *Compiler) pushAllocations() {
 
 func (c *Compiler) popAllocations() {
 	c.allocatedPointers = c.allocatedPointers[0 : len(c.allocatedPointers)-1]
-}
-
-func (c *Compiler) pushRetStack() {
-	c.contextFuncRetVals = append(c.contextFuncRetVals, make([]value.Value, 0))
-}
-
-func (c *Compiler) popRetStack() []value.Value {
-	var v []value.Value
-	v, c.contextFuncRetVals = c.contextFuncRetVals[len(c.contextFuncRetVals)-1], c.contextFuncRetVals[:len(c.contextFuncRetVals)-1]
-	return v
 }
 
 type Panic string

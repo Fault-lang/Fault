@@ -108,28 +108,16 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 		c.storeGlobal(name, alloc)
 	case *ir.InstFAdd:
 		c.allocVariable(id, val, pos)
-		//alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		//c.storeGlobal(name, alloc)
 	case *ir.InstFSub:
 		c.allocVariable(id, val, pos)
-		//alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		//c.storeGlobal(name, alloc)
 	case *ir.InstFMul:
 		c.allocVariable(id, val, pos)
-		//alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		//c.storeGlobal(name, alloc)
 	case *ir.InstFDiv:
 		c.allocVariable(id, val, pos)
-		//alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		//c.storeGlobal(name, alloc)
 	case *ir.InstFRem:
 		c.allocVariable(id, val, pos)
-		//alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		//c.storeGlobal(name, alloc)
 	case *ir.InstFCmp:
 		c.allocVariable(id, val, pos)
-		//alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		//c.storeGlobal(name, alloc)
 	case *ir.Func:
 	default:
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
