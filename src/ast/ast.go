@@ -417,6 +417,24 @@ func (bs *BlockStatement) String() string {
 	return out.String()
 }
 
+type ParallelFunctions struct {
+	Token       Token
+	Expressions []Expression
+}
+
+func (pf *ParallelFunctions) statementNode()       {}
+func (pf *ParallelFunctions) Position() []int      { return pf.Token.Position }
+func (pf *ParallelFunctions) TokenLiteral() string { return pf.Token.Literal }
+func (pf *ParallelFunctions) String() string {
+	var out bytes.Buffer
+
+	for _, s := range pf.Expressions {
+		out.WriteString(s.String())
+	}
+
+	return out.String()
+}
+
 type InitExpression struct {
 	Token      Token
 	Expression Expression

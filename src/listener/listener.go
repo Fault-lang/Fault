@@ -565,9 +565,69 @@ func (l *FaultListener) ExitLrExpr(c *parser.LrExprContext) {
 	l.push(e)
 }
 
-func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
+func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 	token := ast.Token{
-		Type:    ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()],
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+	v := c.GetText()
+	param := strings.Split(v, ".")
+
+	l.push(&ast.ParameterCall{
+		Token: token,
+		Value: param,
+	},
+	)
+}
+
+func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
+	token := ast.Token{
+		Type:    "FUNCTION",
+		Literal: "FUNCTION",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+	sl := &ast.BlockStatement{
+		Token: token,
+	}
+	for _, v := range c.AllRunStep() {
+		ex := l.pop()
+		switch t := ex.(type) {
+		case ast.Statement:
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		case ast.Expression:
+			token2 := ast.Token{
+				Type:    "FUNCTION",
+				Literal: "FUNCTION",
+				Position: []int{v.(*parser.RunStepExprContext).GetStart().GetLine(),
+					v.(*parser.RunStepExprContext).GetStart().GetColumn(),
+					v.(*parser.RunStepExprContext).GetStop().GetLine(),
+					v.(*parser.RunStepExprContext).GetStop().GetColumn(),
+				},
+			}
+			s := &ast.ExpressionStatement{
+				Token:      token2,
+				Expression: t,
+			}
+			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+		default:
+			panic(fmt.Sprintf("Neither statement nor expression got=%T", v))
+		}
+	}
+	l.push(sl)
+}
+
+func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
+	token := ast.Token{
+		Type:    "ASSIGN",
 		Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
 		Position: []int{c.GetStart().GetLine(),
 			c.GetStart().GetColumn(),
@@ -575,14 +635,48 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 			c.GetStop().GetColumn(),
 		},
 	}
+	txt := c.AllIDENT()
 
-	rght := l.pop()
-	lft := l.pop()
-	e := &ast.InfixExpression{
-		Token:    token,
-		Left:     lft.(ast.Expression),
-		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
-		Right:    rght.(ast.Expression),
+	ident := &ast.Identifier{Token: ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	},
+		Value: txt[0].GetText()}
+	right := txt[1].GetText()
+
+	l.push(
+		&ast.Instance{
+			Token: token,
+			Value: ident,
+			Name:  right,
+		})
+}
+
+func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
+	token := ast.Token{
+		Type:    "Parallel",
+		Literal: c.GetText(),
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+
+	var exp []ast.Expression
+	for i := 0; i < len(c.AllParamCall()); i++ {
+		idx := l.pop()
+		exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
+	}
+
+	e := &ast.ParallelFunctions{
+		Token:       token,
+		Expressions: exp,
 	}
 	l.push(e)
 }
@@ -776,7 +870,7 @@ func (l *FaultListener) ExitOpName(c *parser.OpNameContext) {
 	)
 }
 
-func (l *FaultListener) ExitOpParam(c *parser.OpParamContext) {
+/*func (l *FaultListener) ExitOpParam(c *parser.OpParamContext) {
 	token := ast.Token{
 		Type:    "IDENT",
 		Literal: "IDENT",
@@ -794,7 +888,7 @@ func (l *FaultListener) ExitOpParam(c *parser.OpParamContext) {
 		Value: param,
 	},
 	)
-}
+}*/
 
 func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 	token := ast.Token{
@@ -1106,10 +1200,11 @@ func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expres
 		}
 
 		left := l.pop()
-		ident, ok := left.(*ast.Identifier)
-		if ident == nil {
+		if left == nil {
 			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", pos[0], pos[1], left))
 		}
+
+		ident, ok := left.(*ast.Identifier)
 		if !ok {
 			panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", pos[0], pos[1], left))
 		}

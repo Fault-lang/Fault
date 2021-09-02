@@ -201,6 +201,30 @@ func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
 // ExitForStmt is called when production forStmt is exited.
 func (s *BaseFaultParserListener) ExitForStmt(ctx *ForStmtContext) {}
 
+// EnterParamCall is called when production paramCall is entered.
+func (s *BaseFaultParserListener) EnterParamCall(ctx *ParamCallContext) {}
+
+// ExitParamCall is called when production paramCall is exited.
+func (s *BaseFaultParserListener) ExitParamCall(ctx *ParamCallContext) {}
+
+// EnterRunBlock is called when production runBlock is entered.
+func (s *BaseFaultParserListener) EnterRunBlock(ctx *RunBlockContext) {}
+
+// ExitRunBlock is called when production runBlock is exited.
+func (s *BaseFaultParserListener) ExitRunBlock(ctx *RunBlockContext) {}
+
+// EnterRunStepExpr is called when production runStepExpr is entered.
+func (s *BaseFaultParserListener) EnterRunStepExpr(ctx *RunStepExprContext) {}
+
+// ExitRunStepExpr is called when production runStepExpr is exited.
+func (s *BaseFaultParserListener) ExitRunStepExpr(ctx *RunStepExprContext) {}
+
+// EnterRunInit is called when production runInit is entered.
+func (s *BaseFaultParserListener) EnterRunInit(ctx *RunInitContext) {}
+
+// ExitRunInit is called when production runInit is exited.
+func (s *BaseFaultParserListener) ExitRunInit(ctx *RunInitContext) {}
+
 // EnterFaultType is called when production faultType is entered.
 func (s *BaseFaultParserListener) EnterFaultType(ctx *FaultTypeContext) {}
 
@@ -218,12 +242,6 @@ func (s *BaseFaultParserListener) EnterExpr(ctx *ExprContext) {}
 
 // ExitExpr is called when production Expr is exited.
 func (s *BaseFaultParserListener) ExitExpr(ctx *ExprContext) {}
-
-// EnterRunStepExpr is called when production runStepExpr is entered.
-func (s *BaseFaultParserListener) EnterRunStepExpr(ctx *RunStepExprContext) {}
-
-// ExitRunStepExpr is called when production runStepExpr is exited.
-func (s *BaseFaultParserListener) ExitRunStepExpr(ctx *RunStepExprContext) {}
 
 // EnterLrExpr is called when production lrExpr is entered.
 func (s *BaseFaultParserListener) EnterLrExpr(ctx *LrExprContext) {}

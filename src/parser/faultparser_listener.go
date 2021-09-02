@@ -98,6 +98,18 @@ type FaultParserListener interface {
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
+	// EnterParamCall is called when entering the paramCall production.
+	EnterParamCall(c *ParamCallContext)
+
+	// EnterRunBlock is called when entering the runBlock production.
+	EnterRunBlock(c *RunBlockContext)
+
+	// EnterRunStepExpr is called when entering the runStepExpr production.
+	EnterRunStepExpr(c *RunStepExprContext)
+
+	// EnterRunInit is called when entering the runInit production.
+	EnterRunInit(c *RunInitContext)
+
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
 
@@ -106,9 +118,6 @@ type FaultParserListener interface {
 
 	// EnterExpr is called when entering the Expr production.
 	EnterExpr(c *ExprContext)
-
-	// EnterRunStepExpr is called when entering the runStepExpr production.
-	EnterRunStepExpr(c *RunStepExprContext)
 
 	// EnterLrExpr is called when entering the lrExpr production.
 	EnterLrExpr(c *LrExprContext)
@@ -248,6 +257,18 @@ type FaultParserListener interface {
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
 
+	// ExitParamCall is called when exiting the paramCall production.
+	ExitParamCall(c *ParamCallContext)
+
+	// ExitRunBlock is called when exiting the runBlock production.
+	ExitRunBlock(c *RunBlockContext)
+
+	// ExitRunStepExpr is called when exiting the runStepExpr production.
+	ExitRunStepExpr(c *RunStepExprContext)
+
+	// ExitRunInit is called when exiting the runInit production.
+	ExitRunInit(c *RunInitContext)
+
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)
 
@@ -256,9 +277,6 @@ type FaultParserListener interface {
 
 	// ExitExpr is called when exiting the Expr production.
 	ExitExpr(c *ExprContext)
-
-	// ExitRunStepExpr is called when exiting the runStepExpr production.
-	ExitRunStepExpr(c *RunStepExprContext)
 
 	// ExitLrExpr is called when exiting the lrExpr production.
 	ExitLrExpr(c *LrExprContext)

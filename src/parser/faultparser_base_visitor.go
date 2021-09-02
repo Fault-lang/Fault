@@ -128,6 +128,22 @@ func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitParamCall(ctx *ParamCallContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunBlock(ctx *RunBlockContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunInit(ctx *RunInitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitFaultType(ctx *FaultTypeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -137,10 +153,6 @@ func (v *BaseFaultParserVisitor) VisitTyped(ctx *TypedContext) interface{} {
 }
 
 func (v *BaseFaultParserVisitor) VisitExpr(ctx *ExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

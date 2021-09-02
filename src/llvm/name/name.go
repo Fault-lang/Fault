@@ -1,14 +1,24 @@
 package name
 
-import "fmt"
+import (
+	"crypto/md5"
+	"fmt"
+)
 
 var blockIndex uint64
+var parallelIndex uint64
 var anonFuncIndex uint64
 
 func Block() string {
 	name := fmt.Sprintf("block-%d", blockIndex)
 	blockIndex++
 	return name
+}
+
+func ParallelGroup(group string) string {
+	data := []byte(fmt.Sprint(group, parallelIndex))
+	parallelIndex++
+	return fmt.Sprintf("%x", md5.Sum(data))
 }
 
 func AnonFunc() string {

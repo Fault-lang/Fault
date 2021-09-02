@@ -37,59 +37,56 @@ func (c *Compiler) updateVariableStateName(id []string) string {
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	id, _ = c.GetSpec(id)
 	name := c.updateVariableStateName(id)
+	var alloc *ir.InstAlloca
+	var store *ir.InstStore
 
 	switch v := val.(type) {
 	case *constant.CharArray:
 		l := uint64(len(v.X))
-		alloc := c.contextBlock.NewAlloca(&irtypes.ArrayType{"string", l, irtypes.I8})
+		alloc = c.contextBlock.NewAlloca(&irtypes.ArrayType{"string", l, irtypes.I8})
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *constant.Int:
-		alloc := c.contextBlock.NewAlloca(irtypes.I1)
+		alloc = c.contextBlock.NewAlloca(irtypes.I1)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *constant.Float:
-		alloc := c.contextBlock.NewAlloca(irtypes.Double)
+		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFAdd:
-		alloc := c.contextBlock.NewAlloca(irtypes.Double)
+		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFSub:
-		alloc := c.contextBlock.NewAlloca(irtypes.Double)
+		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFMul:
-		alloc := c.contextBlock.NewAlloca(irtypes.Double)
+		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFDiv:
-		alloc := c.contextBlock.NewAlloca(irtypes.Double)
+		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFRem:
-		alloc := c.contextBlock.NewAlloca(irtypes.Double)
+		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFCmp:
-		alloc := c.contextBlock.NewAlloca(irtypes.I1)
+		alloc = c.contextBlock.NewAlloca(irtypes.I1)
 		alloc.SetName(name)
-		c.contextBlock.NewStore(v, alloc)
-		c.storeAllocation(name, id, alloc)
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.Func:
-
+		return
 	default:
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
 	}
+	if c.contextMetadata != nil {
+		store.Metadata = append(store.Metadata, c.contextMetadata)
+	}
+	c.storeAllocation(name, id, alloc)
 }
 
 func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {

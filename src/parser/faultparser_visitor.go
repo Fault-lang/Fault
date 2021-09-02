@@ -98,6 +98,18 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#paramCall.
+	VisitParamCall(ctx *ParamCallContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runBlock.
+	VisitRunBlock(ctx *RunBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runStepExpr.
+	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runInit.
+	VisitRunInit(ctx *RunInitContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}
 
@@ -106,9 +118,6 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#Expr.
 	VisitExpr(ctx *ExprContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#runStepExpr.
-	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#lrExpr.
 	VisitLrExpr(ctx *LrExprContext) interface{}

@@ -115,7 +115,20 @@ ifStmt
     ;
 
 forStmt
-    : 'for' integer 'run' block eos
+    : 'for' integer 'run' runBlock eos
+    ;
+
+paramCall
+    : IDENT '.' IDENT
+    ;
+
+runBlock
+    : '{' runStep* '}'
+    ;
+
+runStep
+    : paramCall ('|' paramCall)? eos              #runStepExpr
+    | IDENT '=' 'new' IDENT eos                   #runInit
     ;
 
 faultType
@@ -129,7 +142,7 @@ faultType
 
 expression
     : operand                                                            #Expr
-    | faultType '(' operand (',' operand)* ')'                                          #Typed
+    | faultType '(' operand (',' operand)* ')'                           #Typed
     | ('+' | '-' | '!' | '^' | '*' | '&') expression                     #Prefix
     | expression '**' expression                                         #lrExpr
     | expression ('*' | '/' | '%' | '<<' | '>>' | '&' | '&^') expression #lrExpr
@@ -137,7 +150,6 @@ expression
     | expression ('==' | '!=' | '<' | '<=' | '>' | '>=') expression      #lrExpr
     | expression '&&' expression                                         #lrExpr
     | expression '||' expression                                         #lrExpr
-    | expression '|' expression                                          #runStepExpr
     ;
 
 operand
@@ -152,7 +164,7 @@ operand
 
 operandName
     : IDENT                     #OpName
-    | IDENT ('.' IDENT)?        #OpParam
+    | paramCall                 #OpParam
     | THIS                      #OpThis
     | CLOCK                     #OpClock
     | 'new' IDENT               #OpInstance
