@@ -183,7 +183,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			fvn := c.getFullVariableName([]string{node.Left.(*ast.Identifier).Value})
 			if c.isVarSet(fvn) && c.alloc {
-				p := c.fetchAllocation(fvn, 0)
+				_, s := c.GetSpec(fvn)
+				fvns := c.getVariableName(fvn)
+				p := s.GetSpecVarPointer(fvns)
 				c.contextBlock.NewStore(r, p)
 				return nil
 			}

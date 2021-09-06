@@ -9,5 +9,5 @@ func NewGenerator(ir string) *Generator {
 }
 
 func (g *Generator) SMT() string {
-	for 
+
 }

@@ -168,30 +168,37 @@ block-2:
 
 define void @test1_test_fizz(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
 block-3:
-	%0 = load double, double* @test1_a
-	%1 = load double, double* %test1_test_buzz_a
-	%2 = fadd double %0, 10.0
-	store double %2, double* %test1_test_buzz_b
+	%0 = load double, double* %test1_test_buzz_b
+	%1 = load double, double* @test1_a
+	%2 = load double, double* %test1_test_buzz_a
+	%3 = fadd double %1, 10.0
+	%4 = fsub double 20.0, %3
+	store double %4, double* %test1_test_buzz_b
 	ret void
 }
 
-define void @test1_test_fizz2(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
+define void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
 block-4:
-	%0 = load double, double* %test1_test_buzz_a
-	%1 = load double, double* @test1_b
-	%2 = fsub double 10.0, %1
-	store double %2, double* %test1_test_buzz_b
+	%0 = load double, double* %test1_test_buzz_b
+	%1 = load double, double* %test1_test_buzz_a
+	%2 = load double, double* @test1_b
+	%3 = fsub double 10.0, %2
+	%4 = fsub double 20.0, %3
+	store double %4, double* %test1_test_buzz_b
 	ret void
 }
 
 define void @test1_test_fizz3(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
 block-5:
-	%0 = load double, double* %test1_test_buzz_b
-	%1 = load double, double* @test1_b
-	%2 = fadd double 20.0, %1
-	store double %2, double* %test1_test_buzz_a
+	%0 = load double, double* %test1_test_buzz_a
+	%1 = load double, double* %test1_test_buzz_b
+	%2 = load double, double* @test1_b
+	%3 = fadd double 20.0, %2
+	%4 = fsub double 10.0, %3
+	store double %4, double* %test1_test_buzz_a
 	ret void
 }
+
 `
 	//Should fadd have variable names or the values in those variables?
 

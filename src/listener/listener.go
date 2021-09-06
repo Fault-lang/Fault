@@ -457,39 +457,62 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 
 	var receiver ast.Expression
 	var sender ast.Expression
-	var ok bool
 
 	right := l.pop()
 	left := l.pop()
 	if operator == "->" {
 		switch right.(type) {
-		case *ast.ParameterCall:
+		case *ast.ParameterCall: // This is an in flow a -> param
 			receiver = right.(ast.Expression)
-		case *ast.Identifier:
-			receiver = right.(ast.Expression)
-		default:
-			panic(fmt.Sprintf("right side of expression should be a parameter call or identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+
+		default: // This is an outflow para -> a
+			sender = &ast.InfixExpression{
+				Token:    l.generateToken(right.(ast.Expression).Position(), "MINUS", "-"),
+				Left:     left.(ast.Expression),
+				Operator: "-",
+				Right:    right.(ast.Expression)}
 		}
 
-		sender, ok = left.(ast.Expression)
-		if !ok {
-			panic(fmt.Sprintf("left side of expression should be an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
-		}
-
-	} else if operator == "<-" {
 		switch left.(type) {
-		case *ast.ParameterCall:
+		case *ast.ParameterCall: // param -> a
 			receiver = left.(ast.Expression)
-		case *ast.Identifier:
-			receiver = left.(ast.Expression)
-		default:
-			panic(fmt.Sprintf("left side of expression should be a parameter call or identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
-		}
-		sender, ok = right.(ast.Expression)
-		if !ok {
-			panic(fmt.Sprintf("right side of expression should be an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+		default: // a -> param
+			sender = &ast.InfixExpression{
+				Token:    l.generateToken(right.(ast.Expression).Position(), "MINUS", "-"),
+				Left:     right.(ast.Expression),
+				Operator: "-",
+				Right:    left.(ast.Expression)}
 		}
 
+		if sender == nil || receiver == nil {
+			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+		}
+	} else if operator == "<-" {
+		switch right.(type) {
+		case *ast.ParameterCall: // a <- param
+			receiver = right.(ast.Expression)
+
+		default: // para <- a
+			sender = &ast.InfixExpression{
+				Token:    l.generateToken(right.(ast.Expression).Position(), "ADD", "+"),
+				Left:     left.(ast.Expression),
+				Operator: "+",
+				Right:    right.(ast.Expression)}
+		}
+
+		switch left.(type) {
+		case *ast.ParameterCall: // param <- a
+			receiver = left.(ast.Expression)
+		default: // a <- param
+			sender = &ast.InfixExpression{
+				Token:    l.generateToken(right.(ast.Expression).Position(), "ADD", "+"),
+				Left:     right.(ast.Expression),
+				Operator: "+",
+				Right:    left.(ast.Expression)}
+		}
+		if sender == nil || receiver == nil {
+			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+		}
 	} else {
 		panic(fmt.Sprintf("Invalid operator %s in expression", operator))
 	}
@@ -1189,6 +1212,14 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		Token:      token,
 		Expression: expr.(ast.Expression),
 	})
+}
+
+func (l *FaultListener) generateToken(pos []int, ttype string, tliteral string) ast.Token {
+	return ast.Token{
+		Type:     ast.TokenType(ttype),
+		Literal:  tliteral,
+		Position: pos,
+	}
 }
 
 func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expression {
