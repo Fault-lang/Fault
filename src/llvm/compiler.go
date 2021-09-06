@@ -652,8 +652,9 @@ func (c *Compiler) isFunction(node ast.Node) bool {
 
 func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*ir.Param {
 	var p []*ir.Param
-	for k, v := range data {
-		switch n := v.(type) {
+	keys := c.generateOrder(data)
+	for _, k := range keys {
+		switch n := data[k].(type) {
 		case *ast.Instance:
 			ip := c.generateParameters(c.specStructs[n.Value.Value], []string{id[0], id[1], k})
 			p = append(p, ip...)

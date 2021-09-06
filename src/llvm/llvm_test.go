@@ -140,65 +140,64 @@ func TestRunBlock(t *testing.T) {
 	`
 
 	expecting := `@test1_a = global double 0x4002666666666666
-@test1_b = global double 2.0
-
-define void @__run() {
-block-2:
-	%test1_test_buzz_a = alloca double
-	store double 10.0, double* %test1_test_buzz_a
-	%test1_test_buzz_b = alloca double
-	store double 20.0, double* %test1_test_buzz_b
-	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\38487cfbf67279c764a526213b15d255a !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !c9992c8be1f85a2932d63eba0e893a05 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33240cd436a5c85a09944540236db4ad2 !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33ac50f9e8b06ceef11bd5da91ee43fcc !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
-	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\31496d8c243d2229e0186bb2919665d37 !DIBasicType(tag: DW_TAG_string_type)
-	ret void
-}
-
-define void @test1_test_fizz(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
-block-3:
-	%0 = load double, double* %test1_test_buzz_b
-	%1 = load double, double* @test1_a
-	%2 = load double, double* %test1_test_buzz_a
-	%3 = fadd double %1, 10.0
-	%4 = fsub double 20.0, %3
-	store double %4, double* %test1_test_buzz_b
-	ret void
-}
-
-define void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
-block-4:
-	%0 = load double, double* %test1_test_buzz_b
-	%1 = load double, double* %test1_test_buzz_a
-	%2 = load double, double* @test1_b
-	%3 = fsub double 10.0, %2
-	%4 = fsub double 20.0, %3
-	store double %4, double* %test1_test_buzz_b
-	ret void
-}
-
-define void @test1_test_fizz3(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
-block-5:
-	%0 = load double, double* %test1_test_buzz_a
-	%1 = load double, double* %test1_test_buzz_b
-	%2 = load double, double* @test1_b
-	%3 = fadd double 20.0, %2
-	%4 = fsub double 10.0, %3
-	store double %4, double* %test1_test_buzz_a
-	ret void
-}
-
+	@test1_b = global double 2.0
+	
+	define void @__run() {
+	block-2:
+		%test1_test_buzz_a = alloca double
+		store double 10.0, double* %test1_test_buzz_a
+		%test1_test_buzz_b = alloca double
+		store double 20.0, double* %test1_test_buzz_b
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\38487cfbf67279c764a526213b15d255a !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !c9992c8be1f85a2932d63eba0e893a05 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33240cd436a5c85a09944540236db4ad2 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33ac50f9e8b06ceef11bd5da91ee43fcc !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\31496d8c243d2229e0186bb2919665d37 !DIBasicType(tag: DW_TAG_string_type)
+		ret void
+	}
+	
+	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
+	block-3:
+		%0 = load double, double* %test1_test_buzz_b
+		%1 = load double, double* @test1_a
+		%2 = load double, double* %test1_test_buzz_a
+		%3 = fadd double %1, 10.0
+		%4 = fsub double 20.0, %3
+		store double %4, double* %test1_test_buzz_b
+		ret void
+	}
+	
+	define void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
+	block-4:
+		%0 = load double, double* %test1_test_buzz_b
+		%1 = load double, double* %test1_test_buzz_a
+		%2 = load double, double* @test1_b
+		%3 = fsub double 10.0, %2
+		%4 = fsub double 20.0, %3
+		store double %4, double* %test1_test_buzz_b
+		ret void
+	}
+	
+	define void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
+	block-5:
+		%0 = load double, double* %test1_test_buzz_a
+		%1 = load double, double* %test1_test_buzz_b
+		%2 = load double, double* @test1_b
+		%3 = fadd double 20.0, %2
+		%4 = fsub double 10.0, %3
+		store double %4, double* %test1_test_buzz_a
+		ret void
+	}	
 `
 	//Should fadd have variable names or the values in those variables?
 
