@@ -45,6 +45,14 @@ func (s *spec) GetSpecVarPointer(name string) *ir.InstAlloca {
 	return s.vars.GetPointer(name)
 }
 
+func (s *spec) GetParams(id []string) []value.Value {
+	return s.vars.GetParams(id)
+}
+
+func (s *spec) AddParam(id []string, p value.Value) {
+	s.vars.AddParam(id, p)
+}
+
 func (s *spec) DefineSpecType(name string, ty types.Type) {
 	s.types[name] = ty
 }

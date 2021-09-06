@@ -12,6 +12,7 @@ type LookupTable struct {
 	state    map[string]State //ssa position
 	pointers *Pointers
 	values   map[string]Entry
+	params   map[string][]value.Value
 }
 
 func NewTable() *LookupTable {
@@ -19,6 +20,7 @@ func NewTable() *LookupTable {
 		state:    make(map[string]State),
 		pointers: NewPointers(),
 		values:   make(map[string]Entry),
+		params:   make(map[string][]value.Value),
 	}
 	return l
 }
@@ -52,6 +54,10 @@ func (l *LookupTable) Add(id []string, val value.Value) {
 		panic(fmt.Sprintf("cannot add %s to lookup table, missing full namespace. got=%d",
 			strings.Join(id, "_"), len(id)))
 	}
+}
+
+func (l *LookupTable) AddParam(id []string, p value.Value) {
+	l.params[id[1]] = append(l.params[id[1]], p)
 }
 
 func (l *LookupTable) Store(id []string, name string, point *ir.InstAlloca) {
@@ -92,12 +98,34 @@ func (l *LookupTable) GetState(id []string) int16 {
 	panic(fmt.Sprintf("no state found for variable %s", fid))
 }
 
+func (l *LookupTable) IncrState(id []string) {
+	switch v := l.state[id[1]].(type) {
+	case *structSEntry:
+		v.increment(id)
+	case *instanceSEntry:
+		v.increment(id)
+	}
+}
+
+func (l *LookupTable) ResetState(id []string) {
+	switch v := l.state[id[1]].(type) {
+	case *structSEntry:
+		v.update(id, 0)
+	case *instanceSEntry:
+		v.update(id, 0)
+	}
+}
+
 func (l *LookupTable) GetPointer(name string) *ir.InstAlloca {
 	p := l.pointers.get(name)
 	if p == nil {
 		panic(fmt.Sprintf("no pointer found for variable %s", name))
 	}
 	return p
+}
+
+func (l *LookupTable) GetParams(id []string) []value.Value {
+	return l.params[id[1]]
 }
 
 func (l *LookupTable) Update(id []string, val value.Value) {

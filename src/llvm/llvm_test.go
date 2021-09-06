@@ -31,7 +31,8 @@ func TestSimpleConst(t *testing.T) {
 	define void @__run() {
 	block-0:
 		ret void
-	}	
+	}
+	
 `
 
 	llvm, err := prepTest(test)
@@ -86,6 +87,7 @@ func TestConstExpr(t *testing.T) {
 			store i1 %5, i1* %test1_f
 			ret void
 		}
+		
 		`
 
 	llvm, err := prepTest(test)
@@ -137,124 +139,57 @@ func TestRunBlock(t *testing.T) {
 			};
 	`
 
-	expecting := `
-	@test1_a = global double 0x4002666666666666
+	expecting := `@test1_a = global double 0x4002666666666666
 @test1_b = global double 2.0
 
 define void @__run() {
 block-2:
-	%test1_test_buzz_a1 = alloca double
-	store double 10.0, double* %test1_test_buzz_a1
-	%test1_test_buzz_b1 = alloca double
-	store double 20.0, double* %test1_test_buzz_b1
+	%test1_test_buzz_a = alloca double
+	store double 10.0, double* %test1_test_buzz_a
+	%test1_test_buzz_b = alloca double
+	store double 20.0, double* %test1_test_buzz_b
+	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\38487cfbf67279c764a526213b15d255a !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !c9992c8be1f85a2932d63eba0e893a05 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33240cd436a5c85a09944540236db4ad2 !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33ac50f9e8b06ceef11bd5da91ee43fcc !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
+	call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\31496d8c243d2229e0186bb2919665d37 !DIBasicType(tag: DW_TAG_string_type)
+	ret void
+}
+
+define void @test1_test_fizz(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
+block-3:
 	%0 = load double, double* @test1_a
-	%test1_test_buzz_a2 = alloca double
-	store double 10.0, double* %test1_test_buzz_a2
-	%1 = fadd double %0, 10.0
-	%test1_test_buzz_b2 = alloca double
-	store double %1, double* %test1_test_buzz_b2
-	%test1_test_buzz_a3 = alloca double
-	store double 10.0, double* %test1_test_buzz_a3
-	%2 = load double, double* @test1_b
-	%3 = fsub double 10.0, %2
-	%test1_test_buzz_b3 = alloca double
-	store double %3, double* %test1_test_buzz_b3
-	%test1_test_buzz_b4 = alloca double
-	store double 20.0, double* %test1_test_buzz_b4
-	%4 = load double, double* @test1_b
-	%5 = fadd double 20.0, %4
-	%test1_test_buzz_a4 = alloca double
-	store double %5, double* %test1_test_buzz_a4
-	%6 = load double, double* @test1_a
-	%test1_test_buzz_a5 = alloca double
-	store double 10.0, double* %test1_test_buzz_a5
-	%7 = fadd double %6, 10.0
-	%test1_test_buzz_b5 = alloca double
-	store double %7, double* %test1_test_buzz_b5
-	%test1_test_buzz_a6 = alloca double
-	store double 10.0, double* %test1_test_buzz_a6
-	%8 = load double, double* @test1_b
-	%9 = fsub double 10.0, %8
-	%test1_test_buzz_b6 = alloca double
-	store double %9, double* %test1_test_buzz_b6
-	%test1_test_buzz_b7 = alloca double
-	store double 20.0, double* %test1_test_buzz_b7
-	%10 = load double, double* @test1_b
-	%11 = fadd double 20.0, %10
-	%test1_test_buzz_a7 = alloca double
-	store double %11, double* %test1_test_buzz_a7
-	%12 = load double, double* @test1_a
-	%test1_test_buzz_a8 = alloca double
-	store double 10.0, double* %test1_test_buzz_a8
-	%13 = fadd double %12, 10.0
-	%test1_test_buzz_b8 = alloca double
-	store double %13, double* %test1_test_buzz_b8
-	%test1_test_buzz_a9 = alloca double
-	store double 10.0, double* %test1_test_buzz_a9
-	%14 = load double, double* @test1_b
-	%15 = fsub double 10.0, %14
-	%test1_test_buzz_b9 = alloca double
-	store double %15, double* %test1_test_buzz_b9
-	%test1_test_buzz_b10 = alloca double
-	store double 20.0, double* %test1_test_buzz_b10
-	%16 = load double, double* @test1_b
-	%17 = fadd double 20.0, %16
-	%test1_test_buzz_a10 = alloca double
-	store double %17, double* %test1_test_buzz_a10
-	%18 = load double, double* @test1_a
-	%test1_test_buzz_a11 = alloca double
-	store double 10.0, double* %test1_test_buzz_a11
-	%19 = fadd double %18, 10.0
-	%test1_test_buzz_b11 = alloca double
-	store double %19, double* %test1_test_buzz_b11
-	%test1_test_buzz_a12 = alloca double
-	store double 10.0, double* %test1_test_buzz_a12
-	%20 = load double, double* @test1_b
-	%21 = fsub double 10.0, %20
-	%test1_test_buzz_b12 = alloca double
-	store double %21, double* %test1_test_buzz_b12
-	%test1_test_buzz_b13 = alloca double
-	store double 20.0, double* %test1_test_buzz_b13
-	%22 = load double, double* @test1_b
-	%23 = fadd double 20.0, %22
-	%test1_test_buzz_a13 = alloca double
-	store double %23, double* %test1_test_buzz_a13
-	%24 = load double, double* @test1_a
-	%test1_test_buzz_a14 = alloca double
-	store double 10.0, double* %test1_test_buzz_a14
-	%25 = fadd double %24, 10.0
-	%test1_test_buzz_b14 = alloca double
-	store double %25, double* %test1_test_buzz_b14
-	%test1_test_buzz_a15 = alloca double
-	store double 10.0, double* %test1_test_buzz_a15
-	%26 = load double, double* @test1_b
-	%27 = fsub double 10.0, %26
-	%test1_test_buzz_b15 = alloca double
-	store double %27, double* %test1_test_buzz_b15
-	%test1_test_buzz_b16 = alloca double
-	store double 20.0, double* %test1_test_buzz_b16
-	%28 = load double, double* @test1_b
-	%29 = fadd double 20.0, %28
-	%test1_test_buzz_a16 = alloca double
-	store double %29, double* %test1_test_buzz_a16
-	%30 = load double, double* @test1_a
-	%test1_test_buzz_a17 = alloca double
-	store double 10.0, double* %test1_test_buzz_a17
-	%31 = fadd double %30, 10.0
-	%test1_test_buzz_b17 = alloca double
-	store double %31, double* %test1_test_buzz_b17
-	%test1_test_buzz_a18 = alloca double
-	store double 10.0, double* %test1_test_buzz_a18
-	%32 = load double, double* @test1_b
-	%33 = fsub double 10.0, %32
-	%test1_test_buzz_b18 = alloca double
-	store double %33, double* %test1_test_buzz_b18
-	%test1_test_buzz_b19 = alloca double
-	store double 20.0, double* %test1_test_buzz_b19
-	%34 = load double, double* @test1_b
-	%35 = fadd double 20.0, %34
-	%test1_test_buzz_a19 = alloca double
-	store double %35, double* %test1_test_buzz_a19
+	%1 = load double, double* %test1_test_buzz_a
+	%2 = fadd double %0, 10.0
+	store double %2, double* %test1_test_buzz_b
+	ret void
+}
+
+define void @test1_test_fizz2(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
+block-4:
+	%0 = load double, double* %test1_test_buzz_a
+	%1 = load double, double* @test1_b
+	%2 = fsub double 10.0, %1
+	store double %2, double* %test1_test_buzz_b
+	ret void
+}
+
+define void @test1_test_fizz3(double* %test1_test_buzz_b, double* %test1_test_buzz_a) {
+block-5:
+	%0 = load double, double* %test1_test_buzz_b
+	%1 = load double, double* @test1_b
+	%2 = fadd double 20.0, %1
+	store double %2, double* %test1_test_buzz_a
 	ret void
 }
 `

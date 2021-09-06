@@ -24,6 +24,11 @@ func (c *Compiler) getVariableStateName(id []string) string {
 	return fmt.Sprint(strings.Join(id, "_"), incr)
 }
 
+func (c *Compiler) getVariableName(id []string) string {
+	id, _ = c.GetSpec(id)
+	return strings.Join(id, "_")
+}
+
 func (c *Compiler) updateVariableStateName(id []string) string {
 	id, s := c.GetSpec(id)
 	if len(id) == 2 { // This is a constant, doesn't change
@@ -36,7 +41,8 @@ func (c *Compiler) updateVariableStateName(id []string) string {
 
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	id, _ = c.GetSpec(id)
-	name := c.updateVariableStateName(id)
+	//name := c.getVariableStateName(id)
+	name := c.getVariableName(id)
 	var alloc *ir.InstAlloca
 	var store *ir.InstStore
 
@@ -122,12 +128,15 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 }
 
 func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloca) {
-	c.specs[c.currentSpecName].vars.Store(id, name, alloc)
+	id, s := c.GetSpec(id)
+	s.vars.IncrState(id)
+	s.vars.Store(id, name, alloc)
 }
 
-func (c *Compiler) fetchAllocation(id []string) *ir.InstAlloca {
+func (c *Compiler) fetchAllocation(id []string, offset int16) *ir.InstAlloca {
 	id, s := c.GetSpec(id)
-	name := c.getVariableStateName(id)
+	//name := c.getVariableStateName(id)
+	name := c.getVariableName(id)
 	return s.vars.GetPointer(name)
 }
 
