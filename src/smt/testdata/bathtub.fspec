@@ -1,0 +1,25 @@
+spec bathtub;
+
+def faucet = flow{
+    water: new tub,
+    in: func{
+        water.level <- 10;
+    },
+};
+
+def drain = flow{
+    water: new tub,
+    out: func{
+        water.level -> 20;
+    },
+};
+
+def tub = stock{
+    level: 5, // out of 100%
+};
+
+for 4 run {
+    drawn = new faucet;
+    pipe = new drain;
+    drawn.in | pipe.out;
+}
