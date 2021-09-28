@@ -171,8 +171,8 @@ func TestRunBlock(t *testing.T) {
 		%0 = load double, double* %test1_test_buzz_b
 		%1 = load double, double* @test1_a
 		%2 = load double, double* %test1_test_buzz_a
-		%3 = fadd double %1, 10.0
-		%4 = fsub double 20.0, %3
+		%3 = fadd double %1, %2
+		%4 = fsub double %0, %3
 		store double %4, double* %test1_test_buzz_b
 		ret void
 	}
@@ -182,8 +182,8 @@ func TestRunBlock(t *testing.T) {
 		%0 = load double, double* %test1_test_buzz_b
 		%1 = load double, double* %test1_test_buzz_a
 		%2 = load double, double* @test1_b
-		%3 = fsub double 10.0, %2
-		%4 = fsub double 20.0, %3
+		%3 = fsub double %1, %2
+		%4 = fsub double %0, %3
 		store double %4, double* %test1_test_buzz_b
 		ret void
 	}
@@ -193,11 +193,11 @@ func TestRunBlock(t *testing.T) {
 		%0 = load double, double* %test1_test_buzz_a
 		%1 = load double, double* %test1_test_buzz_b
 		%2 = load double, double* @test1_b
-		%3 = fadd double 20.0, %2
-		%4 = fsub double 10.0, %3
+		%3 = fadd double %1, %2
+		%4 = fsub double %0, %3
 		store double %4, double* %test1_test_buzz_a
 		ret void
-	}	
+	}		
 `
 	//Should fadd have variable names or the values in those variables?
 
@@ -220,9 +220,93 @@ func TestRunBlock(t *testing.T) {
 	}
 }
 
+func TestIfCond(t *testing.T) {
+	test := `spec test1;
+			const a = 2.3;
+			const b = 2;
+
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					if buzz.a > 2{
+						buzz.a -> b;
+					}else{
+						buzz.a = 10;
+					}
+					buzz.b -> 1;
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+				b: 20,
+			};
+
+			for 1 run{
+				test = new foo;
+				test.fizz;
+			};
+	`
+
+	expecting := `@test1_a = global double 0x4002666666666666
+	@test1_b = global double 2.0
+	
+	define void @__run() {
+	block-6:
+		%test1_test_buzz_a = alloca double
+		store double 10.0, double* %test1_test_buzz_a
+		%test1_test_buzz_b = alloca double
+		store double 20.0, double* %test1_test_buzz_b
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d13399dec07511570da1e17fb6f98374 !DIBasicType(tag: DW_TAG_string_type)
+		ret void
+	}
+	
+	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
+	block-7:
+		%0 = load double, double* %test1_test_buzz_a
+		%1 = fcmp ogt double %0, 2.0
+		br i1 %1, label %block-9-true, label %block-10-false
+	
+	block-8-after:
+		%2 = load double, double* %test1_test_buzz_b
+		%3 = fsub double %2, 1.0
+		store double %3, double* %test1_test_buzz_b
+		ret void
+	
+	block-9-true:
+		%4 = load double, double* %test1_test_buzz_a
+		%5 = load double, double* @test1_b
+		%6 = fsub double %4, %5
+		store double %6, double* %test1_test_buzz_a
+		br label %block-8-after
+	
+	block-10-false:
+		store double 10.0, double* %test1_test_buzz_a
+		br label %block-8-after
+	}	
+	`
+
+	llvm, err := prepTest(test)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
 // run block
 // init values
-// conditionals
 // instances (target/source)
 // clock
 // index
@@ -280,6 +364,7 @@ func prepTest(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 

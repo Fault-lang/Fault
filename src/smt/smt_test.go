@@ -38,6 +38,30 @@ import (
 // 	}
 // }
 
+func TestSimple(t *testing.T) {
+	expecting, err := os.ReadFile("testdata/simple.smt2")
+	if err != nil {
+		panic("compiled spec simple is not valid")
+	}
+
+	data, err := os.ReadFile("testdata/simple.fspec")
+	if err != nil {
+		panic("spec simple is not valid")
+	}
+
+	smt, err := prepTest(string(data))
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	err = compareResults(smt, string(expecting))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
 func TestBathTub2(t *testing.T) {
 	expecting, err := os.ReadFile("testdata/bathtub.smt2")
 	if err != nil {

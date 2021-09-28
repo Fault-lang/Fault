@@ -543,27 +543,43 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 	}
 
+	var assign *ast.InfixExpression
+
 	left := l.pop()
-	ident, ok := left.(*ast.Identifier)
-	if !ok {
-		panic(fmt.Sprintf("left side of expression should be an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
-	}
+	switch ident := left.(type) {
+	case *ast.Identifier:
+		// If a new instance is initialized in the run block
+		// the listener needs to add the name
+		switch inst := right.(type) {
+		case *ast.Instance:
+			inst.Name = ident.Value
+			right = inst
+		}
 
-	// If a new instance is initialized in the run block
-	// the listener needs to add the name
-	switch inst := right.(type) {
-	case *ast.Instance:
-		inst.Name = ident.Value
-		right = inst
-	}
-
-	l.push(
-		&ast.InfixExpression{
+		assign = &ast.InfixExpression{
 			Token:    token,
 			Left:     ident,
 			Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
 			Right:    right.(ast.Expression),
-		})
+		}
+	case *ast.ParameterCall:
+		switch inst := right.(type) {
+		case *ast.Instance:
+			inst.Name = ident.Value[0]
+			right = inst
+		}
+
+		assign = &ast.InfixExpression{
+			Token:    token,
+			Left:     ident,
+			Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+			Right:    right.(ast.Expression),
+		}
+	default:
+		panic(fmt.Sprintf("left side of expression should be an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+	}
+
+	l.push(assign)
 }
 
 func (l *FaultListener) ExitLrExpr(c *parser.LrExprContext) {
@@ -621,9 +637,23 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 	sl := &ast.BlockStatement{
 		Token: token,
 	}
-	for _, v := range c.AllRunStep() {
+	steps := c.AllRunStep()
+	for i := len(steps) - 1; i >= 0; i-- {
+		v := steps[i]
 		ex := l.pop()
 		switch t := ex.(type) {
+		case *ast.Instance:
+			token2 := l.generateToken(
+				[]int{v.(*parser.RunInitContext).GetStart().GetLine(),
+					v.(*parser.RunInitContext).GetStart().GetColumn(),
+					v.(*parser.RunInitContext).GetStop().GetLine(),
+					v.(*parser.RunInitContext).GetStop().GetColumn(),
+				}, "FUNCTION", "FUNCTION")
+			s := &ast.ExpressionStatement{
+				Token:      token2,
+				Expression: t,
+			}
+			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
 		case ast.Statement:
 			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 		case ast.Expression:
@@ -696,7 +726,7 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 		idx := l.pop()
 		exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
 	}
-
+	
 	e := &ast.ParallelFunctions{
 		Token:       token,
 		Expressions: exp,
@@ -833,7 +863,13 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 			c.GetStop().GetColumn(),
 		},
 	}
-	a := l.pop()
+	var a *ast.BlockStatement
+	if len(c.GetChildren()) > 3 {
+		ra := l.pop()
+		a = ra.(*ast.BlockStatement)
+	} else {
+		a = &ast.BlockStatement{}
+	}
 	csq := l.pop()
 	cond := l.pop()
 
@@ -841,7 +877,7 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 		Token:       token,
 		Condition:   cond.(ast.Expression),
 		Consequence: csq.(*ast.BlockStatement),
-		Alternative: a.(*ast.BlockStatement),
+		Alternative: a,
 	}
 
 	l.push(e)

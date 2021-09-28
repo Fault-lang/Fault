@@ -41,7 +41,6 @@ type Compiler struct {
 	contextMetadata *metadata.Attachment
 
 	alloc        bool
-	runBlock     *ir.Func
 	runRound     int16
 	funcStatePos map[string]map[string]interface{}
 
@@ -50,6 +49,7 @@ type Compiler struct {
 	contextFuncRetVals [][]value.Value
 
 	contextBlock *ir.Block
+	contextFunc  *ir.Func
 
 	// Stack of variables that are in scope
 	contextBlockVariables []map[string]value.Value
@@ -140,38 +140,11 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 	for _, fileNode := range specfile.Statements {
 		c.compile(fileNode)
 	}
-	fmt.Println(c.GetIR())
 	return
 }
 
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
-	id := c.getFullVariableName([]string{node.Value})
-	id, s := c.GetSpec(id)
-	var name string
-
-	local := s.GetSpecVar(id)
-	if local != nil {
-		//name = c.getVariableStateName(id)
-		name = c.getVariableName(id)
-		pointer := s.GetSpecVarPointer(name)
-		load := c.contextBlock.NewLoad(irtypes.Double, pointer)
-		return load
-	} else {
-
-		// Might be a spec global constant
-		g := id[len(id)-1]
-		global := s.GetSpecVar([]string{id[0], g})
-
-		if global == nil {
-			pos := node.Position()
-			panic(fmt.Sprintf("variable %s not defined line: %d col: %d", strings.Join(id, "_"), pos[0], pos[1]))
-		}
-		name = strings.Join([]string{id[0], g}, "_")
-
-	}
-	pointer := c.specGlobals[name]
-	load := c.contextBlock.NewLoad(irtypes.Double, pointer)
-	return load
+	return c.lookupIdent([]string{node.Value}, node.Position())
 }
 
 func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
@@ -181,7 +154,14 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	case "=": // Used to store temporary local values
 		r := c.compileValue(node.Right)
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
-			fvn := c.getFullVariableName([]string{node.Left.(*ast.Identifier).Value})
+			var fvn []string
+			switch n := node.Left.(type) {
+			case *ast.Identifier:
+				fvn = c.getFullVariableName([]string{n.Value})
+			case *ast.ParameterCall:
+				fvn = c.getFullVariableName(n.Value)
+			}
+
 			if c.isVarSet(fvn) && c.alloc {
 				_, s := c.GetSpec(fvn)
 				fvns := c.getVariableName(fvn)
@@ -213,73 +193,82 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		c.contextBlock.NewStore(r, pointer)
 		return nil
 	case "+":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		add := c.contextBlock.NewFAdd(l, r)
 		return add
 	case "-":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		sub := c.contextBlock.NewFSub(l, r)
 		return sub
 	case "*":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		mul := c.contextBlock.NewFMul(l, r)
 		return mul
 	case "/":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		div := c.contextBlock.NewFDiv(l, r)
 		return div
 	case "%":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		rem := c.contextBlock.NewFRem(l, r)
 		return rem
 	case ">":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		ogt := c.contextBlock.NewFCmp(enum.FPredOGT, l, r)
 		return ogt
 	case ">=":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		oge := c.contextBlock.NewFCmp(enum.FPredOGE, l, r)
 		return oge
 	case "<":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		olt := c.contextBlock.NewFCmp(enum.FPredOLT, l, r)
 		return olt
 	case "<=":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		ole := c.contextBlock.NewFCmp(enum.FPredOLE, l, r)
 		return ole
 	case "==":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		oeq := c.contextBlock.NewFCmp(enum.FPredOEQ, l, r)
 		return oeq
 	case "!=":
-		l := c.compileValue(node.Left)
-		r := c.compileValue(node.Right)
+		l := c.compilerInfixNode(node.Left)
+		r := c.compilerInfixNode(node.Right)
 
 		one := c.contextBlock.NewFCmp(enum.FPredONE, l, r)
 		return one
 	default:
 		panic(fmt.Sprintf("unknown operator %s. line: %d, col: %d", node.Operator, pos[0], pos[1]))
+	}
+}
+
+func (c *Compiler) compilerInfixNode(node ast.Node) value.Value {
+	switch v := node.(type) {
+	case *ast.ParameterCall:
+		return c.lookupIdent(v.Value, node.Position())
+	default:
+		return c.compileValue(node)
 	}
 }
 
@@ -289,7 +278,6 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 		panic(fmt.Sprintf("cannot use parallel operator outside of the run block. line: %d, col: %d", pos[0], pos[1]))
 	}
 	gname := name.ParallelGroup(node.String())
-
 	for i := 0; i < len(node.Expressions); i++ {
 		l := c.compileValue(node.Expressions[i])
 		md := &metadata.Attachment{
@@ -396,8 +384,8 @@ func (c *Compiler) addGlobal() {
 	c.specs["__global"] = global
 
 	// run block
-	c.runBlock = c.module.NewFunc("__run", irtypes.Void)
-	mainBlock := c.runBlock.NewBlock(name.Block())
+	c.contextFunc = c.module.NewFunc("__run", irtypes.Void)
+	mainBlock := c.contextFunc.NewBlock(name.Block())
 	mainBlock.NewRet(nil)
 	c.contextBlock = mainBlock
 }
@@ -501,6 +489,59 @@ func (c *Compiler) compileInstance(structName string, instName string, pos []int
 	}
 }
 
+func (c *Compiler) compileIf(n *ast.IfExpression) {
+	cond := c.compileValue(n.Condition)
+
+	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
+	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-true")
+	falseBlock := afterBlock
+
+	c.contextCondAfter = append(c.contextCondAfter, afterBlock)
+
+	if n.Alternative != nil {
+		falseBlock = c.contextBlock.Parent.NewBlock(name.Block() + "-false")
+	}
+
+	c.contextBlock.NewCondBr(cond, trueBlock, falseBlock)
+
+	c.contextBlock = trueBlock
+	c.compileBlock(n.Consequence)
+
+	// Jump to after-block if no terminator has been set (such as a return statement)
+	if trueBlock.Term == nil {
+		trueBlock.NewBr(afterBlock)
+	}
+
+	if n.Alternative != nil {
+		c.contextBlock = falseBlock
+		c.compileBlock(n.Alternative)
+
+		// Jump to after-block if no terminator has been set (such as a return statement)
+		if falseBlock.Term == nil {
+			falseBlock.NewBr(afterBlock)
+		}
+	}
+
+	c.contextBlock = afterBlock
+
+	// pop after block stack
+	c.contextCondAfter = c.contextCondAfter[0 : len(c.contextCondAfter)-1]
+
+	// set after block to jump to the after block
+	if len(c.contextCondAfter) > 0 {
+		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
+	}
+}
+
+// func (c *Compiler) compileBranch(b *ast.BlockStatement) *ir.Block {
+// 	c.contextBlock = c.contextFunc.NewBlock(name.Block())
+// 	val := c.compileBlock(b)
+// 	c.contextBlock.NewRet(val)
+// 	child := c.contextBlock
+// 	//c.contextBlock = c.contextFunc.NewBlock(name.Block())
+// 	return child
+//}
+
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	structName := c.instances[pc.Value[0]]
 	id := c.getFullVariableName(pc.Value)
@@ -516,6 +557,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			params := c.generateParameters(c.specStructs[structName], id)
 			c.resetParaState(params)
 			f := c.module.NewFunc(fname, irtypes.Void, params...)
+			c.contextFunc = f
 
 			oldScope := c.currScope
 			oldBlock := c.contextBlock
@@ -531,6 +573,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			c.contextFuncName = "__run"
 			c.currScope = oldScope
 			c.specFunctions[fname] = f
+			c.contextFunc = nil
 			c.resetParaState(params)
 		}
 
@@ -566,11 +609,6 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 }
 
 func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
-	/*fn := c.module.NewFunc(c.contextFuncName, irtypes.Double) //Change this to match type
-	c.contextBlock = fn.NewBlock(name.Block())
-	c.pushVariablesStack()
-	c.pushAllocations()*/
-
 	body := node.Body.Statements
 	var retValue value.Value
 	for i := 0; i < len(body); i++ {
@@ -580,13 +618,6 @@ func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
 			return c.compileValue(init.Expression)
 		}
 	}
-	/*retValue = constant.NewFloat(irtypes.Double, 0.0)
-	c.contextBlock.NewRet(retValue)
-	c.specFunctions[c.contextFuncName] = fn
-	c.contextBlock = c.runBlock.NewBlock(name.Block())
-	c.contextBlock.NewRet(retValue)
-	c.popVariablesStack()
-	c.popAllocations()*/
 	return retValue
 }
 
@@ -601,6 +632,7 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 	case *ast.PrefixExpression:
 
 	case *ast.IfExpression:
+		c.compileIf(v)
 
 	case *ast.Instance:
 		c.compileInstance(v.Name, v.Value.Value, v.Position())
@@ -678,6 +710,35 @@ func (c *Compiler) resetParaState(p []*ir.Param) {
 		id[len(id)-1] = id[len(id)-1][:len(id[len(id)-1])-1]
 		s.vars.ResetState(id)
 	}
+}
+
+func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
+	id := c.getFullVariableName(ident)
+	id, s := c.GetSpec(id)
+	var name string
+
+	local := s.GetSpecVar(id)
+	if local != nil {
+		//name = c.getVariableStateName(id)
+		name = c.getVariableName(id)
+		pointer := s.GetSpecVarPointer(name)
+		load := c.contextBlock.NewLoad(irtypes.Double, pointer)
+		return load
+	} else {
+
+		// Might be a spec global constant
+		g := id[len(id)-1]
+		global := s.GetSpecVar([]string{id[0], g})
+
+		if global == nil {
+			panic(fmt.Sprintf("variable %s not defined line: %d col: %d", strings.Join(id, "_"), pos[0], pos[1]))
+		}
+		name = strings.Join([]string{id[0], g}, "_")
+
+	}
+	pointer := c.specGlobals[name]
+	load := c.contextBlock.NewLoad(irtypes.Double, pointer)
+	return load
 }
 
 func (c *Compiler) pushVariablesStack() {

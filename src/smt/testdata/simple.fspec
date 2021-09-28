@@ -7,11 +7,13 @@ def st = stock{
 def fl = flow{
     vault: new st,
     fn: func{
-        vault.value <- vault.value - 2;
+        if vault.value > 4 {
+            vault.value <- vault.value - 2;
+        }
     },
 };
 
 for 1 run {
     l = new fl;
-    fl.fn;
+    l.fn;
 }
