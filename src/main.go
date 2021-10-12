@@ -103,6 +103,7 @@ func main() {
 
 	if *fpCommand == "" {
 		flag.PrintDefaults()
+		fmt.Printf("must provide path of file to compile")
 		os.Exit(1)
 	}
 	filepath = *fpCommand

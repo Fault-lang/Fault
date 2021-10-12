@@ -15,6 +15,19 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [audio](https://anchor.fm/mwapl)
 - [transcripts](https://dev.to/bellmar/series/9711)
 
+## Getting Started
+_Fault is currently pre-alpha and not ready to develop real specs, but if you like pain and misery here's how to run the compiler..._
+
+Fault is written in Go and can be run by downloading this repo and running this command from the src directory:
+
+`go run main.go -filepath=smt/testdata/simple.fspec`
+
+That will return the SMTLib2 output of the compiler. It will not yet run the model in Z3. Please note that the compiler only supports part of the Fault grammar currently.
+
+You can output different stages of compilation by using the `-mode` flag. By default this is set to `-mode=smt` so the compiler outputs SMTLib2, but can be changed to output either `ast` or `ir` which will stop compilation early and output either Fault's AST or LLVM IR respectively.
+
+You can also start the compiler from the LLVM -> SMTLib2 stage by changing to `-input` flag to `-input=ll`. By default the compiler expects the input file to be a spec that fits the Fault grammar.
+
 ## Todos
 _incomplete list. Items to be added as I think of them_
 
