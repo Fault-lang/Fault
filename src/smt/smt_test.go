@@ -63,7 +63,7 @@ func TestSimple(t *testing.T) {
 }
 
 func TestBathTub2(t *testing.T) {
-	expecting, err := os.ReadFile("testdata/bathtub.smt2")
+	expecting, err := os.ReadFile("testdata/bathtub2.smt2")
 	if err != nil {
 		panic("compiled spec bathtub is not valid")
 	}
@@ -74,6 +74,8 @@ func TestBathTub2(t *testing.T) {
 	}
 
 	smt, err := prepTest(string(data))
+
+	fmt.Println(smt)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -87,8 +89,7 @@ func TestBathTub2(t *testing.T) {
 }
 
 func compareResults(smt string, expecting string) error {
-	//if !strings.Contains(smt, "(declare-fun") {
-	if !strings.Contains(smt, "failfailfail") {
+	if !strings.Contains(smt, "(declare-fun") {
 		return fmt.Errorf("smt not valid. \ngot=%s", smt)
 	}
 

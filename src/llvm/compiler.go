@@ -491,15 +491,16 @@ func (c *Compiler) compileInstance(structName string, instName string, pos []int
 
 func (c *Compiler) compileIf(n *ast.IfExpression) {
 	cond := c.compileValue(n.Condition)
+	group := name.IfCond(cond.String())
 
-	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
-	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-true")
+	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-" + group + "-after")
+	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-" + group + "-true")
 	falseBlock := afterBlock
 
 	c.contextCondAfter = append(c.contextCondAfter, afterBlock)
 
 	if n.Alternative != nil {
-		falseBlock = c.contextBlock.Parent.NewBlock(name.Block() + "-false")
+		falseBlock = c.contextBlock.Parent.NewBlock(name.Block() + "-" + group + "-false")
 	}
 
 	c.contextBlock.NewCondBr(cond, trueBlock, falseBlock)

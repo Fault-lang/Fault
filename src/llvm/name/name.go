@@ -7,6 +7,7 @@ import (
 
 var blockIndex uint64
 var parallelIndex uint64
+var condGroup uint64
 var anonFuncIndex uint64
 
 func Block() string {
@@ -18,6 +19,12 @@ func Block() string {
 func ParallelGroup(group string) string {
 	data := []byte(fmt.Sprint(group, parallelIndex))
 	parallelIndex++
+	return fmt.Sprintf("%x", md5.Sum(data))
+}
+
+func IfCond(group string) string {
+	data := []byte(fmt.Sprint(group, condGroup))
+	condGroup++
 	return fmt.Sprintf("%x", md5.Sum(data))
 }
 

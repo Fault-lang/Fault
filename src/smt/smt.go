@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
-	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -34,19 +32,26 @@ func (i *infix) String() string {
 
 type ite struct {
 	rule
-	cond rule
-	t    *ir.Block
-	f    *ir.Block
+	cond  rule
+	t     []rule
+	tvars map[string]string
+	f     []rule
+	fvars map[string]string
 }
 
 func (it *ite) ruleNode() {}
 func (it *ite) String() string {
-	return fmt.Sprintf("if %s then %s else %s", it.cond.String(), it.t.LLString(), it.f.LLString())
+	return fmt.Sprintf("if %s then %s else %s", it.cond.String(), it.t, it.f)
 }
 
 type wrap struct { //wrapper for constant values to be used in infix as rules
 	rule
 	value string
+}
+
+type vwrap struct {
+	rule
+	value value.Value
 }
 
 func (w *wrap) ruleNode() {}
@@ -55,22 +60,25 @@ func (w *wrap) String() string {
 }
 
 type Generator struct {
-	callgraph    string
-	smt          []string
-	inits        []string
-	constants    []string
-	rules        []string
-	asserts      []string
-	ssa          map[string]int16
-	loads        map[string]value.Value
-	ref          map[string]rule
-	call         int
-	parallel     string
-	parallelEnds map[string][]int
-	callstack    map[int][]string
-	functions    map[string]*ir.Func
-	//blocks          map[string][]*rule
+	callgraph       string
+	smt             []string
+	inits           []string
+	constants       []string
+	rules           []string
+	asserts         []string
+	ssa             map[string]int16
+	loads           map[string]value.Value
+	ref             map[string]rule
+	call            int
+	parallel        string
+	parallelEnds    map[string][]int
+	callstack       map[int][]string
+	functions       map[string]*ir.Func
+	blocks          map[string][]rule
+	skipBlocks      map[string]int
 	currentFunction string
+	currentBlock    string
+	last            rule
 }
 
 func NewGenerator() *Generator {
@@ -81,6 +89,8 @@ func NewGenerator() *Generator {
 		parallelEnds:    make(map[string][]int),
 		callstack:       make(map[int][]string),
 		functions:       make(map[string]*ir.Func),
+		blocks:          make(map[string][]rule),
+		skipBlocks:      make(map[string]int),
 		currentFunction: "@__run",
 	}
 }
@@ -107,23 +117,20 @@ func (g *Generator) Run(llopt string) {
 
 }
 
+func (g *Generator) getType(val value.Value) string {
+	switch val.Type().(type) {
+	case *irtypes.FloatType:
+		return "Real"
+	}
+	return ""
+}
+
 func (g *Generator) newCallgraph(m *ir.Module) {
-	for _, gl := range m.Globals {
-		id := g.formatIdent(gl.GlobalIdent.Ident())
-		g.constants = append(g.constants, g.constantRule(id, gl.Init))
-	}
-	for _, f := range m.Funcs {
-		// Get function name.
-		g.currentFunction = f.Ident()
-		if g.currentFunction != "@__run" {
-			g.functions[g.currentFunction] = f
-			continue
-		}
-		// Rules that are in the run block.
-		run := g.parseFunction(f, nil)
-		g.rules = append(g.rules, g.generateRules(run)...)
-	}
-	for i := 1; i < len(g.callstack); i++ {
+	g.constants = g.newConstants(m.Globals)
+	g.rules = g.storeFuncs(m.Funcs)
+
+	// Unroll the run block
+	for i := 1; i <= len(g.callstack); i++ {
 		var raw []rule
 		if len(g.callstack[i]) > 1 {
 			//Generate parallel runs
@@ -144,210 +151,35 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	}
 }
 
-func (g *Generator) parseFunction(f *ir.Func, startVars map[string]string) []rule {
-	var rules []rule
-	g.currentFunction = f.Ident()
-	for _, block := range f.Blocks {
-		// For each non-branching instruction of the basic block.
-		r, sv := g.parseInstruct(block, startVars)
-		rules = append(rules, r...)
-		startVars = sv
+func (g *Generator) newConstants(globals []*ir.Global) []string {
+	// Constants cannot be changed and therefore don't increment
+	// in SSA. So instead of return a *rule we can skip directly
+	// to a set of strings
+	r := []string{}
+	for _, gl := range globals {
+		id := g.formatIdent(gl.GlobalIdent.Ident())
+		r = append(r, g.constantRule(id, gl.Init))
 	}
-	return rules
+	return r
 }
 
-func (g *Generator) parseInstruct(block *ir.Block, startVars map[string]string) ([]rule, map[string]string) {
-	var rules []rule
-	for _, inst := range block.Insts {
-		fmt.Printf("%T", inst)
-		// Type switch on instruction to find call instructions.
-		switch inst := inst.(type) {
-		case *ir.InstAlloca:
-			//Do nothing
-		case *ir.InstLoad:
-			id := inst.Ident()
-			g.loads[id] = inst.Src
-		case *ir.InstStore:
-			id := g.formatIdent(inst.Dst.Ident())
-			if g.isTemp(inst.Src.Ident()) {
-				srcId := inst.Src.Ident()
-				if val, ok := g.loads[srcId]; ok {
-					ty := g.getType(val)
-					id = g.advanceSSA(id)
-					rules = append(rules, g.parseRule(id, g.formatValue(val), ty, ""))
-				} else if ref, ok := g.ref[srcId]; ok {
-					id = g.advanceSSA(id)
-					wid := &wrap{value: id}
-					rules = append(rules, &infix{x: wid, ty: "Real", y: ref})
-				} else {
-					panic(fmt.Sprintf("smt generation error, value for %s not found", id))
-				}
-			} else {
-				ty := g.getType(inst.Src)
-				id = g.advanceSSA(id)
-				rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
-			}
-		case *ir.InstFAdd:
-			startVars = g.parseInfix(inst.Ident(),
-				inst.X.Ident(), inst.Y.Ident(), "+", startVars)
-		case *ir.InstFSub:
-			startVars = g.parseInfix(inst.Ident(),
-				inst.X.Ident(), inst.Y.Ident(), "-", startVars)
-		case *ir.InstFMul:
-			startVars = g.parseInfix(inst.Ident(),
-				inst.X.Ident(), inst.Y.Ident(), "*", startVars)
-		case *ir.InstFDiv:
-			startVars = g.parseInfix(inst.Ident(),
-				inst.X.Ident(), inst.Y.Ident(), "/", startVars)
-		case *ir.InstFRem:
-			//Cannot be implemented because SMT solvers do poorly with modulo
-		case *ir.InstFCmp:
-			op, y := g.parseCompare(inst.Y.Ident(), inst.Pred.String())
-			startVars = g.parseInfix(inst.Ident(),
-				inst.X.Ident(), y, op, startVars)
-		case *ir.InstCall:
-			callee := inst.Callee.Ident()
-			meta := inst.Metadata
-			if len(meta) == 0 || g.parallel != meta[0].Name {
-				g.call = g.call + 1
-			}
-			for _, v := range meta {
-				g.parallel = v.Name
-			}
+func (g *Generator) storeFuncs(funcs []*ir.Func) []string {
+	//Iterate through all the function blocks and store them by
+	// function call name.
 
-			g.callstack[g.call] = append(g.callstack[g.call], callee)
-		/*case *ir.TermCondBr:
-		cond := g.parseCond(inst.Cond, startVars)
-		rules = append(rules, &ite{cond: cond, t: inst.TargetTrue.(*ir.Block), f: inst.TargetFalse.(*ir.Block)})
-		//(ite cond targetT targetF)
-		//(ite cond (and T1 T2 T3) (and F1 F2 F3))
-		*/
-		default:
-			fmt.Printf("%T", inst)
+	r := []string{}
+	for _, f := range funcs {
+		// Get function name.
+		if f.Ident() != "@__run" {
+			g.functions[f.Ident()] = f
+			continue
 		}
+		// code that is in the run block we can generate
+		// rules right now.
+		run := g.parseFunction(f, nil)
+		r = append(r, g.generateRules(run)...)
 	}
-	return rules, startVars
-}
-
-// func (g *Generator) getBranchVars(b *ir.Block, startVars map[string]string) {
-// 	r :=
-// 	startVars = g.gatherStarts(r, startVars)
-// }
-
-func (g *Generator) parseInfix(id string, x string, y string, op string, startVars map[string]string) map[string]string {
-	if g.isTemp(x) {
-		if v, ok := g.loads[x]; ok {
-			xid := v.Ident()
-			xidNoPercent := g.formatIdent(xid)
-			if id, ok := startVars[xidNoPercent]; ok {
-				x = g.formatIdent(id)
-				delete(startVars, xidNoPercent)
-			} else {
-				x = g.convertIdent(xid)
-			}
-		}
-	}
-
-	if g.isTemp(y) {
-		if v, ok := g.loads[y]; ok {
-			yid := v.Ident()
-			yidNoPercent := g.formatIdent(yid)
-			if id, ok := startVars[yidNoPercent]; ok {
-				y = g.formatIdent(id)
-				delete(startVars, yidNoPercent)
-			} else {
-				y = g.convertIdent(yid)
-			}
-		}
-	}
-	g.ref[id] = g.parseRule(x, y, "", op)
-	return startVars
-}
-
-func (g *Generator) parseCond(cond value.Value, startVars map[string]string) rule {
-	switch inst := cond.(type) {
-	case *constant.Int:
-		if inst.X.Int64() == 0 {
-			//return false
-			return &ite{cond: &wrap{value: "False"}}
-		} else {
-			//return true
-			return &ite{cond: &wrap{value: "True"}}
-		}
-	case *ir.InstFAdd:
-		return g.parseRule(inst.X.Ident(), inst.Y.Ident(), "", "+")
-	case *ir.InstFSub:
-		return g.parseRule(inst.X.Ident(), inst.Y.Ident(), "", "-")
-	case *ir.InstFMul:
-		return g.parseRule(inst.X.Ident(), inst.Y.Ident(), "", "*")
-	case *ir.InstFDiv:
-		return g.parseRule(inst.X.Ident(), inst.Y.Ident(), "", "/")
-	case *ir.InstFCmp:
-		op, y := g.parseCompare(inst.Y.Ident(), inst.Pred.String())
-		return g.parseRule(inst.X.Ident(), y, "", op)
-	default:
-		panic(fmt.Sprintf("Invalid conditional: %s", inst.String()))
-	}
-	return nil
-}
-
-func (g *Generator) parseCompare(y string, op string) (string, string) {
-	switch op {
-	case "FPredFalse":
-		op = "="
-		y = "False"
-	case "FPredOEQ":
-		op = "="
-	case "FPredOGE":
-		op = ">="
-	case "FPredOGT":
-		op = ">"
-	case "FPredOLE":
-		op = "<="
-	case "FPredOLT":
-		op = "<"
-	case "FPredONE":
-		op = "!="
-	case "FPredTrue":
-		op = "="
-		y = "True"
-	case "FPredUEQ":
-		op = "="
-	case "FPredUGE":
-		op = ">="
-	case "FPredUGT":
-		op = ">"
-	case "FPredULE":
-		op = "<="
-	case "FPredULT":
-		op = "<"
-	case "FPredUNE":
-		op = "!="
-	}
-	return op, y
-}
-
-func (g *Generator) constantRule(id string, c constant.Constant) string {
-	switch val := c.(type) {
-	case *constant.Float:
-		id = g.advanceSSA(id)
-		return g.writeInitRule(id, "Real", val.String())
-	}
-	return ""
-}
-
-func (g *Generator) getType(val value.Value) string {
-	switch val.Type().(type) {
-	case *irtypes.FloatType:
-		return "Real"
-	}
-	return ""
-}
-
-func (g *Generator) parseRule(id string, val string, ty string, op string) rule {
-	wid := &wrap{value: id}
-	wval := &wrap{value: val}
-	return &infix{x: wid, ty: ty, y: wval, op: op}
+	return r
 }
 
 func (g *Generator) convertIdent(val string) string {
@@ -403,6 +235,15 @@ func (g *Generator) formatValue(val value.Value) string {
 	return v[1]
 }
 
+func (g *Generator) getSSA(id string) string {
+	if _, ok := g.ssa[id]; ok {
+		return fmt.Sprint(id, "_", g.ssa[id])
+	} else {
+		g.ssa[id] = 0
+		return fmt.Sprint(id, "_0")
+	}
+}
+
 func (g *Generator) advanceSSA(id string) string {
 	if i, ok := g.ssa[id]; ok {
 		g.ssa[id] = i + 1
@@ -420,211 +261,4 @@ func (g *Generator) getVarBase(id string) (string, int) {
 		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
 	}
 	return strings.Join(v[0:len(v)-1], "_"), num
-}
-
-func (g *Generator) runParallel(perm [][]string, vars map[string]string) {
-	var waitGroup sync.WaitGroup
-	r := make(chan [][]rule, len(perm))
-	waitGroup.Add(len(perm))
-
-	go func() {
-		waitGroup.Wait()
-		close(r)
-	}()
-	for _, p := range perm {
-		go func(calls []string) {
-			defer waitGroup.Done()
-			var opts [][]rule
-			startVars := make(map[string]string)
-			for k, v := range vars {
-				startVars[k] = v
-			}
-			for _, c := range calls {
-				v := g.functions[c]
-				raw := g.parseFunction(v, startVars)
-				opts = append(opts, raw)
-			}
-			r <- opts
-		}(p)
-	}
-	for opts := range r {
-		raw := g.parallelRules(opts)
-		for _, v := range raw {
-			g.rules = append(g.rules, g.writeRule(v))
-		}
-	}
-	g.rules = append(g.rules, g.capParallel()...)
-}
-
-func (g *Generator) parallelRules(r [][]rule) []rule {
-	var rules []rule
-	s := g.paraStateChanges(r)
-	for k, v := range s {
-		if len(v) > 1 {
-			g.parallelEnds[k] = append(g.parallelEnds[k], g.getEnds(v))
-		}
-	}
-	for _, op := range r {
-		rules = append(rules, op...) // Flatten
-	}
-	return rules
-}
-
-func (g *Generator) capParallel() []string {
-	// writes OR nodes to end each parallel run
-	var rules []string
-	for k, v := range g.parallelEnds {
-		id := g.advanceSSA(k)
-		g.declareVar(id, "Real")
-		ends := g.formatEnds(k, v, id)
-		//(assert (or (= bathtub_drawn_water_level_10 bathtub_drawn_water_level_7) (= bathtub_drawn_water_level_10  bathtub_drawn_water_level_9)))
-		rule := g.writeAssert("or", ends)
-		rules = append(rules, rule)
-	}
-	g.parallelEnds = map[string][]int{}
-	return rules
-}
-
-func (g *Generator) setStartVar(id string, startVars map[string]string) map[string]string {
-	if _, ok := startVars[id]; !ok {
-		startVars[id] = fmt.Sprint(id, "_", g.ssa[id])
-	}
-	return startVars
-}
-
-func (g *Generator) gatherStarts(p []string, startVars map[string]string) map[string]string {
-	for _, fname := range p {
-		f := g.functions[fname]
-		for _, block := range f.Blocks {
-			for _, inst := range block.Insts {
-				switch inst := inst.(type) {
-				case *ir.InstLoad:
-					id := g.formatIdent(inst.Src.Ident())
-					startVars = g.setStartVar(id, startVars)
-				}
-			}
-		}
-	}
-	return startVars
-}
-
-func (g *Generator) getEnds(n map[int][]int) int {
-	end := 0
-	for _, v := range n {
-		if v[len(v)-1] > end {
-			end = v[len(v)-1]
-		}
-	}
-	return end
-}
-
-func (g *Generator) formatEnds(k string, nums []int, id string) string {
-	var e []string
-	for _, v := range nums {
-		v := fmt.Sprint(k, "_", strconv.Itoa(v))
-		r := g.writeInfix(id, v, "=")
-		e = append(e, r)
-	}
-	return strings.Join(e, " ")
-}
-
-func (g *Generator) paraStateChanges(r [][]rule) map[string]map[int][]int {
-	// When running functions in parallel,
-	//	checks for conflicting state change
-	state := make(map[string]map[int][]int)
-	conflicts := make(map[string]map[int][]int)
-	for i, v := range r {
-		for _, ru := range v {
-			switch r := ru.(type) {
-			case *infix:
-				if r.ty != "" { //Variable assignment
-					id, num := g.getVarBase(r.x.String())
-					if _, ok := state[id]; ok {
-						state[id][i] = append(state[id][i], num)
-					} else {
-						state[id] = make(map[int][]int)
-						state[id][i] = append(state[id][i], num)
-					}
-				}
-			}
-		}
-
-	}
-	for k, s := range state {
-		if len(s) > 1 {
-			conflicts[k] = s
-		}
-	}
-	return conflicts
-}
-
-func (g *Generator) writeInfix(x string, y string, op string) string {
-	return fmt.Sprintf("(%s %s %s)", op, x, y)
-}
-
-func (g *Generator) declareVar(id string, t string) {
-	def := fmt.Sprintf("(declare-fun %s () %s)", id, t)
-	g.inits = append(g.inits, def)
-}
-
-func (g *Generator) writeAssert(op string, stmt string) string {
-	return fmt.Sprintf("(assert (%s %s))", op, stmt)
-}
-
-func (g *Generator) writeRule(ru rule) string {
-	switch r := ru.(type) {
-	case *infix:
-		x := g.unpackRule(r.x.String())
-		y := g.unpackRule(r.y.String())
-		if r.op != "" {
-			return g.writeInfix(x, y, r.op)
-		}
-		return g.writeInitRule(x, r.ty, y)
-	default:
-		panic(fmt.Sprintf("%T is not a valid rule type", r))
-	}
-}
-
-func (g *Generator) unpackRule(x interface{}) string {
-	switch r := x.(type) {
-	case string:
-		return r
-	case *infix:
-		return g.writeRule(r)
-	default:
-		panic(fmt.Sprintf("%T is not a valid rule type", r))
-	}
-}
-
-func (g *Generator) writeInitRule(id string, t string, val string) string {
-	// Initialize: x = Int("x")
-	g.declareVar(id, t)
-	// Set rule: s.add(x == 2)
-	return fmt.Sprintf("(assert (= %s %s))", id, val)
-}
-
-func (g *Generator) generateRules(raw []rule) []string {
-	var rules []string
-	for _, v := range raw {
-		rules = append(rules, g.writeRule(v))
-	}
-	return rules
-}
-
-func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
-	var rc func([]string, int)
-	rc = func(a []string, k int) {
-		if k == len(a) {
-			permuts = append(permuts, append([]string{}, a...))
-		} else {
-			for i := k; i < len(p); i++ {
-				a[k], a[i] = a[i], a[k]
-				rc(a, k+1)
-				a[k], a[i] = a[i], a[k]
-			}
-		}
-	}
-	rc(p, 0)
-
-	return permuts
 }

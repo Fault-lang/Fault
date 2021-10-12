@@ -14,7 +14,7 @@ def tub = stock{
     level: 5, // out of 100%
 };
 
-for 4 run {
+for 3 run {
     drawn = new faucet;
     drawn.in | drawn.out;
 }
