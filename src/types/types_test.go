@@ -14,7 +14,7 @@ func TestAddOK(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -42,7 +42,7 @@ func TestComplex(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -68,7 +68,7 @@ func TestScopes(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -122,7 +122,7 @@ func TestTypesInStruct(t *testing.T) {
 			};
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -200,7 +200,7 @@ func TestPrefix(t *testing.T) {
 			const b = -2.3;
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -221,7 +221,7 @@ func TestNatural(t *testing.T) {
 			const a = natural(2);
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -238,7 +238,7 @@ func TestBoolean(t *testing.T) {
 			const a = true;
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -255,7 +255,7 @@ func TestString(t *testing.T) {
 			const a = "Hello!";
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes
+	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)

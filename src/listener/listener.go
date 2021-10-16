@@ -6,6 +6,7 @@ import (
 	"fault/ast"
 	"fault/parser"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,9 +15,10 @@ import (
 
 type FaultListener struct {
 	*parser.BaseFaultParserListener
-	stack []interface{}
-	AST   *ast.Spec
-	scope string
+	stack   []interface{}
+	AST     *ast.Spec
+	scope   string
+	skipRun bool
 }
 
 func (l *FaultListener) push(n interface{}) {
@@ -98,16 +100,24 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		},
 	}
 
-	right := l.pop()
-	val := right
+	val := l.pop()
 	if val == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
 
 	path, ok := val.(*ast.StringLiteral)
 	if !ok {
-		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
+
+	//Does file exist?
+	importFile, err := os.ReadFile(path.Value)
+	if err != nil {
+		panic(fmt.Sprintf("spec file %s not found\n", path))
+	}
+
+	//
+	tree := l.parseImport(string(importFile))
 
 	// If no ident, create one from import path
 	var ident *ast.Identifier
@@ -127,6 +137,7 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		Token: token,
 		Name:  ident,
 		Path:  path,
+		Tree:  tree,
 	})
 }
 
@@ -337,29 +348,6 @@ func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
 		panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), f))
 	}
 }
-
-// func (l *FaultListener) ExitInstance(c *parser.InstanceContext) {
-// 	node := c.GetText()
-// 	if len(node) > 3 && node[0:3] == "new" {
-// 		val := l.pop()
-// 		token := ast.Token{
-// 			Type:    "FUNCTION",
-// 			Literal: "FUNCTION",
-// 			Position: []int{c.GetStart().GetLine(),
-// 				c.GetStart().GetColumn(),
-// 				c.GetStop().GetLine(),
-// 				c.GetStop().GetColumn(),
-// 			},
-// 		}
-
-// 		f := &ast.InstanceExpression{
-// 			Token: token,
-// 			Stock: val.(ast.Expression),
-// 		}
-// 		l.push(f)
-// 	}
-
-//}
 
 func (l *FaultListener) EnterPropFunc(c *parser.PropFuncContext) {
 	l.scope = fmt.Sprint(l.scope, ".", c.IDENT().GetText())
@@ -624,6 +612,12 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 	)
 }
 
+func (l *FaultListener) EnterRunBlock(c *parser.RunBlockContext) {
+	if l.skipRun { // When importing other specs we don't need the run block
+		c.ExitRule(l)
+	}
+}
+
 func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 	token := ast.Token{
 		Type:    "FUNCTION",
@@ -726,7 +720,7 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 		idx := l.pop()
 		exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
 	}
-	
+
 	e := &ast.ParallelFunctions{
 		Token:       token,
 		Expressions: exp,
@@ -1248,6 +1242,17 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		Token:      token,
 		Expression: expr.(ast.Expression),
 	})
+}
+
+func (l *FaultListener) parseImport(spec string) *ast.Spec {
+	is := antlr.NewInputStream(spec)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	listener := &FaultListener{skipRun: true}
+	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
+	return listener.AST
 }
 
 func (l *FaultListener) generateToken(pos []int, ttype string, tliteral string) ast.Token {

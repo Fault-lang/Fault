@@ -104,6 +104,7 @@ type ImportStatement struct {
 	Token Token
 	Name  *Identifier
 	Path  *StringLiteral
+	Tree  *Spec
 }
 
 func (is *ImportStatement) statementNode()       {}

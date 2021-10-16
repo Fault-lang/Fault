@@ -1,0 +1,15 @@
+spec imports
+
+import "simple.fspec"
+
+def fl2 = flow{
+    vault: new simple.st,
+    fn: func{
+            vault.value <- 10;
+    },
+};
+
+for 2 run {
+    new fl2;
+    fl2.fn;
+}

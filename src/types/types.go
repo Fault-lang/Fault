@@ -35,16 +35,76 @@ type Type struct {
 	Parameters []Type
 }
 
+type StockFlow map[string]map[string]ast.Node
+
+func (sf StockFlow) Add(strname string, prpname string, node ast.Node) StockFlow {
+	if sf[strname] != nil {
+		sf[strname][prpname] = node
+	} else {
+		sf[strname] = make(map[string]ast.Node)
+		sf[strname][prpname] = node
+	}
+	return sf
+}
+
+func (sf StockFlow) Bulk(strname string, nodes map[string]ast.Node) StockFlow {
+	if sf[strname] != nil {
+		sf[strname] = nodes
+	} else {
+		sf[strname] = make(map[string]ast.Node)
+		sf[strname] = nodes
+	}
+	return sf
+}
+
+func (sf StockFlow) Get(strname string, prpname string) ast.Node {
+	if sf[strname] != nil && sf[strname][prpname] != nil {
+		return sf[strname][prpname]
+	}
+	panic(fmt.Sprintf("No variable named %s.%s", strname, prpname))
+}
+
+func (sf StockFlow) GetStruct(strname string) map[string]ast.Node {
+	if sf[strname] != nil {
+		return sf[strname]
+	}
+	panic(fmt.Sprintf("No stock or flow named %s", strname))
+}
+
+type importTrail []string
+
+func (i importTrail) CurrentSpec() string {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	return i[len(i)-1]
+}
+
+func (i importTrail) PushSpec(spec string) []string {
+	i = append(i, spec)
+	return i
+}
+
+func (i importTrail) PopSpec() (string, []string) {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	spec := i[len(i)-1]
+	i = i[0 : len(i)-1]
+	return spec, i
+}
+
 type Checker struct {
-	SymbolTypes map[string]interface{}
+	SymbolTypes map[string]map[string]interface{}
 	scope       string
 	pass        int8
-	SpecStructs map[string]map[string]ast.Node
+	SpecStructs map[string]StockFlow
+	trail       importTrail
 }
 
 func (c *Checker) Check(a *ast.Spec) error {
-	c.SymbolTypes = make(map[string]interface{})
-	c.SpecStructs = make(map[string]map[string]ast.Node)
+	c.SymbolTypes = make(map[string]map[string]interface{})
+	c.SpecStructs = make(map[string]StockFlow)
 
 	// Pass one, globals and constants
 	c.pass = 1
@@ -70,7 +130,17 @@ func (c *Checker) assigntype(exp interface{}) error {
 		return err
 
 	case *ast.SpecDeclStatement:
+		if c.pass == 1 {
+			c.SymbolTypes[node.Name.Value] = make(map[string]interface{})
+			c.SpecStructs[node.Name.Value] = StockFlow{}
+			c.trail = c.trail.PushSpec(node.Name.Value)
+		}
 		return nil
+
+	case *ast.ImportStatement:
+		im := c.assigntype(node.Tree)
+		_, c.trail = c.trail.PopSpec()
+		return im
 
 	case *ast.ConstantStatement:
 		if c.pass == 1 {
@@ -81,7 +151,7 @@ func (c *Checker) assigntype(exp interface{}) error {
 			} else {
 				valtype, err = c.inferFunction(node.Value, make(map[string]ast.Node))
 			}
-			c.SymbolTypes[id] = valtype
+			c.SymbolTypes[c.trail.CurrentSpec()][id] = valtype
 		}
 		return err
 
@@ -94,9 +164,11 @@ func (c *Checker) assigntype(exp interface{}) error {
 		if c.pass == 1 {
 			newcontext := make(map[string]*Type)
 			newcontext["__type"] = &Type{"STOCK", 0, nil}
-			c.SymbolTypes[c.scope] = newcontext
-			c.SpecStructs[c.scope] = make(map[string]ast.Node)
-			c.SpecStructs[c.scope] = walker.Preparse(node.Pairs)
+			c.SymbolTypes[c.trail.CurrentSpec()][c.scope] = newcontext
+
+			structs := c.SpecStructs[c.trail.CurrentSpec()]
+			nodes := walker.Preparse(node.Pairs)
+			c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
 		} else {
 			properties := walker.Preparse(node.Pairs)
 			for k, v := range node.Pairs {
@@ -107,7 +179,7 @@ func (c *Checker) assigntype(exp interface{}) error {
 				} else {
 					valtype, err = c.inferFunction(v, properties)
 				}
-				c.SymbolTypes[c.scope].(map[string]*Type)[id] = valtype
+				c.SymbolTypes[c.trail.CurrentSpec()][c.scope].(map[string]*Type)[id] = valtype
 			}
 		}
 		c.scope = ""
@@ -117,9 +189,12 @@ func (c *Checker) assigntype(exp interface{}) error {
 		if c.pass == 1 {
 			newcontext := make(map[string]*Type)
 			newcontext["__type"] = &Type{"FLOW", 0, nil}
-			c.SymbolTypes[c.scope] = newcontext
-			c.SpecStructs[c.scope] = make(map[string]ast.Node)
-			c.SpecStructs[c.scope] = walker.Preparse(node.Pairs)
+			c.SymbolTypes[c.trail.CurrentSpec()][c.scope] = newcontext
+
+			structs := c.SpecStructs[c.trail.CurrentSpec()]
+			nodes := walker.Preparse(node.Pairs)
+			c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
+			fmt.Print(c.SpecStructs[c.trail.CurrentSpec()])
 		} else {
 			properties := walker.Preparse(node.Pairs)
 			for k, v := range node.Pairs {
@@ -130,10 +205,11 @@ func (c *Checker) assigntype(exp interface{}) error {
 				} else {
 					valtype, err = c.inferFunction(v, properties)
 				}
-				c.SymbolTypes[c.scope].(map[string]*Type)[id] = valtype
+				c.SymbolTypes[c.trail.CurrentSpec()][c.scope].(map[string]*Type)[id] = valtype
 			}
 		}
 		c.scope = ""
+		fmt.Print(c.SpecStructs[c.trail.CurrentSpec()])
 		return err
 
 	case *ast.AssertionStatement:
@@ -238,11 +314,10 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*Type, error
 	case *ast.ParameterCall:
 		id = n.Value
 	}
-
 	var structIdent string //
 
 	// Check local vars
-	if s, ok := c.SymbolTypes[c.scope]; ok {
+	if s, ok := c.SymbolTypes[c.trail.CurrentSpec()][c.scope]; ok {
 		valtype := s.(map[string]*Type)[id[0]]
 		if valtype != nil {
 			return valtype, nil
@@ -256,7 +331,7 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*Type, error
 			if len(id) > 1 { //Must be a parameter call
 				structIdent = ty.Value.Value
 			} else {
-				return c.SymbolTypes[ty.Value.Value].(*Type), nil
+				return c.SymbolTypes[c.trail.CurrentSpec()][ty.Value.Value].(*Type), nil
 			}
 		case *ast.ParameterCall:
 			structIdent = ty.Value[0]
@@ -282,10 +357,11 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*Type, error
 	}
 
 	// Check global preparse
-	if s, ok := c.SpecStructs[structIdent]; ok {
+	currSpec := c.trail.CurrentSpec()
+	if s, ok := c.SpecStructs[currSpec][structIdent]; ok {
 		switch ty := s[id[1]].(type) {
 		case *ast.Instance:
-			return c.SymbolTypes[ty.Value.Value].(*Type), nil
+			return c.SymbolTypes[c.trail.CurrentSpec()][ty.Value.Value].(*Type), nil
 		case *ast.FunctionLiteral:
 			var ret *Type
 			var err error
@@ -309,7 +385,7 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*Type, error
 	}
 
 	// Check global
-	if s, ok := c.SymbolTypes[id[0]]; ok {
+	if s, ok := c.SymbolTypes[c.trail.CurrentSpec()][id[0]]; ok {
 		switch ty := s.(type) {
 		case *Type:
 			return ty, nil
@@ -317,59 +393,6 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*Type, error
 			return ty[id[1]], nil
 		}
 	}
-
-	/*
-		if s, ok := c.SymbolTypes[id[0]]; ok {
-			switch ty := s.(type) {
-			case *Type:
-				return ty, nil
-			case *ast.Instance:
-				return c.SymbolTypes[ty.Value.Value].(map[string]*Type)[id[1]], nil
-			}
-			return s.(map[string]*Type)[id[1]], nil
-		}
-		// Case 2: Stock inside a flow
-		if inst, ok := p[id[0]].(*ast.Instance); ok {
-			stock := inst.Value.Value
-			if s, ok := c.SymbolTypes[stock]; ok {
-				switch ty := s.(type) {
-				case *Type:
-					return ty, nil
-				case *ast.Instance:
-					if c.SymbolTypes[ty.Value.Value].(map[string]*Type)[id[1]] != nil {
-						return c.SymbolTypes[ty.Value.Value].(map[string]*Type)[id[1]], nil
-					}
-					if c.isValue(c.specStructs[ty.Value.Value][id[1]]) {
-						return c.infer(c.specStructs[ty.Value.Value][id[1]], p)
-					}
-					return c.inferFunction(c.specStructs[ty.Value.Value][id[1]], p)
-				}
-				if s.(map[string]*Type)[id[1]] != nil {
-					return s.(map[string]*Type)[id[1]], nil
-				}
-				if c.isValue(c.specStructs[stock][id[1]]) {
-					return c.infer(c.specStructs[stock][id[1]], p)
-				}
-				return c.inferFunction(c.specStructs[stock][id[1]], p)
-			}
-		}
-
-		// Case 3: local var
-		if s, ok := c.SymbolTypes[c.scope]; ok {
-
-			if ty, ok := s.(*Type); ok {
-
-				return ty, nil
-			}
-			valtype := s.(map[string]*Type)[id[0]]
-			if valtype != nil {
-				return valtype, nil
-			}
-		}
-
-		// Case 4: local var but preprocessing
-		valtype, err := c.infer(p[id[0]], p)
-		return valtype, err*/
 
 	return nil, nil
 }
