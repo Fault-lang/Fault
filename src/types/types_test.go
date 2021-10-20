@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fault/ast"
 	"fault/listener"
 	"fault/parser"
 	"testing"
@@ -14,14 +15,14 @@ func TestAddOK(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	sym := checker.SymbolTypes["test1"]
+	consts := checker.Constants["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["x"].(*Type).Type != "INT" {
-		t.Fatalf("Constant x does not have an int type. got=%s", sym["x"].(*Type).Type)
+	if consts["x"].(*ast.InfixExpression).InferredType.Type != "INT" {
+		t.Fatalf("Constant x does not have an int type. got=%T", consts["x"])
 	}
 
 }
@@ -42,18 +43,18 @@ func TestComplex(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	sym := checker.SymbolTypes["test1"]
-
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["x"].(*Type).Type != "FLOAT" {
-		t.Fatalf("Constant x does not have an float type. got=%s", sym["x"].(*Type).Type)
+	consts := checker.Constants["test1"]
+
+	if consts["x"].(*ast.InfixExpression).InferredType.Type != "FLOAT" {
+		t.Fatalf("Constant x does not have an float type. got=%T", consts["x"])
 	}
 
-	if sym["x"].(*Type).Scope != 10 {
-		t.Fatalf("Constant x has the wrong scope. got=%d", sym["x"].(*Type).Scope)
+	if consts["x"].(*ast.InfixExpression).InferredType.Scope != 10 {
+		t.Fatalf("Constant x has the wrong scope. got=%d", consts["x"].(*ast.InfixExpression).InferredType.Scope)
 	}
 
 }
@@ -68,38 +69,38 @@ func TestScopes(t *testing.T) {
 	`
 	checker, err := prepTest(test)
 
-	sym := checker.SymbolTypes["test1"]
-
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["x"].(*Type).Scope != 10 {
-		t.Fatalf("Constant x has the wrong scope. got=%d", sym["x"].(*Type).Scope)
+	consts := checker.Constants["test1"]
+
+	if consts["x"].(*ast.FloatLiteral).InferredType.Scope != 10 {
+		t.Fatalf("Constant x has the wrong scope. got=%d", consts["x"].(*ast.FloatLiteral).InferredType.Scope)
 	}
 
-	if sym["y"].(*Type).Scope != 100 {
-		t.Fatalf("Constant y has the wrong scope. got=%d", sym["y"].(*Type).Scope)
+	if consts["y"].(*ast.FloatLiteral).InferredType.Scope != 100 {
+		t.Fatalf("Constant y has the wrong scope. got=%d", consts["y"].(*ast.FloatLiteral).InferredType.Scope)
 	}
 
-	if sym["z"].(*Type).Scope != 0 {
-		t.Fatalf("Constant z has the wrong scope. got=%d", sym["z"].(*Type).Scope)
+	if consts["z"].(*ast.Uncertain).InferredType.Scope != 0 {
+		t.Fatalf("Constant z has the wrong scope. got=%d", consts["z"].(*ast.Uncertain).InferredType.Scope)
 	}
 
-	if sym["z"].(*Type).Parameters[0].Scope != 1 {
-		t.Fatalf("Constant z mean has the wrong scope. got=%d", sym["z"].(*Type).Parameters[0].Scope)
+	if consts["z"].(*ast.Uncertain).InferredType.Parameters[0].Scope != 1 {
+		t.Fatalf("Constant z mean has the wrong scope. got=%d", consts["z"].(*ast.Uncertain).InferredType.Parameters[0].Scope)
 	}
 
-	if sym["z"].(*Type).Parameters[1].Scope != 10 {
-		t.Fatalf("Constant z sigma has the wrong scope. got=%d", sym["z"].(*Type).Parameters[1].Scope)
+	if consts["z"].(*ast.Uncertain).InferredType.Parameters[1].Scope != 10 {
+		t.Fatalf("Constant z sigma has the wrong scope. got=%d", consts["z"].(*ast.Uncertain).InferredType.Parameters[1].Scope)
 	}
 
-	if sym["a"].(*Type).Scope != 1000 {
-		t.Fatalf("Constant a has the wrong scope. got=%d", sym["a"].(*Type).Scope)
+	if consts["a"].(*ast.FloatLiteral).InferredType.Scope != 1000 {
+		t.Fatalf("Constant a has the wrong scope. got=%d", consts["a"].(*ast.FloatLiteral).InferredType.Scope)
 	}
 
-	if sym["b"].(*Type).Scope != 10 {
-		t.Fatalf("Constant b has the wrong scope. got=%d", sym["b"].(*Type).Scope)
+	if consts["b"].(*ast.FloatLiteral).InferredType.Scope != 10 {
+		t.Fatalf("Constant b has the wrong scope. got=%d", consts["b"].(*ast.FloatLiteral).InferredType.Scope)
 	}
 
 }
@@ -122,44 +123,41 @@ func TestTypesInStruct(t *testing.T) {
 			};
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
 	}
 
-	if sym["a"].(*Type).Type != "FLOAT" {
-		t.Fatalf("Constant a does not have an float type. got=%s", sym["a"].(*Type).Type)
-	}
+	str := checker.SpecStructs["test1"]
 
-	fooStock, ok := sym["foo"].(map[string]*Type)
+	fooStock, ok := str["foo"]
 	if !ok {
-		t.Fatalf("stock foo not stored in symbol table correctly. got=%T", sym["foo"])
+		t.Fatal("stock foo not stored in symbol table correctly.", str["foo"])
 	}
 
-	if fooStock["foosh"].Type != "INT" {
-		t.Fatalf("stock property not typed correctly. got=%s", fooStock["foosh"].Type)
+	if fooStock["foosh"].(*ast.IntegerLiteral).InferredType.Type != "INT" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["foosh"].(*ast.IntegerLiteral).InferredType.Type)
 	}
 
-	if fooStock["bar"].Type != "STRING" {
-		t.Fatalf("stock property not typed correctly. got=%s", fooStock["bar"].Type)
+	if fooStock["bar"].(*ast.StringLiteral).InferredType.Type != "STRING" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["bar"].(*ast.StringLiteral).InferredType.Type)
 	}
 
-	if fooStock["fizz"].Type != "FLOAT" {
-		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz"].Type)
+	if fooStock["fizz"].(*ast.Identifier).InferredType.Type != "FLOAT" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz"].(*ast.Identifier).InferredType.Type)
 	}
 
-	zooFlow, ok := sym["zoo"].(map[string]*Type)
+	zooFlow, ok := str["zoo"]
 	if !ok {
-		t.Fatalf("flow zoo not stored in symbol table correctly. got=%T", sym["zoo"])
+		t.Fatal("flow zoo not stored in symbol table correctly.")
 	}
 
-	if zooFlow["con"].Type != "STOCK" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["con"].Type)
+	if zooFlow["con"].(*ast.Instance).InferredType.Type != "STOCK" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["con"].(*ast.Instance).InferredType.Type)
 	}
 
-	if zooFlow["rate"].Type != "INT" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].Type)
+	if zooFlow["rate"].(*ast.BlockStatement).InferredType.Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.IntegerLiteral).InferredType.Type)
 	}
 }
 
@@ -200,18 +198,19 @@ func TestPrefix(t *testing.T) {
 			const b = -2.3;
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
 	}
 
-	if sym["a"].(*Type).Type != "BOOL" {
-		t.Fatalf("Constant a does not have an boolean type. got=%s", sym["a"].(*Type).Type)
+	consts := checker.Constants["test1"]
+
+	if consts["a"].(*ast.PrefixExpression).InferredType.Type != "BOOL" {
+		t.Fatalf("Constant a does not have an boolean type. got=%s", consts["a"].(*ast.Boolean).InferredType.Type)
 	}
 
-	if sym["b"].(*Type).Type != "FLOAT" {
-		t.Fatalf("Constant a does not have an float type. got=%s", sym["b"].(*Type).Type)
+	if consts["b"].(*ast.FloatLiteral).InferredType.Type != "FLOAT" {
+		t.Fatalf("Constant a does not have an float type. got=%s", consts["b"].(*ast.FloatLiteral).InferredType.Type)
 	}
 
 }
@@ -221,14 +220,15 @@ func TestNatural(t *testing.T) {
 			const a = natural(2);
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
 	}
 
-	if sym["a"].(*Type).Type != "NATURAL" {
-		t.Fatalf("Constant a does not have an natural type. got=%s", sym["a"].(*Type).Type)
+	consts := checker.Constants["test1"]
+
+	if consts["a"].(*ast.Natural).InferredType.Type != "NATURAL" {
+		t.Fatalf("Constant a does not have an natural type. got=%s", consts["a"].(*ast.Natural).InferredType.Type)
 	}
 
 }
@@ -238,14 +238,15 @@ func TestBoolean(t *testing.T) {
 			const a = true;
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
 	}
 
-	if sym["a"].(*Type).Type != "BOOL" {
-		t.Fatalf("Constant a does not have an Boolean type. got=%s", sym["a"].(*Type).Type)
+	consts := checker.Constants["test1"]
+
+	if consts["a"].(*ast.Boolean).InferredType.Type != "BOOL" {
+		t.Fatalf("Constant a does not have an Boolean type. got=%s", consts["a"].(*ast.Boolean).InferredType.Type)
 	}
 
 }
@@ -255,14 +256,15 @@ func TestString(t *testing.T) {
 			const a = "Hello!";
 	`
 	checker, err := prepTest(test)
-	sym := checker.SymbolTypes["test1"]
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
 	}
 
-	if sym["a"].(*Type).Type != "STRING" {
-		t.Fatalf("Constant a does not have a string type. got=%s", sym["a"].(*Type).Type)
+	consts := checker.Constants["test1"]
+
+	if consts["a"].(*ast.StringLiteral).InferredType.Type != "STRING" {
+		t.Fatalf("Constant a does not have a string type. got=%s", consts["a"].(*ast.StringLiteral).InferredType.Type)
 	}
 
 }

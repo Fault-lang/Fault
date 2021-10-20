@@ -201,6 +201,12 @@ func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
 // ExitForStmt is called when production forStmt is exited.
 func (s *BaseFaultParserListener) ExitForStmt(ctx *ForStmtContext) {}
 
+// EnterRounds is called when production rounds is entered.
+func (s *BaseFaultParserListener) EnterRounds(ctx *RoundsContext) {}
+
+// ExitRounds is called when production rounds is exited.
+func (s *BaseFaultParserListener) ExitRounds(ctx *RoundsContext) {}
+
 // EnterParamCall is called when production paramCall is entered.
 func (s *BaseFaultParserListener) EnterParamCall(ctx *ParamCallContext) {}
 

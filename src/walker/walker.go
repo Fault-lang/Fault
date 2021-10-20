@@ -1,6 +1,9 @@
 package walker
 
-import "fault/ast"
+import (
+	"fault/ast"
+	"strings"
+)
 
 // Local function scope
 // preparsed local struct
@@ -10,7 +13,7 @@ import "fault/ast"
 func Preparse(pairs map[ast.Expression]ast.Expression) map[string]ast.Node {
 	properties := make(map[string]ast.Node)
 	for k, v := range pairs {
-		id := k.String()
+		id := strings.TrimSpace(k.String())
 		switch tree := v.(type) {
 		case *ast.FunctionLiteral:
 			properties[id] = tree.Body

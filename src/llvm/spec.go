@@ -1,8 +1,8 @@
 package llvm
 
 import (
+	"fault/ast"
 	"fault/llvm/variables"
-	"fault/types"
 	"fmt"
 	"unicode"
 
@@ -13,14 +13,14 @@ import (
 // Representation of a spec
 type spec struct {
 	name  string
-	types map[string]types.Type
+	types map[string]ast.Type
 	vars  *variables.LookupTable
 }
 
 func NewCompiledSpec(name string) *spec {
 	return &spec{
 		name:  name,
-		types: make(map[string]types.Type),
+		types: make(map[string]ast.Type),
 		vars:  variables.NewTable(),
 	}
 }
@@ -53,11 +53,11 @@ func (s *spec) AddParam(id []string, p value.Value) {
 	s.vars.AddParam(id, p)
 }
 
-func (s *spec) DefineSpecType(name string, ty types.Type) {
+func (s *spec) DefineSpecType(name string, ty ast.Type) {
 	s.types[name] = ty
 }
 
-func (s *spec) GetSpecType(name string, inSamePackage bool) (types.Type, bool) {
+func (s *spec) GetSpecType(name string, inSamePackage bool) (ast.Type, bool) {
 	if unicode.IsLower([]rune(name)[0]) && !inSamePackage {
 		panic(fmt.Sprintf("Can't use %s from outside of %s", name, s.name))
 	}

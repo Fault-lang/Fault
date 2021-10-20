@@ -115,7 +115,11 @@ ifStmt
     ;
 
 forStmt
-    : 'for' integer 'run' runBlock eos
+    : 'for' rounds 'run' runBlock eos
+    ;
+
+rounds
+    : integer
     ;
 
 paramCall
@@ -128,7 +132,7 @@ runBlock
 
 runStep
     : paramCall ('|' paramCall)? eos              #runStepExpr
-    | IDENT '=' 'new' IDENT eos                   #runInit
+    | IDENT '=' 'new' IDENT ('.' IDENT)? eos      #runInit
     ;
 
 faultType
@@ -167,7 +171,7 @@ operandName
     | paramCall                 #OpParam
     | THIS                      #OpThis
     | CLOCK                     #OpClock
-    | 'new' IDENT               #OpInstance
+    | 'new' IDENT ('.' IDENT)?  #OpInstance
     ;
 
 numeric

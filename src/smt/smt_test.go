@@ -63,6 +63,7 @@ func TestSimple(t *testing.T) {
 }
 
 func TestBathTub2(t *testing.T) {
+	// Test is a bit flaky as order of assertions sometimes different
 	expecting, err := os.ReadFile("testdata/bathtub2.smt2")
 	if err != nil {
 		panic("compiled spec bathtub is not valid")
@@ -74,8 +75,6 @@ func TestBathTub2(t *testing.T) {
 	}
 
 	smt, err := prepTest(string(data))
-
-	fmt.Println(smt)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)

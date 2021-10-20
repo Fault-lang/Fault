@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -36,6 +37,21 @@ var OPS = map[string]TokenType{
 	"&&": "AND",
 	"||": "OR",
 	"|":  "PARA",
+}
+
+var TYPES = map[string]int{ //Convertible Types
+	"STRING":    0, //Not convertible
+	"BOOL":      1,
+	"NATURAL":   2,
+	"FLOAT":     3,
+	"INT":       4,
+	"UNCERTAIN": 5,
+}
+
+type Type struct {
+	Type       string
+	Scope      int64
+	Parameters []Type
 }
 
 type Node interface {
@@ -124,9 +140,10 @@ func (is *ImportStatement) String() string {
 }
 
 type ConstantStatement struct {
-	Token Token
-	Name  *Identifier
-	Value Expression
+	Token        Token
+	Name         *Identifier
+	Value        Expression
+	InferredType *Type
 }
 
 func (cs *ConstantStatement) statementNode()       {}
@@ -209,18 +226,21 @@ func (fs *ForStatement) String() string {
 }
 
 type Identifier struct {
-	Token Token
-	Value string
+	Token        Token
+	InferredType *Type
+	Spec         string
+	Value        string
 }
 
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) Position() []int      { return i.Token.Position }
-func (i *Identifier) String() string       { return i.Value }
+func (i *Identifier) String() string       { return fmt.Sprint(i.Spec, " ", i.Value) }
 
 type ParameterCall struct {
-	Token Token
-	Value []string
+	Token        Token
+	InferredType *Type
+	Value        []string
 }
 
 func (p *ParameterCall) expressionNode()      {}
@@ -237,9 +257,10 @@ func (p *ParameterCall) String() string {
 }
 
 type Instance struct {
-	Token Token
-	Value *Identifier
-	Name  string
+	Token        Token
+	InferredType *Type
+	Value        *Identifier
+	Name         string
 }
 
 func (i *Instance) expressionNode()      {}
@@ -255,8 +276,9 @@ func (i *Instance) String() string {
 }
 
 type ExpressionStatement struct {
-	Token      Token
-	Expression Expression
+	Token        Token
+	InferredType *Type
+	Expression   Expression
 }
 
 func (es *ExpressionStatement) statementNode()       {}
@@ -271,8 +293,9 @@ func (es *ExpressionStatement) String() string {
 }
 
 type IntegerLiteral struct {
-	Token Token
-	Value int64
+	Token        Token
+	InferredType *Type
+	Value        int64
 }
 
 func (il *IntegerLiteral) expressionNode()      {}
@@ -281,8 +304,9 @@ func (il *IntegerLiteral) String() string       { return strconv.FormatInt(il.Va
 func (il *IntegerLiteral) Position() []int      { return il.Token.Position }
 
 type FloatLiteral struct {
-	Token Token
-	Value float64
+	Token        Token
+	InferredType *Type
+	Value        float64
 }
 
 func (fl *FloatLiteral) expressionNode()      {}
@@ -291,8 +315,9 @@ func (fl *FloatLiteral) Position() []int      { return fl.Token.Position }
 func (fl *FloatLiteral) String() string       { return fl.Token.Literal }
 
 type Natural struct {
-	Token Token
-	Value int64
+	Token        Token
+	InferredType *Type
+	Value        int64
 }
 
 func (n *Natural) expressionNode()      {}
@@ -301,9 +326,10 @@ func (n *Natural) String() string       { return strconv.FormatInt(n.Value, 10) 
 func (n *Natural) Position() []int      { return n.Token.Position }
 
 type Uncertain struct {
-	Token Token
-	Mean  float64
-	Sigma float64
+	Token        Token
+	InferredType *Type
+	Mean         float64
+	Sigma        float64
 }
 
 func (u *Uncertain) expressionNode()      {}
@@ -320,9 +346,10 @@ func (u *Uncertain) String() string {
 func (u *Uncertain) Position() []int { return u.Token.Position }
 
 type PrefixExpression struct {
-	Token    Token
-	Operator string
-	Right    Expression
+	Token        Token
+	InferredType *Type
+	Operator     string
+	Right        Expression
 }
 
 func (pe *PrefixExpression) expressionNode()      {}
@@ -340,10 +367,11 @@ func (pe *PrefixExpression) String() string {
 }
 
 type InfixExpression struct {
-	Token    Token
-	Left     Expression
-	Operator string
-	Right    Expression
+	Token        Token
+	InferredType *Type
+	Left         Expression
+	Operator     string
+	Right        Expression
 }
 
 func (ie *InfixExpression) expressionNode()      {}
@@ -362,8 +390,9 @@ func (ie *InfixExpression) String() string {
 }
 
 type Boolean struct {
-	Token Token
-	Value bool
+	Token        Token
+	InferredType *Type
+	Value        bool
 }
 
 func (b *Boolean) expressionNode()      {}
@@ -372,8 +401,9 @@ func (b *Boolean) Position() []int      { return b.Token.Position }
 func (b *Boolean) String() string       { return b.Token.Literal }
 
 type This struct {
-	Token Token
-	Value []string
+	Token        Token
+	InferredType *Type
+	Value        []string
 }
 
 func (t *This) expressionNode()      {}
@@ -382,8 +412,9 @@ func (t *This) Position() []int      { return t.Token.Position }
 func (t *This) String() string       { return t.Token.Literal }
 
 type Clock struct {
-	Token Token
-	Value string
+	Token        Token
+	InferredType *Type
+	Value        string
 }
 
 func (c *Clock) expressionNode()      {}
@@ -392,7 +423,8 @@ func (c *Clock) Position() []int      { return c.Token.Position }
 func (c *Clock) String() string       { return c.Token.Literal }
 
 type Nil struct {
-	Token Token
+	Token        Token
+	InferredType *Type
 }
 
 func (n *Nil) expressionNode()      {}
@@ -401,8 +433,9 @@ func (n *Nil) Position() []int      { return n.Token.Position }
 func (n *Nil) String() string       { return n.Token.Literal }
 
 type BlockStatement struct {
-	Token      Token
-	Statements []Statement
+	Token        Token
+	InferredType *Type
+	Statements   []Statement
 }
 
 func (bs *BlockStatement) statementNode()       {}
@@ -419,8 +452,9 @@ func (bs *BlockStatement) String() string {
 }
 
 type ParallelFunctions struct {
-	Token       Token
-	Expressions []Expression
+	Token        Token
+	InferredType *Type
+	Expressions  []Expression
 }
 
 func (pf *ParallelFunctions) statementNode()       {}
@@ -437,8 +471,9 @@ func (pf *ParallelFunctions) String() string {
 }
 
 type InitExpression struct {
-	Token      Token
-	Expression Expression
+	Token        Token
+	InferredType *Type
+	Expression   Expression
 }
 
 func (ie *InitExpression) expressionNode()      {}
@@ -453,10 +488,11 @@ func (ie *InitExpression) String() string {
 }
 
 type IfExpression struct {
-	Token       Token
-	Condition   Expression
-	Consequence *BlockStatement
-	Alternative *BlockStatement
+	Token        Token
+	InferredType *Type
+	Condition    Expression
+	Consequence  *BlockStatement
+	Alternative  *BlockStatement
 }
 
 func (ie *IfExpression) expressionNode()      {}
@@ -504,8 +540,9 @@ func (fl *FunctionLiteral) String() string {
 }
 
 type InstanceExpression struct {
-	Token Token
-	Stock Expression
+	Token        Token
+	InferredType *Type
+	Stock        Expression
 }
 
 func (ie *InstanceExpression) expressionNode()      {}
@@ -520,8 +557,9 @@ func (ie *InstanceExpression) String() string {
 }
 
 type StringLiteral struct {
-	Token Token
-	Value string
+	Token        Token
+	InferredType *Type
+	Value        string
 }
 
 func (sl *StringLiteral) expressionNode()      {}
@@ -530,9 +568,10 @@ func (sl *StringLiteral) Position() []int      { return sl.Token.Position }
 func (sl *StringLiteral) String() string       { return sl.Value }
 
 type IndexExpression struct {
-	Token Token
-	Left  Expression
-	Index Expression
+	Token        Token
+	InferredType *Type
+	Left         Expression
+	Index        Expression
 }
 
 func (ie *IndexExpression) expressionNode()      {}
@@ -551,8 +590,9 @@ func (ie *IndexExpression) String() string {
 }
 
 type StockLiteral struct {
-	Token Token
-	Pairs map[Expression]Expression
+	Token        Token
+	InferredType *Type
+	Pairs        map[Expression]Expression
 }
 
 func (sl *StockLiteral) expressionNode()      {}
@@ -574,8 +614,9 @@ func (sl *StockLiteral) String() string {
 }
 
 type FlowLiteral struct {
-	Token Token
-	Pairs map[Expression]Expression
+	Token        Token
+	InferredType *Type
+	Pairs        map[Expression]Expression
 }
 
 func (fl *FlowLiteral) expressionNode()      {}

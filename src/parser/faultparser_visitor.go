@@ -98,6 +98,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#rounds.
+	VisitRounds(ctx *RoundsContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#paramCall.
 	VisitParamCall(ctx *ParamCallContext) interface{}
 

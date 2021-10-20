@@ -128,6 +128,10 @@ func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitRounds(ctx *RoundsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitParamCall(ctx *ParamCallContext) interface{} {
 	return v.VisitChildren(ctx)
 }

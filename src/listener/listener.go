@@ -7,6 +7,7 @@ import (
 	"fault/parser"
 	"fmt"
 	"os"
+	gopath "path"
 	"strconv"
 	"strings"
 
@@ -15,10 +16,12 @@ import (
 
 type FaultListener struct {
 	*parser.BaseFaultParserListener
-	stack   []interface{}
-	AST     *ast.Spec
-	scope   string
-	skipRun bool
+	stack    []interface{}
+	AST      *ast.Spec
+	scope    string
+	currSpec string
+	skipRun  bool
+	Path     string // The location of the main spec
 }
 
 func (l *FaultListener) push(n interface{}) {
@@ -37,6 +40,10 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
 	l.AST = spec
+}
+
+func (l *FaultListener) EnterSpecClause(c *parser.SpecClauseContext) {
+	l.currSpec = c.IDENT().GetText()
 }
 
 func (l *FaultListener) ExitSpecClause(c *parser.SpecClauseContext) {
@@ -105,15 +112,19 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
 
-	path, ok := val.(*ast.StringLiteral)
+	fpath, ok := val.(*ast.StringLiteral)
 	if !ok {
 		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
 
+	//Remove quotes
+	trimmedFP := fpath.Value[1 : len(fpath.Value)-1]
+
 	//Does file exist?
-	importFile, err := os.ReadFile(path.Value)
+	fp := gopath.Join(l.Path, trimmedFP)
+	importFile, err := os.ReadFile(fp)
 	if err != nil {
-		panic(fmt.Sprintf("spec file %s not found\n", path))
+		panic(fmt.Sprintf("spec file %s not found\n", fpath))
 	}
 
 	//
@@ -129,14 +140,14 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 	} else {
 		ident = &ast.Identifier{
 			Token: token,
-			Value: pathToIdent(path.String()),
+			Value: pathToIdent(fpath.String()),
 		}
 	}
 
 	l.push(&ast.ImportStatement{
 		Token: token,
 		Name:  ident,
-		Path:  path,
+		Path:  fpath,
 		Tree:  tree,
 	})
 }
@@ -612,120 +623,138 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 	)
 }
 
-func (l *FaultListener) EnterRunBlock(c *parser.RunBlockContext) {
-	if l.skipRun { // When importing other specs we don't need the run block
-		c.ExitRule(l)
-	}
-}
-
 func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
-	token := ast.Token{
-		Type:    "FUNCTION",
-		Literal: "FUNCTION",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	}
-	sl := &ast.BlockStatement{
-		Token: token,
-	}
-	steps := c.AllRunStep()
-	for i := len(steps) - 1; i >= 0; i-- {
-		v := steps[i]
-		ex := l.pop()
-		switch t := ex.(type) {
-		case *ast.Instance:
-			token2 := l.generateToken(
-				[]int{v.(*parser.RunInitContext).GetStart().GetLine(),
-					v.(*parser.RunInitContext).GetStart().GetColumn(),
-					v.(*parser.RunInitContext).GetStop().GetLine(),
-					v.(*parser.RunInitContext).GetStop().GetColumn(),
-				}, "FUNCTION", "FUNCTION")
-			s := &ast.ExpressionStatement{
-				Token:      token2,
-				Expression: t,
+	if !l.skipRun {
+		token := ast.Token{
+			Type:    "FUNCTION",
+			Literal: "FUNCTION",
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+		sl := &ast.BlockStatement{
+			Token: token,
+		}
+		steps := c.AllRunStep()
+		for i := len(steps) - 1; i >= 0; i-- {
+			v := steps[i]
+			ex := l.pop()
+			switch t := ex.(type) {
+			case *ast.Instance:
+				token2 := l.generateToken(
+					[]int{v.(*parser.RunInitContext).GetStart().GetLine(),
+						v.(*parser.RunInitContext).GetStart().GetColumn(),
+						v.(*parser.RunInitContext).GetStop().GetLine(),
+						v.(*parser.RunInitContext).GetStop().GetColumn(),
+					}, "FUNCTION", "FUNCTION")
+				s := &ast.ExpressionStatement{
+					Token:      token2,
+					Expression: t,
+				}
+				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+			case ast.Statement:
+				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+			case ast.Expression:
+				token2 := ast.Token{
+					Type:    "FUNCTION",
+					Literal: "FUNCTION",
+					Position: []int{v.(*parser.RunStepExprContext).GetStart().GetLine(),
+						v.(*parser.RunStepExprContext).GetStart().GetColumn(),
+						v.(*parser.RunStepExprContext).GetStop().GetLine(),
+						v.(*parser.RunStepExprContext).GetStop().GetColumn(),
+					},
+				}
+				s := &ast.ExpressionStatement{
+					Token:      token2,
+					Expression: t,
+				}
+				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+			default:
+				panic(fmt.Sprintf("Neither statement nor expression got=%T", v))
 			}
-			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
-		case ast.Statement:
-			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-		case ast.Expression:
-			token2 := ast.Token{
-				Type:    "FUNCTION",
-				Literal: "FUNCTION",
-				Position: []int{v.(*parser.RunStepExprContext).GetStart().GetLine(),
-					v.(*parser.RunStepExprContext).GetStart().GetColumn(),
-					v.(*parser.RunStepExprContext).GetStop().GetLine(),
-					v.(*parser.RunStepExprContext).GetStop().GetColumn(),
-				},
-			}
-			s := &ast.ExpressionStatement{
-				Token:      token2,
-				Expression: t,
-			}
-			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
-		default:
-			panic(fmt.Sprintf("Neither statement nor expression got=%T", v))
+		}
+		l.push(sl)
+	} else {
+		// Clear run block instructions from top of stack if we are skipping
+		steps := c.AllRunStep()
+		for i := len(steps) - 1; i >= 0; i-- {
+			l.pop()
 		}
 	}
-	l.push(sl)
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
-	token := ast.Token{
-		Type:    "ASSIGN",
-		Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
+	if !l.skipRun {
+		token := ast.Token{
+			Type:    "ASSIGN",
+			Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+		txt := c.AllIDENT()
+		var right string
+
+		ident := &ast.Identifier{Token: ast.Token{
+			Type:    "IDENT",
+			Literal: "IDENT",
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
 		},
+		}
+		switch len(txt) {
+		case 2:
+			ident.Spec = l.currSpec
+			ident.Value = txt[0].GetText()
+			right = txt[1].GetText()
+		case 3:
+			ident.Spec = txt[0].GetText()
+			ident.Value = txt[1].GetText()
+			right = txt[2].GetText()
+		default:
+			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		}
+
+		l.push(
+			&ast.Instance{
+				Token: token,
+				Value: ident,
+				Name:  right,
+			})
 	}
-	txt := c.AllIDENT()
-
-	ident := &ast.Identifier{Token: ast.Token{
-		Type:    "IDENT",
-		Literal: "IDENT",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	},
-		Value: txt[0].GetText()}
-	right := txt[1].GetText()
-
-	l.push(
-		&ast.Instance{
-			Token: token,
-			Value: ident,
-			Name:  right,
-		})
 }
 
 func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
-	token := ast.Token{
-		Type:    "Parallel",
-		Literal: c.GetText(),
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	}
+	if !l.skipRun {
+		token := ast.Token{
+			Type:    "Parallel",
+			Literal: c.GetText(),
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
 
-	var exp []ast.Expression
-	for i := 0; i < len(c.AllParamCall()); i++ {
-		idx := l.pop()
-		exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
-	}
+		var exp []ast.Expression
+		for i := 0; i < len(c.AllParamCall()); i++ {
+			idx := l.pop()
+			exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
+		}
 
-	e := &ast.ParallelFunctions{
-		Token:       token,
-		Expressions: exp,
+		e := &ast.ParallelFunctions{
+			Token:       token,
+			Expressions: exp,
+		}
+		l.push(e)
 	}
-	l.push(e)
 }
 
 func (l *FaultListener) ExitPrefix(c *parser.PrefixContext) {
@@ -955,7 +984,17 @@ func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 	}
 	ident := &ast.Identifier{
 		Token: token,
-		Value: c.IDENT().GetText(),
+	}
+	id := c.AllIDENT()
+	switch len(id) {
+	case 1:
+		ident.Spec = l.currSpec
+		ident.Value = id[0].GetText()
+	case 2:
+		ident.Spec = id[0].GetText()
+		ident.Value = id[1].GetText()
+	default:
+		panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", id, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
 	l.push(&ast.Instance{
@@ -1014,6 +1053,17 @@ func (l *FaultListener) ExitOperand(c *parser.OperandContext) {
 			Token: token,
 		})
 
+	}
+}
+
+func (l *FaultListener) ExitRounds(c *parser.RoundsContext) {
+	if l.skipRun {
+		//Throw away the integer on top of the stack
+		lf := l.pop()
+		_, ok := lf.(*ast.IntegerLiteral)
+		if !ok {
+			panic(fmt.Sprintf("top of stack is not an integer got=%T", lf))
+		}
 	}
 }
 
@@ -1186,44 +1236,46 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 }
 
 func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
-	token := ast.Token{
-		Type:    "FOR",
-		Literal: "for",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
+	if !l.skipRun {
+		token := ast.Token{
+			Type:    "FOR",
+			Literal: "for",
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+
+		rg := l.pop()
+		lf := l.pop()
+
+		if rg == nil {
+			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+		}
+
+		block, ok := rg.(*ast.BlockStatement)
+		if !ok {
+			panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+		}
+
+		if lf == nil {
+			panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+		}
+
+		rounds, ok := lf.(*ast.IntegerLiteral)
+		if !ok {
+			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+		}
+
+		forSt := &ast.ForStatement{
+			Token:  token,
+			Rounds: rounds,
+			Body:   block,
+		}
+
+		l.push(forSt)
 	}
-
-	rg := l.pop()
-	lf := l.pop()
-
-	if rg == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
-	}
-
-	block, ok := rg.(*ast.BlockStatement)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
-	}
-
-	if lf == nil {
-		panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
-	}
-
-	rounds, ok := lf.(*ast.IntegerLiteral)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
-	}
-
-	forSt := &ast.ForStatement{
-		Token:  token,
-		Rounds: rounds,
-		Body:   block,
-	}
-
-	l.push(forSt)
 }
 
 func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {

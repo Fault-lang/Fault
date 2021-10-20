@@ -9,12 +9,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	gopath "path"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
 
-func parse(data string) (*listener.FaultListener, *types.Checker) {
+func parse(data string, path string) (*listener.FaultListener, *types.Checker) {
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
@@ -27,6 +28,7 @@ func parse(data string) (*listener.FaultListener, *types.Checker) {
 
 	// Finally parse the expression
 	listener := &listener.FaultListener{}
+	listener.Path = path
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
 	// Infer Types and Build Symbol Table
@@ -55,14 +57,15 @@ func smt2(ir string) *smt.Generator {
 
 func run(filepath string, mode string, input string) {
 	data, err := os.ReadFile(filepath)
-	d := string(data)
 	if err != nil {
 		panic(err)
 	}
+	d := string(data)
+	path := gopath.Dir(filepath)
 
 	switch input {
 	case "fspec":
-		listener, ty := parse(d)
+		listener, ty := parse(d, path)
 		if mode == "ast" {
 			fmt.Println(listener.AST)
 			return

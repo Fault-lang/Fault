@@ -98,6 +98,9 @@ type FaultParserListener interface {
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
+	// EnterRounds is called when entering the rounds production.
+	EnterRounds(c *RoundsContext)
+
 	// EnterParamCall is called when entering the paramCall production.
 	EnterParamCall(c *ParamCallContext)
 
@@ -256,6 +259,9 @@ type FaultParserListener interface {
 
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
+
+	// ExitRounds is called when exiting the rounds production.
+	ExitRounds(c *RoundsContext)
 
 	// ExitParamCall is called when exiting the paramCall production.
 	ExitParamCall(c *ParamCallContext)
