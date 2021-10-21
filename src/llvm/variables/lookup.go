@@ -25,6 +25,36 @@ func NewTable() *LookupTable {
 	return l
 }
 
+func (l *LookupTable) List() []string {
+	var vals []string
+	for k, v := range l.values {
+		fmt.Print(k)
+		switch ty := v.(type) {
+		case *globalEntry:
+			vals = append(vals, k)
+		case *structEntry:
+			fmt.Print("~~~STRUCT~~~")
+			for k1, v1 := range ty.value {
+				fmt.Print(k1)
+				for k2, _ := range v1 {
+					fmt.Print(k2)
+					vals = append(vals, fmt.Sprint(k, "_", k1, "_", k2))
+				}
+			}
+		case *instanceEntry:
+			fmt.Print("~~~INST~~~")
+			for k1, v1 := range ty.value {
+				fmt.Print(k1)
+				for k2, _ := range v1 {
+					fmt.Print(k2)
+					vals = append(vals, fmt.Sprint(k, "_", k1, "_", k2))
+				}
+			}
+		}
+	}
+	return vals
+}
+
 func (l *LookupTable) Add(id []string, val value.Value) {
 	switch len(id) {
 	case 2: // a global variable

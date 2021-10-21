@@ -101,7 +101,6 @@ func NewCompiler(structs map[string]types.StockFlow) *Compiler {
 		specGlobals: make(map[string]*ir.Global),
 		runRound:    0,
 	}
-
 	c.addGlobal()
 	c.pushVariablesStack()
 	c.pushAllocations()
@@ -336,7 +335,7 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.FunctionLiteral:
 		return c.compileFunction(v)
 	case *ast.Instance:
-		c.compileInstance(v.Value.Value, v.Name, v.Position())
+		c.compileInstance(v, v.Name)
 	case *ast.ParameterCall:
 		return c.compileParameterCall(v)
 	case *ast.BlockStatement:
@@ -396,7 +395,14 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.SpecDeclStatement:
 		break
 	case *ast.ImportStatement:
-
+		parent := c.currentSpecName
+		parentSp := c.currentSpec
+		err := c.Compile(v.Tree)
+		if err != nil {
+			panic(err)
+		}
+		c.currentSpecName = parent
+		c.currentSpec = parentSp
 	case *ast.ConstantStatement:
 		c.compileConstant(v)
 	case *ast.DefStatement:
@@ -445,7 +451,7 @@ func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 	return keys
 }
 
-func (c *Compiler) compileInstance(structName string, instName string, pos []int) {
+func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 	if c.runRound > 0 { // Initialize things only once
 		return
 	}
@@ -453,17 +459,20 @@ func (c *Compiler) compileInstance(structName string, instName string, pos []int
 		c.currScope = instName
 		c.alloc = false
 	}
+
+	pos := base.Position()
+	structName := base.Value.Value
 	parentFunction := c.contextFuncName
 	c.contextFuncName = instName
-	if c.specStructs[c.currentSpecName][structName] == nil {
+	if c.specStructs[base.Value.Spec][structName] == nil {
 		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", structName, pos[0], pos[1]))
 	}
-	keys := c.generateOrder(c.specStructs[c.currentSpecName][structName])
+	keys := c.generateOrder(c.specStructs[base.Value.Spec][structName])
 	for _, k := range keys {
 		id := c.getFullVariableName([]string{instName, k})
-		switch pv := c.specStructs[c.currentSpecName][structName][k].(type) {
+		switch pv := c.specStructs[base.Value.Spec][structName][k].(type) {
 		case *ast.Instance:
-			c.compileInstance(pv.Value.Value, k, pos) // Copy instance data over
+			c.compileInstance(pv, k) // Copy instance data over
 		case *ast.FunctionLiteral:
 			c.compileFunction(pv)
 		case *ast.InfixExpression:
@@ -471,7 +480,7 @@ func (c *Compiler) compileInstance(structName string, instName string, pos []int
 		case *ast.BlockStatement:
 			c.compileBlock(pv)
 		default:
-			val := c.compileValue(c.specStructs[c.currentSpecName][structName][k])
+			val := c.compileValue(c.specStructs[base.Value.Spec][structName][k])
 			id, s := c.GetSpec(id)
 			s.DefineSpecVar(id, val)
 			c.allocVariable(id, val, pos)
@@ -550,12 +559,12 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	// If we're in the run block and the parameter is defined as a function
 	// define it as a function and call it from run block
 	if c.contextFuncName == "__run" &&
-		c.isFunction(c.specStructs[c.currentSpecName][structName][pc.Value[1]]) {
+		c.isFunction(c.specStructs[id[0]][structName][pc.Value[1]]) {
 		//IR Function + Call
 		fname := strings.Join(id, "_")
 
 		if c.runRound == 0 {
-			params := c.generateParameters(c.specStructs[c.currentSpecName][structName], id)
+			params := c.generateParameters(c.specStructs[id[0]][structName], id)
 			c.resetParaState(params)
 			f := c.module.NewFunc(fname, irtypes.Void, params...)
 			c.contextFunc = f
@@ -567,7 +576,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			c.currScope = pc.Value[0]
 			c.contextBlock = f.NewBlock(name.Block())
 
-			val := c.compileValue(c.specStructs[c.currentSpecName][structName][pc.Value[1]])
+			val := c.compileValue(c.specStructs[id[0]][structName][pc.Value[1]])
 			c.contextBlock.NewRet(val)
 
 			c.contextBlock = oldBlock
@@ -588,10 +597,10 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	parentFunction := c.contextFuncName
 	c.contextFuncName = pc.Value[0]
 
-	val := c.compileValue(c.specStructs[c.currentSpecName][structName][pc.Value[1]])
+	val := c.compileValue(c.specStructs[id[0]][structName][pc.Value[1]])
 
 	// If there's no value, there's nothing to store
-	if val != nil || !c.isFunction(c.specStructs[c.currentSpecName][structName][pc.Value[1]]) {
+	if val != nil || !c.isFunction(c.specStructs[id[0]][structName][pc.Value[1]]) {
 		if s.GetSpecVar(id) != nil {
 			//name := c.getVariableStateName(id)
 			name := c.getVariableName(id)
@@ -636,7 +645,11 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 		c.compileIf(v)
 
 	case *ast.Instance:
-		c.compileInstance(v.Name, v.Value.Value, v.Position())
+		orign := v.Name
+		origv := v.Value.Value
+		v.Value.Value = orign
+		v.Name = origv
+		c.compileInstance(v, v.Name)
 
 	case *ast.IndexExpression:
 
@@ -657,6 +670,24 @@ func (c *Compiler) GetSpec(id []string) ([]string, *spec) {
 		id = append([]string{c.currentSpecName}, id...)
 	}
 	return id, c.specs[id[0]]
+}
+
+func (c *Compiler) ListSpecs() []string {
+	// Lists all specs the compiler knows about
+	var specs []string
+	for k, _ := range c.specs {
+		specs = append(specs, k)
+	}
+	return specs
+}
+
+func (c *Compiler) ListSpecsAndVars() map[string][]string {
+	// Lists all specs and their variables
+	specs := make(map[string][]string)
+	for k, v := range c.specs {
+		specs[k] = v.vars.List()
+	}
+	return specs
 }
 
 func (c *Compiler) setConst(id []string, val value.Value) {
@@ -689,7 +720,7 @@ func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*
 	for _, k := range keys {
 		switch n := data[k].(type) {
 		case *ast.Instance:
-			ip := c.generateParameters(c.specStructs[c.currentSpecName][n.Value.Value], []string{id[0], id[1], k})
+			ip := c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
 			p = append(p, ip...)
 		default:
 			if !c.isFunction(n) {
