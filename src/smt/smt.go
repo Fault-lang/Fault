@@ -102,7 +102,6 @@ func (g *Generator) SMT() string {
 	out.WriteString(strings.Join(g.constants, "\n"))
 	out.WriteString(strings.Join(g.rules, "\n"))
 	out.WriteString(strings.Join(g.asserts, "\n"))
-	out.WriteString("(check-sat)\n(get-model)")
 
 	//fmt.Println(out.String())
 	return out.String()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fault/execute"
 	"fault/listener"
 	"fault/llvm"
 	"fault/parser"
@@ -8,11 +9,13 @@ import (
 	"fault/types"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	gopath "path"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	_ "github.com/olekukonko/tablewriter"
 )
 
 func parse(data string, path string) (*listener.FaultListener, *types.Checker) {
@@ -35,7 +38,7 @@ func parse(data string, path string) (*listener.FaultListener, *types.Checker) {
 	ty := &types.Checker{}
 	err := ty.Check(listener.AST)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	return listener, ty
 }
@@ -44,7 +47,7 @@ func ll(listener *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 	compiler := llvm.NewCompiler(ty.SpecStructs)
 	err := compiler.Compile(listener.AST)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	return compiler
 }
@@ -55,10 +58,29 @@ func smt2(ir string) *smt.Generator {
 	return generator
 }
 
+func probability(smt string, uncertains map[string][]float64) (*execute.ModelChecker, map[string]execute.Scenario) {
+	ex := execute.NewModelChecker("z3")
+	ex.LoadModel(smt, uncertains)
+	ok, err := ex.Check()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !ok {
+		fmt.Print("Fault could not find a failure case.")
+		os.Exit(0)
+	}
+	scenario, err := ex.Solve()
+	if err != nil {
+		log.Fatal(err)
+	}
+	data := ex.Filter(scenario)
+	return ex, data
+}
+
 func run(filepath string, mode string, input string) {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	d := string(data)
 	path := gopath.Dir(filepath)
@@ -66,6 +88,10 @@ func run(filepath string, mode string, input string) {
 	switch input {
 	case "fspec":
 		listener, ty := parse(d, path)
+		if listener == nil {
+			log.Fatal("Fault parser returned nil")
+		}
+
 		if mode == "ast" {
 			fmt.Println(listener.AST)
 			return
@@ -79,25 +105,40 @@ func run(filepath string, mode string, input string) {
 		}
 
 		generator := smt2(compiler.GetIR())
-		fmt.Println(generator.SMT())
+
+		if mode == "smt" {
+			fmt.Println(generator.SMT())
+			return
+		}
+
+		mc, data := probability(generator.SMT(), make(map[string][]float64))
+
+		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		mc.Format(data)
 	case "ll":
 		generator := smt2(d)
-		fmt.Println(generator.SMT())
+		if mode == "smt" {
+			fmt.Println(generator.SMT())
+			return
+		}
 
+		mc, data := probability(generator.SMT(), make(map[string][]float64))
+
+		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		mc.Format(data)
 	case "smt2":
-	}
+		mc, data := probability(d, make(map[string][]float64))
 
-	// if mode == "SMT" {
-	// 	fmt.Println(generator.SMT())
-	// 	return
-	// }
+		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		mc.Format(data)
+	}
 }
 
 func main() {
 	var mode string
 	var input string
 	var filepath string
-	modeCommand := flag.String("mode", "smt", "stop compiler at certain milestones: ast, ir, or smt")
+	modeCommand := flag.String("mode", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
 	inputCommand := flag.String("input", "fspec", "format of the input file (default: fspec)")
 	fpCommand := flag.String("filepath", "", "path to file to compile")
 	//helpCommand := flag.Bool("help", false, "path to file to compile")
@@ -112,13 +153,14 @@ func main() {
 	filepath = *fpCommand
 
 	if *modeCommand == "" {
-		mode = "smt"
+		mode = "check"
 	} else {
 		mode = strings.ToLower(*modeCommand)
 		switch mode {
 		case "ast":
 		case "ir":
 		case "smt":
+		case "check":
 		default:
 			fmt.Printf("%s is not a valid mode", mode)
 			os.Exit(1)
