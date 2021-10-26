@@ -6,5 +6,3 @@
 (assert(= bathtub_pipe_water_level_0 5.0))
 (assert(= bathtub_drawn_water_level_1 (+ bathtub_drawn_water_level_0 10.0)))
 (assert(= bathtub_pipe_water_level_1 (- bathtub_pipe_water_level_0 20.0)))
-(check-sat)
-(get-model)

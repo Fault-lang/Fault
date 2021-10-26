@@ -171,6 +171,12 @@ func (s *BaseSMTLIBv2Listener) EnterMatch_case(ctx *Match_caseContext) {}
 // ExitMatch_case is called when production match_case is exited.
 func (s *BaseSMTLIBv2Listener) ExitMatch_case(ctx *Match_caseContext) {}
 
+// EnterVariable is called when production variable is entered.
+func (s *BaseSMTLIBv2Listener) EnterVariable(ctx *VariableContext) {}
+
+// ExitVariable is called when production variable is exited.
+func (s *BaseSMTLIBv2Listener) ExitVariable(ctx *VariableContext) {}
+
 // EnterTerm is called when production term is entered.
 func (s *BaseSMTLIBv2Listener) EnterTerm(ctx *TermContext) {}
 

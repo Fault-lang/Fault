@@ -83,6 +83,9 @@ type SMTLIBv2Listener interface {
 	// EnterMatch_case is called when entering the match_case production.
 	EnterMatch_case(c *Match_caseContext)
 
+	// EnterVariable is called when entering the variable production.
+	EnterVariable(c *VariableContext)
+
 	// EnterTerm is called when entering the term production.
 	EnterTerm(c *TermContext)
 
@@ -367,6 +370,9 @@ type SMTLIBv2Listener interface {
 
 	// ExitMatch_case is called when exiting the match_case production.
 	ExitMatch_case(c *Match_caseContext)
+
+	// ExitVariable is called when exiting the variable production.
+	ExitVariable(c *VariableContext)
 
 	// ExitTerm is called when exiting the term production.
 	ExitTerm(c *TermContext)

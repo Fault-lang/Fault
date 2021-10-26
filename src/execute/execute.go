@@ -79,7 +79,6 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// Remove extra output (ie "sat")
 	if results[0:1] != "(" {
 		newline := strings.Index(results, "\n")

@@ -689,6 +689,10 @@ match_case
     : ParOpen pattern term ParClose
     ;
 
+variable
+    : symbol
+    ;
+
 term
     : spec_constant
     | qual_identifer
@@ -781,7 +785,7 @@ function_dec
     ;
 
 function_def
-    : symbol ParOpen sorted_var* ParClose sort term
+    : variable ParOpen sorted_var* ParClose sort term
     ;
 
 prop_literal

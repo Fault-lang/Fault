@@ -83,6 +83,9 @@ type SMTLIBv2Visitor interface {
 	// Visit a parse tree produced by SMTLIBv2Parser#match_case.
 	VisitMatch_case(ctx *Match_caseContext) interface{}
 
+	// Visit a parse tree produced by SMTLIBv2Parser#variable.
+	VisitVariable(ctx *VariableContext) interface{}
+
 	// Visit a parse tree produced by SMTLIBv2Parser#term.
 	VisitTerm(ctx *TermContext) interface{}
 

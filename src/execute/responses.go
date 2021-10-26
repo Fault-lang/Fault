@@ -25,8 +25,11 @@ func (l *SMTListener) push(n interface{}) {
 
 func (l *SMTListener) pop() interface{} {
 	var s interface{}
-	s, l.stack = l.stack[len(l.stack)-1], l.stack[:len(l.stack)-1]
-	return s
+	if len(l.stack) > 0 {
+		s, l.stack = l.stack[len(l.stack)-1], l.stack[:len(l.stack)-1]
+		return s
+	}
+	return nil
 }
 
 func (l *SMTListener) ExitGet_model_response(c *parser.Get_model_responseContext) {
@@ -73,33 +76,30 @@ func (l *SMTListener) ExitFunction_def(c *parser.Function_defContext) {
 			l.Results[id].(*IntTrace).Add(k, v)
 		}
 	}
-
 }
 
-func (l *SMTListener) ExitSymbol(c *parser.SymbolContext) {
-	sym := c.GetText()
-	l.push(sym)
+func (l *SMTListener) ExitVariable(c *parser.VariableContext) {
+	l.push(c.GetText())
 }
 
 func (l *SMTListener) ExitTerm(c *parser.TermContext) {
-	term := c.GetText()
-	if term != "true" && term != "false" {
-		//Like the sort, if this is a Boolean
-		//it's a symbol too.
-		l.push(term)
+	if c.GetChildCount() > 1 {
+		l.pop() // when negative term is also a child of term :(
 	}
+	l.push(c.GetText())
 }
 
-// Sorts are also symbols so this results in duplicate
-// stuff in the stack
-/*func (l *SMTListener) ExitSort(c *parser.SortContext) {
-	sort := c.GetText()
-	l.push(sort)
-}*/
+func (l *SMTListener) ExitSort(c *parser.SortContext) {
+	l.push(c.GetText())
+}
 
 func convertTerm(sort string, term string) interface{} {
 	var value interface{}
 	var err error
+
+	if string(term[0]) == "(" {
+		term = term[1 : len(term)-2]
+	}
 
 	switch sort {
 	case "Real":

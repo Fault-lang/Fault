@@ -108,6 +108,10 @@ func (v *BaseSMTLIBv2Visitor) VisitMatch_case(ctx *Match_caseContext) interface{
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseSMTLIBv2Visitor) VisitVariable(ctx *VariableContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseSMTLIBv2Visitor) VisitTerm(ctx *TermContext) interface{} {
 	return v.VisitChildren(ctx)
 }

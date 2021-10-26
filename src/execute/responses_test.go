@@ -2,7 +2,6 @@ package execute
 
 import (
 	"fault/execute/parser"
-	"fmt"
 	"testing"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -41,8 +40,6 @@ func TestParseBools(t *testing.T) {
 	  )
 	  `
 	response := prepTestParser(test)
-
-	fmt.Println(response)
 
 	if response["imports_fl3_vault_value"] == nil {
 		t.Fatalf("SMT parser failed to parse bools in solution returned. got=%s", response)

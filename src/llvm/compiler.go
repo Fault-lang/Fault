@@ -41,35 +41,17 @@ type Compiler struct {
 	contextFuncName string
 	contextMetadata *metadata.Attachment
 
-	alloc        bool
-	runRound     int16
-	funcStatePos map[string]map[string]interface{}
-
-	// Stack of return values pointers, is used both used if a function returns more
-	// than one value (arg pointers), and single stack based returns
-	contextFuncRetVals [][]value.Value
+	alloc    bool
+	runRound int16
 
 	contextBlock *ir.Block
 	contextFunc  *ir.Func
 
 	// Stack of variables that are in scope
-	contextBlockVariables []map[string]value.Value
-	allocatedPointers     []map[string]*ir.InstAlloca
-
-	// What a break or continue should resolve to
-	contextLoopBreak    []*ir.Block
-	contextLoopContinue []*ir.Block
+	allocatedPointers []map[string]*ir.InstAlloca
 
 	// Where a condition should jump when done
 	contextCondAfter []*ir.Block
-
-	// What type the current assign operation is assigning to.
-	// Is used when evaluating what type an integer constant should be.
-	contextAssignDest []value.Value
-
-	// Stack of Alloc instructions
-	// Is used to decide if values should be stack or heap allocated
-	//contextAlloc []*parser.AllocNode
 
 	specGlobals map[string]*ir.Global
 }
@@ -83,27 +65,17 @@ func NewCompiler(structs map[string]types.StockFlow) *Compiler {
 		specStructs:   structs,
 		specFunctions: make(map[string]value.Value),
 
-		contextFuncRetVals: make([][]value.Value, 0),
-		contextMetadata:    nil,
-		alloc:              true,
+		contextMetadata: nil,
+		alloc:           true,
 
-		funcStatePos: make(map[string]map[string]interface{}),
+		allocatedPointers: make([]map[string]*ir.InstAlloca, 0),
 
-		contextBlockVariables: make([]map[string]value.Value, 0),
-		allocatedPointers:     make([]map[string]*ir.InstAlloca, 0),
-
-		contextLoopBreak:    make([]*ir.Block, 0),
-		contextLoopContinue: make([]*ir.Block, 0),
-		contextCondAfter:    make([]*ir.Block, 0),
-
-		contextAssignDest: make([]value.Value, 0),
+		contextCondAfter: make([]*ir.Block, 0),
 
 		specGlobals: make(map[string]*ir.Global),
 		runRound:    0,
 	}
 	c.addGlobal()
-	c.pushVariablesStack()
-	c.pushAllocations()
 	return c
 }
 
@@ -771,22 +743,6 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 	pointer := c.specGlobals[name]
 	load := c.contextBlock.NewLoad(irtypes.Double, pointer)
 	return load
-}
-
-func (c *Compiler) pushVariablesStack() {
-	c.contextBlockVariables = append(c.contextBlockVariables, make(map[string]value.Value))
-}
-
-func (c *Compiler) popVariablesStack() {
-	c.contextBlockVariables = c.contextBlockVariables[0 : len(c.contextBlockVariables)-1]
-}
-
-func (c *Compiler) pushAllocations() {
-	c.allocatedPointers = append(c.allocatedPointers, make(map[string]*ir.InstAlloca))
-}
-
-func (c *Compiler) popAllocations() {
-	c.allocatedPointers = c.allocatedPointers[0 : len(c.allocatedPointers)-1]
 }
 
 type Panic string

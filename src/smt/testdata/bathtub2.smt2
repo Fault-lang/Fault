@@ -30,5 +30,3 @@
         (assert (= bathtub_drawn_water_level_13 (+ bathtub_drawn_water_level_10 10.0)))
         (assert (= bathtub_drawn_water_level_14 (- bathtub_drawn_water_level_13 20.0)))
         (assert (or (= bathtub_drawn_water_level_15 bathtub_drawn_water_level_12) (= bathtub_drawn_water_level_15 bathtub_drawn_water_level_14)))
-        (check-sat)
-        (get-model)
