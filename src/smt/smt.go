@@ -19,15 +19,22 @@ type rule interface {
 
 type infix struct {
 	rule
-	x  rule
-	y  rule
-	ty string
-	op string
+	x   rule
+	y   rule
+	ty  string
+	op  string
+	tag *branch
 }
 
 func (i *infix) ruleNode() {}
 func (i *infix) String() string {
 	return fmt.Sprintf("%s %s %s", i.x.String(), i.op, i.y.String())
+}
+func (i *infix) Tag(k1 string, k2 string) {
+	i.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
 }
 
 type ite struct {
@@ -37,26 +44,61 @@ type ite struct {
 	tvars map[string]string
 	f     []rule
 	fvars map[string]string
+	tag   *branch
 }
 
 func (it *ite) ruleNode() {}
 func (it *ite) String() string {
 	return fmt.Sprintf("if %s then %s else %s", it.cond.String(), it.t, it.f)
 }
+func (ite *ite) Tag(k1 string, k2 string) {
+	ite.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
 
 type wrap struct { //wrapper for constant values to be used in infix as rules
 	rule
 	value string
-}
-
-type vwrap struct {
-	rule
-	value value.Value
+	tag   *branch
 }
 
 func (w *wrap) ruleNode() {}
 func (w *wrap) String() string {
 	return w.value
+}
+func (w *wrap) Tag(k1 string, k2 string) {
+	w.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type vwrap struct {
+	rule
+	value value.Value
+	tag   *branch
+}
+
+func (vw *vwrap) ruleNode() {}
+func (vw *vwrap) String() string {
+	return vw.value.String()
+}
+func (vw *vwrap) Tag(k1 string, k2 string) {
+	vw.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type branch struct {
+	branch string
+	block  string
+}
+
+func (b *branch) String() string {
+	return b.branch + "." + b.block
 }
 
 type Generator struct {
@@ -79,6 +121,9 @@ type Generator struct {
 	currentFunction string
 	currentBlock    string
 	last            rule
+	branchId        int
+	Branches        map[string][]string            // [varid] = branch_id
+	BranchTrail     map[string]map[string][]string //[branch_id] = []string{varid}
 }
 
 func NewGenerator() *Generator {
@@ -92,6 +137,8 @@ func NewGenerator() *Generator {
 		blocks:          make(map[string][]rule),
 		skipBlocks:      make(map[string]int),
 		currentFunction: "@__run",
+		Branches:        make(map[string][]string),
+		BranchTrail:     make(map[string]map[string][]string),
 	}
 }
 

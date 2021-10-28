@@ -71,14 +71,13 @@ func (g *Generator) parseInstruct(block *ir.Block, startVars map[string]string) 
 			//Cannot be implemented because SMT solvers do poorly with modulo
 		case *ir.InstFCmp:
 			var r rule
-
 			op, y := g.parseCompare(inst.Pred.String())
 			if op == "true" || op == "false" {
 				r, startVars = g.parseInfix(inst.Ident(),
 					inst.X.Ident(), y.(*wrap).value, op, startVars)
 			} else {
 				r, startVars = g.parseInfix(inst.Ident(),
-					inst.X.Ident(), inst.X.Ident(), op, startVars)
+					inst.X.Ident(), inst.Y.Ident(), op, startVars)
 			}
 
 			// If LLVM is storing this is a temp var
@@ -106,18 +105,24 @@ func (g *Generator) parseTerms(terms []*ir.Block, startVars map[string]string) (
 	if len(terms) > 1 { //more than one terminal == branch
 		var t, f []rule
 		var tvars, fvars map[string]string
+		g.branchId = g.branchId + 1
+		branch := fmt.Sprint("branch_", g.branchId)
 		for _, term := range terms {
 			bname := strings.Split(term.Ident(), "-")
 			switch bname[len(bname)-1] {
 			case "true":
+				branchBlock := "true"
 				g.skipBlocks[term.Ident()] = 1
 				sv = make(map[string]string)
 				t, tvars = g.parseInstruct(term, startVars)
+				t = g.tagRules(t, branch, branchBlock)
 				rules = append(rules, t...)
 			case "false":
+				branchBlock := "false"
 				g.skipBlocks[term.Ident()] = 1
 				sv = make(map[string]string)
 				f, fvars = g.parseInstruct(term, startVars)
+				f = g.tagRules(f, branch, branchBlock)
 				rules = append(rules, f...)
 			case "after":
 				g.skipBlocks[term.Ident()] = 1
@@ -236,4 +241,36 @@ func (g *Generator) parseRule(id string, val string, ty string, op string) rule 
 	wid := &wrap{value: id}
 	wval := &wrap{value: val}
 	return &infix{x: wid, ty: ty, y: wval, op: op}
+}
+
+func (g *Generator) tagRules(rules []rule, branch string, block string) []rule {
+	var tagged []rule
+	for i := 0; i < len(rules); i++ {
+		tagged = append(tagged, g.tagRule(rules[i], branch, block))
+	}
+	return tagged
+}
+
+func (g *Generator) tagRule(ru rule, branch string, block string) rule {
+	switch r := ru.(type) {
+	case *infix:
+		r.x = g.tagRule(r.x, branch, block)
+		r.y = g.tagRule(r.y, branch, block)
+		r.Tag(branch, block)
+		return r
+	case *ite:
+		r.cond = g.tagRule(r.cond, branch, block)
+		r.t = g.tagRules(r.t, branch, block)
+		r.f = g.tagRules(r.f, branch, block)
+		r.Tag(branch, block)
+		return r
+	case *wrap:
+		r.Tag(branch, block)
+		return r
+	case *vwrap:
+		r.Tag(branch, block)
+		return r
+	default:
+		panic(fmt.Sprintf("%T is not a valid rule type", ru))
+	}
 }

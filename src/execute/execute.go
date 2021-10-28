@@ -6,12 +6,10 @@ import (
 	"fault/execute/parser"
 	"fault/execute/solvers"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
-	"github.com/olekukonko/tablewriter"
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
@@ -20,15 +18,19 @@ import (
 // occurring and rerun the model.
 
 type ModelChecker struct {
-	SMT        string
-	Uncertains map[string][]float64
-	mode       string
-	solver     map[string]*solvers.Solver
+	SMT         string
+	Uncertains  map[string][]float64
+	mode        string
+	solver      map[string]*solvers.Solver
+	branches    map[string][]string
+	branchTrail map[string]map[string][]string
 }
 
 func NewModelChecker(mode string) *ModelChecker {
 	mc := &ModelChecker{
-		mode: mode,
+		mode:        mode,
+		branches:    make(map[string][]string),
+		branchTrail: make(map[string]map[string][]string),
 	}
 	switch mc.mode { // Possible support for different smt solvers
 	case "z3":
@@ -40,6 +42,12 @@ func NewModelChecker(mode string) *ModelChecker {
 func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64) {
 	mc.SMT = smt
 	mc.Uncertains = uncertains
+}
+
+func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]map[string][]string) {
+	// Load metadata that helps the results display nicely
+	mc.branches = branches
+	mc.branchTrail = trail
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
@@ -138,96 +146,4 @@ func (mc *ModelChecker) stateAssessment(dist distuv.Normal, states Scenario) Sce
 		}*/
 	}
 	return weighted
-}
-
-func (mc *ModelChecker) Format(results map[string]Scenario) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Variable", "State (Weight)"})
-	var row []string
-	for k, v := range results {
-		row = append(row, k)
-		switch s := v.(type) {
-		case *FloatTrace:
-			var r []string
-			weights := s.GetWeights()
-			for i, n := range s.Get() {
-				if int(i) == len(r) {
-					r = append(r, hWToString(n, i, weights))
-				} else if int(i) > len(r) {
-					for j := len(r) - 1; j < int(i)-1; j++ {
-						r = append(r, "[branch]")
-					}
-					r = append(r, hWToString(n, i, weights))
-
-				} else if int(i) < len(r) {
-					r2 := r[0:i]
-					r2 = append(r2, hWToString(n, i, weights))
-					r = append(r2, r[i+1:]...)
-				}
-			}
-			row = append(row, strings.Join(r, " "))
-		case *IntTrace:
-			var r []string
-			weights := s.GetWeights()
-			for i, n := range s.Get() {
-				if int(i) == len(r) {
-					r = append(r, hWToString(n, i, weights))
-				} else if int(i) > len(r) {
-					for j := len(r) - 1; j < int(i); j++ {
-						r = append(r, "[branch]")
-					}
-					r = append(r, hWToString(n, i, weights))
-
-				} else if int(i) < len(r) {
-					r[i] = hWToString(n, i, weights)
-				}
-			}
-			row = append(row, strings.Join(r, " "))
-		case *BoolTrace:
-			var r []string
-			weights := s.GetWeights()
-			for i, n := range s.Get() {
-				if int(i) == len(r) {
-					r = append(r, hWToString(n, i, weights))
-				} else if int(i) > len(r) {
-					for j := len(r) - 1; j < int(i); j++ {
-						r = append(r, "[branch]")
-					}
-					r = append(r, hWToString(n, i, weights))
-
-				} else if int(i) < len(r) {
-					r[i] = hWToString(n, i, weights)
-				}
-			}
-			row = append(row, strings.Join(r, " "))
-		}
-		table.Append(row)
-	}
-	table.Render()
-	return
-}
-
-func hWToString(n interface{}, i int64, weights map[int64]float64) string {
-	switch h := n.(type) {
-	case float64:
-		if val, ok := weights[i]; ok {
-			return fmt.Sprintf("-> %f (%f)", h, val)
-		} else {
-			return fmt.Sprintf("-> %f", h)
-		}
-	case int64:
-		if val, ok := weights[i]; ok {
-			return fmt.Sprintf("-> %d (%f)", h, val)
-		} else {
-			return fmt.Sprintf("-> %d", h)
-		}
-	case bool:
-		if val, ok := weights[i]; ok {
-			return fmt.Sprintf("-> %v (%f)", h, val)
-		} else {
-			return fmt.Sprintf("-> %v", h)
-		}
-	default:
-		panic(fmt.Sprintf("type %T not allowed", n))
-	}
 }

@@ -1,8 +1,6 @@
 package execute
 
-type Scenario interface {
-	IsNil() bool
-}
+type Scenario interface{}
 
 type FloatTrace struct {
 	Scenario
@@ -17,20 +15,30 @@ func NewFloatTrace() *FloatTrace {
 	}
 }
 
-func (fh *FloatTrace) Get() map[int64]float64 {
-	return fh.results
+func (ft *FloatTrace) Index(i int64) (float64, bool) {
+	v, ok := ft.results[i]
+	return v, ok
 }
 
-func (fh *FloatTrace) GetWeights() map[int64]float64 {
-	return fh.weights
+func (ft *FloatTrace) Get() map[int64]float64 {
+	return ft.results
 }
 
-func (fh *FloatTrace) Add(i int64, f float64) {
-	fh.results[i] = f
+func (ft *FloatTrace) GetWeights() map[int64]float64 {
+	return ft.weights
 }
 
-func (fh *FloatTrace) AddWeight(i int64, f float64) {
-	fh.weights[i] = f
+func (ft *FloatTrace) Add(i int64, f float64) {
+	ft.results[i] = f
+}
+
+func (ft *FloatTrace) AddWeight(i int64, f float64) {
+	ft.weights[i] = f
+}
+
+func (ft *FloatTrace) Remove(i int64) {
+	delete(ft.results, i)
+	delete(ft.weights, i)
 }
 
 type IntTrace struct {
@@ -44,6 +52,11 @@ func NewIntTrace() *IntTrace {
 		results: make(map[int64]int64),
 		weights: make(map[int64]float64),
 	}
+}
+
+func (it *IntTrace) Index(i int64) (int64, bool) {
+	v, ok := it.results[i]
+	return v, ok
 }
 
 func (it *IntTrace) Get() map[int64]int64 {
@@ -62,6 +75,11 @@ func (it *IntTrace) AddWeight(i int64, f float64) {
 	it.weights[i] = f
 }
 
+func (it *IntTrace) Remove(i int64) {
+	delete(it.results, i)
+	delete(it.weights, i)
+}
+
 type BoolTrace struct {
 	Scenario
 	results map[int64]bool
@@ -73,6 +91,11 @@ func NewBoolTrace() *BoolTrace {
 		results: make(map[int64]bool),
 		weights: make(map[int64]float64),
 	}
+}
+
+func (bt *BoolTrace) Index(i int64) (bool, bool) {
+	v, ok := bt.results[i]
+	return v, ok
 }
 
 func (bt *BoolTrace) Get() map[int64]bool {
@@ -89,4 +112,9 @@ func (bt *BoolTrace) Add(i int64, b bool) {
 
 func (bt *BoolTrace) AddWeight(i int64, f float64) {
 	bt.weights[i] = f
+}
+
+func (bt *BoolTrace) Remove(i int64) {
+	delete(bt.results, i)
+	delete(bt.weights, i)
 }

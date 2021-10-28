@@ -112,7 +112,7 @@ func run(filepath string, mode string, input string) {
 		}
 
 		mc, data := probability(generator.SMT(), make(map[string][]float64))
-
+		mc.LoadMeta(generator.Branches, generator.BranchTrail)
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "ll":
@@ -123,7 +123,7 @@ func run(filepath string, mode string, input string) {
 		}
 
 		mc, data := probability(generator.SMT(), make(map[string][]float64))
-
+		mc.LoadMeta(generator.Branches, generator.BranchTrail)
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "smt2":

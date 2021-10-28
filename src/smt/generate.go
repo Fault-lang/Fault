@@ -208,6 +208,10 @@ func (g *Generator) writeRule(ru rule) string {
 		if r.op != "" {
 			return g.writeInfix(x, y, r.op)
 		}
+		//If tagged, sort into branch for later formatting
+		if r.tag != nil {
+			g.buildBranchTrails(x, r.tag)
+		}
 		return g.writeInitRule(x, r.ty, y)
 	case *ite:
 		cond := g.writeRule(r.cond)
@@ -286,4 +290,14 @@ func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
 	rc(p, 0)
 
 	return permuts
+}
+
+func (g *Generator) buildBranchTrails(ident string, b *branch) {
+	// Storing where each variable is to
+	// help display results correctly.
+	g.Branches[ident] = []string{b.branch, b.block}
+	if _, ok := g.BranchTrail[b.branch]; !ok {
+		g.BranchTrail[b.branch] = make(map[string][]string)
+	}
+	g.BranchTrail[b.branch][b.block] = append(g.BranchTrail[b.branch][b.block], ident)
 }

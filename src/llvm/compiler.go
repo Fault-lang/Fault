@@ -197,7 +197,6 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	case ">":
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
-
 		ogt := c.contextBlock.NewFCmp(enum.FPredOGT, l, r)
 		return ogt
 	case ">=":
