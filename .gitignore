@@ -20,3 +20,5 @@
 # Exclude java files created by antlr during testing
 *.class
 *.java
+*.interp
+*.tokens

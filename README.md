@@ -53,5 +53,10 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
 ### Current Status (10/11/2021)
+Using Go channels to compile parallel runs seemed like a clevel solution, but truthfully the problems with correctly handling SSA weren't offset by any benefits in performance. Might revist in the future as models grow more complex. For right now plain ordinary sequencial processing of all premutations works well.
+
+Other major thing is parsing the SMT returned by the solver and formatting those results into a human friendly form. Laid some of the ground work on Uncertain types.
+
+#### Status (10/11/2021)
 Just finished the happy path on conditionals, want to shift to spec imports next. Still have to test LLVM IR -> SMTLib2 after LLVM optimization passes. 
 
