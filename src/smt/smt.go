@@ -2,6 +2,7 @@ package smt
 
 import (
 	"bytes"
+	"fault/ast"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,6 +16,25 @@ import (
 type rule interface {
 	ruleNode()
 	String() string
+}
+
+type assrt struct {
+	rule
+	variable    *wrap
+	conjunction string
+	assertion   rule
+	tag         *branch
+}
+
+func (a *assrt) ruleNode() {}
+func (a *assrt) String() string {
+	return a.variable.String() + a.conjunction + a.assertion.String()
+}
+func (a *assrt) Tag(k1 string, k2 string) {
+	a.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
 }
 
 type infix struct {
@@ -58,10 +78,32 @@ func (ite *ite) Tag(k1 string, k2 string) {
 	}
 }
 
+type invariant struct {
+	rule
+	left        rule
+	conjunction string
+	right       rule
+	tag         *branch
+}
+
+func (i *invariant) ruleNode() {}
+func (i *invariant) String() string {
+	return fmt.Sprint(i.left.String(), i.conjunction, i.right.String())
+}
+func (i *invariant) Tag(k1 string, k2 string) {
+	i.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type wrap struct { //wrapper for constant values to be used in infix as rules
 	rule
-	value string
-	tag   *branch
+	value    string
+	state    string //invariant only for one state
+	all      bool   // invariant for all states
+	constant bool   // this is a constant
+	tag      *branch
 }
 
 func (w *wrap) ruleNode() {}
@@ -70,6 +112,27 @@ func (w *wrap) String() string {
 }
 func (w *wrap) Tag(k1 string, k2 string) {
 	w.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type wrapGroup struct {
+	rule
+	wraps []*wrap
+	tag   *branch
+}
+
+func (wg *wrapGroup) ruleNode() {}
+func (wg *wrapGroup) String() string {
+	var out bytes.Buffer
+	for _, v := range wg.wraps {
+		out.WriteString(v.value)
+	}
+	return out.String()
+}
+func (wg *wrapGroup) Tag(k1 string, k2 string) {
+	wg.tag = &branch{
 		branch: k1,
 		block:  k2,
 	}
@@ -124,6 +187,8 @@ type Generator struct {
 	branchId        int
 	Branches        map[string][]string            // [varid] = branch_id
 	BranchTrail     map[string]map[string][]string //[branch_id] = []string{varid}
+	rawAsserts      []ast.Statement
+	rounds          map[string]map[string][]int16
 }
 
 func NewGenerator() *Generator {
@@ -139,6 +204,7 @@ func NewGenerator() *Generator {
 		currentFunction: "@__run",
 		Branches:        make(map[string][]string),
 		BranchTrail:     make(map[string]map[string][]string),
+		rounds:          make(map[string]map[string][]int16),
 	}
 }
 
@@ -150,7 +216,6 @@ func (g *Generator) SMT() string {
 	out.WriteString(strings.Join(g.rules, "\n"))
 	out.WriteString(strings.Join(g.asserts, "\n"))
 
-	//fmt.Println(out.String())
 	return out.String()
 }
 
@@ -195,6 +260,20 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 			}
 		}
 	}
+
+	for _, v := range g.rawAsserts {
+		a1, a2, conj := g.parseAssert(v)
+		if conj == "" {
+			for _, assrt := range a1 {
+				ir := g.generateAssertRules(assrt)
+				or := fmt.Sprintf("(or %s)", strings.Join(ir, " "))
+				g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", or))
+			}
+		} else {
+			g.asserts = append(g.asserts, g.generateCompound(a1, a2, conj)...)
+		}
+	}
+
 }
 
 func (g *Generator) newConstants(globals []*ir.Global) []string {
@@ -212,11 +291,12 @@ func (g *Generator) newConstants(globals []*ir.Global) []string {
 func (g *Generator) storeFuncs(funcs []*ir.Func) []string {
 	//Iterate through all the function blocks and store them by
 	// function call name.
-
 	r := []string{}
 	for _, f := range funcs {
 		// Get function name.
-		if f.Ident() != "@__run" {
+		fname := f.Ident()
+
+		if fname != "@__run" {
 			g.functions[f.Ident()] = f
 			continue
 		}

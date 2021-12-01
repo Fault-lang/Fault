@@ -5,6 +5,7 @@ import (
 	"fault/ast"
 	"fault/llvm/name"
 	"fault/types"
+	"fault/util"
 	"fmt"
 	"runtime/debug"
 	"sort"
@@ -25,12 +26,24 @@ import (
 
 var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 
+var OP_NEGATE = map[string]string{
+	"==": "!=",
+	">=": "<",
+	">":  "<=",
+	"<=": ">",
+	"!=": "==",
+	"<":  ">=",
+	"&&": "||",
+	"||": "&&",
+}
+
 type Compiler struct {
 	module *ir.Module
 
-	specs       map[string]*spec
-	instances   map[string]string
-	currentSpec *spec
+	specs            map[string]*spec
+	instances        map[string]string
+	instanceChildren map[string]string
+	currentSpec      *spec
 
 	currentSpecName string
 	currScope       string
@@ -53,17 +66,19 @@ type Compiler struct {
 	// Where a condition should jump when done
 	contextCondAfter []*ir.Block
 
-	specGlobals map[string]*ir.Global
+	specGlobals  map[string]*ir.Global
+	AssertAssume []ast.Statement
 }
 
 func NewCompiler(structs map[string]types.StockFlow) *Compiler {
 	c := &Compiler{
 		module: ir.NewModule(),
 
-		specs:         make(map[string]*spec),
-		instances:     make(map[string]string),
-		specStructs:   structs,
-		specFunctions: make(map[string]value.Value),
+		specs:            make(map[string]*spec),
+		instances:        make(map[string]string),
+		instanceChildren: make(map[string]string),
+		specStructs:      structs,
+		specFunctions:    make(map[string]value.Value),
 
 		contextMetadata: nil,
 		alloc:           true,
@@ -112,6 +127,11 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 	for _, fileNode := range specfile.Statements {
 		c.compile(fileNode)
 	}
+
+	for _, assert := range c.AssertAssume {
+		c.AssertAssume = c.AssertAssume[1:] //Pop
+		c.compileAssert(assert)
+	}
 	return
 }
 
@@ -121,7 +141,6 @@ func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
 
 func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	pos := node.Position()
-
 	switch node.Operator {
 	case "=": // Used to store temporary local values
 		r := c.compileValue(node.Right)
@@ -150,8 +169,14 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		return nil
 	case "<-":
 		r := c.compileValue(node.Right)
-		id := node.Left.(*ast.ParameterCall).Value
-		pos := node.Left.(*ast.ParameterCall).Position()
+		n, ok := node.Left.(*ast.ParameterCall)
+		if !ok {
+			pos := node.Position()
+			panic(fmt.Sprintf("cannot use <- or -> operator on a non-stock value col: %d, line: %d", pos[0], pos[1]))
+		}
+
+		id := n.Value
+		pos := n.Position()
 		fvn := c.getFullVariableName(id)
 		//fvns := c.getVariableStateName(fvn)
 		fvns := c.getVariableName(fvn)
@@ -386,7 +411,13 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.PrefixExpression:
 
+	case *ast.AssumptionStatement:
+		// Need to do these after the run block so we move them
+		c.AssertAssume = append(c.AssertAssume, v)
+
 	case *ast.AssertionStatement:
+		c.AssertAssume = append(c.AssertAssume, v)
+		//c.compileAssertion(v)
 
 	case *ast.ForStatement:
 		c.contextFuncName = "__run"
@@ -409,6 +440,124 @@ func (c *Compiler) compile(node ast.Node) {
 
 func (c *Compiler) compileStruct(def *ast.DefStatement) {
 	//Not implemented, using preparse from type checker
+}
+
+func (c *Compiler) compileAssert(assert ast.Statement) {
+	var v, e ast.Expression
+	switch a := assert.(type) {
+	case *ast.AssertionStatement:
+		v = negate(a.Constraints.Variable)
+		e = negate(a.Constraints.Expression)
+		a.Constraints.Comparison = OP_NEGATE[a.Constraints.Comparison]
+		a.Constraints.Conjuction = OP_NEGATE[a.Constraints.Conjuction]
+		a.Constraints.Variable = c.convertAssertVariables(v)
+		a.Constraints.Expression = c.convertAssertVariables(e)
+		c.AssertAssume = append(c.AssertAssume, a)
+	case *ast.AssumptionStatement:
+		a.Constraints.Variable = c.convertAssertVariables(a.Constraints.Variable)
+		a.Constraints.Expression = c.convertAssertVariables(a.Constraints.Expression)
+		c.AssertAssume = append(c.AssertAssume, a)
+	default:
+		panic("statement must be an assert or an assumption.")
+	}
+}
+
+func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
+	vars := make(map[string][]string)
+	switch e := ex.(type) {
+	case *ast.InfixExpression:
+		left := c.getInstances(e.Left)
+		if left != nil {
+			for k, v := range left {
+				vars[k] = append(vars[k], v...)
+			}
+		}
+		right := c.getInstances(e.Right)
+		if right != nil {
+			for k, v := range right {
+				vars[k] = append(vars[k], v...)
+			}
+		}
+		return vars
+	case *ast.Identifier:
+		return nil
+	case *ast.ParameterCall:
+		id := e.Value
+		for k, v := range c.instances {
+			if v == id[0] {
+				vars[v] = append(vars[v], k)
+			}
+		}
+		return vars
+
+	case *ast.PrefixExpression:
+		right := c.getInstances(e.Right)
+		if right != nil {
+			for k, v := range right {
+				vars[k] = append(vars[k], v...)
+			}
+		}
+		return vars
+	case *ast.IndexExpression:
+		left := c.getInstances(e.Left)
+		if left != nil {
+			for k, v := range left {
+				vars[k] = append(vars[k], v...)
+			}
+		}
+		return vars
+	default:
+		return nil
+	}
+}
+
+func (c *Compiler) getVarFromAssert(ex ast.Expression) []string {
+	var ret []string
+	switch e := ex.(type) {
+	case *ast.InfixExpression:
+		l := c.getVarFromAssert(e.Left)
+		r := c.getVarFromAssert(e.Right)
+		ret = append(ret, l...)
+		ret = append(ret, r...)
+		return ret
+	case *ast.Identifier:
+		id := []string{e.Value}
+		pos := e.Position()
+		fvn := c.getFullVariableName(id)
+		fvns := c.getVariableName(fvn)
+		if !c.isVarSet(fvn) {
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
+		}
+
+		id, _ = c.GetSpec(fvn)
+		ret = append(ret, strings.Join(id, "_"))
+		return ret
+	case *ast.ParameterCall:
+		id := e.Value
+		pos := e.Position()
+		fvn := c.getFullVariableName(id)
+		fvns := c.getVariableName(fvn)
+
+		if !c.isVarSet(fvn) {
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
+		}
+
+		id, _ = c.GetSpec(fvn)
+		ret = append(ret, strings.Join(id, "_"))
+		return ret
+
+	case *ast.PrefixExpression:
+		r := c.getVarFromAssert(e.Right)
+		ret = append(ret, r...)
+		return ret
+	case *ast.IndexExpression:
+		l := c.getVarFromAssert(e.Left)
+		ret = append(ret, l...) //This needs more work
+	default:
+		pos := e.Position()
+		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+	}
+	return []string{}
 }
 
 func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
@@ -453,6 +602,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		default:
 			val := c.compileValue(c.specStructs[base.Value.Spec][structName][k])
 			id, s := c.GetSpec(id)
+			c.instanceChildren[strings.Join(id, "_")] = structName
 			s.DefineSpecVar(id, val)
 			c.allocVariable(id, val, pos)
 			s.vars.ResetState(id)
@@ -514,19 +664,10 @@ func (c *Compiler) compileIf(n *ast.IfExpression) {
 	}
 }
 
-// func (c *Compiler) compileBranch(b *ast.BlockStatement) *ir.Block {
-// 	c.contextBlock = c.contextFunc.NewBlock(name.Block())
-// 	val := c.compileBlock(b)
-// 	c.contextBlock.NewRet(val)
-// 	child := c.contextBlock
-// 	//c.contextBlock = c.contextFunc.NewBlock(name.Block())
-// 	return child
-//}
-
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
-	structName := c.instances[pc.Value[0]]
 	id := c.getFullVariableName(pc.Value)
 	id, s := c.GetSpec(id)
+	structName := c.instances[pc.Value[0]]
 	// If we're in the run block and the parameter is defined as a function
 	// define it as a function and call it from run block
 	if c.contextFuncName == "__run" &&
@@ -674,6 +815,24 @@ func (c *Compiler) isVarSet(id []string) bool {
 	return s.GetSpecVar(id) != nil
 }
 
+func (c *Compiler) isVarSetAssert(id []string) bool {
+	//If this is for an assert the var might reference
+	//a rule on the struct level
+	if c.isVarSet(id) || c.isInstance(id) {
+		return true
+	}
+	return false
+}
+
+func (c *Compiler) isInstance(id []string) bool {
+	for _, v := range c.instances {
+		if v == id[0] {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Compiler) isFunction(node ast.Node) bool {
 	switch node.(type) {
 	case *ast.FunctionLiteral:
@@ -710,8 +869,77 @@ func (c *Compiler) resetParaState(p []*ir.Param) {
 		name := p[i].LocalName
 		id := strings.Split(name, "_")
 		id, s := c.GetSpec(id)
-		id[len(id)-1] = id[len(id)-1][:len(id[len(id)-1])-1]
 		s.vars.ResetState(id)
+	}
+}
+
+func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
+	switch e := ex.(type) {
+	case *ast.InfixExpression:
+		e.Left = c.convertAssertVariables(e.Left)
+		e.Right = c.convertAssertVariables(e.Right)
+		return e
+	case *ast.Identifier:
+		id := strings.Split(e.Value, "_")
+		pos := e.Position()
+		fvn := c.getFullVariableName(id)
+		fvns := c.getVariableName(fvn)
+
+		if !c.isVarSetAssert(fvn) {
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
+		}
+
+		instas := c.fetchInstances(fvn)
+		if len(instas) == 0 {
+			instas = []string{fvns}
+		}
+		return &ast.AssertVar{
+			Token:        e.Token,
+			InferredType: e.InferredType,
+			Instances:    instas,
+		}
+	case *ast.ParameterCall:
+		id := e.Value
+		pos := e.Position()
+		fvn := c.getFullVariableName(id)
+		fvns := c.getVariableName(fvn)
+
+		if !c.isVarSetAssert(fvn) {
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
+		}
+
+		instas := c.fetchInstances(fvn)
+		return &ast.AssertVar{
+			Token:        e.Token,
+			InferredType: e.InferredType,
+			Instances:    instas,
+		}
+
+	case *ast.AssertVar:
+		return e
+	case *ast.IntegerLiteral:
+		return e
+	case *ast.FloatLiteral:
+		return e
+	case *ast.Boolean:
+		return e
+	case *ast.StringLiteral:
+		return e
+	case *ast.Natural:
+		return e
+	case *ast.Uncertain:
+		return e
+	case *ast.PrefixExpression:
+		e.Right = c.convertAssertVariables(e.Right)
+		return e
+	case *ast.Nil:
+		return e
+	case *ast.IndexExpression:
+		e.Left = c.convertAssertVariables(e.Left)
+		return e //This needs more work
+	default:
+		pos := e.Position()
+		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
 	}
 }
 
@@ -742,6 +970,124 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 	pointer := c.specGlobals[name]
 	load := c.contextBlock.NewLoad(irtypes.Double, pointer)
 	return load
+}
+
+func (c *Compiler) fetchInstances(ident []string) []string {
+	var insta []string
+	id, _ := c.GetSpec(ident)
+	for k, v := range c.instanceChildren {
+		if v == id[1] {
+			insta = append(insta, k)
+		}
+	}
+	return insta
+}
+
+func negate(e ast.Expression) ast.Expression {
+	//Negate the expression so that the solver attempts to disprove it
+	switch n := e.(type) {
+	case *ast.InfixExpression:
+		op, ok := OP_NEGATE[n.Operator]
+		if ok {
+			//pos := n.Position()
+			//panic(fmt.Sprintf("operator %s not valid from an assertion. line: %d, col: %d", n.Operator, pos[0], pos[1]))
+			n.Operator = op
+		}
+		n.Left = negate(n.Left)
+		n.Right = negate(n.Right)
+
+		node := evaluate(n) // If Int/Float, evaluate and return the value
+		return node
+	case *ast.Boolean:
+		if n.Value {
+			n.Value = false
+		} else {
+			n.Value = true
+		}
+		return n
+	case *ast.PrefixExpression:
+		return negate(n.Right)
+	}
+	return e
+}
+
+func evaluate(n *ast.InfixExpression) ast.Expression {
+	if util.IsCompare(n.Operator) {
+		return n
+	}
+	f1, ok := n.Left.(*ast.FloatLiteral)
+	i1, ok := n.Left.(*ast.IntegerLiteral)
+
+	if !ok {
+		return n
+	}
+
+	f2, ok := n.Right.(*ast.FloatLiteral)
+	i2, ok := n.Right.(*ast.IntegerLiteral)
+
+	if !ok {
+		return n
+	}
+
+	if f1 != nil {
+		if f2 != nil {
+			v := evalFloat(f1.Value, f2.Value, n.Operator)
+			return &ast.FloatLiteral{
+				Token: n.Token,
+				Value: v,
+			}
+		} else {
+			v := evalFloat(f1.Value, float64(i2.Value), n.Operator)
+			return &ast.FloatLiteral{
+				Token: n.Token,
+				Value: v,
+			}
+		}
+	} else {
+		if f2 != nil {
+			v := evalFloat(float64(i1.Value), f2.Value, n.Operator)
+			return &ast.FloatLiteral{
+				Token: n.Token,
+				Value: v,
+			}
+		} else {
+			v := evalInt(i1.Value, i2.Value, n.Operator)
+			return &ast.IntegerLiteral{
+				Token: n.Token,
+				Value: v,
+			}
+		}
+	}
+}
+
+func evalFloat(f1 float64, f2 float64, op string) float64 {
+	switch op {
+	case "+":
+		return f1 + f2
+	case "-":
+		return f1 - f2
+	case "*":
+		return f1 * f2
+	case "/":
+		return f1 / f2
+	default:
+		panic(fmt.Sprintf("unsupported operator %s", op))
+	}
+}
+
+func evalInt(i1 int64, i2 int64, op string) int64 {
+	switch op {
+	case "+":
+		return i1 + i2
+	case "-":
+		return i1 - i2
+	case "*":
+		return i1 * i2
+	case "/":
+		return i1 / i2
+	default:
+		panic(fmt.Sprintf("unsupported operator %s", op))
+	}
 }
 
 type Panic string

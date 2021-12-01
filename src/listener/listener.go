@@ -22,6 +22,7 @@ type FaultListener struct {
 	currSpec string
 	skipRun  bool
 	Path     string // The location of the main spec
+	testing  bool   // bypass imports when we're running unit tests
 }
 
 func (l *FaultListener) push(n interface{}) {
@@ -117,18 +118,21 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
 
-	//Remove quotes
-	trimmedFP := fpath.Value[1 : len(fpath.Value)-1]
+	var tree *ast.Spec
+	if !l.testing {
+		//Remove quotes
+		trimmedFP := fpath.Value[1 : len(fpath.Value)-1]
 
-	//Does file exist?
-	fp := gopath.Join(l.Path, trimmedFP)
-	importFile, err := os.ReadFile(fp)
-	if err != nil {
-		panic(fmt.Sprintf("spec file %s not found\n", fpath))
+		//Does file exist?
+		fp := gopath.Join(l.Path, trimmedFP)
+		importFile, err := os.ReadFile(fp)
+		if err != nil {
+			panic(fmt.Sprintf("spec file %s not found\n", fpath))
+		}
+
+		//
+		tree = l.parseImport(string(importFile))
 	}
-
-	//
-	tree := l.parseImport(string(importFile))
 
 	// If no ident, create one from import path
 	var ident *ast.Identifier
@@ -463,7 +467,6 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 		switch right.(type) {
 		case *ast.ParameterCall: // This is an in flow a -> param
 			receiver = right.(ast.Expression)
-
 		default: // This is an outflow para -> a
 			sender = &ast.InfixExpression{
 				Token:    l.generateToken(right.(ast.Expression).Position(), "MINUS", "-"),
@@ -471,11 +474,9 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 				Operator: "-",
 				Right:    right.(ast.Expression)}
 		}
-
-		switch left.(type) {
-		case *ast.ParameterCall: // param -> a
+		if receiver == nil {
 			receiver = left.(ast.Expression)
-		default: // a -> param
+		} else {
 			sender = &ast.InfixExpression{
 				Token:    l.generateToken(right.(ast.Expression).Position(), "MINUS", "-"),
 				Left:     right.(ast.Expression),
@@ -483,14 +484,13 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 				Right:    left.(ast.Expression)}
 		}
 
-		if sender == nil || receiver == nil {
-			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+		if sender == nil {
+			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type left %T type right %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left, right))
 		}
 	} else if operator == "<-" {
 		switch right.(type) {
 		case *ast.ParameterCall: // a <- param
 			receiver = right.(ast.Expression)
-
 		default: // para <- a
 			sender = &ast.InfixExpression{
 				Token:    l.generateToken(right.(ast.Expression).Position(), "ADD", "+"),
@@ -498,19 +498,18 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 				Operator: "+",
 				Right:    right.(ast.Expression)}
 		}
-
-		switch left.(type) {
-		case *ast.ParameterCall: // param <- a
+		if receiver == nil {
 			receiver = left.(ast.Expression)
-		default: // a <- param
+		} else {
 			sender = &ast.InfixExpression{
 				Token:    l.generateToken(right.(ast.Expression).Position(), "ADD", "+"),
 				Left:     right.(ast.Expression),
 				Operator: "+",
 				Right:    left.(ast.Expression)}
 		}
-		if sender == nil || receiver == nil {
-			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left))
+
+		if sender == nil {
+			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type left %T type right %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left, right))
 		}
 	} else {
 		panic(fmt.Sprintf("Invalid operator %s in expression", operator))
@@ -654,16 +653,16 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 					Expression: t,
 				}
 				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
-			case ast.Statement:
+			case *ast.ParallelFunctions:
 				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 			case ast.Expression:
 				token2 := ast.Token{
 					Type:    "FUNCTION",
 					Literal: "FUNCTION",
-					Position: []int{v.(*parser.RunStepExprContext).GetStart().GetLine(),
-						v.(*parser.RunStepExprContext).GetStart().GetColumn(),
-						v.(*parser.RunStepExprContext).GetStop().GetLine(),
-						v.(*parser.RunStepExprContext).GetStop().GetColumn(),
+					Position: []int{v.(*parser.RunStepContext).GetStart().GetLine(),
+						v.(*parser.RunStepContext).GetStart().GetColumn(),
+						v.(*parser.RunStepContext).GetStop().GetLine(),
+						v.(*parser.RunStepContext).GetStop().GetColumn(),
 					},
 				}
 				s := &ast.ExpressionStatement{
@@ -671,8 +670,12 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 					Expression: t,
 				}
 				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+			case *ast.BlockStatement:
+				sl.Statements = append(t.Statements, sl.Statements...)
+			case *ast.ExpressionStatement:
+				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 			default:
-				panic(fmt.Sprintf("Neither statement nor expression got=%T", v))
+				panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
 			}
 		}
 		l.push(sl)
@@ -752,6 +755,32 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 		e := &ast.ParallelFunctions{
 			Token:       token,
 			Expressions: exp,
+		}
+		l.push(e)
+	}
+}
+
+func (l *FaultListener) ExitRunExpr(c *parser.RunExprContext) {
+	if !l.skipRun {
+		token := ast.Token{
+			Type:    "Code",
+			Literal: c.GetText(),
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+
+		x := l.pop()
+		exp, ok := x.(ast.Expression)
+		if !ok {
+			panic(fmt.Sprintf("top of stack is not a expression. got=%T", x))
+		}
+
+		e := &ast.ExpressionStatement{
+			Token:      token,
+			Expression: exp,
 		}
 		l.push(e)
 	}
@@ -1290,11 +1319,121 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 	}
 
 	expr := l.pop()
+	var con *ast.Invariant
+	switch e := expr.(type) {
+	default:
+		panic(fmt.Sprintf("invariant unusable. Must be expression not boolean line: %d, col: %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	case *ast.InfixExpression:
+		var comp, conj string
+		if e.Operator == "&&" || e.Operator == "||" {
+			comp = ""
+			conj = e.Operator
+		} else {
+			comp = e.Operator
+			conj = ""
+		}
+
+		con = &ast.Invariant{
+			Token:      e.Token,
+			Variable:   e.Left,
+			Comparison: comp,
+			Expression: e.Right,
+			Conjuction: conj,
+		}
+	}
+
 	l.push(&ast.AssertionStatement{
-		Token:      token,
-		Expression: expr.(ast.Expression),
+		Token:       token,
+		Constraints: con,
 	})
 }
+
+func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
+	token := ast.Token{
+		Type:    "ASSUME",
+		Literal: "assume",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	}
+
+	expr := l.pop()
+	var con *ast.Invariant
+	switch e := expr.(type) {
+	default:
+		panic(fmt.Sprintf("invariant unusable. Must be expression not boolean line: %d, col: %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	case *ast.InfixExpression:
+		var comp, conj string
+		if e.Operator == "&&" || e.Operator == "||" {
+			comp = ""
+			conj = e.Operator
+		} else {
+			comp = e.Operator
+			conj = ""
+		}
+
+		con = &ast.Invariant{
+			Token:      e.Token,
+			Variable:   e.Left,
+			Comparison: comp,
+			Expression: e.Right,
+			Conjuction: conj,
+		}
+	}
+
+	l.push(&ast.AssumptionStatement{
+		Token:       token,
+		Constraints: con,
+	})
+}
+
+// func (l *FaultListener) ExitInvariant(c *parser.InvariantContext) {
+// 	token := ast.Token{
+// 		Type:    "INVARIANT",
+// 		Literal: "invariant",
+// 		Position: []int{c.GetStart().GetLine(),
+// 			c.GetStart().GetColumn(),
+// 			c.GetStop().GetLine(),
+// 			c.GetStop().GetColumn(),
+// 		},
+// 	}
+
+// 	x := l.pop()
+// 	exp, ok := x.(ast.Expression)
+// 	if !ok {
+// 		panic(fmt.Sprintf("top of the stack is not an expression. got=%T", x))
+// 	}
+
+// 	var ident ast.Expression
+// 	y := l.pop()
+// 	switch n := y.(type) {
+// 	case *ast.Identifier:
+// 		ident = n
+// 	case *ast.ParameterCall:
+// 		ident = n
+// 	default:
+// 		panic(fmt.Sprintf("top of the stack is not an identifier. got=%T", y))
+// 	}
+
+// 	comp := c.Comparison().GetText()
+
+// 	infix := &ast.InfixExpression{
+// 		Token:    token,
+// 		Left:     ident,
+// 		Operator: comp,
+// 		Right:    exp,
+// 	}
+
+// 	l.push(&ast.Invariant{
+// 		Token:      token,
+// 		Variable:   ident,
+// 		Comparison: comp,
+// 		Expression: infix,
+// 	})
+
+// }
 
 func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	is := antlr.NewInputStream(spec)

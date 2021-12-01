@@ -14,6 +14,7 @@ lexer grammar FaultLexer;
 // Keywords
 ALL: 'all';
 ASSERT: 'assert';
+ASSUME: 'assume';
 CLOCK: 'clock';
 CONST: 'const';
 DEF: 'def';

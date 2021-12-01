@@ -28,6 +28,16 @@ declaration
     : constDecl
     | structDecl
     | assertion
+    | assumption
+    ;
+
+comparison
+    : EQUALS
+    | NOT_EQUALS
+    | LESS 
+    | LESS_OR_EQUALS
+    | GREATER
+    | GREATER_OR_EQUALS
     ;
 
 constDecl
@@ -98,7 +108,11 @@ accessHistory
     ;
 
 assertion
-    : 'assert' expression
+    : 'assert' expression eos
+    ;
+
+assumption
+    : 'assume' expression eos
     ;
 
 assignment
@@ -133,6 +147,8 @@ runBlock
 runStep
     : paramCall ('|' paramCall)? eos              #runStepExpr
     | IDENT '=' 'new' IDENT ('.' IDENT)? eos      #runInit
+    | simpleStmt eos                              #runExpr
+    | ifStmt                                      #runExpr
     ;
 
 faultType

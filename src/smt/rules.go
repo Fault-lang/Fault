@@ -22,6 +22,19 @@ func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	g.loads[id] = inst.Src
 }
 
+// func (g *Generator) trackRounds(id string, inst *ir.InstStore) {
+// 	for _, v := range inst.Metadata {
+// 		if v.Name[0:5] == "rounds-" {
+// 			i := g.ssa[id]
+// 			if g.rounds[v.Name[5:]] == nil {
+// 				g.rounds[v.Name[5:]] = map[string][]int16{id: []int16{i}}
+// 			} else {
+// 				g.rounds[v.Name[5:]][id] = append(g.rounds[v.Name[5:]][id], i)
+// 			}
+// 		}
+// 	}
+// }
+
 func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	id := g.formatIdent(inst.Dst.Ident())
 	if g.isTemp(inst.Src.Ident()) {
@@ -29,6 +42,7 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 		if val, ok := g.loads[srcId]; ok {
 			ty := g.getType(val)
 			id = g.advanceSSA(id)
+			//g.trackRounds(id, inst)
 			rules = append(rules, g.parseRule(id, g.formatValue(val), ty, ""))
 		} else if ref, ok := g.ref[srcId]; ok {
 			switch r := ref.(type) {
@@ -36,10 +50,12 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				r.x = g.tempToIdent(r.x)
 				r.y = g.tempToIdent(r.y)
 				id = g.advanceSSA(id)
+				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
 				rules = append(rules, &infix{x: wid, ty: "Real", y: r})
 			default:
 				id = g.advanceSSA(id)
+				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
 				rules = append(rules, &infix{x: wid, ty: "Real", y: r})
 			}
@@ -49,21 +65,29 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	} else {
 		ty := g.getType(inst.Src)
 		id = g.advanceSSA(id)
+		//g.trackRounds(id, inst)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
 	g.last = rules[len(rules)-1]
 	return rules
 }
 
+func (g *Generator) parallelMeta(parallelGroup string, meta ir.Metadata) string {
+	for _, v := range meta {
+		if v.Name != parallelGroup {
+			g.call = g.call + 1
+		}
+		if v.Name[0:5] != "round-" {
+			g.parallel = v.Name
+		}
+	}
+	return g.parallel
+}
+
 func (g *Generator) callRule(inst *ir.InstCall) string {
 	callee := inst.Callee.Ident()
 	meta := inst.Metadata
-	if len(meta) == 0 || g.parallel != meta[0].Name {
-		g.call = g.call + 1
-	}
-	for _, v := range meta {
-		g.parallel = v.Name
-	}
+	g.parallelMeta(g.parallel, meta)
 	g.last = nil
 	return callee
 }

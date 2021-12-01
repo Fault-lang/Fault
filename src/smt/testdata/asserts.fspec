@@ -1,0 +1,21 @@
+spec asserts;
+
+def fsample = flow{
+    target: new ssample,
+    fn: func{
+        target.value -> target.value/2;
+    },
+};
+
+def ssample = stock{
+    value: 40,
+};
+
+assert ssample.value == 40;
+assume fsample.target > 2;
+
+for 4 run {
+    test = new fsample;
+    test.fn;
+    assert test.target == 10;
+}

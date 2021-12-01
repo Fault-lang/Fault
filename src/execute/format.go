@@ -38,7 +38,7 @@ func generateRows(v Scenario) []string {
 				r = append(r, hWToString(n, i, weights))
 			} else if int(i) > len(r) {
 				for j := len(r) - 1; j < int(i)-1; j++ {
-					r = append(r, "[branch]")
+					r = append(r, "")
 				}
 				r = append(r, hWToString(n, i, weights))
 
@@ -57,7 +57,7 @@ func generateRows(v Scenario) []string {
 				r = append(r, hWToString(n, i, weights))
 			} else if int(i) > len(r) {
 				for j := len(r) - 1; j < int(i); j++ {
-					r = append(r, "[branch]")
+					r = append(r, "")
 				}
 				r = append(r, hWToString(n, i, weights))
 
@@ -74,7 +74,7 @@ func generateRows(v Scenario) []string {
 				r = append(r, hWToString(n, i, weights))
 			} else if int(i) > len(r) {
 				for j := len(r) - 1; j < int(i); j++ {
-					r = append(r, "[branch]")
+					r = append(r, "")
 				}
 				r = append(r, hWToString(n, i, weights))
 
@@ -98,24 +98,33 @@ func definePath(results map[string]Scenario, trails map[string]map[string][]stri
 	*/
 	for _, v := range trails {
 		b := selectBranch(results, v)
-		for _, id := range v[b] {
-			p := strings.Split(id, "_")
-			name := strings.Join(p[0:len(p)-1], "_")
-			i, err := strconv.ParseInt(p[len(p)-1], 0, 64)
-			if err != nil {
-				panic(err)
+		for k, br := range v {
+			if k != b {
+				results = removeBranch(results, br)
 			}
-			switch s := results[name].(type) {
-			case *FloatTrace:
-				s.Remove(i)
-				results[name] = s
-			case *IntTrace:
-				s.Remove(i)
-				results[name] = s
-			case *BoolTrace:
-				s.Remove(i)
-				results[name] = s
-			}
+		}
+	}
+	return results
+}
+
+func removeBranch(results map[string]Scenario, trail []string) map[string]Scenario {
+	for _, id := range trail {
+		p := strings.Split(id, "_")
+		name := strings.Join(p[0:len(p)-1], "_")
+		i, err := strconv.ParseInt(p[len(p)-1], 0, 64)
+		if err != nil {
+			panic(err)
+		}
+		switch s := results[name].(type) {
+		case *FloatTrace:
+			s.Remove(i)
+			results[name] = s
+		case *IntTrace:
+			s.Remove(i)
+			results[name] = s
+		case *BoolTrace:
+			s.Remove(i)
+			results[name] = s
 		}
 	}
 	return results
@@ -143,59 +152,56 @@ func endStatesBranch(trail []string) map[string]int64 {
 }
 
 func selectBranch(results map[string]Scenario, v map[string][]string) string {
-	var end int64
-	var branch string
-	t := endStatesBranch(v["true"])
-	f := endStatesBranch(v["false"])
-	//Only need to test one variable to ID the correct branch
-	for k, _ := range t {
-		if t[k] > f[k] {
-			end = t[k]
-			branch = "false" //remove false branch if end is equal to phi
-		} else {
-			end = f[k]
-			branch = "true"
+	options := make(map[string]map[string]int64)
+	for k, b := range v {
+		options[k] = endStatesBranch(b)
+	}
+
+	phis := generatePhis(options)
+
+	for k, o := range options {
+	option:
+		for k2, e := range o {
+			switch s := results[k2].(type) {
+			case *FloatTrace:
+				i1, _ := s.Index(phis[k2])
+				i2, _ := s.Index(e)
+				//fmt.Println(i1, i2)
+				if i1 != i2 {
+				//	fmt.Println("break")
+					break option
+				}
+			case *IntTrace:
+				i1, _ := s.Index(phis[k2])
+				i2, _ := s.Index(e)
+				if i1 != i2 {
+					break option
+				}
+			case *BoolTrace:
+				i1, _ := s.Index(phis[k2])
+				i2, _ := s.Index(e)
+				if i1 != i2 {
+					break option
+				}
+			}
 		}
+		return k
+	}
+	panic("could not identify the branch selected by the solver")
+}
 
-		phi := end + 1
-		switch s := results[k].(type) {
-		case *FloatTrace:
-			i1, _ := s.Index(phi)
-			i2, _ := s.Index(end)
-			if i1 == i2 {
-				return branch
-			} else {
-				if branch == "true" {
-					return "false"
-				}
+func generatePhis(o map[string]map[string]int64) map[string]int64 {
+	phis := make(map[string]int64)
+	for _, v := range o {
+		for k2, e := range v {
+			if p, ok := phis[k2]; !ok {
+				phis[k2] = e + 1
+			} else if p < e {
+				phis[k2] = e + 1
 			}
-			return "true"
-
-		case *IntTrace:
-			i1, _ := s.Index(phi)
-			i2, _ := s.Index(end)
-			if i1 == i2 {
-				return branch
-			} else {
-				if branch == "true" {
-					return "false"
-				}
-			}
-			return "true"
-		case *BoolTrace:
-			i1, _ := s.Index(phi)
-			i2, _ := s.Index(end)
-			if i1 == i2 {
-				return branch
-			} else {
-				if branch == "true" {
-					return "false"
-				}
-			}
-			return "true"
 		}
 	}
-	return ""
+	return phis
 }
 
 func hWToString(n interface{}, i int64, weights map[int64]float64) string {

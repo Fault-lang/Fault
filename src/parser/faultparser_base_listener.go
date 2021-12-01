@@ -57,6 +57,12 @@ func (s *BaseFaultParserListener) EnterDeclaration(ctx *DeclarationContext) {}
 // ExitDeclaration is called when production declaration is exited.
 func (s *BaseFaultParserListener) ExitDeclaration(ctx *DeclarationContext) {}
 
+// EnterComparison is called when production comparison is entered.
+func (s *BaseFaultParserListener) EnterComparison(ctx *ComparisonContext) {}
+
+// ExitComparison is called when production comparison is exited.
+func (s *BaseFaultParserListener) ExitComparison(ctx *ComparisonContext) {}
+
 // EnterConstDecl is called when production constDecl is entered.
 func (s *BaseFaultParserListener) EnterConstDecl(ctx *ConstDeclContext) {}
 
@@ -171,6 +177,12 @@ func (s *BaseFaultParserListener) EnterAssertion(ctx *AssertionContext) {}
 // ExitAssertion is called when production assertion is exited.
 func (s *BaseFaultParserListener) ExitAssertion(ctx *AssertionContext) {}
 
+// EnterAssumption is called when production assumption is entered.
+func (s *BaseFaultParserListener) EnterAssumption(ctx *AssumptionContext) {}
+
+// ExitAssumption is called when production assumption is exited.
+func (s *BaseFaultParserListener) ExitAssumption(ctx *AssumptionContext) {}
+
 // EnterMiscAssign is called when production MiscAssign is entered.
 func (s *BaseFaultParserListener) EnterMiscAssign(ctx *MiscAssignContext) {}
 
@@ -230,6 +242,12 @@ func (s *BaseFaultParserListener) EnterRunInit(ctx *RunInitContext) {}
 
 // ExitRunInit is called when production runInit is exited.
 func (s *BaseFaultParserListener) ExitRunInit(ctx *RunInitContext) {}
+
+// EnterRunExpr is called when production runExpr is entered.
+func (s *BaseFaultParserListener) EnterRunExpr(ctx *RunExprContext) {}
+
+// ExitRunExpr is called when production runExpr is exited.
+func (s *BaseFaultParserListener) ExitRunExpr(ctx *RunExprContext) {}
 
 // EnterFaultType is called when production faultType is entered.
 func (s *BaseFaultParserListener) EnterFaultType(ctx *FaultTypeContext) {}

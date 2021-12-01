@@ -21,8 +21,8 @@ func TestSpecDecl(t *testing.T) {
 	if spec.Statements[0].TokenLiteral() != "SPEC_DECL" {
 		t.Fatalf("spec.Statement[0] is not SPEC_DECL. got=%s", spec.Statements[0].TokenLiteral())
 	}
-	if spec.Statements[0].(*ast.SpecDeclStatement).Name.String() != "test1" {
-		t.Fatalf("Spec name is not test1. got=%s", spec.Statements[0].(*ast.SpecDeclStatement).Name.String())
+	if spec.Statements[0].(*ast.SpecDeclStatement).Name.Value != "test1" {
+		t.Fatalf("Spec name is not test1. got=%s", spec.Statements[0].(*ast.SpecDeclStatement).Name.Value)
 	}
 }
 
@@ -41,8 +41,8 @@ func TestConstDecl(t *testing.T) {
 	if spec.Statements[1].TokenLiteral() != "CONST_DECL" {
 		t.Fatalf("spec.Statement[1] is not CONST_DECL. got=%s", spec.Statements[1].TokenLiteral())
 	}
-	if spec.Statements[1].(*ast.ConstantStatement).Name.String() != "x" {
-		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.String())
+	if spec.Statements[1].(*ast.ConstantStatement).Name.Value != "x" {
+		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.Value)
 	}
 }
 
@@ -61,15 +61,15 @@ func TestConstMultiDecl(t *testing.T) {
 	if spec.Statements[1].TokenLiteral() != "CONST_DECL" {
 		t.Fatalf("spec.Statement[1] is not CONST_DECL. got=%s", spec.Statements[1].TokenLiteral())
 	}
-	if spec.Statements[1].(*ast.ConstantStatement).Name.String() != "x" {
-		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.String())
+	if spec.Statements[1].(*ast.ConstantStatement).Name.Value != "x" {
+		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.Value)
 	}
 
 	if spec.Statements[2].TokenLiteral() != "CONST_DECL" {
 		t.Fatalf("spec.Statement[2] is not CONST_DECL. got=%s", spec.Statements[2].TokenLiteral())
 	}
-	if spec.Statements[2].(*ast.ConstantStatement).Name.String() != "y" {
-		t.Fatalf("Constant identifier is not y. got=%s", spec.Statements[2].(*ast.ConstantStatement).Name.String())
+	if spec.Statements[2].(*ast.ConstantStatement).Name.Value != "y" {
+		t.Fatalf("Constant identifier is not y. got=%s", spec.Statements[2].(*ast.ConstantStatement).Name.Value)
 	}
 }
 
@@ -89,15 +89,15 @@ func TestConstMultiWExpressDecl(t *testing.T) {
 	if spec.Statements[1].TokenLiteral() != "CONST_DECL" {
 		t.Fatalf("spec.Statement[1] is not CONST_DECL. got=%s", spec.Statements[1].TokenLiteral())
 	}
-	if spec.Statements[1].(*ast.ConstantStatement).Name.String() != "x" {
-		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.String())
+	if spec.Statements[1].(*ast.ConstantStatement).Name.Value != "x" {
+		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.Value)
 	}
 
 	if spec.Statements[2].TokenLiteral() != "CONST_DECL" {
 		t.Fatalf("spec.Statement[2] is not CONST_DECL. got=%s", spec.Statements[2].TokenLiteral())
 	}
-	if spec.Statements[2].(*ast.ConstantStatement).Name.String() != "y" {
-		t.Fatalf("Constant identifier is not y. got=%s", spec.Statements[2].(*ast.ConstantStatement).Name.String())
+	if spec.Statements[2].(*ast.ConstantStatement).Name.Value != "y" {
+		t.Fatalf("Constant identifier is not y. got=%s", spec.Statements[2].(*ast.ConstantStatement).Name.Value)
 	}
 
 	_, ok := spec.Statements[2].(*ast.ConstantStatement).Value.(*ast.InfixExpression)
@@ -123,8 +123,8 @@ func TestStockDecl(t *testing.T) {
 	if spec.Statements[1].TokenLiteral() != "=" {
 		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
 	}
-	if spec.Statements[1].(*ast.DefStatement).Name.String() != "foo" {
-		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.String())
+	if spec.Statements[1].(*ast.DefStatement).Name.Value != "foo" {
+		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.Value)
 	}
 
 	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
@@ -153,8 +153,8 @@ func TestStockDeclFloat(t *testing.T) {
 	if spec.Statements[1].TokenLiteral() != "=" {
 		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
 	}
-	if spec.Statements[1].(*ast.DefStatement).Name.String() != "foo" {
-		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.String())
+	if spec.Statements[1].(*ast.DefStatement).Name.Value != "foo" {
+		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.Value)
 	}
 
 	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
@@ -183,8 +183,8 @@ func TestFlowDecl(t *testing.T) {
 	if spec.Statements[1].TokenLiteral() != "=" {
 		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
 	}
-	if spec.Statements[1].(*ast.DefStatement).Name.String() != "foo" {
-		t.Fatalf("Flow identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.String())
+	if spec.Statements[1].(*ast.DefStatement).Name.Value != "foo" {
+		t.Fatalf("Flow identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.Value)
 	}
 
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
@@ -358,8 +358,8 @@ func TestImport(t *testing.T) {
 	if !ok {
 		t.Fatalf("spec.Statement[1] is not an import statement. got=%T", spec.Statements[1])
 	}
-	if imp.Name.String() != "hello" {
-		t.Fatalf("Import name is not hello. got=%s", imp.Name.String())
+	if imp.Name.Value != "hello" {
+		t.Fatalf("Import name is not hello. got=%s", imp.Name.Value)
 	}
 
 	if imp.Path.String() != `"hello"` {
@@ -383,8 +383,8 @@ func TestImportWIdent(t *testing.T) {
 	if !ok {
 		t.Fatalf("spec.Statement[1] is not an import statement. got=%T", spec.Statements[1])
 	}
-	if imp.Name.String() != "helloWorld" {
-		t.Fatalf("Import name is not helloWorld. got=%s", imp.Name.String())
+	if imp.Name.Value != "helloWorld" {
+		t.Fatalf("Import name is not helloWorld. got=%s", imp.Name.Value)
 	}
 
 	if imp.Path.String() != `"../../hello"` {
@@ -409,8 +409,8 @@ func TestMultiImport(t *testing.T) {
 	if !ok {
 		t.Fatalf("spec.Statement[1] is not an import statement. got=%T", spec.Statements[1])
 	}
-	if imp.Name.String() != "hello" {
-		t.Fatalf("Import name is not hello. got=%s", imp.Name.String())
+	if imp.Name.Value != "hello" {
+		t.Fatalf("Import name is not hello. got=%s", imp.Name.Value)
 	}
 
 	if imp.Path.String() != `"hello"` {
@@ -421,8 +421,8 @@ func TestMultiImport(t *testing.T) {
 	if !ok {
 		t.Fatalf("spec.Statement[2] is not an import statement. got=%T", spec.Statements[2])
 	}
-	if imp2.Name.String() != "x" {
-		t.Fatalf("Import name is not x. got=%s", imp2.Name.String())
+	if imp2.Name.Value != "x" {
+		t.Fatalf("Import name is not x. got=%s", imp2.Name.Value)
 	}
 
 	if imp2.Path.String() != `"world"` {
@@ -470,14 +470,14 @@ func TestRunBlock(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
 	}
 
-	expr, ok := forSt.Body.Statements[1].(*ast.ExpressionStatement)
+	expr, ok := forSt.Body.Statements[1].(*ast.ParallelFunctions)
 	if !ok {
-		t.Fatalf("forSt.Body.Statements[1] is not an ExpressionStatement. got=%T", forSt.Body.Statements[1])
+		t.Fatalf("forSt.Body.Statements[1] is not an ParallelFunctions. got=%T", forSt.Body.Statements[1])
 	}
 
-	id, ok := expr.Expression.(*ast.ParameterCall)
+	id, ok := expr.Expressions[0].(*ast.ParameterCall)
 	if !ok {
-		t.Fatalf("expr.Expression is not an function call. got=%T", expr.Expression)
+		t.Fatalf("expr.Expression is not an function call. got=%T", expr.Expressions[0])
 	}
 
 	if id.Value[0] != "d" && id.Value[0] != "fn" {
@@ -512,8 +512,8 @@ func TestIncr(t *testing.T) {
 		t.Fatalf("infix right side is not 1. got=%s", infix.Right.String())
 	}
 
-	if infix.Left.String() != "i" {
-		t.Fatalf("infix left side is not i. got=%s", infix.Left.String())
+	if infix.Left.(*ast.Identifier).Value != "i" {
+		t.Fatalf("infix left side is not i. got=%s", infix.Left.(*ast.Identifier).Value)
 	}
 
 	if infix.Operator != "+" {
@@ -532,21 +532,16 @@ func TestAssertion(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
 	}
 
-	expr, ok := assert.Expression.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("assert.Expression is not an InfixExpression. got=%T", assert.Expression)
+	if assert.Constraints.Variable.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Variable.(*ast.Identifier).Value)
 	}
 
-	if expr.Right.String() != "y" {
-		t.Fatalf("Right side isn't equal to y. got=%s", expr.Right.String())
+	if assert.Constraints.Comparison != ">" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=x", assert.Constraints.Comparison)
 	}
 
-	if expr.Left.String() != "x" {
-		t.Fatalf("Left side isn't equal to x. got=%s", expr.Left.String())
-	}
-
-	if expr.Operator != ">" {
-		t.Fatalf("Operator isn't equal to >. got=%s", expr.Operator)
+	if assert.Constraints.Expression.String() != "y" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Expression.(*ast.Identifier).Value)
 	}
 
 }
@@ -577,11 +572,13 @@ func TestFaultAssign(t *testing.T) {
 		if !ok {
 			t.Fatalf("Function body missing InfixExpression. got=%T", s.Expression)
 		}
-		if assign.Right.String() != "fizz" {
+		if assign.Left.String() != "fizz" {
 			t.Fatalf("Left value is not fizz. got=%s", assign.Left.String())
 		}
-		if assign.Left.String() != "buzz" {
-			t.Fatalf("Right value is not buzz. got=%s", assign.Right.String())
+
+		_, ok = assign.Right.(*ast.InfixExpression)
+		if !ok {
+			t.Fatalf("Right value is not an infix. got=%T", assign.Right)
 		}
 		if assign.Operator != "<-" {
 			t.Fatalf("Operator is not <-. got=%s", assign.Operator)
@@ -625,8 +622,8 @@ func TestAccessHistory(t *testing.T) {
 		t.Fatalf("IndexExpression Left is not b[1]. got=%s", idx1.Left.String())
 	}
 
-	if idx2.Left.String() != "b" {
-		t.Fatalf("IndexExpression Left is not b. got=%s", idx2.Left.String())
+	if idx2.Left.(*ast.Identifier).Value != "b" {
+		t.Fatalf("IndexExpression Left is not b. got=%s", idx2.Left.(*ast.Identifier).Value)
 	}
 }
 
@@ -645,8 +642,8 @@ func TestAccessHistory2(t *testing.T) {
 		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Value)
 	}
 
-	if idx1.Left.String() != "b" {
-		t.Fatalf("IndexExpression Left is not b. got=%s", idx1.Left.String())
+	if idx1.Left.(*ast.Identifier).Value != "b" {
+		t.Fatalf("IndexExpression Left is not b. got=%s", idx1.Left.(*ast.Identifier).Value)
 	}
 }
 
@@ -763,7 +760,7 @@ func prepTest(test string) *ast.Spec {
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	listener := &FaultListener{}
+	listener := &FaultListener{testing: true}
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 	return listener.AST
 }

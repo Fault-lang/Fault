@@ -140,6 +140,7 @@ func prepTest(test string) (string, error) {
 		return "", err
 	}
 	generator := NewGenerator()
+	generator.rawAsserts = compiler.AssertAssume
 	//fmt.Println(compiler.GetIR())
 	generator.Run(compiler.GetIR())
 	return generator.SMT(), nil

@@ -4,37 +4,27 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/llir/llvm/ir"
 )
 
 func (g *Generator) runParallel(perm [][]string, vars map[string]string) {
-	var waitGroup sync.WaitGroup
-	r := make(chan [][]rule, len(perm))
-	waitGroup.Add(len(perm))
+	g.branchId = g.branchId + 1
+	branch := fmt.Sprint("branch_", g.branchId)
 
-	go func() {
-		waitGroup.Wait()
-		close(r)
-	}()
-	for _, p := range perm {
-		go func(calls []string) {
-			defer waitGroup.Done()
-			var opts [][]rule
-			startVars := make(map[string]string)
-			for k, v := range vars {
-				startVars[k] = v
-			}
-			for _, c := range calls {
-				v := g.functions[c]
-				raw := g.parseFunction(v, startVars)
-				opts = append(opts, raw)
-			}
-			r <- opts
-		}(p)
-	}
-	for opts := range r {
+	for i, calls := range perm {
+		branchBlock := fmt.Sprint("option_", i)
+		var opts [][]rule
+		startVars := make(map[string]string)
+		for k, v := range vars {
+			startVars[k] = v
+		}
+		for _, c := range calls {
+			v := g.functions[c]
+			raw := g.parseFunction(v, startVars)
+			raw = g.tagRules(raw, branch, branchBlock)
+			opts = append(opts, raw)
+		}
 		raw := g.parallelRules(opts)
 		for _, v := range raw {
 			g.rules = append(g.rules, g.writeRule(v))

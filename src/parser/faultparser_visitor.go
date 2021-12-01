@@ -26,6 +26,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#declaration.
 	VisitDeclaration(ctx *DeclarationContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#comparison.
+	VisitComparison(ctx *ComparisonContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#constDecl.
 	VisitConstDecl(ctx *ConstDeclContext) interface{}
 
@@ -83,6 +86,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#assertion.
 	VisitAssertion(ctx *AssertionContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#assumption.
+	VisitAssumption(ctx *AssumptionContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#MiscAssign.
 	VisitMiscAssign(ctx *MiscAssignContext) interface{}
 
@@ -112,6 +118,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#runInit.
 	VisitRunInit(ctx *RunInitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runExpr.
+	VisitRunExpr(ctx *RunExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}

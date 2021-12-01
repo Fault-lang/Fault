@@ -32,6 +32,10 @@ func (v *BaseFaultParserVisitor) VisitDeclaration(ctx *DeclarationContext) inter
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitComparison(ctx *ComparisonContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitConstDecl(ctx *ConstDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -108,6 +112,10 @@ func (v *BaseFaultParserVisitor) VisitAssertion(ctx *AssertionContext) interface
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitAssumption(ctx *AssumptionContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitMiscAssign(ctx *MiscAssignContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -145,6 +153,10 @@ func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) inter
 }
 
 func (v *BaseFaultParserVisitor) VisitRunInit(ctx *RunInitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunExpr(ctx *RunExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

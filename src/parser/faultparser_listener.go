@@ -26,6 +26,9 @@ type FaultParserListener interface {
 	// EnterDeclaration is called when entering the declaration production.
 	EnterDeclaration(c *DeclarationContext)
 
+	// EnterComparison is called when entering the comparison production.
+	EnterComparison(c *ComparisonContext)
+
 	// EnterConstDecl is called when entering the constDecl production.
 	EnterConstDecl(c *ConstDeclContext)
 
@@ -83,6 +86,9 @@ type FaultParserListener interface {
 	// EnterAssertion is called when entering the assertion production.
 	EnterAssertion(c *AssertionContext)
 
+	// EnterAssumption is called when entering the assumption production.
+	EnterAssumption(c *AssumptionContext)
+
 	// EnterMiscAssign is called when entering the MiscAssign production.
 	EnterMiscAssign(c *MiscAssignContext)
 
@@ -112,6 +118,9 @@ type FaultParserListener interface {
 
 	// EnterRunInit is called when entering the runInit production.
 	EnterRunInit(c *RunInitContext)
+
+	// EnterRunExpr is called when entering the runExpr production.
+	EnterRunExpr(c *RunExprContext)
 
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
@@ -188,6 +197,9 @@ type FaultParserListener interface {
 	// ExitDeclaration is called when exiting the declaration production.
 	ExitDeclaration(c *DeclarationContext)
 
+	// ExitComparison is called when exiting the comparison production.
+	ExitComparison(c *ComparisonContext)
+
 	// ExitConstDecl is called when exiting the constDecl production.
 	ExitConstDecl(c *ConstDeclContext)
 
@@ -245,6 +257,9 @@ type FaultParserListener interface {
 	// ExitAssertion is called when exiting the assertion production.
 	ExitAssertion(c *AssertionContext)
 
+	// ExitAssumption is called when exiting the assumption production.
+	ExitAssumption(c *AssumptionContext)
+
 	// ExitMiscAssign is called when exiting the MiscAssign production.
 	ExitMiscAssign(c *MiscAssignContext)
 
@@ -274,6 +289,9 @@ type FaultParserListener interface {
 
 	// ExitRunInit is called when exiting the runInit production.
 	ExitRunInit(c *RunInitContext)
+
+	// ExitRunExpr is called when exiting the runExpr production.
+	ExitRunExpr(c *RunExprContext)
 
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)

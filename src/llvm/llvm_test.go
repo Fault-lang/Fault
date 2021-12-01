@@ -1,6 +1,7 @@
 package llvm
 
 import (
+	"fault/ast"
 	"fault/listener"
 	"fault/parser"
 	"fault/types"
@@ -302,6 +303,32 @@ func TestIfCond(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf(err.Error())
+	}
+}
+
+func TestNegate(t *testing.T) {
+	test := &ast.InfixExpression{
+		Left: &ast.Identifier{
+			Value: "foo",
+		},
+		Right: &ast.FloatLiteral{
+			Value: 2.5,
+		},
+		Operator: "==",
+	}
+
+	n := negate(test)
+
+	if n.(*ast.InfixExpression).Operator != "!=" {
+		t.Fatalf("operator has not been negated got=%s", n.(*ast.InfixExpression).Operator)
+	}
+
+	if n.(*ast.InfixExpression).Left.(*ast.Identifier).Value != "foo" {
+		t.Fatalf("infix expression corrupted. Left value changed.")
+	}
+
+	if n.(*ast.InfixExpression).Right.(*ast.FloatLiteral).Value != 2.5 {
+		t.Fatalf("infix expression corrupted. Right value changed.")
 	}
 }
 

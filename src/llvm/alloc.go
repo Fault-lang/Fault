@@ -11,7 +11,8 @@ import (
 )
 
 func (c *Compiler) getFullVariableName(id []string) []string {
-	if c.currScope != "" && c.contextFuncName != "__run" {
+	if c.currScope != "" && c.contextFuncName != "__run" &&
+		c.currScope != c.contextFuncName {
 		return append([]string{c.currScope}, id...)
 	} else {
 		return id
@@ -89,6 +90,17 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	default:
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
 	}
+
+	//Add round metadata
+	/*round := &metadata.Attachment{
+		Name: fmt.Sprintf("round-%d", c.runRound),
+		Node: &metadata.DIBasicType{
+			MetadataID: -1,
+			Tag:        enum.DwarfTagStringType,
+		}}
+	store.Metadata = append(store.Metadata, round)*/
+
+	//Other metadata
 	if c.contextMetadata != nil {
 		store.Metadata = append(store.Metadata, c.contextMetadata)
 	}

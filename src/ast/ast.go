@@ -189,8 +189,8 @@ func (ds *DefStatement) String() string {
 }
 
 type AssertionStatement struct {
-	Token      Token
-	Expression Expression
+	Token       Token
+	Constraints *Invariant
 }
 
 func (as *AssertionStatement) statementNode()       {}
@@ -200,7 +200,52 @@ func (as *AssertionStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(as.TokenLiteral() + " ")
-	out.WriteString(as.Expression.String())
+	out.WriteString(as.Constraints.Variable.String())
+	out.WriteString(as.Constraints.Comparison)
+	out.WriteString(as.Constraints.Expression.String())
+	out.WriteString(";")
+	return out.String()
+}
+
+type AssumptionStatement struct {
+	Token       Token
+	Constraints *Invariant
+}
+
+func (as *AssumptionStatement) statementNode()       {}
+func (as *AssumptionStatement) TokenLiteral() string { return as.Token.Literal }
+func (as *AssumptionStatement) Position() []int      { return as.Token.Position }
+func (as *AssumptionStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(as.TokenLiteral() + " ")
+	out.WriteString(as.Constraints.Variable.String())
+	out.WriteString(as.Constraints.Comparison)
+	out.WriteString(as.Constraints.Expression.String())
+	out.WriteString(";")
+	return out.String()
+}
+
+type Invariant struct {
+	Token        Token
+	Variable     Expression
+	Comparison   string
+	Expression   Expression
+	Conjuction   string
+	InferredType *Type
+}
+
+func (i *Invariant) expressionNode()      {}
+func (i *Invariant) TokenLiteral() string { return i.Token.Literal }
+func (i *Invariant) Position() []int      { return i.Token.Position }
+func (i *Invariant) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(i.TokenLiteral() + "assert ")
+	out.WriteString(i.Variable.String())
+	out.WriteString(i.Conjuction)
+	out.WriteString(i.Expression.String())
+
 	out.WriteString(";")
 	return out.String()
 }
@@ -235,7 +280,7 @@ type Identifier struct {
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) Position() []int      { return i.Token.Position }
-func (i *Identifier) String() string       { return fmt.Sprint(i.Spec, " ", i.Value) }
+func (i *Identifier) String() string       { return i.Value }
 
 type ParameterCall struct {
 	Token        Token
@@ -255,6 +300,18 @@ func (p *ParameterCall) String() string {
 
 	return out.String()
 }
+
+type AssertVar struct {
+	Token        Token
+	InferredType *Type
+	Spec         string
+	Instances    []string
+}
+
+func (av *AssertVar) expressionNode()      {}
+func (av *AssertVar) TokenLiteral() string { return av.Token.Literal }
+func (av *AssertVar) Position() []int      { return av.Token.Position }
+func (av *AssertVar) String() string       { return strings.Join(av.Instances, " ") }
 
 type Instance struct {
 	Token        Token
@@ -312,7 +369,7 @@ type FloatLiteral struct {
 func (fl *FloatLiteral) expressionNode()      {}
 func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FloatLiteral) Position() []int      { return fl.Token.Position }
-func (fl *FloatLiteral) String() string       { return fl.Token.Literal }
+func (fl *FloatLiteral) String() string       { return fmt.Sprint(fl.Value) }
 
 type Natural struct {
 	Token        Token

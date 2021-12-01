@@ -8,6 +8,7 @@ import (
 var blockIndex uint64
 var parallelIndex uint64
 var anonFuncIndex uint64
+var assertIndex uint64
 
 func Block() string {
 	name := fmt.Sprintf("block-%d", blockIndex)
@@ -24,6 +25,12 @@ func ParallelGroup(group string) string {
 func AnonFunc() string {
 	name := fmt.Sprintf("fn-%d", anonFuncIndex)
 	anonFuncIndex++
+	return name
+}
+
+func Assert() string {
+	name := fmt.Sprintf("__assert-%d", assertIndex)
+	assertIndex++
 	return name
 }
 

@@ -2,7 +2,7 @@ package types
 
 import (
 	"fault/ast"
-	"fault/walker"
+	"fault/util"
 	"fmt"
 	"math"
 	"strings"
@@ -145,42 +145,44 @@ func (c *Checker) pass1(n ast.Node) error {
 	case *ast.StockLiteral:
 		node.InferredType = &ast.Type{"STOCK", 0, nil}
 		structs := c.SpecStructs[c.trail.CurrentSpec()]
-		nodes := walker.Preparse(node.Pairs)
+		nodes := util.Preparse(node.Pairs)
 		c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
 		c.scope = ""
 		return err
 	case *ast.FlowLiteral:
-		node.InferredType = &ast.Type{"FLOW", 0, nil}
+		node.InferredType = &ast.Type{Type: "FLOW",
+			Scope:      0,
+			Parameters: nil}
 		structs := c.SpecStructs[c.trail.CurrentSpec()]
-		nodes := walker.Preparse(node.Pairs)
+		nodes := util.Preparse(node.Pairs)
 		c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
 		c.scope = ""
 		return err
 	case *ast.AssertionStatement:
-		var n ast.Node
-		var valtype *ast.Type
-		if c.isValue(node.Expression) {
-			n, err = c.infer(node.Expression, make(map[string]ast.Node))
-			valtype = typeable(n)
-			if err != nil {
-				return err
-			}
-		} else {
-			n, err = c.inferFunction(node.Expression, make(map[string]ast.Node))
-			valtype = typeable(n)
-			if err != nil {
-				return err
-			}
+		n, err := c.inferFunction(node.Constraints, make(map[string]ast.Node))
+		valtype := typeable(n)
+		if err != nil {
+			return err
 		}
-
 		if valtype.Type != "BOOL" {
-			return fmt.Errorf("Assert statement not testing a Boolean expression. got=%s", valtype.Type)
+			return fmt.Errorf("assert statement not testing a Boolean expression. got=%s", valtype.Type)
+		}
+		return err
+
+	case *ast.AssumptionStatement:
+		n, err := c.inferFunction(node.Constraints, make(map[string]ast.Node))
+		valtype := typeable(n)
+		if err != nil {
+			return err
+		}
+		if valtype.Type != "BOOL" {
+			return fmt.Errorf("assume statement not testing a Boolean expression. got=%s", valtype.Type)
 		}
 		return err
 	case *ast.ForStatement:
 		return err
 	default:
-		return fmt.Errorf("Unimplemented: %T", node)
+		return fmt.Errorf("unimplemented: %T", node)
 	}
 }
 
@@ -255,12 +257,16 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Node) (ast.Node, error
 		return &ast.Type{"BOOL", 0, nil}, nil*/
 	case *ast.IntegerLiteral:
 		if node.InferredType == nil {
-			node.InferredType = &ast.Type{"INT", 1, nil}
+			node.InferredType = &ast.Type{Type: "INT",
+				Scope:      1,
+				Parameters: nil}
 		}
 		return node, nil
 	case *ast.Boolean:
 		if node.InferredType == nil {
-			node.InferredType = &ast.Type{"BOOL", 0, nil}
+			node.InferredType = &ast.Type{Type: "BOOL",
+				Scope:      0,
+				Parameters: nil}
 		}
 		return node, nil
 	case *ast.FloatLiteral:
@@ -328,19 +334,12 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 	case *ast.Identifier:
 		id = append(id, n.Value)
 	case *ast.Instance:
-		return &ast.Type{"STOCK", 0, nil}, nil
+		return &ast.Type{Type: "STOCK",
+			Scope:      0,
+			Parameters: nil}, nil
 	case *ast.ParameterCall:
 		id = n.Value
 	}
-	//var structIdent string
-
-	/* Check local vars
-	if s, ok := c.SymbolTypes[c.trail.CurrentSpec()][c.scope]; ok {
-		valtype := s.(map[string]*ast.Type)[id[0]]
-		if valtype != nil {
-			return valtype, nil
-		}
-	}*/
 
 	// Check local preparse
 	if s, ok := p[id[0]]; ok {
@@ -349,48 +348,12 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 			structIdent := ty.Value.Value
 			n, err := c.pass2(c.SpecStructs[ty.Value.Spec][structIdent][id[1]], p)
 			return typeable(n), err
-		// case *ast.FunctionLiteral:
-		// 	var ret *ast.Type
-		// 	var err error
-		// 	body := ty.Body.Statements
-		// 	for i := 0; i < len(body); i++ {
-		// 		exp := body[i].(*ast.ExpressionStatement).Expression
-		// 		ret, err = c.inferFunction(exp, p)
-		// 		if err != nil {
-		// 			panic(err)
-		// 		}
-		// 	}
-		// 	return ret, err
 
 		default:
 			n, err := c.pass2(s, p)
 			return typeable(n), err
 		}
 
-		// switch ty := s.(type) {
-		// case *ast.Instance:
-		// 	structIdent = ty.Value.Value
-		// case *ast.ParameterCall:
-		// 	structIdent = ty.Value[0]
-		// case *ast.FunctionLiteral:
-		// 	var ret *ast.Type
-		// 	var err error
-		// 	body := ty.Body.Statements
-		// 	for i := 0; i < len(body); i++ {
-		// 		exp := body[i].(*ast.ExpressionStatement).Expression
-		// 		ret, err = c.inferFunction(exp, p)
-		// 		if err != nil {
-		// 			panic(err)
-		// 		}
-		// 	}
-		// 	return ret, err
-
-		// default:
-		// 	if c.isValue(p[id[0]]) {
-		// 		return c.infer(p[id[0]], p)
-		// 	}
-		// 	return c.inferFunction(p[id[0]].(ast.Expression), p)
-		// }
 	}
 
 	// Check global variables
@@ -404,35 +367,6 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 			return typeable(v), nil
 		}
 	}
-
-	/*
-		currSpec := c.trail.CurrentSpec()
-		if s, ok := c.SpecStructs[currSpec][structIdent]; ok {
-			switch ty := s[id[1]].(type) {
-			case *ast.Instance:
-				return &ast.Type{"STOCK", 0, nil}, nil
-			case *ast.FunctionLiteral:
-				var ret *ast.Type
-				var err error
-				body := ty.Body.Statements
-				for i := 0; i < len(body); i++ {
-					exp := body[i].(*ast.ExpressionStatement).Expression
-					ret, err = c.inferFunction(exp, p)
-					if err != nil {
-						panic(err)
-					}
-				}
-				return ret, err
-
-			default:
-				if c.isValue(s[id[1]]) {
-					return c.infer(s[id[1]], p)
-				}
-				return c.inferFunction(s[id[1]].(ast.Expression), p)
-			}
-
-		}*/
-
 	return nil, nil
 }
 
@@ -458,12 +392,16 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		return node, err
 
 	case *ast.Instance:
-		node.InferredType = &ast.Type{"STOCK", 0, nil}
+		node.InferredType = &ast.Type{Type: "STOCK",
+			Scope:      0,
+			Parameters: nil}
 		return node, err
 
 	case *ast.InfixExpression:
 		if COMPARE[node.Operator] {
-			node.InferredType = &ast.Type{"BOOL", 0, nil}
+			node.InferredType = &ast.Type{Type: "BOOL",
+				Scope:      0,
+				Parameters: nil}
 			return node, err
 		}
 
@@ -506,6 +444,49 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		node.InferredType = left
 		return node, err
 
+	case *ast.Invariant:
+		var nl, nr ast.Node
+		if c.isValue(node.Variable) {
+			nl, err = c.infer(node.Variable, p)
+		} else {
+			nl, err = c.inferFunction(node.Variable, p)
+		}
+		if err != nil {
+			return nil, err
+		}
+		left := typeable(nl)
+
+		if c.isValue(node.Expression) {
+			nr, err = c.infer(node.Expression, p)
+
+		} else {
+			nr, err = c.inferFunction(node.Expression, p)
+		}
+		if err != nil {
+			return nil, err
+		}
+		right := typeable(nr)
+
+		node.Variable = nl.(ast.Expression)
+		node.Expression = nr.(ast.Expression)
+
+		if COMPARE[node.Conjuction] && left.Type == "BOOL" && right.Type == "BOOL" {
+			node.InferredType = &ast.Type{Type: "BOOL",
+				Scope:      0,
+				Parameters: nil}
+			return node, err
+		}
+
+		if COMPARE[node.Comparison] {
+			node.InferredType = &ast.Type{Type: "BOOL",
+				Scope:      0,
+				Parameters: nil}
+			return node, err
+		}
+
+		node.InferredType = right
+		return node, err
+
 	case *ast.IfExpression:
 		var ncond ast.Node
 		var valtype *ast.Type
@@ -541,7 +522,9 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 
 	case *ast.PrefixExpression:
 		if COMPARE[node.Operator] {
-			node.InferredType = &ast.Type{"BOOL", 0, nil}
+			node.InferredType = &ast.Type{Type: "BOOL",
+				Scope:      0,
+				Parameters: nil}
 			return node, err
 		}
 		var nr ast.Node
@@ -630,6 +613,8 @@ func typeable(node ast.Node) *ast.Type {
 	case *ast.StockLiteral:
 		return n.InferredType
 	case *ast.FlowLiteral:
+		return n.InferredType
+	case *ast.Invariant:
 		return n.InferredType
 	default:
 		return nil

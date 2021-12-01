@@ -237,6 +237,27 @@ func (g *Generator) parseCompareOp(op string) string {
 	}
 }
 
+func (g *Generator) assertOperators(op string) bool {
+	switch op {
+	case ">=":
+		return true
+	case ">":
+		return true
+	case "<=":
+		return true
+	case "<":
+		return true
+	case "!=":
+		return true
+	case "=":
+		return true
+	case "==":
+		return true
+	default:
+		return false
+	}
+}
+
 func (g *Generator) parseRule(id string, val string, ty string, op string) rule {
 	wid := &wrap{value: id}
 	wval := &wrap{value: val}

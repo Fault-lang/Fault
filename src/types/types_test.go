@@ -170,7 +170,7 @@ func TestInvalidAssert(t *testing.T) {
 	_, err := prepTest(test)
 	//sym := checker.SymbolTypes
 
-	actual := "Assert statement not testing a Boolean expression. got=FLOAT"
+	actual := "assert statement not testing a Boolean expression. got=INT"
 
 	if err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
