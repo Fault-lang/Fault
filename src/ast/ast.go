@@ -318,6 +318,7 @@ type Instance struct {
 	InferredType *Type
 	Value        *Identifier
 	Name         string
+	Complex      bool //If stock does this stock contain another stock?
 }
 
 func (i *Instance) expressionNode()      {}
@@ -550,6 +551,7 @@ type IfExpression struct {
 	Condition    Expression
 	Consequence  *BlockStatement
 	Alternative  *BlockStatement
+	Elif         *IfExpression
 }
 
 func (ie *IfExpression) expressionNode()      {}
@@ -562,6 +564,11 @@ func (ie *IfExpression) String() string {
 	out.WriteString(ie.Condition.String())
 	out.WriteString(" ")
 	out.WriteString(ie.Consequence.String())
+
+	if ie.Elif != nil {
+		out.WriteString("else if")
+		out.WriteString(ie.Elif.String())
+	}
 
 	if ie.Alternative != nil {
 		out.WriteString("else ")

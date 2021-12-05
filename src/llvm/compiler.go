@@ -110,6 +110,11 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 			)
 		}
 	}()
+	c.processSpec(root, false)
+	return
+}
+
+func (c *Compiler) processSpec(root ast.Node, isImport bool) []ast.Statement {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
@@ -123,16 +128,67 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 	c.currentSpec = NewCompiledSpec(name)
 	c.currentSpecName = name
 	c.specs[c.currentSpecName] = c.currentSpec
-
 	for _, fileNode := range specfile.Statements {
 		c.compile(fileNode)
 	}
 
-	for _, assert := range c.AssertAssume {
-		c.AssertAssume = c.AssertAssume[1:] //Pop
-		c.compileAssert(assert)
+	if !isImport {
+		for _, assert := range c.AssertAssume {
+			c.AssertAssume = c.AssertAssume[1:] //Pop
+			c.compileAssert(assert)
+		}
 	}
-	return
+	return c.AssertAssume
+}
+
+func (c *Compiler) compile(node ast.Node) {
+	switch v := node.(type) {
+	case *ast.SpecDeclStatement:
+		break
+	case *ast.ImportStatement:
+		parent := c.currentSpecName
+		parentSp := c.currentSpec
+		asserts := c.processSpec(v.Tree, true) //Move all asserts to the end of the compilation process
+		c.AssertAssume = append(c.AssertAssume, asserts...)
+		c.currentSpecName = parent
+		c.currentSpec = parentSp
+	case *ast.ConstantStatement:
+		c.compileConstant(v)
+	case *ast.DefStatement:
+		c.compileStruct(v)
+
+	case *ast.FunctionLiteral:
+
+	case *ast.InfixExpression:
+		c.compileInfix(v)
+
+	case *ast.PrefixExpression:
+
+	case *ast.AssumptionStatement:
+		// Need to do these after the run block so we move them
+		c.AssertAssume = append(c.AssertAssume, v)
+
+	case *ast.AssertionStatement:
+		c.AssertAssume = append(c.AssertAssume, v)
+		//c.compileAssertion(v)
+
+	case *ast.ForStatement:
+		c.contextFuncName = "__run"
+		for i := int64(0); i < v.Rounds.Value; i++ {
+			c.compileBlock(v.Body)
+			c.runRound = c.runRound + 1
+		}
+		c.contextFuncName = ""
+	default:
+		pos := node.Position()
+		panic(fmt.Sprintf("node type %T unimplemented line: %d col: %d", v, pos[0], pos[1]))
+	}
+
+	// InitExpression
+	// IfExpression
+	// InstanceExpression
+	// IndexExpression <-- Is this still used?
+
 }
 
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
@@ -386,58 +442,6 @@ func (c *Compiler) addGlobal() {
 	c.contextBlock = mainBlock
 }
 
-func (c *Compiler) compile(node ast.Node) {
-	switch v := node.(type) {
-	case *ast.SpecDeclStatement:
-		break
-	case *ast.ImportStatement:
-		parent := c.currentSpecName
-		parentSp := c.currentSpec
-		err := c.Compile(v.Tree)
-		if err != nil {
-			panic(err)
-		}
-		c.currentSpecName = parent
-		c.currentSpec = parentSp
-	case *ast.ConstantStatement:
-		c.compileConstant(v)
-	case *ast.DefStatement:
-		c.compileStruct(v)
-
-	case *ast.FunctionLiteral:
-
-	case *ast.InfixExpression:
-		c.compileInfix(v)
-
-	case *ast.PrefixExpression:
-
-	case *ast.AssumptionStatement:
-		// Need to do these after the run block so we move them
-		c.AssertAssume = append(c.AssertAssume, v)
-
-	case *ast.AssertionStatement:
-		c.AssertAssume = append(c.AssertAssume, v)
-		//c.compileAssertion(v)
-
-	case *ast.ForStatement:
-		c.contextFuncName = "__run"
-		for i := int64(0); i < v.Rounds.Value; i++ {
-			c.compileBlock(v.Body)
-			c.runRound = c.runRound + 1
-		}
-		c.contextFuncName = ""
-	default:
-		pos := node.Position()
-		panic(fmt.Sprintf("node type %T unimplemented line: %d col: %d", v, pos[0], pos[1]))
-	}
-
-	// InitExpression
-	// IfExpression
-	// InstanceExpression
-	// IndexExpression <-- Is this still used?
-
-}
-
 func (c *Compiler) compileStruct(def *ast.DefStatement) {
 	//Not implemented, using preparse from type checker
 }
@@ -592,7 +596,13 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		id := c.getFullVariableName([]string{instName, k})
 		switch pv := c.specStructs[base.Value.Spec][structName][k].(type) {
 		case *ast.Instance:
-			c.compileInstance(pv, k) // Copy instance data over
+			switch len(id) {
+			case 3:
+				// Slightly hacky solution to nestled instances
+				c.compileInstance(pv, strings.Join(id[1:], "_"))
+			default:
+				c.compileInstance(pv, k) // Copy instance data over
+			}
 		case *ast.FunctionLiteral:
 			c.compileFunction(pv)
 		case *ast.InfixExpression:
@@ -850,12 +860,16 @@ func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*
 	for _, k := range keys {
 		switch n := data[k].(type) {
 		case *ast.Instance:
-			ip := c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
+			var ip []*ir.Param
+			if n.Complex {
+				ip = c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], append(id, k))
+			} else {
+				ip = c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
+			}
 			p = append(p, ip...)
 		default:
 			if !c.isFunction(n) {
 				pid := append(id, k)
-				//name := c.getVariableStateName(c.getFullVariableName(pid))
 				name := c.getVariableName(c.getFullVariableName(pid))
 				p = append(p, ir.NewParam(name, DoubleP))
 			}

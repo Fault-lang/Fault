@@ -359,6 +359,8 @@ func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
 		l.push(v)
 	case *ast.Identifier:
 		l.push(v)
+	case *ast.ParameterCall:
+		l.push(v)
 	default:
 		panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), f))
 	}
@@ -916,9 +918,20 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 		},
 	}
 	var a *ast.BlockStatement
+	var b *ast.IfExpression
 	if len(c.GetChildren()) > 3 {
 		ra := l.pop()
-		a = ra.(*ast.BlockStatement)
+		switch x := ra.(type) {
+		case *ast.BlockStatement:
+			a = x
+			b = nil
+		case *ast.IfExpression:
+			a = &ast.BlockStatement{}
+			b = &ast.IfExpression{}
+		default:
+			panic(fmt.Sprintf("improper type in conditional got=%T", ra))
+		}
+
 	} else {
 		a = &ast.BlockStatement{}
 	}
@@ -930,6 +943,7 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 		Condition:   cond.(ast.Expression),
 		Consequence: csq.(*ast.BlockStatement),
 		Alternative: a,
+		Elif:        b,
 	}
 
 	l.push(e)
@@ -980,26 +994,6 @@ func (l *FaultListener) ExitOpName(c *parser.OpNameContext) {
 	},
 	)
 }
-
-/*func (l *FaultListener) ExitOpParam(c *parser.OpParamContext) {
-	token := ast.Token{
-		Type:    "IDENT",
-		Literal: "IDENT",
-		Position: []int{c.GetStart().GetLine(),
-			c.GetStart().GetColumn(),
-			c.GetStop().GetLine(),
-			c.GetStop().GetColumn(),
-		},
-	}
-	v := c.GetText()
-	param := strings.Split(v, ".")
-
-	l.push(&ast.ParameterCall{
-		Token: token,
-		Value: param,
-	},
-	)
-}*/
 
 func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 	token := ast.Token{
@@ -1388,52 +1382,6 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 		Constraints: con,
 	})
 }
-
-// func (l *FaultListener) ExitInvariant(c *parser.InvariantContext) {
-// 	token := ast.Token{
-// 		Type:    "INVARIANT",
-// 		Literal: "invariant",
-// 		Position: []int{c.GetStart().GetLine(),
-// 			c.GetStart().GetColumn(),
-// 			c.GetStop().GetLine(),
-// 			c.GetStop().GetColumn(),
-// 		},
-// 	}
-
-// 	x := l.pop()
-// 	exp, ok := x.(ast.Expression)
-// 	if !ok {
-// 		panic(fmt.Sprintf("top of the stack is not an expression. got=%T", x))
-// 	}
-
-// 	var ident ast.Expression
-// 	y := l.pop()
-// 	switch n := y.(type) {
-// 	case *ast.Identifier:
-// 		ident = n
-// 	case *ast.ParameterCall:
-// 		ident = n
-// 	default:
-// 		panic(fmt.Sprintf("top of the stack is not an identifier. got=%T", y))
-// 	}
-
-// 	comp := c.Comparison().GetText()
-
-// 	infix := &ast.InfixExpression{
-// 		Token:    token,
-// 		Left:     ident,
-// 		Operator: comp,
-// 		Right:    exp,
-// 	}
-
-// 	l.push(&ast.Invariant{
-// 		Token:      token,
-// 		Variable:   ident,
-// 		Comparison: comp,
-// 		Expression: infix,
-// 	})
-
-// }
 
 func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	is := antlr.NewInputStream(spec)

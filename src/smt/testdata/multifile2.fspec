@@ -1,0 +1,15 @@
+spec multifile2;
+
+def vm = stock{
+    memory: 50,
+    cpu: 40,
+};
+
+def pool =  stock{
+    vm1: new vm,
+    vm2: new vm,
+    vm3: new vm,
+};
+
+assert vm.memory > 10;
+assert vm.cpu > 0;

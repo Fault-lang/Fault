@@ -341,14 +341,27 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 		id = n.Value
 	}
 
+	//Is this imported from another spec?
+	if spec, ok := c.SpecStructs[id[0]]; ok {
+		if len(id) == 3 {
+			n, err := c.pass2(spec[id[1]][id[2]], p)
+			return typeable(n), err
+		}
+	}
+
 	// Check local preparse
 	if s, ok := p[id[0]]; ok {
 		switch ty := s.(type) {
 		case *ast.Instance:
 			structIdent := ty.Value.Value
-			n, err := c.pass2(c.SpecStructs[ty.Value.Spec][structIdent][id[1]], p)
-			return typeable(n), err
-
+			if len(id) > 2 {
+				base := c.SpecStructs[ty.Value.Spec][structIdent][id[1]]
+				n, err := c.complexInstances(base, id, p)
+				return typeable(n), err
+			} else {
+				n, err := c.pass2(c.SpecStructs[ty.Value.Spec][structIdent][id[1]], p)
+				return typeable(n), err
+			}
 		default:
 			n, err := c.pass2(s, p)
 			return typeable(n), err
@@ -368,6 +381,23 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 		}
 	}
 	return nil, nil
+}
+
+func (c *Checker) complexInstances(base ast.Node, id []string, p map[string]ast.Node) (ast.Node, error) {
+	b, ok := base.(*ast.Instance)
+	if !ok {
+		return c.pass2(base, p)
+	}
+	switch len(id) {
+	case 1: //Do nothing, keep id as is
+	case 2:
+		b.Complex = false
+		id = id[1:]
+	default:
+		b.Complex = true
+		id = id[2:]
+	}
+	return c.complexInstances(c.SpecStructs[b.Value.Spec][b.Value.Value][id[0]], id, p)
 }
 
 func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Expression, error) {
@@ -536,8 +566,10 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		}
 		node.InferredType = typeable(nr)
 		return node, err
+	default:
+		pos := node.(ast.Node).Position()
+		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
 	}
-	return nil, err
 }
 
 func (c *Checker) inferScope(fl float64) int64 {

@@ -207,7 +207,6 @@ func TestRunBlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
-
 	ir, err := validateIR(llvm)
 
 	if err != nil {

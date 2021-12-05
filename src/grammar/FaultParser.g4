@@ -5,7 +5,7 @@ options {
 }
 
 spec
-    : specClause importDecl? declaration* forStmt? eos
+    : specClause importDecl* declaration* forStmt? eos
     ;
 
 specClause
@@ -137,7 +137,7 @@ rounds
     ;
 
 paramCall
-    : IDENT '.' IDENT
+    : IDENT '.' IDENT ('.' IDENT)*
     ;
 
 runBlock
@@ -145,7 +145,7 @@ runBlock
     ;
 
 runStep
-    : paramCall ('|' paramCall)? eos              #runStepExpr
+    : paramCall ('|' paramCall)* eos              #runStepExpr
     | IDENT '=' 'new' IDENT ('.' IDENT)? eos      #runInit
     | simpleStmt eos                              #runExpr
     | ifStmt                                      #runExpr
