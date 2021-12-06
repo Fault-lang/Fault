@@ -603,23 +603,6 @@ func (fl *FunctionLiteral) String() string {
 	return out.String()
 }
 
-type InstanceExpression struct {
-	Token        Token
-	InferredType *Type
-	Stock        Expression
-}
-
-func (ie *InstanceExpression) expressionNode()      {}
-func (ie *InstanceExpression) TokenLiteral() string { return ie.Token.Literal }
-func (ie *InstanceExpression) Position() []int      { return ie.Token.Position }
-func (ie *InstanceExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString("new ")
-	out.WriteString(ie.Stock.String())
-
-	return out.String()
-}
-
 type StringLiteral struct {
 	Token        Token
 	InferredType *Type

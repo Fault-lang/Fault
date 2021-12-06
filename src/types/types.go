@@ -636,8 +636,6 @@ func typeable(node ast.Node) *ast.Type {
 		return n.InferredType
 	case *ast.IfExpression:
 		return n.InferredType
-	case *ast.InstanceExpression:
-		return n.InferredType
 	case *ast.StringLiteral:
 		return n.InferredType
 	case *ast.IndexExpression:

@@ -186,7 +186,6 @@ func (c *Compiler) compile(node ast.Node) {
 
 	// InitExpression
 	// IfExpression
-	// InstanceExpression
 	// IndexExpression <-- Is this still used?
 
 }
