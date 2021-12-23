@@ -27,6 +27,16 @@ jobs:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
+      - run: 
+          name: Install z3 
+          command: |
+            wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.13/z3-4.8.13-x64-osx-10.16.zip
+            unzip z3-4.8.13-x64-osx-10.16.zip
+            rm -f z3-4.8.13-x64-osx-10.16.zip
+            cp z3-4.8.13-x64-osx-10.16.zip/bin/libz3.a /usr/local/lib
+            cp z3-4.8.13-x64-osx-10.16.zip/bin/z3 /usr/local/bin
+            cp z3-4.8.13-x64-osx-10.16.zip/include/* /usr/local/include
+            rm -rf z3-4.8.13-x64-osx-10.16.zip
       - run:
           name: Run tests
           command: |
