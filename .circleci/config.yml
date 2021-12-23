@@ -16,8 +16,8 @@ jobs:
     steps:
       - checkout
       - run:
-        name: Change Directories
-        command: cd src
+          name: Change Directories
+          command: cd src
       - restore_cache:
           keys:
             - go-mod-v4-{{ checksum "go.sum" }}
