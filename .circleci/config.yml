@@ -30,13 +30,12 @@ jobs:
       - run: 
           name: Install z3 
           command: |
-            chown -R $USER:$USER /usr/local/
             wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.13/z3-4.8.13-x64-osx-10.16.zip
             unzip z3-4.8.13-x64-osx-10.16.zip
             rm -f z3-4.8.13-x64-osx-10.16.zip
-            cp z3-4.8.13-x64-osx-10.16/bin/libz3.a /usr/local/lib
-            cp z3-4.8.13-x64-osx-10.16/bin/z3 /usr/local/bin
-            cp z3-4.8.13-x64-osx-10.16/include/* /usr/local/include
+            sudo cp z3-4.8.13-x64-osx-10.16/bin/libz3.a /usr/local/lib
+            sudo cp z3-4.8.13-x64-osx-10.16/bin/z3 /usr/local/bin
+            sudo cp z3-4.8.13-x64-osx-10.16/include/* /usr/local/include
             rm -rf z3-4.8.13-x64-osx-10.16
       - run:
           name: Run tests
