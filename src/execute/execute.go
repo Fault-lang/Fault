@@ -23,17 +23,19 @@ type ModelChecker struct {
 	Uncertains  map[string][]float64
 	mode        string
 	solver      map[string]*solvers.Solver
-	path        string
+	path        []string
 	branches    map[string][]string
 	branchTrail map[string]map[string][]string
 }
 
 func NewModelChecker(mode string) *ModelChecker {
-	p, err := filepath.Abs("./")
+	abs, err := filepath.Abs("./")
 	if err != nil {
 		panic(err)
 	}
 
+	p := filepath.SplitList(abs)
+	
 	mc := &ModelChecker{
 		mode:        mode,
 		path:        p,
@@ -59,7 +61,14 @@ func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
-	bin := filepath.Join(mc.path, mc.solver[command].Command)
+	var path []string
+	if mc.path[len(mc.path)-1] != "execute" {
+		path = append(mc.path, "execute", mc.solver[command].Command)
+	} else {
+		path = append(mc.path, mc.solver[command].Command)
+	}
+	bin := filepath.Join(path...)
+
 	cmd := exec.Command(bin,
 		mc.solver[command].Arguments...)
 
