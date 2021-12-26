@@ -7,6 +7,7 @@ import (
 	"fault/execute/solvers"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -22,13 +23,20 @@ type ModelChecker struct {
 	Uncertains  map[string][]float64
 	mode        string
 	solver      map[string]*solvers.Solver
+	path        string
 	branches    map[string][]string
 	branchTrail map[string]map[string][]string
 }
 
 func NewModelChecker(mode string) *ModelChecker {
+	p, err := filepath.Abs("./")
+	if err != nil {
+		panic(err)
+	}
+
 	mc := &ModelChecker{
 		mode:        mode,
+		path:        p,
 		branches:    make(map[string][]string),
 		branchTrail: make(map[string]map[string][]string),
 	}
@@ -51,7 +59,8 @@ func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
-	cmd := exec.Command(mc.solver[command].Command,
+	bin := filepath.Join(mc.path, mc.solver[command].Command)
+	cmd := exec.Command(bin,
 		mc.solver[command].Arguments...)
 
 	cmd.Stdin = strings.NewReader(fmt.Sprint(mc.SMT, strings.Join(actions, "\n")))

@@ -126,27 +126,27 @@ func TestFilterBranchParallels(t *testing.T) {
 	filter := definePath(test, trails)
 
 	if v, ok := filter["test_value"].(*FloatTrace).Index(3); ok {
-		t.Fatalf(fmt.Sprintf("value for test_value not removed from scenario. got=%f", v))
+		t.Fatalf(fmt.Sprintf("value for test_value third position not removed from scenario. got=%f", v))
 	}
 
 	if v, ok := filter["test_value_foo"].(*FloatTrace).Index(3); ok {
-		t.Fatalf(fmt.Sprintf("value for test_value_foo not removed from scenario. got=%f", v))
+		t.Fatalf(fmt.Sprintf("value for test_value_foo third position not removed from scenario. got=%f", v))
 	}
 
 	if v, ok := filter["test_value"].(*FloatTrace).Index(5); ok {
-		t.Fatalf(fmt.Sprintf("value for test_value not removed from scenario. got=%f", v))
+		t.Fatalf(fmt.Sprintf("value for test_value fifth position not removed from scenario. got=%f", v))
 	}
 
 	if v, ok := filter["test_value_foo"].(*FloatTrace).Index(5); ok {
-		t.Fatalf(fmt.Sprintf("value for test_value_foo not removed from scenario. got=%f", v))
+		t.Fatalf(fmt.Sprintf("value for test_value_foo fifth position not removed from scenario. got=%f", v))
 	}
 
-	if v, ok := filter["test_value"].(*FloatTrace).Index(1); !ok {
-		t.Fatalf(fmt.Sprintf("value for test_value not removed from scenario. got=%f", v))
+	if _, ok := filter["test_value"].(*FloatTrace).Index(1); !ok {
+		t.Fatalf("value for test_value was removed from scenario.")
 	}
 
-	if v, ok := filter["test_value_foo"].(*FloatTrace).Index(1); !ok {
-		t.Fatalf(fmt.Sprintf("value for test_value_foo not removed from scenario. got=%f", v))
+	if _, ok := filter["test_value_foo"].(*FloatTrace).Index(1); !ok {
+		t.Fatalf("value for test_value_foo was removed from scenario")
 	}
 
 }
