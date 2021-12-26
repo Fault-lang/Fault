@@ -6,6 +6,7 @@ import (
 	"fault/execute/parser"
 	"fault/execute/solvers"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,8 @@ type ModelChecker struct {
 	Uncertains  map[string][]float64
 	mode        string
 	solver      map[string]*solvers.Solver
-	path        []string
+	spath       string
+	lpath       []string
 	branches    map[string][]string
 	branchTrail map[string]map[string][]string
 }
@@ -34,11 +36,12 @@ func NewModelChecker(mode string) *ModelChecker {
 		panic(err)
 	}
 
-	p := filepath.SplitList(abs)
-	
+	p := strings.Split(abs, string(os.PathSeparator))
+
 	mc := &ModelChecker{
 		mode:        mode,
-		path:        p,
+		spath:       abs,
+		lpath:       p,
 		branches:    make(map[string][]string),
 		branchTrail: make(map[string]map[string][]string),
 	}
@@ -62,10 +65,10 @@ func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 	var path []string
-	if mc.path[len(mc.path)-1] != "execute" {
-		path = append(mc.path, "execute", mc.solver[command].Command)
+	if mc.lpath[len(mc.lpath)-1] != "execute" {
+		path = append([]string{}, mc.spath, "execute", mc.solver[command].Command)
 	} else {
-		path = append(mc.path, mc.solver[command].Command)
+		path = append([]string{}, mc.spath, mc.solver[command].Command)
 	}
 	bin := filepath.Join(path...)
 
