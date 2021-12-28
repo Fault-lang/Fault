@@ -1,13 +1,11 @@
 package execute
 
 import (
-	"bytes"
 	"errors"
 	"fault/execute/parser"
 	"fault/execute/solvers"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -64,28 +62,12 @@ func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
-	var path []string
-	if mc.lpath[len(mc.lpath)-1] != "execute" {
-		path = append([]string{}, mc.spath, "execute", mc.solver[command].Command)
-	} else {
-		path = append([]string{}, mc.spath, mc.solver[command].Command)
-	}
-	bin := filepath.Join(path...)
-
-	cmd := exec.Command(bin,
-		mc.solver[command].Arguments...)
-
-	cmd.Stdin = strings.NewReader(fmt.Sprint(mc.SMT, strings.Join(actions, "\n")))
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	err := cmd.Run()
-
+	model := fmt.Sprint(mc.SMT, strings.Join(actions, "\n"))
+	ret, err := mc.solver[command].Run(model)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	return strings.TrimSpace(out.String()), err
+	return strings.TrimSpace(ret), nil
 }
 
 func (mc *ModelChecker) Check() (bool, error) {
