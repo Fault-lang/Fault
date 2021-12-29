@@ -1,9 +1,10 @@
 package solvers
 
 /*
+#cgo CFLAGS: -I${SRCDIR}/z3/include
 #cgo LDFLAGS: -lstdc++ -lm
 #cgo LDFLAGS: ${SRCDIR}/z3/bin/libz3.a
-#include "z3/include/z3.h"
+#include <z3.h>
 #include <stdlib.h>
 */
 import "C"
