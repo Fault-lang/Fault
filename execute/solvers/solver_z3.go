@@ -2,7 +2,7 @@ package solvers
 
 /*
 #cgo LDFLAGS: -lstdc++ -lm
-#cgo LDFLAGS: ./execute/solvers/z3/bin/libz3.a
+#cgo LDFLAGS: ${SRCDIR}/z3/bin/libz3.a
 #include "z3/include/z3.h"
 #include <stdlib.h>
 */
