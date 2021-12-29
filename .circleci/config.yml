@@ -35,7 +35,7 @@ jobs:
           name: Run tests
           command: |
             mkdir -p /tmp/test-reports
-            go test ./execute
+            gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/fuzzer)
       - store_test_results:
           path: /tmp/test-reports
 
