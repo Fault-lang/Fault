@@ -5,6 +5,7 @@ package listener
 import (
 	"fault/ast"
 	"fault/parser"
+	"fault/util"
 	"fmt"
 	"os"
 	gopath "path"
@@ -125,6 +126,7 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 
 		//Does file exist?
 		fp := gopath.Join(l.Path, trimmedFP)
+		fp = util.Filepath(fp)
 		importFile, err := os.ReadFile(fp)
 		if err != nil {
 			panic(fmt.Sprintf("spec file %s not found\n", fpath))

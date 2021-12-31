@@ -2,8 +2,23 @@ package util
 
 import (
 	"fault/ast"
+	"os"
 	"strings"
 )
+
+func Filepath(filepath string) string {
+	if host, ok := os.LookupEnv("FAULT_HOST"); ok {
+		hostParts := strings.Split(host, "/")
+		for filepath[0:2] == ".." {
+			filepath = filepath[3:]
+			if len(hostParts) > 0 {
+				hostParts = hostParts[0 : len(hostParts)-1]
+			}
+		}
+		filepath = strings.Join(append(hostParts, filepath), "/")
+	}
+	return filepath
+}
 
 func Preparse(pairs map[ast.Expression]ast.Expression) map[string]ast.Node {
 	properties := make(map[string]ast.Node)

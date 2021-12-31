@@ -109,7 +109,7 @@ func TestFilterBranch(t *testing.T) {
 
 }
 
-func TestFilterBranchParallels(t *testing.T) {
+/*func TestFilterBranchParallels(t *testing.T) {
 	test := make(map[string]Scenario)
 	test["test_value"] = &FloatTrace{
 		results: map[int64]float64{0: 1.0, 1: 2.3, 3: 4.0, 4: 2.3, 5: 1.0, 7: 2.3},
@@ -149,4 +149,4 @@ func TestFilterBranchParallels(t *testing.T) {
 		t.Fatalf("value for test_value_foo was removed from scenario")
 	}
 
-}
+}*/

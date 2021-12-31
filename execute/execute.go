@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fault/execute/parser"
-	"fault/execute/solvers"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -19,37 +17,48 @@ import (
 // execute will calculate the odds of z3 suggested state actually
 // occurring and rerun the model.
 
+type Solver struct {
+	Command   string
+	Arguments []string
+}
+
 type ModelChecker struct {
 	SMT         string
 	Uncertains  map[string][]float64
-	mode        string
-	solver      map[string]*solvers.Solver
-	spath       string
-	lpath       []string
+	solver      map[string]*Solver
 	branches    map[string][]string
 	branchTrail map[string]map[string][]string
 }
 
 func NewModelChecker(mode string) *ModelChecker {
-	abs, err := filepath.Abs("./")
-	if err != nil {
-		panic(err)
-	}
-
-	p := strings.Split(abs, string(os.PathSeparator))
 
 	mc := &ModelChecker{
-		mode:        mode,
-		spath:       abs,
-		lpath:       p,
+		solver:      GenerateSolver(),
 		branches:    make(map[string][]string),
 		branchTrail: make(map[string]map[string][]string),
 	}
-	switch mc.mode { // Possible support for different smt solvers
-	case "z3":
-		mc.solver = solvers.Z3()
-	}
 	return mc
+}
+
+func GenerateSolver() map[string]*Solver {
+	command, _ := os.LookupEnv("SOLVERCMD")
+	if command == "" {
+		panic("No solver is loaded, missing SOLVERCMD")
+	}
+
+	args, _ := os.LookupEnv("SOLVERARG")
+	if args == "" {
+		panic("No solver is loaded, missing SOLVERARG")
+	}
+
+	s := make(map[string]*Solver)
+	s["basic_run"] = &Solver{
+		Command:   command,
+		Arguments: []string{args},
+		/*Command: "z3",
+		Arguments: []string{"-in"}*/
+	}
+	return s
 }
 
 func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64) {

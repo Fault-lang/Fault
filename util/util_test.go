@@ -1,6 +1,37 @@
 package util
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
+
+func TestFilepath(t *testing.T) {
+	var host string
+	var ok bool
+
+	if host, ok = os.LookupEnv("FAULT_HOST"); !ok {
+		host = ""
+	}
+	os.Setenv("FAULT_HOST", "/Users/test/file/system")
+	filepath1 := "../test.spec"
+	filepath1a := Filepath(filepath1)
+	if filepath1a != "/Users/test/file/test.spec" {
+		t.Fatalf("filepath not correct. want=/Users/test/file/test.spec got=%s", filepath1a)
+	}
+
+	filepath2 := "../../test.spec"
+	filepath2a := Filepath(filepath2)
+	if filepath2a != "/Users/test/test.spec" {
+		t.Fatalf("filepath not correct. want=/Users/test/test.spec got=%s", filepath2a)
+	}
+
+	filepath3 := "../../../test.spec"
+	filepath3a := Filepath(filepath3)
+	if filepath3a != "/Users/test.spec" {
+		t.Fatalf("filepath not correct. want=/Users/test.spec got=%s", filepath3a)
+	}
+	os.Setenv("FAULT_HOST", host)
+}
 
 func TestCartesian(t *testing.T) {
 	list1 := []string{"a", "b", "c"}

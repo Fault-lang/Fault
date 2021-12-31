@@ -7,6 +7,7 @@ import (
 	"fault/parser"
 	"fault/smt"
 	"fault/types"
+	"fault/util"
 	"flag"
 	"fmt"
 	"log"
@@ -78,6 +79,8 @@ func probability(smt string, uncertains map[string][]float64) (*execute.ModelChe
 }
 
 func run(filepath string, mode string, input string) {
+	filepath = util.Filepath(filepath)
+
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		log.Fatal(err)
