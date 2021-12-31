@@ -1,15 +1,11 @@
 package execute
 
-import (
-	"testing"
-)
-
-func TestSMTOk(t *testing.T) {
+/*func TestSMTOk(t *testing.T) {
 	test := `(declare-fun imports_fl3_vault_value_0 () Real)
 	(declare-fun imports_fl3_vault_value_1 () Real)
 	(declare-fun imports_fl3_vault_value_2 () Real)(assert (= imports_fl3_vault_value_0 30.0))
 	(assert (= imports_fl3_vault_value_1 (+ imports_fl3_vault_value_0 10.0)))
-	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))	
+	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))
 	`
 	model := prepTest(test, make(map[string][]float64))
 
@@ -45,7 +41,7 @@ func TestProbability(t *testing.T) {
 	(declare-fun imports_fl3_vault_value_1 () Real)
 	(declare-fun imports_fl3_vault_value_2 () Real)(assert (= imports_fl3_vault_value_0 30.0))
 	(assert (= imports_fl3_vault_value_1 (+ imports_fl3_vault_value_0 10.0)))
-	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))	
+	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))
 	`
 	uncertains := make(map[string][]float64)
 	uncertains["imports_fl3_vault_value"] = []float64{30.0, 5}
@@ -67,4 +63,4 @@ func prepTest(smt string, uncertains map[string][]float64) *ModelChecker {
 	ex := NewModelChecker("z3")
 	ex.LoadModel(smt, uncertains)
 	return ex
-}
+}*/
