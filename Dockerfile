@@ -17,4 +17,3 @@ ENV SOLVERARG=""
 RUN go build -o fcompiler .
 
 
-

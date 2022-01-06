@@ -6,11 +6,11 @@ LATEST := ${NAME}:latest
 fault-z3:
 	$(shell touch "fault.Dockerfile")
 	cat Dockerfile ./solvers/z3.Dockerfile > fault.Dockerfile
-	@docker build -t ${NAME}-z3:${TAG} --no-cache -f fault.Dockerfile .
+	@docker build -t ${NAME}-z3:${TAG} --no-cache --build-arg BUILD_VERSION=$(git describe --tags --abbrev=0) --build-arg BUILD_DATE=$(date) . -f fault.Dockerfile .
 	@docker tag ${NAME}-z3:${TAG} ${NAME}-z3:latest
-	$(shell rm "fault.Dockerfile")
+	@rm fault.Dockerfile
+	@cp fault-lang.sh /usr/local/bin/fault
 
-# docker run -v ~/:/host:ro fault-lang/fault-z3 -mode=smt -filepath=Fault/smt/testdata/bathtub2.fspec
 image:
 	@docker build -t ${IMG} .
 	@docker tag ${IMG} ${LATEST}

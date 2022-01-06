@@ -1,5 +1,8 @@
 FROM ghcr.io/z3prover/z3:ubuntu-20.04-bare-z3-sha-5a77c30
 
+ARG BUILD_DATE
+ARG BUILD_VERSION
+
 WORKDIR /fault
 
 COPY --from=0 /go/src/github.com/fault-lang/fault/fcompiler ./
@@ -11,6 +14,17 @@ apt-get install -y llvm
 ENV SOLVERCMD="z3"
 ENV SOLVERARG="-in"
 ENV FAULT_HOST="/host"
+
+# set label info
+LABEL org.opencontainers.image.vendor=""
+LABEL org.opencontainers.image.authors="Marianne Bellotti" 
+
+LABEL org.opencontainers.image.created=${BUILD_DATE} \ 
+    org.opencontainers.image.version=${BUILD_VERSION} \
+    org.opencontainers.image.licenses="MIT" \
+
+LABEL org.opencontainers.image.description="Fault using Z3Solver as its engine"
+
 
 # set entrypoint
 ENTRYPOINT [ "./fcompiler"]
