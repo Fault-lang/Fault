@@ -25,7 +25,7 @@ Help()
 Version()
 {
    # Lookup the current version of Fault
-   docker inspect fault-lang/fault-z3 --format='{{ .Id }} {{ index .Config.Labels "org.opencontainers.image.version" }}'
+   docker inspect fault-lang/fault-z3 -f='{{ index .Config.Labels "org.opencontainers.image.version" }}'
 }
 
 

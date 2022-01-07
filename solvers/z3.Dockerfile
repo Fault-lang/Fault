@@ -16,13 +16,11 @@ ENV SOLVERARG="-in"
 ENV FAULT_HOST="/host"
 
 # set label info
-LABEL org.opencontainers.image.vendor=""
+LABEL org.opencontainers.image.vendor="Fault-lang"
 LABEL org.opencontainers.image.authors="Marianne Bellotti" 
-
-LABEL org.opencontainers.image.created=${BUILD_DATE} \ 
-    org.opencontainers.image.version=${BUILD_VERSION} \
-    org.opencontainers.image.licenses="MIT" \
-
+LABEL org.opencontainers.image.created=${BUILD_DATE} 
+LABEL org.opencontainers.image.version=${BUILD_VERSION}
+LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.description="Fault using Z3Solver as its engine"
 
 
