@@ -5,7 +5,37 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  build:
+  test:
+    working_directory: ~/Fault
+    docker:
+      - image: cimg/go:1.17.5
+    steps:
+      - run:
+          name: Install LLVM
+          command: |
+            sudo apt-get update
+            sudo apt-get install llvm
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v5-{{ checksum "go.sum" }}
+      - run:
+          name: Install Dependencies
+          command: 
+            go mod download
+      - save_cache:
+          key: go-mod-v5-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod" 
+      - run:
+          name: Run tests
+          command: |
+            mkdir -p /tmp/test-reports
+            gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/fuzzer)
+      - store_test_results:
+          path: /tmp/test-reports
+  
+  mutate:
     working_directory: ~/Fault
     docker:
       - image: cimg/go:1.17.5
@@ -27,24 +57,6 @@ jobs:
           key: go-mod-v5-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
-  test:
-    working_directory: ~/Fault
-    docker:
-      - image: cimg/go:1.17.5
-    steps:  
-      - run:
-          name: Run tests
-          command: |
-            mkdir -p /tmp/test-reports
-            gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/fuzzer)
-      - store_test_results:
-          path: /tmp/test-reports
-  
-  mutate:
-    working_directory: ~/Fault
-    docker:
-      - image: cimg/go:1.17.5
-    steps:  
       - run:
           name: Install go-mutesting
           command: |
@@ -63,10 +75,8 @@ jobs:
 workflows:
   oncommit: # On commit run unit tests
     jobs:
-      - build
       - test
       
   mutations: # Scheduled pipeline, will run mutation tests once a week 
     jobs:
-      - build
       - mutate
