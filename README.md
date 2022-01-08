@@ -52,10 +52,13 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (12/30/2021)
+### Current Status (1/7/2021)
+This started with an honest attempt to set up CI/CD on Fault's repo so that other people can start contributing, but debugging the CI/CD pipeline made me realize I have cross platform capability issues :facepalm:. Tried a bunch of different things and conveniently forgot to swash my commits before merging to main. All my dirty laundry is there to study!
+
+Anyway! Long story short: Fault now has an installer and runs on Docker. It also has support for alternative SMT solvers rather than a dependency on Z3 ... at least in theory!
 
 #### Status (12/05/2021)
-
+Development of Fault kind of goes like this: I write a spec and then implement whatever features are currently missing in order to get it to run. This time I added something unexpected: support for nestled stocks (stocks of stocks). Adds a little complexity but makes the specs look so much cleaner.
 
 #### Status (12/01/2021)
 Using Go channels to compile parallel runs seemed like a clevel solution, but truthfully the problems with correctly handling SSA weren't offset by any benefits in performance. Might revist in the future as models grow more complex. For right now plain ordinary sequencial processing of all premutations works well.
