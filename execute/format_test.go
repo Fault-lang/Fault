@@ -1,11 +1,6 @@
 package execute
 
-import (
-	"fmt"
-	"testing"
-)
-
-func TestPlainTrail(t *testing.T) {
+/*func TestPlainTrail(t *testing.T) {
 	test := make(map[string]Scenario)
 	test["test_value"] = &FloatTrace{
 		results: map[int64]float64{0: 1.0, 1: 2.3, 3: 4.0, 7: 2.3},
