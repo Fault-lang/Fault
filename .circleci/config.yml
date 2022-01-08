@@ -39,6 +39,7 @@ jobs:
     working_directory: ~/Fault
     docker:
       - image: cimg/go:1.17.5
+    parallelism: 4
     steps:
       - run:
           name: Install LLVM
@@ -63,9 +64,9 @@ jobs:
             go get -t -v github.com/zimmski/go-mutesting/...
       - run:
           name: Mutate and take over the world
-          command: |
+          command: | # Don't test the fuzzer or main.go, for the time being skip execute because it needs to be rewritten
             mkdir -p /tmp/test-mutate-reports
-            go-mutesting $(go list ./... | grep -v fault/fuzzer)
+            go-mutesting $(go list ./... | grep -v fault/fuzzer | grep -v fault/execute | grep -v "^fault$" | circleci tests split)
       - store_test_results:
           path: /tmp/test-mutate-reports
 
