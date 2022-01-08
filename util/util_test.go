@@ -12,24 +12,31 @@ func TestFilepath(t *testing.T) {
 	if host, ok = os.LookupEnv("FAULT_HOST"); !ok {
 		host = ""
 	}
-	os.Setenv("FAULT_HOST", "/Users/test/file/system")
-	filepath1 := "../test.spec"
+	os.Setenv("FAULT_HOST", "/host")
+	filepath1 := "foo/test/file/system../test.spec"
 	filepath1a := Filepath(filepath1)
-	if filepath1a != "/Users/test/file/test.spec" {
-		t.Fatalf("filepath not correct. want=/Users/test/file/test.spec got=%s", filepath1a)
+	if filepath1a != "/host/foo/test/file/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/foo/test/file/test.spec got=%s", filepath1a)
 	}
 
-	filepath2 := "../../test.spec"
+	filepath2 := "foo/test/file/system../../test.spec"
 	filepath2a := Filepath(filepath2)
-	if filepath2a != "/Users/test/test.spec" {
-		t.Fatalf("filepath not correct. want=/Users/test/test.spec got=%s", filepath2a)
+	if filepath2a != "/host/foo/test/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/foo/test/test.spec got=%s", filepath2a)
 	}
 
-	filepath3 := "../../../test.spec"
+	filepath3 := "foo/test/file/system../../../test.spec"
 	filepath3a := Filepath(filepath3)
-	if filepath3a != "/Users/test.spec" {
-		t.Fatalf("filepath not correct. want=/Users/test.spec got=%s", filepath3a)
+	if filepath3a != "/host/foo/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/foo/test.spec got=%s", filepath3a)
 	}
+
+	filepath4 := "foo/test/file/system/~/test.spec"
+	filepath4a := Filepath(filepath4)
+	if filepath4a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath4a)
+	}
+
 	os.Setenv("FAULT_HOST", host)
 }
 

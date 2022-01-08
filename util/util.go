@@ -8,14 +8,31 @@ import (
 
 func Filepath(filepath string) string {
 	if host, ok := os.LookupEnv("FAULT_HOST"); ok {
-		hostParts := strings.Split(host, "/")
-		for filepath[0:2] == ".." {
-			filepath = filepath[3:]
-			if len(hostParts) > 0 {
-				hostParts = hostParts[0 : len(hostParts)-1]
+		if strings.Contains(filepath, "~") {
+			path := strings.Split(filepath, "~")
+			if string(path[1][0]) == "/" {
+				filepath = path[1][1:]
+			} else {
+				filepath = path[1]
 			}
+			return strings.Join([]string{host, filepath}, "/")
 		}
-		filepath = strings.Join(append(hostParts, filepath), "/")
+		for strings.Contains(filepath, "..") {
+			idx := strings.Index(filepath, "..")
+			path := strings.Split(filepath[0:idx], "/")
+			if path[len(path)-1] == "" { //Trailing slashes
+				path = path[0 : len(path)-1]
+			}
+			var pathstr string
+			if len(path) > 1 {
+				pathstr = strings.Join(path[0:len(path)-1], "/")
+			} else {
+				pathstr = path[0]
+			}
+			filepath = strings.Join([]string{pathstr, filepath[idx+2:]}, "")
+		}
+
+		filepath = strings.Join([]string{host, filepath}, "/")
 	}
 	return filepath
 }

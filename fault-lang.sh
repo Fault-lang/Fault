@@ -62,9 +62,9 @@ done
 
 if [ -z "$file" ]
 then
-      echo "You must specify a spec file."
+    echo "You must specify a spec file."
 else
-      filepath="${path}/${file}"
+    filepath="${path}/${file}"
 
     docker run -v $home:/host:ro fault-lang/fault-z3 -mode=$mode -filepath=$filepath -input=$input
 fi
