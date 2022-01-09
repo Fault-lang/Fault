@@ -46,6 +46,7 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install llvm
+            sudo apt-get install git
       - checkout
       - restore_cache:
           keys:
@@ -61,12 +62,16 @@ jobs:
       - run:
           name: Install go-mutesting
           command: |
-            go get -t -v github.com/zimmski/go-mutesting/...
+            git clone https://github.com/mbellotti/go-mutesting.git
+            cd go-mutesting
+            go build cmd/go-mutesting/main.go
+            chmod +x main
+            mv main /usr/local/bin/go-mutesting
       - run:
           name: Mutate and take over the world
           command: | # Don't test the fuzzer or main.go, for the time being skip execute because it needs to be rewritten
             mkdir -p /tmp/test-mutate-reports
-            go-mutesting $(go list ./... | grep -v fault/fuzzer | grep -v fault/execute | grep -v "^fault$" | circleci tests split)
+            go-mutesting $(go list ./... | grep -v fault/fuzzer | grep -v fault/execute | grep -v "^fault$" | circleci tests split) --score=.6
       - store_test_results:
           path: /tmp/test-mutate-reports
 
