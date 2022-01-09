@@ -66,7 +66,7 @@ jobs:
             cd go-mutesting
             go build cmd/go-mutesting/main.go
             chmod +x main
-            mv main /usr/local/bin/go-mutesting
+            sudo mv main /usr/local/bin/go-mutesting
       - run:
           name: Mutate and take over the world
           command: | # Don't test the fuzzer or main.go, for the time being skip execute because it needs to be rewritten
