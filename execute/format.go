@@ -168,7 +168,7 @@ func selectBranch(results map[string]Scenario, v map[string][]string) string {
 				i2, _ := s.Index(e)
 				//fmt.Println(i1, i2)
 				if i1 != i2 {
-				//	fmt.Println("break")
+					//	fmt.Println("break")
 					break option
 				}
 			case *IntTrace:
@@ -197,7 +197,8 @@ func generatePhis(o map[string]map[string]int64) map[string]int64 {
 			if p, ok := phis[k2]; !ok {
 				phis[k2] = e + 1
 			} else if p < e {
-				phis[k2] = e + 1
+				_, _, _ = phis, k2, e
+
 			}
 		}
 	}
