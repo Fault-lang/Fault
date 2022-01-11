@@ -197,7 +197,7 @@ func generatePhis(o map[string]map[string]int64) map[string]int64 {
 			if p, ok := phis[k2]; !ok {
 				phis[k2] = e + 1
 			} else if p < e {
-				_, _, _ = phis, k2, e
+				phis[k2] = e + 1
 
 			}
 		}

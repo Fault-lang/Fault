@@ -165,7 +165,8 @@ func main() {
 		case "smt":
 		case "check":
 		default:
-			_, _, _ = fmt.Printf, mode, os.Exit
+			fmt.Printf("%s is not a valid mode", mode)
+			os.Exit(1)
 		}
 	}
 
@@ -179,7 +180,7 @@ func main() {
 		case "smt2":
 		default:
 			fmt.Printf("%s is not a valid input format", input)
-			_ = os.Exit
+			os.Exit(1)
 		}
 	}
 

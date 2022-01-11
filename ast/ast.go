@@ -178,7 +178,7 @@ func (ds *DefStatement) String() string {
 
 	out.WriteString(ds.TokenLiteral() + " ")
 	out.WriteString(ds.Name.String())
-	_ = out.WriteString
+	out.WriteString(" = ")
 
 	if ds.Value != nil {
 		out.WriteString(ds.Value.String())
