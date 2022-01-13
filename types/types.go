@@ -552,20 +552,23 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		return node, err
 
 	case *ast.PrefixExpression:
+		var nr ast.Node
+		if c.isValue(node.Right) {
+			nr, err = c.infer(node.Right, p)
+			node.Right = nr.(ast.Expression)
+
+		} else {
+			node.Right, err = c.inferFunction(node.Right, p)
+		}
+
 		if COMPARE[node.Operator] {
 			node.InferredType = &ast.Type{Type: "BOOL",
 				Scope:      0,
 				Parameters: nil}
 			return node, err
 		}
-		var nr ast.Node
-		if c.isValue(node.Right) {
-			nr, err = c.infer(node.Right, p)
 
-		} else {
-			nr, err = c.inferFunction(node.Right, p)
-		}
-		node.InferredType = typeable(nr)
+		node.InferredType = typeable(node.Right)
 		return node, err
 	default:
 		pos := node.(ast.Node).Position()

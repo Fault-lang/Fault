@@ -360,6 +360,8 @@ func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
 		l.push(v)
 	case *ast.ParameterCall:
 		l.push(v)
+	case *ast.PrefixExpression:
+		l.push(v)
 	default:
 		panic(fmt.Sprintf("top of stack not an identifier: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), f))
 	}
@@ -1136,6 +1138,23 @@ func (l *FaultListener) ExitNegative(c *parser.NegativeContext) {
 		i.Value = -i.Value
 
 		l.push(i)
+	case *ast.Identifier:
+		token = ast.Token{
+			Type:    "IDENT",
+			Literal: "IDENT",
+			Position: []int{c.GetStart().GetLine(),
+				c.GetStart().GetColumn(),
+				c.GetStop().GetLine(),
+				c.GetStop().GetColumn(),
+			},
+		}
+
+		e := &ast.PrefixExpression{
+			Token:    token,
+			Operator: "-",
+			Right:    i,
+		}
+		l.push(e)
 
 	default:
 		panic(fmt.Sprintf("top of stack not an integer or a float got=%T", base))

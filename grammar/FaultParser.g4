@@ -70,6 +70,7 @@ structProperties
     | IDENT ':' string_ #PropString
     | IDENT ':' functionLit #PropFunc
     | IDENT ':' operandName #PropVar
+    | IDENT ':' prefix #PropVar
     ;
 
 initDecl
@@ -163,7 +164,7 @@ faultType
 expression
     : operand                                                            #Expr
     | faultType '(' operand (',' operand)* ')'                           #Typed
-    | ('+' | '-' | '!' | '^' | '*' | '&') expression                     #Prefix
+    | prefix                                                             #ExprPrefix
     | expression '**' expression                                         #lrExpr
     | expression ('*' | '/' | '%' | '<<' | '>>' | '&' | '&^') expression #lrExpr
     | expression ('+' | '-' | '^') expression                            #lrExpr
@@ -188,6 +189,11 @@ operandName
     | THIS                      #OpThis
     | CLOCK                     #OpClock
     | 'new' IDENT ('.' IDENT)?  #OpInstance
+    ;
+
+prefix
+    :
+    | ('+' | '-' | '!' | '^' | '*' | '&') expression
     ;
 
 numeric

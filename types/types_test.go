@@ -25,6 +25,14 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("Constant x does not have an int type. got=%T", consts["x"])
 	}
 
+	if consts["x"].(*ast.InfixExpression).Right.(*ast.IntegerLiteral).InferredType.Type != "INT" {
+		t.Fatalf("right node does not have an int type. got=%T", consts["x"].(*ast.InfixExpression).Right)
+	}
+
+	if consts["x"].(*ast.InfixExpression).Left.(*ast.IntegerLiteral).InferredType.Type != "INT" {
+		t.Fatalf("left node does not have an int type. got=%T", consts["x"].(*ast.InfixExpression).Left)
+	}
+
 }
 
 func TestTypeError(t *testing.T) {
@@ -113,6 +121,7 @@ func TestTypesInStruct(t *testing.T) {
 				foosh: 3,
 				bar: "hello!",
 				fizz: a,
+				fizz2: -a,
 			};
 
 			def zoo = flow{
@@ -147,6 +156,10 @@ func TestTypesInStruct(t *testing.T) {
 		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz"].(*ast.Identifier).InferredType.Type)
 	}
 
+	if fooStock["fizz2"].(*ast.PrefixExpression).InferredType.Type != "FLOAT" {
+		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz2"].(*ast.PrefixExpression).InferredType.Type)
+	}
+
 	zooFlow, ok := str["zoo"]
 	if !ok {
 		t.Fatal("flow zoo not stored in symbol table correctly.")
@@ -158,6 +171,18 @@ func TestTypesInStruct(t *testing.T) {
 
 	if zooFlow["rate"].(*ast.BlockStatement).InferredType.Type != "INT" {
 		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.IntegerLiteral).InferredType.Type)
+	}
+
+	infix, ok := zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+	if infix.Right.(*ast.IntegerLiteral).InferredType.Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%T", infix.Right.(*ast.IntegerLiteral).InferredType)
+	}
+
+	if infix.Left.(*ast.ParameterCall).InferredType.Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%T", infix.Left.(*ast.ParameterCall).InferredType)
 	}
 }
 
@@ -207,6 +232,15 @@ func TestPrefix(t *testing.T) {
 
 	if consts["a"].(*ast.PrefixExpression).InferredType.Type != "BOOL" {
 		t.Fatalf("Constant a does not have an boolean type. got=%s", consts["a"].(*ast.Boolean).InferredType.Type)
+	}
+
+	float, ok := consts["a"].(*ast.PrefixExpression).Right.(*ast.FloatLiteral)
+	if !ok {
+		t.Fatalf("prefix base is not a float. got=%T", consts["a"].(*ast.PrefixExpression).Right)
+	}
+
+	if float.InferredType.Type != "FLOAT" {
+		t.Fatalf("Prefix base does not have a float type. got=%s", float.InferredType.Type)
 	}
 
 	if consts["b"].(*ast.FloatLiteral).InferredType.Type != "FLOAT" {

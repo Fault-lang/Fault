@@ -131,11 +131,11 @@ type FaultParserListener interface {
 	// EnterExpr is called when entering the Expr production.
 	EnterExpr(c *ExprContext)
 
+	// EnterExprPrefix is called when entering the ExprPrefix production.
+	EnterExprPrefix(c *ExprPrefixContext)
+
 	// EnterLrExpr is called when entering the lrExpr production.
 	EnterLrExpr(c *LrExprContext)
-
-	// EnterPrefix is called when entering the Prefix production.
-	EnterPrefix(c *PrefixContext)
 
 	// EnterOperand is called when entering the operand production.
 	EnterOperand(c *OperandContext)
@@ -154,6 +154,9 @@ type FaultParserListener interface {
 
 	// EnterOpInstance is called when entering the OpInstance production.
 	EnterOpInstance(c *OpInstanceContext)
+
+	// EnterPrefix is called when entering the prefix production.
+	EnterPrefix(c *PrefixContext)
 
 	// EnterNumeric is called when entering the numeric production.
 	EnterNumeric(c *NumericContext)
@@ -302,11 +305,11 @@ type FaultParserListener interface {
 	// ExitExpr is called when exiting the Expr production.
 	ExitExpr(c *ExprContext)
 
+	// ExitExprPrefix is called when exiting the ExprPrefix production.
+	ExitExprPrefix(c *ExprPrefixContext)
+
 	// ExitLrExpr is called when exiting the lrExpr production.
 	ExitLrExpr(c *LrExprContext)
-
-	// ExitPrefix is called when exiting the Prefix production.
-	ExitPrefix(c *PrefixContext)
 
 	// ExitOperand is called when exiting the operand production.
 	ExitOperand(c *OperandContext)
@@ -325,6 +328,9 @@ type FaultParserListener interface {
 
 	// ExitOpInstance is called when exiting the OpInstance production.
 	ExitOpInstance(c *OpInstanceContext)
+
+	// ExitPrefix is called when exiting the prefix production.
+	ExitPrefix(c *PrefixContext)
 
 	// ExitNumeric is called when exiting the numeric production.
 	ExitNumeric(c *NumericContext)
