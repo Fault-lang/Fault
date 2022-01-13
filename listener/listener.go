@@ -422,9 +422,9 @@ func (l *FaultListener) ExitStatementList(c *parser.StatementListContext) {
 	sl := &ast.BlockStatement{Token: token}
 	for _, v := range c.GetChildren() {
 		ex := l.pop()
-		switch ex.(type) {
+		switch e := ex.(type) {
 		case ast.Statement:
-			sl.Statements = append([]ast.Statement{ex.(ast.Statement)}, sl.Statements...)
+			sl.Statements = append([]ast.Statement{e}, sl.Statements...)
 		case ast.Expression:
 			token2 := ast.Token{
 				Type:    "FUNCTION",
@@ -437,7 +437,7 @@ func (l *FaultListener) ExitStatementList(c *parser.StatementListContext) {
 			}
 			s := &ast.ExpressionStatement{
 				Token:      token2,
-				Expression: ex.(ast.Expression),
+				Expression: e,
 			}
 			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
 		default:
@@ -1105,7 +1105,7 @@ func (l *FaultListener) ExitNegative(c *parser.NegativeContext) {
 	base := l.pop()
 
 	var token ast.Token
-	switch base.(type) {
+	switch i := base.(type) {
 	case *ast.IntegerLiteral:
 		token = ast.Token{
 			Type:    "INT",
@@ -1116,7 +1116,6 @@ func (l *FaultListener) ExitNegative(c *parser.NegativeContext) {
 				c.GetStop().GetColumn(),
 			},
 		}
-		i := base.(*ast.IntegerLiteral)
 		i.Token = token
 		i.Value = -i.Value
 
@@ -1133,7 +1132,6 @@ func (l *FaultListener) ExitNegative(c *parser.NegativeContext) {
 			},
 		}
 
-		i := base.(*ast.FloatLiteral)
 		i.Token = token
 		i.Value = -i.Value
 
@@ -1416,7 +1414,7 @@ func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
 	case *ast.IntegerLiteral:
 		return float64(val.Value), nil
 	default:
-		return 0, fmt.Errorf("Invalid input type. Should be float or int got=%T", v)
+		return 0, fmt.Errorf("invalid input type. Should be float or int got=%T", v)
 	}
 }
 
