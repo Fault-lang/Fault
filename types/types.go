@@ -81,7 +81,6 @@ func (i importTrail) PopSpec() (string, []string) {
 
 type Checker struct {
 	scope       string
-	pass        int8
 	SpecStructs map[string]StockFlow
 	Constants   map[string]map[string]ast.Node
 	trail       importTrail
@@ -143,7 +142,7 @@ func (c *Checker) pass1(n ast.Node) error {
 		err = c.pass1(node.Value)
 		return err
 	case *ast.StockLiteral:
-		node.InferredType = &ast.Type{"STOCK", 0, nil}
+		node.InferredType = &ast.Type{Type: "STOCK", Scope: 0, Parameters: nil}
 		structs := c.SpecStructs[c.trail.CurrentSpec()]
 		nodes := util.Preparse(node.Pairs)
 		c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
@@ -272,23 +271,23 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Node) (ast.Node, error
 	case *ast.FloatLiteral:
 		if node.InferredType == nil {
 			scope := c.inferScope(node.Value)
-			node.InferredType = &ast.Type{"FLOAT", scope, nil}
+			node.InferredType = &ast.Type{Type: "FLOAT", Scope: scope, Parameters: nil}
 		}
 		return node, nil
 	case *ast.StringLiteral:
 		if node.InferredType == nil {
-			node.InferredType = &ast.Type{"STRING", 0, nil}
+			node.InferredType = &ast.Type{Type: "STRING", Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	case *ast.Natural:
 		if node.InferredType == nil {
-			node.InferredType = &ast.Type{"NATURAL", 1, nil}
+			node.InferredType = &ast.Type{Type: "NATURAL", Scope: 1, Parameters: nil}
 		}
 		return node, nil
 	case *ast.Uncertain:
 		if node.InferredType == nil {
 			params := c.inferUncertain(node)
-			node.InferredType = &ast.Type{"UNCERTAIN", 0, params}
+			node.InferredType = &ast.Type{Type: "UNCERTAIN", Scope: 0, Parameters: params}
 		}
 		return node, nil
 	case *ast.Identifier:
@@ -538,16 +537,18 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		}
 		node.Consequence.InferredType = valtype
 
-		for i := 0; i < len(node.Alternative.Statements); i++ {
-			exp := node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression
-			typedNode, err := c.inferFunction(exp, p)
-			if err != nil {
-				panic(err)
+		if node.Alternative != nil {
+			for i := 0; i < len(node.Alternative.Statements); i++ {
+				exp := node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression
+				typedNode, err := c.inferFunction(exp, p)
+				if err != nil {
+					panic(err)
+				}
+				node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
+				valtype = typeable(typedNode)
 			}
-			node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
-			valtype = typeable(typedNode)
+			node.Alternative.InferredType = valtype
 		}
-		node.Alternative.InferredType = valtype
 		return node, err
 
 	case *ast.PrefixExpression:
@@ -580,8 +581,8 @@ func (c *Checker) inferScope(fl float64) int64 {
 
 func (c *Checker) inferUncertain(node *ast.Uncertain) []ast.Type {
 	return []ast.Type{
-		{"MEAN", c.inferScope(node.Mean), nil},
-		{"SIGMA", c.inferScope(node.Sigma), nil},
+		{Type: "MEAN", Scope: c.inferScope(node.Mean), Parameters: nil},
+		{Type: "SIGMA", Scope: c.inferScope(node.Sigma), Parameters: nil},
 	}
 }
 func (c *Checker) calculateBase(s string) int32 {
