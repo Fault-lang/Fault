@@ -131,8 +131,6 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		if err != nil {
 			panic(fmt.Sprintf("spec file %s not found\n", fpath))
 		}
-
-		//
 		tree = l.parseImport(string(importFile))
 	}
 
@@ -176,11 +174,10 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 	}
 	var items int
 	identlist, ok := c.GetChild(0).(*parser.IdentListContext)
-	if ok {
-		items = len(identlist.AllOperandName())
-	} else {
-		items = 1
+	if !ok {
+		panic(fmt.Sprintf("can't find ident list: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), c.GetChild(0)))
 	}
+	items = len(identlist.AllOperandName())
 
 	var itemList []interface{}
 	for i := 0; i < items; i++ {
@@ -549,21 +546,21 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 
 	left := l.pop()
 	switch ident := left.(type) {
-	case *ast.Identifier:
-		// If a new instance is initialized in the run block
-		// the listener needs to add the name
-		switch inst := right.(type) {
-		case *ast.Instance:
-			inst.Name = ident.Value
-			right = inst
-		}
+	/*case *ast.Identifier: // This may not ever happen?
+	// If a new instance is initialized in the run block
+	// the listener needs to add the name
+	switch inst := right.(type) {
+	case *ast.Instance:
+		inst.Name = ident.Value
+		right = inst
+	}
 
-		assign = &ast.InfixExpression{
-			Token:    token,
-			Left:     ident,
-			Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
-			Right:    right.(ast.Expression),
-		}
+	assign = &ast.InfixExpression{
+		Token:    token,
+		Left:     ident,
+		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Right:    right.(ast.Expression),
+	}*/
 	case *ast.ParameterCall:
 		switch inst := right.(type) {
 		case *ast.Instance:
@@ -693,101 +690,95 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
-	if !l.skipRun {
-		token := ast.Token{
-			Type:    "ASSIGN",
-			Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
-			Position: []int{c.GetStart().GetLine(),
-				c.GetStart().GetColumn(),
-				c.GetStop().GetLine(),
-				c.GetStop().GetColumn(),
-			},
-		}
-		txt := c.AllIDENT()
-		var right string
-
-		ident := &ast.Identifier{Token: ast.Token{
-			Type:    "IDENT",
-			Literal: "IDENT",
-			Position: []int{c.GetStart().GetLine(),
-				c.GetStart().GetColumn(),
-				c.GetStop().GetLine(),
-				c.GetStop().GetColumn(),
-			},
+	token := ast.Token{
+		Type:    "ASSIGN",
+		Literal: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
 		},
-		}
-		switch len(txt) {
-		case 2:
-			ident.Spec = l.currSpec
-			ident.Value = txt[0].GetText()
-			right = txt[1].GetText()
-		case 3:
-			ident.Spec = txt[0].GetText()
-			ident.Value = txt[1].GetText()
-			right = txt[2].GetText()
-		default:
-			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
-		}
-
-		l.push(
-			&ast.Instance{
-				Token: token,
-				Value: ident,
-				Name:  right,
-			})
 	}
+	txt := c.AllIDENT()
+	var right string
+
+	ident := &ast.Identifier{Token: ast.Token{
+		Type:    "IDENT",
+		Literal: "IDENT",
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
+	},
+	}
+	switch len(txt) {
+	case 2:
+		ident.Spec = l.currSpec
+		ident.Value = txt[0].GetText()
+		right = txt[1].GetText()
+	case 3:
+		ident.Spec = txt[1].GetText()
+		ident.Value = txt[0].GetText() // Not sure why the parser flips the order
+		right = txt[2].GetText()
+	default:
+		panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	}
+
+	l.push(
+		&ast.Instance{
+			Token: token,
+			Value: ident,
+			Name:  right,
+		})
 }
 
 func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
-	if !l.skipRun {
-		token := ast.Token{
-			Type:    "Parallel",
-			Literal: c.GetText(),
-			Position: []int{c.GetStart().GetLine(),
-				c.GetStart().GetColumn(),
-				c.GetStop().GetLine(),
-				c.GetStop().GetColumn(),
-			},
-		}
-
-		var exp []ast.Expression
-		for i := 0; i < len(c.AllParamCall()); i++ {
-			idx := l.pop()
-			exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
-		}
-
-		e := &ast.ParallelFunctions{
-			Token:       token,
-			Expressions: exp,
-		}
-		l.push(e)
+	token := ast.Token{
+		Type:    "Parallel",
+		Literal: c.GetText(),
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
 	}
+
+	var exp []ast.Expression
+	for i := 0; i < len(c.AllParamCall()); i++ {
+		idx := l.pop()
+		exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
+	}
+
+	e := &ast.ParallelFunctions{
+		Token:       token,
+		Expressions: exp,
+	}
+	l.push(e)
 }
 
 func (l *FaultListener) ExitRunExpr(c *parser.RunExprContext) {
-	if !l.skipRun {
-		token := ast.Token{
-			Type:    "Code",
-			Literal: c.GetText(),
-			Position: []int{c.GetStart().GetLine(),
-				c.GetStart().GetColumn(),
-				c.GetStop().GetLine(),
-				c.GetStop().GetColumn(),
-			},
-		}
-
-		x := l.pop()
-		exp, ok := x.(ast.Expression)
-		if !ok {
-			panic(fmt.Sprintf("top of stack is not a expression. got=%T", x))
-		}
-
-		e := &ast.ExpressionStatement{
-			Token:      token,
-			Expression: exp,
-		}
-		l.push(e)
+	token := ast.Token{
+		Type:    "Code",
+		Literal: c.GetText(),
+		Position: []int{c.GetStart().GetLine(),
+			c.GetStart().GetColumn(),
+			c.GetStop().GetLine(),
+			c.GetStop().GetColumn(),
+		},
 	}
+
+	x := l.pop()
+	exp, ok := x.(ast.Expression)
+	if !ok {
+		panic(fmt.Sprintf("top of stack is not a expression. got=%T", x))
+	}
+
+	e := &ast.ExpressionStatement{
+		Token:      token,
+		Expression: exp,
+	}
+	l.push(e)
 }
 
 func (l *FaultListener) ExitPrefix(c *parser.PrefixContext) {
@@ -926,16 +917,12 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 		switch x := ra.(type) {
 		case *ast.BlockStatement:
 			a = x
-			b = nil
 		case *ast.IfExpression:
-			a = &ast.BlockStatement{}
-			b = &ast.IfExpression{}
+			b = x
 		default:
 			panic(fmt.Sprintf("improper type in conditional got=%T", ra))
 		}
 
-	} else {
-		a = &ast.BlockStatement{}
 	}
 	csq := l.pop()
 	cond := l.pop()
@@ -1322,11 +1309,9 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 	case *ast.InfixExpression:
 		var comp, conj string
 		if e.Operator == "&&" || e.Operator == "||" {
-			comp = ""
 			conj = e.Operator
 		} else {
 			comp = e.Operator
-			conj = ""
 		}
 
 		con = &ast.Invariant{
@@ -1363,11 +1348,9 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	case *ast.InfixExpression:
 		var comp, conj string
 		if e.Operator == "&&" || e.Operator == "||" {
-			comp = ""
 			conj = e.Operator
 		} else {
 			comp = e.Operator
-			conj = ""
 		}
 
 		con = &ast.Invariant{
