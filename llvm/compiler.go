@@ -566,7 +566,9 @@ func (c *Compiler) getVarFromAssert(ex ast.Expression) []string {
 func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 	keys := []string{}
 	for k, _ := range pairs {
-		keys = append(keys, k)
+		if k != "___base" {
+			keys = append(keys, k)
+		}
 	}
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
