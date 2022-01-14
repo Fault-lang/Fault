@@ -100,12 +100,14 @@ func (c *Checker) Check(a *ast.Spec) error {
 	// Pass two add types
 	for k, v := range c.SpecStructs {
 		for k2, v2 := range v {
+			c.scope = k2
 			for k3, v3 := range v2 {
 				c.SpecStructs[k][k2][k3], err = c.pass2(v3, c.SpecStructs[k][k2])
 				if err != nil {
 					return err
 				}
 			}
+			c.scope = ""
 		}
 	}
 	return err
@@ -200,7 +202,7 @@ func (c *Checker) pass2(n ast.Node, properties map[string]ast.Node) (ast.Node, e
 				exp := node.Statements[i].(*ast.ExpressionStatement).Expression
 				typedNode, err := c.inferFunction(exp, properties)
 				if err != nil {
-					panic(err)
+					return nil, err
 				}
 				node.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
 				valtype = typeable(typedNode)
@@ -382,6 +384,10 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 				n, err := c.complexInstances(base, id, p)
 				return typeable(n), err
 			} else {
+				if len(id) == 1 {
+					pos := ty.Position()
+					return nil, fmt.Errorf("struct %s missing property, line:%d, col:%d", id[0], pos[0], pos[1])
+				}
 				n, err := c.pass2(c.SpecStructs[ty.Value.Spec][structIdent][id[1]], p)
 				return typeable(n), err
 			}
@@ -456,6 +462,13 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 				Scope:      0,
 				Parameters: nil}
 			return node, err
+		}
+
+		if node.Operator == "<-" {
+			_, ok := c.SpecStructs[c.trail.CurrentSpec()][c.scope]["___base"].(*ast.StockLiteral)
+			if ok {
+				return nil, fmt.Errorf("stock is the store of values please use a flow for %s.%s", c.trail.CurrentSpec(), c.scope)
+			}
 		}
 
 		var nl, nr ast.Node
@@ -576,7 +589,7 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 				typedNode, err = c.inferFunction(exp, p)
 			}
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
 			valtype = typeable(typedNode)
@@ -592,7 +605,7 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 					typedNode, err = c.inferFunction(exp, p)
 				}
 				if err != nil {
-					panic(err)
+					return nil, err
 				}
 				node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
 				valtype = typeable(typedNode)
@@ -603,7 +616,7 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		if node.Elif != nil {
 			typedNode, err = c.inferFunction(node.Elif, p)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			node.Elif = typedNode.(*ast.IfExpression)
 		}

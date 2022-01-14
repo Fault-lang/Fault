@@ -143,6 +143,54 @@ func TestTypeError(t *testing.T) {
 	}
 }
 
+func TestStructTypeError(t *testing.T) {
+	test := `spec test1;
+			def foo = stock{
+				bar: 5,
+			};
+
+			def fizz = stock{
+				buzz: new foo,
+				bash: func{
+					buzz.bar <- 2;
+				},
+			};
+	`
+	_, err := prepTest(test)
+	//sym := checker.SymbolTypes
+
+	actual := "stock is the store of values please use a flow for test1.fizz"
+
+	if err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+
+}
+
+func TestInstanceError(t *testing.T) {
+	test := `spec test1;
+			def foo = stock{
+				bar: 5,
+			};
+
+			def fizz = flow{
+				buzz: new foo,
+				bash: func{
+					buzz <- 2;
+				},
+			};
+	`
+	_, err := prepTest(test)
+	//sym := checker.SymbolTypes
+
+	actual := "struct buzz missing property, line:7, col:10"
+
+	if err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+
+}
+
 func TestComplex(t *testing.T) {
 	test := `spec test1;
 			const x = (2.1*8)+2.3/(5-2);
