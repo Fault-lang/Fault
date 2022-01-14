@@ -146,6 +146,7 @@ func (c *Checker) pass1(n ast.Node) error {
 		structs := c.SpecStructs[c.trail.CurrentSpec()]
 		nodes := util.Preparse(node.Pairs)
 		c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
+		c.SpecStructs[c.trail.CurrentSpec()][c.scope]["___base"] = node //Don't lose the typing for the stocks and flows themselves
 		c.scope = ""
 		return err
 	case *ast.FlowLiteral:
@@ -155,6 +156,7 @@ func (c *Checker) pass1(n ast.Node) error {
 		structs := c.SpecStructs[c.trail.CurrentSpec()]
 		nodes := util.Preparse(node.Pairs)
 		c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
+		c.SpecStructs[c.trail.CurrentSpec()][c.scope]["___base"] = node
 		c.scope = ""
 		return err
 	case *ast.AssertionStatement:
@@ -202,6 +204,7 @@ func (c *Checker) pass2(n ast.Node, properties map[string]ast.Node) (ast.Node, e
 				}
 				node.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
 				valtype = typeable(typedNode)
+				node.Statements[i].(*ast.ExpressionStatement).InferredType = valtype
 			}
 			node.InferredType = valtype
 			return node, err
@@ -237,6 +240,12 @@ func (c *Checker) isValue(exp interface{}) bool {
 	case *ast.Natural:
 		return true
 	case *ast.Uncertain:
+		return true
+	case *ast.Nil:
+		return true
+	case *ast.StockLiteral:
+		return true
+	case *ast.FlowLiteral:
 		return true
 	default:
 		return false
@@ -315,6 +324,21 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Node) (ast.Node, error
 			if err != nil {
 				return nil, err
 			}
+		}
+		return node, nil
+	case *ast.Nil:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "NIL", Scope: 0, Parameters: nil}
+		}
+		return node, nil
+	case *ast.StockLiteral:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "STOCK", Scope: 0, Parameters: nil}
+		}
+		return node, nil
+	case *ast.FlowLiteral:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "FLOW", Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	default:
@@ -455,18 +479,35 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 			return nil, err
 		}
 		right := typeable(nr)
-
 		node.Left = nl.(ast.Expression)
 		node.Right = nr.(ast.Expression)
+
+		// If either value is Nil, return other type.
+		// If both are Nil, return Nil.
+		// Nils are kind of vestigial in Fault, unclear when
+		// they will ever actually come up in the context of SMT
+
+		_, nilL := node.Left.(*ast.Nil)
+		_, nilR := node.Right.(*ast.Nil)
+		if nilL && nilR {
+			node.InferredType = &ast.Type{Type: "NIL",
+				Scope:      0,
+				Parameters: nil}
+			return node, err
+		} else if nilL {
+			node.InferredType = right
+			return node, err
+
+		} else if nilR {
+			node.InferredType = left
+			return node, err
+		}
 		if left != right {
 			if ast.TYPES[left.Type] == 0 || ast.TYPES[right.Type] == 0 {
 				return nil, fmt.Errorf("type mismatch: got=%s,%s", left.Type, right.Type)
 			}
 			if ast.TYPES[left.Type] > ast.TYPES[right.Type] {
 				node.InferredType = right
-				return node, err
-			} else {
-				node.InferredType = left
 				return node, err
 			}
 		}
@@ -518,6 +559,7 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 
 	case *ast.IfExpression:
 		var ncond ast.Node
+		var typedNode ast.Node
 		var valtype *ast.Type
 		if c.isValue(node.Condition) {
 			ncond, err = c.infer(node.Condition, p)
@@ -528,11 +570,15 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 
 		for i := 0; i < len(node.Consequence.Statements); i++ {
 			exp := node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression
-			typedNode, err := c.inferFunction(exp, p)
+			if c.isValue(exp) {
+				typedNode, err = c.infer(exp, p)
+			} else {
+				typedNode, err = c.inferFunction(exp, p)
+			}
 			if err != nil {
 				panic(err)
 			}
-			node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
+			node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
 			valtype = typeable(typedNode)
 		}
 		node.Consequence.InferredType = valtype
@@ -540,15 +586,28 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		if node.Alternative != nil {
 			for i := 0; i < len(node.Alternative.Statements); i++ {
 				exp := node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression
-				typedNode, err := c.inferFunction(exp, p)
+				if c.isValue(exp) {
+					typedNode, err = c.infer(exp, p)
+				} else {
+					typedNode, err = c.inferFunction(exp, p)
+				}
 				if err != nil {
 					panic(err)
 				}
-				node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
+				node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
 				valtype = typeable(typedNode)
 			}
 			node.Alternative.InferredType = valtype
 		}
+
+		if node.Elif != nil {
+			typedNode, err = c.inferFunction(node.Elif, p)
+			if err != nil {
+				panic(err)
+			}
+			node.Elif = typedNode.(*ast.IfExpression)
+		}
+		node.InferredType = node.Consequence.InferredType // This is probably an incorrect approach. Need to think about it.
 		return node, err
 
 	case *ast.PrefixExpression:
