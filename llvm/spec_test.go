@@ -9,7 +9,6 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
-	irtypes "github.com/llir/llvm/ir/types"
 )
 
 func TestDefineSpecVar(t *testing.T) {
@@ -53,7 +52,7 @@ func TestSpecPointer(t *testing.T) {
 	s := initSpec(id)
 	fvn := strings.Join(id, "_")
 	b := ir.NewBlock(name.Block())
-	alloc := b.NewAlloca(irtypes.I1)
+	alloc := b.NewAlloca(types.I1)
 	alloc.SetName(fvn)
 	s.vars.Store(id, fvn, alloc)
 

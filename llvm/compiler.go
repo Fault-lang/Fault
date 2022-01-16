@@ -507,55 +507,6 @@ func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
 	}
 }
 
-// func (c *Compiler) getVarFromAssert(ex ast.Expression) []string {
-// 	var ret []string
-// 	switch e := ex.(type) {
-// 	case *ast.InfixExpression:
-// 		l := c.getVarFromAssert(e.Left)
-// 		r := c.getVarFromAssert(e.Right)
-// 		ret = append(ret, l...)
-// 		ret = append(ret, r...)
-// 		return ret
-// 	case *ast.Identifier:
-// 		id := []string{e.Value}
-// 		pos := e.Position()
-// 		fvn := c.getFullVariableName(id)
-// 		fvns := c.getVariableName(fvn)
-// 		if !c.isVarSet(fvn) {
-// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
-// 		}
-
-// 		id, _ = c.GetSpec(fvn)
-// 		ret = append(ret, strings.Join(id, "_"))
-// 		return ret
-// 	case *ast.ParameterCall:
-// 		id := e.Value
-// 		pos := e.Position()
-// 		fvn := c.getFullVariableName(id)
-// 		fvns := c.getVariableName(fvn)
-
-// 		if !c.isVarSet(fvn) {
-// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
-// 		}
-
-// 		id, _ = c.GetSpec(fvn)
-// 		ret = append(ret, strings.Join(id, "_"))
-// 		return ret
-
-// 	case *ast.PrefixExpression:
-// 		r := c.getVarFromAssert(e.Right)
-// 		ret = append(ret, r...)
-// 		return ret
-// 	case *ast.IndexExpression:
-// 		l := c.getVarFromAssert(e.Left)
-// 		ret = append(ret, l...) //This needs more work
-// 	default:
-// 		pos := e.Position()
-// 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
-// 	}
-// 	return []string{}
-// }
-
 func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 	keys := []string{}
 	for k, _ := range pairs {
@@ -791,7 +742,7 @@ func (c *Compiler) GetSpec(id []string) ([]string, *spec) {
 func (c *Compiler) ListSpecs() []string {
 	// Lists all specs the compiler knows about
 	var specs []string
-	for k, _ := range c.specs {
+	for k := range c.specs {
 		specs = append(specs, k)
 	}
 	return specs

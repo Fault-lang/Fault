@@ -19,12 +19,6 @@ func (c *Compiler) getFullVariableName(id []string) []string {
 	}
 }
 
-func (c *Compiler) getVariableStateName(id []string) string {
-	id, s := c.GetSpec(id)
-	incr := s.GetSpecVarState(id)
-	return fmt.Sprint(strings.Join(id, "_"), incr)
-}
-
 func (c *Compiler) getVariableName(id []string) string {
 	id, _ = c.GetSpec(id)
 	return strings.Join(id, "_")
@@ -143,13 +137,6 @@ func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloc
 	id, s := c.GetSpec(id)
 	s.vars.IncrState(id)
 	s.vars.Store(id, name, alloc)
-}
-
-func (c *Compiler) fetchAllocation(id []string, offset int16) *ir.InstAlloca {
-	id, s := c.GetSpec(id)
-	//name := c.getVariableStateName(id)
-	name := c.getVariableName(id)
-	return s.vars.GetPointer(name)
 }
 
 func (c *Compiler) storeGlobal(name string, alloc *ir.Global) {
