@@ -2,6 +2,7 @@ package util
 
 import (
 	"fault/ast"
+	"fmt"
 	"os"
 	"testing"
 )
@@ -142,6 +143,25 @@ func TestCartesianMulti(t *testing.T) {
 
 	if r[3][0] != "a" || r[3][1] != "2" || r[3][2] != "4" {
 		t.Fatalf("cartesian product not correct. got=%s", r)
+	}
+
+}
+
+func TestMergeStrSlices(t *testing.T) {
+	sl1 := []string{"here", "there", "everywhere"}
+	sl2 := []string{"here", "roy", "kent"}
+
+	merged := MergeStrSlices(sl1, sl2)
+	fmt.Println(merged)
+	if merged[0] != "here" {
+		t.Fatalf("first value of MergeStrSlices not correct. got=%s", merged[0])
+	}
+	if merged[1] != "there" {
+		t.Fatalf("second value of MergeStrSlices not correct. got=%s", merged[1])
+	}
+
+	if merged[3] == "here" {
+		t.Fatalf("duplicate value detected from MergeStrSlices. got=%s", merged[3])
 	}
 
 }

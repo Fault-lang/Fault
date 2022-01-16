@@ -3,6 +3,7 @@ package listener
 import (
 	"fault/ast"
 	"fault/parser"
+	"fmt"
 	"testing"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -409,18 +410,21 @@ func TestClockRun(t *testing.T) {
 func TestPrefix(t *testing.T) {
 	test := `spec test1;
 			 def foo = flow{
-				bar: func{!true;},
+				bar: func{!true;
+						-a;
+						},
 			 };
 			`
 	spec := prepTest(test, nil)
+	fmt.Println(spec.Statements[0])
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
 		if !ok {
 			t.Fatalf("Property is not a function. got=%T", v)
 		}
-		if len(f.Body.Statements) != 1 {
-			t.Fatalf("function BlockStatement does not contain 1 statement. got=%d", len(f.Body.Statements))
+		if len(f.Body.Statements) != 2 {
+			t.Fatalf("function BlockStatement does not contain 2 statements. got=%d", len(f.Body.Statements))
 		}
 		s, ok := f.Body.Statements[0].(*ast.ExpressionStatement)
 		if !ok {
@@ -433,6 +437,19 @@ func TestPrefix(t *testing.T) {
 		_, ok = pre.Right.(*ast.Boolean)
 		if !ok {
 			t.Fatalf("Prefix does not contain a Boolean. got=%T", pre.Right)
+		}
+
+		s2, ok := f.Body.Statements[1].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("Function body missing ExpressionStatement. got=%T", f.Body.Statements[1])
+		}
+		pre2, ok := s2.Expression.(*ast.PrefixExpression)
+		if !ok {
+			t.Fatalf("Function body missing PrefixExpression. got=%T", s2.Expression)
+		}
+		_, ok = pre2.Right.(*ast.Identifier)
+		if !ok {
+			t.Fatalf("Prefix does not contain an Identifier. got=%T", pre2.Right)
 		}
 	}
 }

@@ -36,6 +36,7 @@ func (l *LookupTable) List() []string {
 func (l *LookupTable) Add(id []string, val value.Value) {
 	ident := strings.Join(id, "_")
 	l.values[ident] = append(l.values[ident], val)
+	l.state[ident] = 0
 }
 
 func (l *LookupTable) AddParam(id []string, p value.Value) {

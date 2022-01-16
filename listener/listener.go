@@ -596,6 +596,16 @@ func (l *FaultListener) ExitLrExpr(c *parser.LrExprContext) {
 
 	rght := l.pop()
 	lft := l.pop()
+	// If left is an empty Prefix, correct the parsing error
+	if pre, ok := lft.(*ast.PrefixExpression); ok {
+		if pre.Operator == "" {
+			pre.Token = token
+			pre.Operator = c.GetChild(1).(antlr.TerminalNode).GetText()
+			pre.Right = rght.(ast.Expression)
+			l.push(pre)
+			return
+		}
+	}
 	e := &ast.InfixExpression{
 		Token:    token,
 		Left:     lft.(ast.Expression),
@@ -784,6 +794,13 @@ func (l *FaultListener) ExitRunExpr(c *parser.RunExprContext) {
 }
 
 func (l *FaultListener) ExitPrefix(c *parser.PrefixContext) {
+	if c.GetChild(0) == nil { //Bug in the grammar concerning
+		// prefixes involving MINUS and idents
+		e := &ast.PrefixExpression{}
+		l.push(e)
+		return
+	}
+
 	token := ast.Token{
 		Type:    ast.OPS[c.GetChild(0).(antlr.TerminalNode).GetText()],
 		Literal: c.GetChild(0).(antlr.TerminalNode).GetText(),
