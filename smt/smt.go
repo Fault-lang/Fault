@@ -313,7 +313,7 @@ func (g *Generator) convertIdent(val string) string {
 		if v, ok := g.loads[val]; ok {
 			id := g.formatIdent(v.Ident())
 			if v, ok := g.ssa[id]; ok {
-				id = g.formatIdent(id)
+				//id = g.formatIdent(id)
 				return fmt.Sprint(id, "_", v)
 			} else {
 				panic(fmt.Sprintf("variable %s not initialized", id))

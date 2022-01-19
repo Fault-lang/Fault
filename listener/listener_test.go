@@ -3,7 +3,6 @@ package listener
 import (
 	"fault/ast"
 	"fault/parser"
-	"fmt"
 	"testing"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -416,7 +415,6 @@ func TestPrefix(t *testing.T) {
 			 };
 			`
 	spec := prepTest(test, nil)
-	fmt.Println(spec.Statements[0])
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)

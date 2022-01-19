@@ -391,7 +391,6 @@ func TestGetInstances(t *testing.T) {
 			Right: &ast.PrefixExpression{Right: &ast.ParameterCall{Value: []string{"fake2", "prop2"}}}}}
 	results := c.getInstances(infix)
 
-	fmt.Println(results)
 	if len(results["fake1"]) != 2 {
 		t.Fatalf("incorrect results returned. got=%d want=2", len(results["fake1"]))
 	}

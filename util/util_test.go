@@ -2,7 +2,6 @@ package util
 
 import (
 	"fault/ast"
-	"fmt"
 	"os"
 	"testing"
 )
@@ -152,7 +151,6 @@ func TestMergeStrSlices(t *testing.T) {
 	sl2 := []string{"here", "roy", "kent"}
 
 	merged := MergeStrSlices(sl1, sl2)
-	fmt.Println(merged)
 	if merged[0] != "here" {
 		t.Fatalf("first value of MergeStrSlices not correct. got=%s", merged[0])
 	}

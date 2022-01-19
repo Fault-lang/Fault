@@ -114,8 +114,8 @@ func (g *Generator) tempToIdent(ru rule) rule {
 
 func (g *Generator) fetchIdent(id string, r rule) rule {
 	if g.isTemp(id) {
-		if _, ok := g.loads[id]; ok {
-			id = g.advanceSSA(id)
+		if v, ok := g.loads[id]; ok {
+			id = g.advanceSSA(v.Ident())
 			wid := &wrap{value: id}
 			return wid
 		} else if ref, ok := g.ref[id]; ok {
