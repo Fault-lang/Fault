@@ -5,14 +5,10 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  build:
+  test:
     working_directory: ~/Fault
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: cimg/go:1.17.5
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - run:
           name: Install LLVM
@@ -30,7 +26,7 @@ jobs:
       - save_cache:
           key: go-mod-v5-{{ checksum "go.sum" }}
           paths:
-            - "/go/pkg/mod"
+            - "/go/pkg/mod" 
       - run:
           name: Run tests
           command: |
@@ -38,11 +34,55 @@ jobs:
             gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/fuzzer)
       - store_test_results:
           path: /tmp/test-reports
+  
+  mutate:
+    working_directory: ~/Fault
+    docker:
+      - image: cimg/go:1.17.5
+    parallelism: 4
+    steps:
+      - run:
+          name: Install LLVM
+          command: |
+            sudo apt-get update
+            sudo apt-get install llvm
+            sudo apt-get install git
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v5-{{ checksum "go.sum" }}
+      - run:
+          name: Install Dependencies
+          command: 
+            go mod download
+      - save_cache:
+          key: go-mod-v5-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - run:
+          name: Install go-mutesting
+          command: |
+            git clone https://github.com/mbellotti/go-mutesting.git
+            cd go-mutesting
+            go build cmd/go-mutesting/main.go
+            chmod +x main
+            sudo mv main /usr/local/bin/go-mutesting
+      - run:
+          name: Mutate and take over the world
+          command: | # Don't test the fuzzer or main.go, for the time being skip execute because it needs to be rewritten
+            mkdir -p /tmp/test-mutate-reports
+            go-mutesting $(go list ./... | grep -v fault/fuzzer | grep -v fault/execute | grep -v fault/parser | grep -v "^fault$" | circleci tests split) --fail-only --score=.6
+      - store_test_results:
+          path: /tmp/test-mutate-reports
+
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  oncommit: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  oncommit: # On commit run unit tests
     jobs:
-      - build
+      - test
+      
+  mutations: # Scheduled pipeline, will run mutation tests once a week 
+    jobs:
+      - mutate
