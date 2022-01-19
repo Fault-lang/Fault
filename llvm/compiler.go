@@ -470,16 +470,13 @@ func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
 	switch e := ex.(type) {
 	case *ast.InfixExpression:
 		left := c.getInstances(e.Left)
-		if left != nil {
-			for k, v := range left {
-				vars[k] = append(vars[k], v...)
-			}
+		for k, v := range left {
+			vars[k] = util.MergeStrSlices(vars[k], v)
 		}
+
 		right := c.getInstances(e.Right)
-		if right != nil {
-			for k, v := range right {
-				vars[k] = append(vars[k], v...)
-			}
+		for k, v := range right {
+			vars[k] = util.MergeStrSlices(vars[k], v)
 		}
 		return vars
 	case *ast.Identifier:
@@ -488,25 +485,21 @@ func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
 		id := e.Value
 		for k, v := range c.instances {
 			if v == id[0] {
-				vars[v] = append(vars[v], k)
+				vars[v] = util.MergeStrSlices(vars[v], []string{k})
 			}
 		}
 		return vars
 
 	case *ast.PrefixExpression:
 		right := c.getInstances(e.Right)
-		if right != nil {
-			for k, v := range right {
-				vars[k] = append(vars[k], v...)
-			}
+		for k, v := range right {
+			vars[k] = util.MergeStrSlices(vars[k], v)
 		}
 		return vars
 	case *ast.IndexExpression:
 		left := c.getInstances(e.Left)
-		if left != nil {
-			for k, v := range left {
-				vars[k] = append(vars[k], v...)
-			}
+		for k, v := range left {
+			vars[k] = util.MergeStrSlices(vars[k], v)
 		}
 		return vars
 	default:
@@ -514,59 +507,12 @@ func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
 	}
 }
 
-func (c *Compiler) getVarFromAssert(ex ast.Expression) []string {
-	var ret []string
-	switch e := ex.(type) {
-	case *ast.InfixExpression:
-		l := c.getVarFromAssert(e.Left)
-		r := c.getVarFromAssert(e.Right)
-		ret = append(ret, l...)
-		ret = append(ret, r...)
-		return ret
-	case *ast.Identifier:
-		id := []string{e.Value}
-		pos := e.Position()
-		fvn := c.getFullVariableName(id)
-		fvns := c.getVariableName(fvn)
-		if !c.isVarSet(fvn) {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
-		}
-
-		id, _ = c.GetSpec(fvn)
-		ret = append(ret, strings.Join(id, "_"))
-		return ret
-	case *ast.ParameterCall:
-		id := e.Value
-		pos := e.Position()
-		fvn := c.getFullVariableName(id)
-		fvns := c.getVariableName(fvn)
-
-		if !c.isVarSet(fvn) {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
-		}
-
-		id, _ = c.GetSpec(fvn)
-		ret = append(ret, strings.Join(id, "_"))
-		return ret
-
-	case *ast.PrefixExpression:
-		r := c.getVarFromAssert(e.Right)
-		ret = append(ret, r...)
-		return ret
-	case *ast.IndexExpression:
-		l := c.getVarFromAssert(e.Left)
-		ret = append(ret, l...) //This needs more work
-	default:
-		pos := e.Position()
-		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
-	}
-	return []string{}
-}
-
 func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 	keys := []string{}
 	for k, _ := range pairs {
-		keys = append(keys, k)
+		if k != "___base" {
+			keys = append(keys, k)
+		}
 	}
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
@@ -796,7 +742,7 @@ func (c *Compiler) GetSpec(id []string) ([]string, *spec) {
 func (c *Compiler) ListSpecs() []string {
 	// Lists all specs the compiler knows about
 	var specs []string
-	for k, _ := range c.specs {
+	for k := range c.specs {
 		specs = append(specs, k)
 	}
 	return specs
@@ -1028,17 +974,17 @@ func evaluate(n *ast.InfixExpression) ast.Expression {
 	if util.IsCompare(n.Operator) {
 		return n
 	}
-	f1, ok := n.Left.(*ast.FloatLiteral)
-	i1, ok := n.Left.(*ast.IntegerLiteral)
+	f1, ok1 := n.Left.(*ast.FloatLiteral)
+	i1, ok2 := n.Left.(*ast.IntegerLiteral)
 
-	if !ok {
+	if !ok1 && !ok2 {
 		return n
 	}
 
-	f2, ok := n.Right.(*ast.FloatLiteral)
-	i2, ok := n.Right.(*ast.IntegerLiteral)
+	f2, ok1 := n.Right.(*ast.FloatLiteral)
+	i2, ok2 := n.Right.(*ast.IntegerLiteral)
 
-	if !ok {
+	if !ok1 && !ok2 {
 		return n
 	}
 
@@ -1064,6 +1010,14 @@ func evaluate(n *ast.InfixExpression) ast.Expression {
 				Value: v,
 			}
 		} else {
+			if n.Operator == "/" {
+				//Return a float in the case of division
+				v := evalFloat(float64(i1.Value), float64(i2.Value), n.Operator)
+				return &ast.FloatLiteral{
+					Token: n.Token,
+					Value: v,
+				}
+			}
 			v := evalInt(i1.Value, i2.Value, n.Operator)
 			return &ast.IntegerLiteral{
 				Token: n.Token,
@@ -1096,8 +1050,6 @@ func evalInt(i1 int64, i2 int64, op string) int64 {
 		return i1 - i2
 	case "*":
 		return i1 * i2
-	case "/":
-		return i1 / i2
 	default:
 		panic(fmt.Sprintf("unsupported operator %s", op))
 	}

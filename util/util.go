@@ -69,6 +69,26 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 	return start
 }
 
+func MergeStrSlices(sl1 []string, sl2 []string) []string {
+	var results []string
+	skip := false
+	results = append(results, sl1...)
+	for _, v2 := range sl2 {
+		for _, v1 := range sl1 {
+			if v2 == v1 {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			results = append(results, v2)
+		} else {
+			skip = false
+		}
+	}
+	return results
+}
+
 func product(list1 [][]string, list2 []string) [][]string {
 	var results [][]string
 	for _, l := range list1 {

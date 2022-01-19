@@ -172,11 +172,11 @@ func (v *BaseFaultParserVisitor) VisitExpr(ctx *ExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitLrExpr(ctx *LrExprContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitExprPrefix(ctx *ExprPrefixContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitPrefix(ctx *PrefixContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitLrExpr(ctx *LrExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -201,6 +201,10 @@ func (v *BaseFaultParserVisitor) VisitOpClock(ctx *OpClockContext) interface{} {
 }
 
 func (v *BaseFaultParserVisitor) VisitOpInstance(ctx *OpInstanceContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitPrefix(ctx *PrefixContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

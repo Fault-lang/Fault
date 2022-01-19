@@ -80,6 +80,64 @@ func TestAssertWConjunc(t *testing.T) {
 	}
 }
 
+// THIS TEST IS ~AWFUL~ BUT SOME OF THIS SYNTAX HASN'T ACTUALLY BEEN
+// IMPLEMENTED. SO WILL INVESTIGATE THE FIX LATER
+func TestAssertState(t *testing.T) {
+	test := `spec test1;
+			def fl = flow{
+				value: 30,
+				scope: 10,
+				rate: func{
+					value + 2;
+				},
+			};
+
+			assert fl.value > fl.scope;
+			assert fl.scope > -fl.value;
+			assert fl.value[1] > fl.scope;
+
+			for 2 run{
+				x = new fl;
+				x.rate; 
+			}
+	`
+
+	llvm, err := prepAssertTest(test)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	for i, v := range llvm.AssertAssume {
+		c := v.(*ast.AssertionStatement).Constraints
+		compareAsserts(t, c.Variable, i)
+
+		if c.Comparison != "<=" {
+			t.Fatalf("assert %d has wrong comparison. got=%s", i, c.Comparison)
+		}
+		compareAsserts(t, c.Expression, i)
+	}
+}
+
+// HELPER FUNCTION FOR AWFUL TEST
+func compareAsserts(t *testing.T, e ast.Expression, i int) {
+	switch ex := e.(type) {
+	case *ast.AssertVar:
+		instArray := [2]string{ex.Instances[0], ex.Instances[1]}
+		if instArray != [2]string{"test1_x_scope", "test1_x_value"} &&
+			instArray != [2]string{"test1_x_value", "test1_x_scope"} {
+			t.Fatalf("assert %d has wrong expression. got=%s", i, ex.Instances)
+		}
+	case *ast.IndexExpression:
+		compareAsserts(t, ex.Left, i)
+		if ex.Index.(*ast.IntegerLiteral).Value != 1 {
+			t.Fatalf("assert %d has wrong expression. got=%d", i, ex.Index.(*ast.IntegerLiteral).Value)
+		}
+	}
+}
+
+// END AWFUL TEST, NOTHING TO SEE HERE... MOVE ALONG ;)
+
 func prepAssertTest(test string) (*Compiler, error) {
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
@@ -98,6 +156,5 @@ func prepAssertTest(test string) (*Compiler, error) {
 	if err != nil {
 		return nil, err
 	}
-	//fmt.Println(compiler.GetIR())
 	return compiler, err
 }

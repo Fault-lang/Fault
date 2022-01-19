@@ -267,17 +267,17 @@ func (s *BaseFaultParserListener) EnterExpr(ctx *ExprContext) {}
 // ExitExpr is called when production Expr is exited.
 func (s *BaseFaultParserListener) ExitExpr(ctx *ExprContext) {}
 
+// EnterExprPrefix is called when production ExprPrefix is entered.
+func (s *BaseFaultParserListener) EnterExprPrefix(ctx *ExprPrefixContext) {}
+
+// ExitExprPrefix is called when production ExprPrefix is exited.
+func (s *BaseFaultParserListener) ExitExprPrefix(ctx *ExprPrefixContext) {}
+
 // EnterLrExpr is called when production lrExpr is entered.
 func (s *BaseFaultParserListener) EnterLrExpr(ctx *LrExprContext) {}
 
 // ExitLrExpr is called when production lrExpr is exited.
 func (s *BaseFaultParserListener) ExitLrExpr(ctx *LrExprContext) {}
-
-// EnterPrefix is called when production Prefix is entered.
-func (s *BaseFaultParserListener) EnterPrefix(ctx *PrefixContext) {}
-
-// ExitPrefix is called when production Prefix is exited.
-func (s *BaseFaultParserListener) ExitPrefix(ctx *PrefixContext) {}
 
 // EnterOperand is called when production operand is entered.
 func (s *BaseFaultParserListener) EnterOperand(ctx *OperandContext) {}
@@ -314,6 +314,12 @@ func (s *BaseFaultParserListener) EnterOpInstance(ctx *OpInstanceContext) {}
 
 // ExitOpInstance is called when production OpInstance is exited.
 func (s *BaseFaultParserListener) ExitOpInstance(ctx *OpInstanceContext) {}
+
+// EnterPrefix is called when production prefix is entered.
+func (s *BaseFaultParserListener) EnterPrefix(ctx *PrefixContext) {}
+
+// ExitPrefix is called when production prefix is exited.
+func (s *BaseFaultParserListener) ExitPrefix(ctx *PrefixContext) {}
 
 // EnterNumeric is called when production numeric is entered.
 func (s *BaseFaultParserListener) EnterNumeric(ctx *NumericContext) {}

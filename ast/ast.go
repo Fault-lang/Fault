@@ -565,12 +565,12 @@ func (ie *IfExpression) String() string {
 	out.WriteString(" ")
 	out.WriteString(ie.Consequence.String())
 
-	if ie.Elif != nil {
+	if (ie.Elif != &IfExpression{}) && ie.Elif != nil {
 		out.WriteString("else if")
 		out.WriteString(ie.Elif.String())
 	}
 
-	if ie.Alternative != nil {
+	if (ie.Alternative != &BlockStatement{}) && ie.Alternative != nil {
 		out.WriteString("else ")
 		out.WriteString(ie.Alternative.String())
 	}

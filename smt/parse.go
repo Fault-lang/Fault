@@ -134,7 +134,6 @@ func (g *Generator) parseTerms(terms []*ir.Block, startVars map[string]string) (
 	}
 	if len(terms) == 1 { // Jump to that block
 		var r []rule
-		sv = make(map[string]string)
 		g.skipBlocks[terms[0].Ident()] = 1
 		r, sv = g.parseInstruct(terms[0], startVars)
 		rules = append(rules, r...)
@@ -143,7 +142,7 @@ func (g *Generator) parseTerms(terms []*ir.Block, startVars map[string]string) (
 	return rules, sv
 }
 
-func (g *Generator) parseInfix(id string, x string, y string, op string, startVars map[string]string) (rule, map[string]string) {
+func (g *Generator) releaseStartVar(x string, startVars map[string]string) (string, map[string]string) {
 	if g.isTemp(x) {
 		if v, ok := g.loads[x]; ok {
 			xid := v.Ident()
@@ -156,19 +155,12 @@ func (g *Generator) parseInfix(id string, x string, y string, op string, startVa
 			}
 		}
 	}
+	return x, startVars
+}
 
-	if g.isTemp(y) {
-		if v, ok := g.loads[y]; ok {
-			yid := v.Ident()
-			yidNoPercent := g.formatIdent(yid)
-			if id, ok := startVars[yidNoPercent]; ok {
-				y = g.formatIdent(id)
-				delete(startVars, yidNoPercent)
-			} else {
-				y = g.convertIdent(yid)
-			}
-		}
-	}
+func (g *Generator) parseInfix(id string, x string, y string, op string, startVars map[string]string) (rule, map[string]string) {
+	x, startVars = g.releaseStartVar(x, startVars)
+	y, startVars = g.releaseStartVar(y, startVars)
 	g.ref[id] = g.parseRule(x, y, "", op)
 	g.last = g.ref[id]
 	return g.ref[id], startVars
@@ -205,7 +197,7 @@ func (g *Generator) parseCompare(op string) (string, rule) {
 func (g *Generator) parseCompareOp(op string) string {
 	switch op {
 	case "false":
-		return "="
+		return "false"
 	case "oeq":
 		return "="
 	case "oge":
@@ -219,7 +211,7 @@ func (g *Generator) parseCompareOp(op string) string {
 	case "one":
 		return "!="
 	case "true":
-		return "="
+		return "true"
 	case "ueq":
 		return "="
 	case "uge":
