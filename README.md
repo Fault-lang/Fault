@@ -18,13 +18,17 @@ The development Fault is documented in the series "Marianne Writes a Programming
 ## Getting Started
 _Fault is currently pre-alpha and not ready to develop real specs, but if you like pain and misery here's how to run the compiler..._
 
-Fault is written in Go and can be run by downloading this repo and running this command from the src directory:
+Fault is written in Go and can be run by downloading this repo and running this command:
 
-`go run main.go -filepath=smt/testdata/simple.fspec`
+`make fault-z3`
 
-That will return the SMTLib2 output of the compiler. It will not yet run the model in Z3. Please note that the compiler only supports part of the Fault grammar currently.
+This will build Fault with Z3 as a solver backend. This will require you to have Docker installed. From there Fault specs can be run like so:
 
-You can output different stages of compilation by using the `-mode` flag. By default this is set to `-mode=smt` so the compiler outputs SMTLib2, but can be changed to output either `ast` or `ir` which will stop compilation early and output either Fault's AST or LLVM IR respectively.
+`fault -f example.fspec`
+
+That will return the SMTLib2 output of the compiler. Please note that the compiler only supports part of the Fault grammar currently and the formatting to the results needs some work.
+
+You can output different stages of compilation by using the `-mode` flag. By default this is set to `-mode=check`, but can be changed to output either `ast`, `ir`, or `smt` which will stop compilation early and output either Fault's AST, LLVM IR, or SMTLib2 respectively.
 
 You can also start the compiler from the LLVM -> SMTLib2 stage by changing to `-input` flag to `-input=ll`. By default the compiler expects the input file to be a spec that fits the Fault grammar.
 
