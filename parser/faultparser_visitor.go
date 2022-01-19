@@ -131,11 +131,11 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#Expr.
 	VisitExpr(ctx *ExprContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#ExprPrefix.
+	VisitExprPrefix(ctx *ExprPrefixContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#lrExpr.
 	VisitLrExpr(ctx *LrExprContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#Prefix.
-	VisitPrefix(ctx *PrefixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#operand.
 	VisitOperand(ctx *OperandContext) interface{}
@@ -154,6 +154,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#OpInstance.
 	VisitOpInstance(ctx *OpInstanceContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#prefix.
+	VisitPrefix(ctx *PrefixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#numeric.
 	VisitNumeric(ctx *NumericContext) interface{}

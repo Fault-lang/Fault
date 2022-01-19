@@ -43,20 +43,24 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 		for _, id := range ident {
 			assrt = append(assrt, g.packageAssert(id, v.Operator, v))
 		}
+		return assrt
 	case *ast.Identifier:
 		ident = g.findIdent(v)
 		for _, id := range ident {
 			assrt = append(assrt, g.packageAssert(id, comp, constr))
 		}
+		return assrt
 	case *ast.ParameterCall:
 		ident = g.findIdent(v)
 		for _, id := range ident {
 			assrt = append(assrt, g.packageAssert(id, comp, constr))
 		}
+		return assrt
 	case *ast.AssertVar:
 		for _, v := range v.Instances {
 			assrt = append(assrt, g.packageAssert(v, comp, constr))
 		}
+		return assrt
 	case *ast.IntegerLiteral:
 		return assrt
 	case *ast.FloatLiteral:
@@ -68,7 +72,6 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 	default:
 		panic(fmt.Sprintf("poorly formatted assert statement got=%T", exp))
 	}
-	return assrt
 }
 
 func (g *Generator) parseInvariant(ex ast.Expression) rule {

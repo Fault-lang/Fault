@@ -13,6 +13,9 @@ import (
 	"unicode"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
+	irtypes "github.com/llir/llvm/ir/types"
 )
 
 func TestSimpleConst(t *testing.T) {
@@ -305,13 +308,116 @@ func TestIfCond(t *testing.T) {
 	}
 }
 
+func TestParamReset(t *testing.T) {
+	structs := make(map[string]types.StockFlow)
+	c := NewCompiler(structs)
+	s := NewCompiledSpec("test")
+	c.currentSpec = s
+	c.currentSpecName = "test"
+	c.specs["test"] = s
+
+	id := []string{"test", "this", "func"}
+	val1 := constant.NewInt(irtypes.I32, 0)
+	s.DefineSpecVar(id, val1)
+	s.AddParam(id, val1)
+
+	val2 := constant.NewInt(irtypes.I32, 5)
+	s.DefineSpecVar(id, val2)
+
+	if s.vars.GetState(id) != 1 {
+		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
+	}
+
+	p := ir.NewParam(strings.Join(id[1:], "_"), DoubleP)
+	c.resetParaState([]*ir.Param{p})
+
+	if s.vars.GetState(id) != 0 {
+		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
+	}
+}
+
+func TestListSpecs(t *testing.T) {
+	structs := make(map[string]types.StockFlow)
+	c := NewCompiler(structs)
+	s := NewCompiledSpec("test")
+	c.currentSpec = s
+	c.currentSpecName = "test"
+	c.specs["test"] = s
+
+	results := c.ListSpecs()
+	if results[1] == "test " {
+		t.Fatal("List of Specs failed to return spec test")
+	}
+
+}
+func TestListSpecsVars(t *testing.T) {
+	structs := make(map[string]types.StockFlow)
+	c := NewCompiler(structs)
+	s := NewCompiledSpec("test")
+	c.currentSpec = s
+	c.currentSpecName = "test"
+	c.specs["test"] = s
+
+	id := []string{"test", "this", "func"}
+	val1 := constant.NewInt(irtypes.I32, 0)
+	s.DefineSpecVar(id, val1)
+
+	results := c.ListSpecsAndVars()
+
+	if results["test"] == nil {
+		t.Fatal("List of Specs and Vars failed to return spec test")
+	}
+	if results["test"][0] != "test_this_func" {
+		t.Fatalf("List of Specs and Vars doesn't include var test_this_func")
+	}
+
+}
+
+func TestGetInstances(t *testing.T) {
+	structs := make(map[string]types.StockFlow)
+	c := NewCompiler(structs)
+	s := NewCompiledSpec("test")
+	c.currentSpec = s
+	c.currentSpecName = "test"
+	c.specs["test"] = s
+	c.instances["insta1"] = "fake1"
+	c.instances["insta2"] = "fake2"
+	c.instances["insta3"] = "fake1"
+
+	infix := &ast.InfixExpression{
+		Left: &ast.IndexExpression{Left: &ast.ParameterCall{Value: []string{"fake1", "prop1"}}},
+		Right: &ast.InfixExpression{
+			Left:  &ast.IndexExpression{Left: &ast.ParameterCall{Value: []string{"fake1", "prop3"}}},
+			Right: &ast.PrefixExpression{Right: &ast.ParameterCall{Value: []string{"fake2", "prop2"}}}}}
+	results := c.getInstances(infix)
+
+	if len(results["fake1"]) != 2 {
+		t.Fatalf("incorrect results returned. got=%d want=2", len(results["fake1"]))
+	}
+	if results["fake1"][0] != "insta1" {
+		t.Fatalf("instance not correct. got=%s want=insta1", results["fake1"][0])
+	}
+
+	if results["fake1"][1] != "insta3" {
+		t.Fatalf("instance not correct. got=%s want=insta3", results["fake1"][1])
+	}
+
+	if len(results["fake2"]) != 1 {
+		t.Fatalf("incorrect results returned. got=%d want=1", len(results["fake2"]))
+	}
+
+	if results["fake2"][0] != "insta2" {
+		t.Fatalf("instance not correct. got=%s want=insta2", results["fake2"][0])
+	}
+}
+
 func TestNegate(t *testing.T) {
 	test := &ast.InfixExpression{
-		Left: &ast.Identifier{
-			Value: "foo",
+		Left: &ast.Boolean{
+			Value: true,
 		},
-		Right: &ast.FloatLiteral{
-			Value: 2.5,
+		Right: &ast.Boolean{
+			Value: false,
 		},
 		Operator: "==",
 	}
@@ -322,12 +428,99 @@ func TestNegate(t *testing.T) {
 		t.Fatalf("operator has not been negated got=%s", n.(*ast.InfixExpression).Operator)
 	}
 
-	if n.(*ast.InfixExpression).Left.(*ast.Identifier).Value != "foo" {
-		t.Fatalf("infix expression corrupted. Left value changed.")
+	if n.(*ast.InfixExpression).Left.(*ast.Boolean).Value != false {
+		t.Fatalf("left value of infix not negated got=%s.", n.(*ast.InfixExpression).Left)
 	}
 
-	if n.(*ast.InfixExpression).Right.(*ast.FloatLiteral).Value != 2.5 {
-		t.Fatalf("infix expression corrupted. Right value changed.")
+	if n.(*ast.InfixExpression).Right.(*ast.Boolean).Value != true {
+		t.Fatalf("right value of infix not negated. got=%s", n.(*ast.InfixExpression).Right)
+	}
+
+	test2 := &ast.Boolean{Value: true}
+
+	n2 := negate(test2)
+
+	if n2.(*ast.Boolean).Value != false {
+		t.Fatalf("boolean has not been negated got=%s", n2.(*ast.Boolean).String())
+	}
+
+	test3 := &ast.Boolean{Value: false}
+
+	n3 := negate(test3)
+
+	if n3.(*ast.Boolean).Value != true {
+		t.Fatalf("boolean has not been negated got=%s", n3.(*ast.Boolean).String())
+	}
+
+	test4 := &ast.PrefixExpression{
+		Operator: "!",
+		Right:    &ast.Boolean{Value: false},
+	}
+
+	n4 := negate(test4)
+
+	if n4.(*ast.Boolean).Value != true {
+		t.Fatalf("boolean has not been negated got=%s", n4.(*ast.Boolean).String())
+	}
+}
+
+func TestEval(t *testing.T) {
+	tests := []*ast.InfixExpression{{
+		Left:  &ast.IntegerLiteral{Value: 2},
+		Right: &ast.IntegerLiteral{Value: 2},
+	},
+		{
+			Left:  &ast.FloatLiteral{Value: 2.5},
+			Right: &ast.IntegerLiteral{Value: 2},
+		},
+		{
+			Left:     &ast.IntegerLiteral{Value: 2},
+			Operator: "+",
+			Right:    &ast.FloatLiteral{Value: 2.5},
+		}}
+
+	operators := []string{"+", "-", "/", "*"}
+
+	results := []ast.Node{
+		&ast.IntegerLiteral{Value: 4},
+		&ast.FloatLiteral{Value: 4.5},
+		&ast.FloatLiteral{Value: 4.5},
+		&ast.IntegerLiteral{Value: 0},
+		&ast.FloatLiteral{Value: .5},
+		&ast.FloatLiteral{Value: -.5},
+		&ast.FloatLiteral{Value: 1},
+		&ast.FloatLiteral{Value: 1.25},
+		&ast.FloatLiteral{Value: .8},
+		&ast.IntegerLiteral{Value: 4},
+		&ast.FloatLiteral{Value: 5},
+		&ast.FloatLiteral{Value: 5},
+	}
+
+	i := 0
+	for _, o := range operators {
+		for _, n := range tests {
+			n.Operator = o
+			test := evaluate(n)
+			switch actual := test.(type) {
+			case *ast.IntegerLiteral:
+				expected, ok := results[i].(*ast.IntegerLiteral)
+				if !ok {
+					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+				}
+				if expected.Value != actual.Value {
+					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+				}
+			case *ast.FloatLiteral:
+				expected, ok := results[i].(*ast.FloatLiteral)
+				if !ok {
+					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+				}
+				if expected.Value != actual.Value {
+					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+				}
+			}
+			i++
+		}
 	}
 }
 

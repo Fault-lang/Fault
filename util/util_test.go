@@ -1,9 +1,50 @@
 package util
 
 import (
+	"fault/ast"
 	"os"
 	"testing"
 )
+
+func TestPreparse(t *testing.T) {
+	token := ast.Token{Literal: "test", Position: []int{1, 2, 3, 4}}
+	pairs := make(map[ast.Expression]ast.Expression)
+	pairs[&ast.Identifier{Token: token, Value: "foo"}] = &ast.IntegerLiteral{Token: token, Value: 3}
+	pairs[&ast.Identifier{Token: token, Value: "bash"}] = &ast.FunctionLiteral{Token: token,
+		Parameters: []*ast.Identifier{{Token: token, Value: "foo"}},
+		Body: &ast.BlockStatement{Token: token,
+			Statements: []ast.Statement{&ast.ConstantStatement{Token: token, Name: &ast.Identifier{Token: token, Value: "buzz"}, Value: &ast.IntegerLiteral{Token: token, Value: 20}}}}}
+
+	ret := Preparse(pairs)
+
+	if len(ret) != 2 {
+		t.Fatalf("item removed from map. got=%s", ret)
+	}
+
+	for k, v := range ret {
+		if k == "foo" {
+			ty, ok := v.(*ast.IntegerLiteral)
+			if !ok {
+				t.Fatalf("pair type incorrect. want=IntegerLiteral got=%T", v)
+			}
+
+			if ty.Value != 3 {
+				t.Fatalf("pair value incorrect. want=3 got=%d", ty.Value)
+			}
+		} else if k == "bash" {
+			ty, ok := v.(*ast.BlockStatement)
+			if !ok {
+				t.Fatalf("pair type incorrect. want=BlockStatement got=%T", v)
+			}
+
+			if ty.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value != 20 {
+				t.Fatalf("pair value incorrect. want=20 got=%d", ty.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value)
+			}
+		} else {
+			t.Fatalf("pair key unrecognized. got=%s", k)
+		}
+	}
+}
 
 func TestFilepath(t *testing.T) {
 	var host string
@@ -35,6 +76,24 @@ func TestFilepath(t *testing.T) {
 	filepath4a := Filepath(filepath4)
 	if filepath4a != "/host/test.spec" {
 		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath4a)
+	}
+
+	filepath5 := "foo/test/file/system/~test.spec"
+	filepath5a := Filepath(filepath5)
+	if filepath5a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath5a)
+	}
+
+	filepath6 := "test.spec"
+	filepath6a := Filepath(filepath6)
+	if filepath6a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath6a)
+	}
+
+	filepath7 := "/.."
+	filepath7a := Filepath(filepath7)
+	if filepath7a != "/host/" {
+		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath7a)
 	}
 
 	os.Setenv("FAULT_HOST", host)
@@ -83,6 +142,24 @@ func TestCartesianMulti(t *testing.T) {
 
 	if r[3][0] != "a" || r[3][1] != "2" || r[3][2] != "4" {
 		t.Fatalf("cartesian product not correct. got=%s", r)
+	}
+
+}
+
+func TestMergeStrSlices(t *testing.T) {
+	sl1 := []string{"here", "there", "everywhere"}
+	sl2 := []string{"here", "roy", "kent"}
+
+	merged := MergeStrSlices(sl1, sl2)
+	if merged[0] != "here" {
+		t.Fatalf("first value of MergeStrSlices not correct. got=%s", merged[0])
+	}
+	if merged[1] != "there" {
+		t.Fatalf("second value of MergeStrSlices not correct. got=%s", merged[1])
+	}
+
+	if merged[3] == "here" {
+		t.Fatalf("duplicate value detected from MergeStrSlices. got=%s", merged[3])
 	}
 
 }
