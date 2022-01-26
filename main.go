@@ -19,16 +19,20 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string) (*listener.FaultListener, *types.Checker) {
+func parse(data string, path string, file string) (*listener.FaultListener, *types.Checker) {
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
 	// Create the Lexer
 	lexer := parser.NewFaultLexer(is)
+	lexer.RemoveErrorListeners()
+	lexer.AddErrorListener(&listener.FaultErrorListener{Filename: file})
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	// Create the Parser
 	p := parser.NewFaultParser(stream)
+	p.RemoveErrorListeners()
+	p.AddErrorListener(&listener.FaultErrorListener{Filename: file})
 
 	// Finally parse the expression
 	listener := &listener.FaultListener{}
@@ -90,7 +94,7 @@ func run(filepath string, mode string, input string) {
 
 	switch input {
 	case "fspec":
-		listener, ty := parse(d, path)
+		listener, ty := parse(d, path, filepath)
 		if listener == nil {
 			log.Fatal("Fault parser returned nil")
 		}
