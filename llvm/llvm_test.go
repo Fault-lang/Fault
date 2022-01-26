@@ -394,11 +394,11 @@ func TestGetInstances(t *testing.T) {
 	if len(results["fake1"]) != 2 {
 		t.Fatalf("incorrect results returned. got=%d want=2", len(results["fake1"]))
 	}
-	if results["fake1"][0] != "insta1" {
+	if results["fake1"][0] != "insta1" && results["fake1"][0] != "insta3" {
 		t.Fatalf("instance not correct. got=%s want=insta1", results["fake1"][0])
 	}
 
-	if results["fake1"][1] != "insta3" {
+	if results["fake1"][1] != "insta3" && results["fake1"][1] != "insta1" {
 		t.Fatalf("instance not correct. got=%s want=insta3", results["fake1"][1])
 	}
 
