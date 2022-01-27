@@ -26,3 +26,5 @@ fault.Dockerfile
 *.java
 *.interp
 *.tokens
+
+__pycache__
