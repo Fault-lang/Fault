@@ -56,10 +56,13 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (1/26/2021)
+### Current Status (2/2/2022)
+In the process of adding support for unknown variables I realized I never fully connected the dots on uncertain values (whoops). So finished both of those although the logic around asserts over multiple instances is kind of wonky and brittle. May need a rethink.
+
+#### (1/26/2022)
 Removed the fuzzer for the time being. It wasn't really doing what I needed it to do and the newest version Go starts to roll out fuzzing functionality by default 🎉 As added some error handling around the lexer/parser.
 
-#### Status (1/7/2021)
+#### Status (1/7/2022)
 This started with an honest attempt to set up CI/CD on Fault's repo so that other people can start contributing, but debugging the CI/CD pipeline made me realize I have cross platform capability issues :facepalm:. Tried a bunch of different things and conveniently forgot to swash my commits before merging to main. All my dirty laundry is there to study!
 
 Anyway! Long story short: Fault now has an installer and runs on Docker. It also has support for alternative SMT solvers rather than a dependency on Z3 ... at least in theory!
