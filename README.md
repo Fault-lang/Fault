@@ -43,11 +43,11 @@ _incomplete list. Items to be added as I think of them_
 | LLVM IR generation | :white_check_mark: | | |
 | LLVM optimization passes | | | |
 | SMTLib2 generation | :white_check_mark: | | |
-| Spec imports | | | |
+| Spec imports | :white_check_mark: | | |
 | Conditionals | :white_check_mark: | | |
-| Uncertain data types | | | |
+| Uncertain data types | :white_check_mark: | | |
 | Non-negative data types | | | |
-| Assertions | | | |
+| Assertions | :white_check_mark: | | |
 
 ### Development Strategy
 The assumption Fault is making is that since both system dynamic models and first order logic models represent things as state machines it should be possible for a language to take the imperative structure of system dynamic DSLs, compile them to the declarative structure of logic DSLs and create a model checker better suited for the day-to-day software work of professionals.
@@ -56,7 +56,10 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (1/7/2021)
+### Current Status (1/26/2021)
+Removed the fuzzer for the time being. It wasn't really doing what I needed it to do and the newest version Go starts to roll out fuzzing functionality by default 🎉 As added some error handling around the lexer/parser.
+
+#### Status (1/7/2021)
 This started with an honest attempt to set up CI/CD on Fault's repo so that other people can start contributing, but debugging the CI/CD pipeline made me realize I have cross platform capability issues :facepalm:. Tried a bunch of different things and conveniently forgot to swash my commits before merging to main. All my dirty laundry is there to study!
 
 Anyway! Long story short: Fault now has an installer and runs on Docker. It also has support for alternative SMT solvers rather than a dependency on Z3 ... at least in theory!
