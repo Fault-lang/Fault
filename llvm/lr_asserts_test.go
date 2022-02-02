@@ -123,10 +123,22 @@ func TestAssertState(t *testing.T) {
 func compareAsserts(t *testing.T, e ast.Expression, i int) {
 	switch ex := e.(type) {
 	case *ast.AssertVar:
-		instArray := [2]string{ex.Instances[0], ex.Instances[1]}
-		if instArray != [2]string{"test1_x_scope", "test1_x_value"} &&
-			instArray != [2]string{"test1_x_value", "test1_x_scope"} {
-			t.Fatalf("assert %d has wrong expression. got=%s", i, ex.Instances)
+		var check int
+		for _, v := range ex.Instances {
+			switch v {
+			case "test1_x_scope":
+				check++
+			case "test1_x_value":
+				check++
+			case "test1_x_rate":
+				check++
+			default:
+				t.Fatalf("assert %d has wrong expression. got=%s", i, v)
+			}
+		}
+
+		if check != 1 {
+			t.Fatalf("assert %d has wrong number of instances. got=%d want=3", i, check)
 		}
 	case *ast.IndexExpression:
 		compareAsserts(t, ex.Left, i)
@@ -144,14 +156,15 @@ func prepAssertTest(test string) (*Compiler, error) {
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := &listener.FaultListener{}
+	l := listener.NewListener(true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
 	if err != nil {
 		return nil, err
 	}
-	compiler := NewCompiler(ty.SpecStructs)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
 	err = compiler.Compile(l.AST)
 	if err != nil {
 		return nil, err

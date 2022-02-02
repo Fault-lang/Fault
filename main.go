@@ -35,37 +35,39 @@ func parse(data string, path string, file string) (*listener.FaultListener, *typ
 	p.AddErrorListener(&listener.FaultErrorListener{Filename: file})
 
 	// Finally parse the expression
-	listener := &listener.FaultListener{}
-	listener.Path = path
-	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
+	lstnr := listener.NewListener(false, false)
+	lstnr.Path = path
+	antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())
 
 	// Infer Types and Build Symbol Table
 	ty := &types.Checker{}
-	err := ty.Check(listener.AST)
+	err := ty.Check(lstnr.AST)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return listener, ty
+	return lstnr, ty
 }
 
-func ll(listener *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
-	compiler := llvm.NewCompiler(ty.SpecStructs)
-	err := compiler.Compile(listener.AST)
+func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
+	compiler := llvm.NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns)
+	err := compiler.Compile(lstnr.AST)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return compiler
 }
 
-func smt2(ir string) *smt.Generator {
+func smt2(ir string, uncertains map[string][]float64, unknowns []string) *smt.Generator {
 	generator := smt.NewGenerator()
+	generator.LoadMeta(uncertains, unknowns)
 	generator.Run(ir)
 	return generator
 }
 
-func probability(smt string, uncertains map[string][]float64) (*execute.ModelChecker, map[string]execute.Scenario) {
+func probability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, map[string]execute.Scenario) {
 	ex := execute.NewModelChecker("z3")
-	ex.LoadModel(smt, uncertains)
+	ex.LoadModel(smt, uncertains, unknowns)
 	ok, err := ex.Check()
 	if err != nil {
 		log.Fatal(err)
@@ -84,6 +86,8 @@ func probability(smt string, uncertains map[string][]float64) (*execute.ModelChe
 
 func run(filepath string, mode string, input string) {
 	filepath = util.Filepath(filepath)
+	uncertains := make(map[string][]float64)
+	unknowns := []string{}
 
 	data, err := os.ReadFile(filepath)
 	if err != nil {
@@ -94,47 +98,51 @@ func run(filepath string, mode string, input string) {
 
 	switch input {
 	case "fspec":
-		listener, ty := parse(d, path, filepath)
-		if listener == nil {
+		lstnr, ty := parse(d, path, filepath)
+		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
+		uncertains = lstnr.Uncertains
+		unknowns = lstnr.Unknowns
 
 		if mode == "ast" {
-			fmt.Println(listener.AST)
+			fmt.Println(lstnr.AST)
 			return
 		}
 
-		compiler := ll(listener, ty)
+		compiler := ll(lstnr, ty)
+		uncertains = compiler.Uncertains
+		unknowns = compiler.Unknowns
 
 		if mode == "ir" {
 			fmt.Println(compiler.GetIR())
 			return
 		}
 
-		generator := smt2(compiler.GetIR())
+		generator := smt2(compiler.GetIR(), uncertains, unknowns)
 
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
 		}
 
-		mc, data := probability(generator.SMT(), make(map[string][]float64))
+		mc, data := probability(generator.SMT(), uncertains, unknowns)
 		mc.LoadMeta(generator.Branches, generator.BranchTrail)
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "ll":
-		generator := smt2(d)
+		generator := smt2(d, uncertains, unknowns)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
 		}
 
-		mc, data := probability(generator.SMT(), make(map[string][]float64))
+		mc, data := probability(generator.SMT(), uncertains, unknowns)
 		mc.LoadMeta(generator.Branches, generator.BranchTrail)
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "smt2":
-		mc, data := probability(d, make(map[string][]float64))
+		mc, data := probability(d, uncertains, unknowns)
 
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)

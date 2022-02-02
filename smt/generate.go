@@ -202,7 +202,11 @@ func (g *Generator) writeRule(ru rule) string {
 		if r.tag != nil {
 			g.buildBranchTrails(x, r.tag)
 		}
-		return g.writeInitRule(x, r.ty, y)
+		if g.isASolvable(x) {
+			g.declareVar(x, r.ty)
+		} else {
+			return g.writeInitRule(x, r.ty, y)
+		}
 	case *ite:
 		cond := g.writeRule(r.cond)
 		tstate := g.paraStateChanges([][]rule{r.t})

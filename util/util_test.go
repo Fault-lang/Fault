@@ -2,9 +2,42 @@ package util
 
 import (
 	"fault/ast"
+	"fault/parser"
 	"os"
 	"testing"
+
+	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
+
+func TestGeneratorToken(t *testing.T) {
+	test := `spec test;`
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	stream.GetAllText()
+	tokens := stream.GetAllTokens()
+
+	token := GenerateToken("IMPORT_DECL", "IMPORT_DECL", tokens[0], tokens[0])
+	if token.Literal != "IMPORT_DECL" {
+		t.Fatalf("token literal not correct. got=%s", token.Literal)
+	}
+	if token.Position[0] != 1 {
+		t.Fatalf("token position not correct. want=1 got=%d", token.Position[0])
+	}
+
+	if token.Position[1] != 0 {
+		t.Fatalf("token position not correct. want=0 got=%d", token.Position[1])
+	}
+
+	if token.Position[2] != 1 {
+		t.Fatalf("token position not correct. want=1 got=%d", token.Position[2])
+	}
+
+	if token.Position[3] != 0 {
+		t.Fatalf("token position not correct. want=0 got=%d", token.Position[3])
+	}
+
+}
 
 func TestPreparse(t *testing.T) {
 	token := ast.Token{Literal: "test", Position: []int{1, 2, 3, 4}}

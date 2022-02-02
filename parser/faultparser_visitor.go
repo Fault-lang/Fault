@@ -62,6 +62,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#PropVar.
 	VisitPropVar(ctx *PropVarContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropSolvable.
+	VisitPropSolvable(ctx *PropSolvableContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#initDecl.
 	VisitInitDecl(ctx *InitDeclContext) interface{}
 
@@ -88,6 +91,12 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#assumption.
 	VisitAssumption(ctx *AssumptionContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#temporal.
+	VisitTemporal(ctx *TemporalContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#invariant.
+	VisitInvariant(ctx *InvariantContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#MiscAssign.
 	VisitMiscAssign(ctx *MiscAssignContext) interface{}
@@ -124,6 +133,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#solvable.
+	VisitSolvable(ctx *SolvableContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#Typed.
 	VisitTyped(ctx *TypedContext) interface{}

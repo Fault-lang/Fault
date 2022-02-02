@@ -25,6 +25,7 @@ type Solver struct {
 type ModelChecker struct {
 	SMT         string
 	Uncertains  map[string][]float64
+	Unknowns    []string
 	solver      map[string]*Solver
 	branches    map[string][]string
 	branchTrail map[string]map[string][]string
@@ -61,9 +62,10 @@ func GenerateSolver() map[string]*Solver {
 	return s
 }
 
-func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64) {
+func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string) {
 	mc.SMT = smt
 	mc.Uncertains = uncertains
+	mc.Unknowns = unknowns
 }
 
 func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]map[string][]string) {

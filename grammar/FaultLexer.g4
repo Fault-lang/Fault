@@ -31,6 +31,10 @@ RUN: 'run';
 SPEC: 'spec';
 STOCK: 'stock';
 THIS: 'this';
+EVENTUALLY: 'eventually';
+ALWAYS: 'always';
+NMT: 'nmt';
+NFT: 'nft';
 
 NIL: 'nil';
 TRUE: 'true';
@@ -44,6 +48,7 @@ TY_INT: 'int';
 TY_FLOAT: 'float';
 TY_NATURAL: 'natural';
 TY_UNCERTAIN: 'uncertain';
+TY_UNKNOWN: 'unknown';
 
 IDENT: LETTER (LETTER | UNICODE_DIGIT)*;
 

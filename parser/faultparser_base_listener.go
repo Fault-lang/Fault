@@ -129,6 +129,12 @@ func (s *BaseFaultParserListener) EnterPropVar(ctx *PropVarContext) {}
 // ExitPropVar is called when production PropVar is exited.
 func (s *BaseFaultParserListener) ExitPropVar(ctx *PropVarContext) {}
 
+// EnterPropSolvable is called when production PropSolvable is entered.
+func (s *BaseFaultParserListener) EnterPropSolvable(ctx *PropSolvableContext) {}
+
+// ExitPropSolvable is called when production PropSolvable is exited.
+func (s *BaseFaultParserListener) ExitPropSolvable(ctx *PropSolvableContext) {}
+
 // EnterInitDecl is called when production initDecl is entered.
 func (s *BaseFaultParserListener) EnterInitDecl(ctx *InitDeclContext) {}
 
@@ -182,6 +188,18 @@ func (s *BaseFaultParserListener) EnterAssumption(ctx *AssumptionContext) {}
 
 // ExitAssumption is called when production assumption is exited.
 func (s *BaseFaultParserListener) ExitAssumption(ctx *AssumptionContext) {}
+
+// EnterTemporal is called when production temporal is entered.
+func (s *BaseFaultParserListener) EnterTemporal(ctx *TemporalContext) {}
+
+// ExitTemporal is called when production temporal is exited.
+func (s *BaseFaultParserListener) ExitTemporal(ctx *TemporalContext) {}
+
+// EnterInvariant is called when production invariant is entered.
+func (s *BaseFaultParserListener) EnterInvariant(ctx *InvariantContext) {}
+
+// ExitInvariant is called when production invariant is exited.
+func (s *BaseFaultParserListener) ExitInvariant(ctx *InvariantContext) {}
 
 // EnterMiscAssign is called when production MiscAssign is entered.
 func (s *BaseFaultParserListener) EnterMiscAssign(ctx *MiscAssignContext) {}
@@ -254,6 +272,12 @@ func (s *BaseFaultParserListener) EnterFaultType(ctx *FaultTypeContext) {}
 
 // ExitFaultType is called when production faultType is exited.
 func (s *BaseFaultParserListener) ExitFaultType(ctx *FaultTypeContext) {}
+
+// EnterSolvable is called when production solvable is entered.
+func (s *BaseFaultParserListener) EnterSolvable(ctx *SolvableContext) {}
+
+// ExitSolvable is called when production solvable is exited.
+func (s *BaseFaultParserListener) ExitSolvable(ctx *SolvableContext) {}
 
 // EnterTyped is called when production Typed is entered.
 func (s *BaseFaultParserListener) EnterTyped(ctx *TypedContext) {}

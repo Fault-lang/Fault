@@ -80,6 +80,10 @@ func (v *BaseFaultParserVisitor) VisitPropVar(ctx *PropVarContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitPropSolvable(ctx *PropSolvableContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitInitDecl(ctx *InitDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -113,6 +117,14 @@ func (v *BaseFaultParserVisitor) VisitAssertion(ctx *AssertionContext) interface
 }
 
 func (v *BaseFaultParserVisitor) VisitAssumption(ctx *AssumptionContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitTemporal(ctx *TemporalContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitInvariant(ctx *InvariantContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -161,6 +173,10 @@ func (v *BaseFaultParserVisitor) VisitRunExpr(ctx *RunExprContext) interface{} {
 }
 
 func (v *BaseFaultParserVisitor) VisitFaultType(ctx *FaultTypeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitSolvable(ctx *SolvableContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

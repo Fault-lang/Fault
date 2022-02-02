@@ -243,6 +243,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.Uncertain:
 		return true
+	case *ast.Unknown:
+		return true
 	case *ast.Nil:
 		return true
 	case *ast.StockLiteral:
@@ -299,6 +301,12 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Node) (ast.Node, error
 		if node.InferredType == nil {
 			params := c.inferUncertain(node)
 			node.InferredType = &ast.Type{Type: "UNCERTAIN", Scope: 0, Parameters: params}
+		}
+		return node, nil
+
+	case *ast.Unknown:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "UNKNOWN", Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	case *ast.Identifier:
@@ -397,7 +405,6 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 		}
 
 	}
-
 	// Check global variables
 	if len(id) == 1 {
 		//Assume current spec
@@ -477,6 +484,7 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		} else {
 			nl, err = c.inferFunction(node.Left, p)
 		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -691,6 +699,8 @@ func typeable(node ast.Node) *ast.Type {
 	case *ast.Natural:
 		return n.InferredType
 	case *ast.Uncertain:
+		return n.InferredType
+	case *ast.Unknown:
 		return n.InferredType
 	case *ast.PrefixExpression:
 		return n.InferredType

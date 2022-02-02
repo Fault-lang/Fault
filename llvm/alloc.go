@@ -55,6 +55,8 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
 		store = c.contextBlock.NewStore(v, alloc)
+	case *constant.Null:
+		return //Figure out what to do here
 	case *ir.InstFAdd:
 		alloc = c.contextBlock.NewAlloca(irtypes.Double)
 		alloc.SetName(name)
@@ -113,6 +115,9 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
 		c.storeGlobal(name, alloc)
 	case *constant.Float:
+		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
+		c.storeGlobal(name, alloc)
+	case *constant.Null:
 		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
 		c.storeGlobal(name, alloc)
 	case *ir.InstFAdd:

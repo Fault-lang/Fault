@@ -10,7 +10,7 @@ import (
 
 func TestSpecDecl(t *testing.T) {
 	test := `spec test1;`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -30,7 +30,7 @@ func TestConstDecl(t *testing.T) {
 	test := `spec test1;
 			 const x = 5;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -50,7 +50,7 @@ func TestConstMultiDecl(t *testing.T) {
 	test := `spec test1;
 			 const x,y = 5;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -78,7 +78,7 @@ func TestConstMultiWExpressDecl(t *testing.T) {
 			 const x = 1;
 	         const y = 2 * (x + 1);;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -114,7 +114,7 @@ func TestStockDecl(t *testing.T) {
 				call: test2.lol,
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -169,7 +169,7 @@ func TestStockDeclFloat(t *testing.T) {
 				value: 10.0,
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -203,7 +203,7 @@ func TestFlowDecl(t *testing.T) {
 				bar: "here's a string",
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -237,7 +237,7 @@ func TestStockConnection(t *testing.T) {
 				bar: new fizz,
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.Instance)
@@ -264,7 +264,7 @@ func TestStockImport(t *testing.T) {
 				bar: new test2.fizz,
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.Instance)
@@ -287,7 +287,7 @@ func TestFunctionBlock(t *testing.T) {
 				bar: func{1+2;},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -314,7 +314,7 @@ func TestThis(t *testing.T) {
 				bar: func{1+this;},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -356,7 +356,7 @@ func TestClock(t *testing.T) {
 				bar: func{1+clock;},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -394,7 +394,7 @@ func TestClockRun(t *testing.T) {
 				 clock;
 			 }
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	run := spec.Statements[2].(*ast.ForStatement).Body.Statements
 	clock, ok := run[0].(*ast.ExpressionStatement).Expression.(*ast.Clock)
 	if !ok {
@@ -414,7 +414,7 @@ func TestPrefix(t *testing.T) {
 						},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -461,7 +461,7 @@ func TestSimpleConditional(t *testing.T) {
 				},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -503,7 +503,7 @@ func TestConditional(t *testing.T) {
 				},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -546,7 +546,7 @@ func TestElseIf(t *testing.T) {
 				},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -581,7 +581,7 @@ func TestInit(t *testing.T) {
 				},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -609,7 +609,7 @@ func TestImport(t *testing.T) {
 	test := `spec test1;
 			 import "hello";
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -634,7 +634,7 @@ func TestImportWIdent(t *testing.T) {
 	test := `spec test1;
 			 import helloWorld "../../hello";
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -660,7 +660,7 @@ func TestMultiImport(t *testing.T) {
 			 import("hello"
 			         x "world");
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -697,7 +697,7 @@ func TestForStatement(t *testing.T) {
 	test := `spec test1;
 			 for 5 run{};
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -721,7 +721,7 @@ func TestRunBlock(t *testing.T) {
 				d.fn;
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -774,7 +774,7 @@ func TestSkipRun(t *testing.T) {
 	flags := make(map[string]bool)
 	flags["skipRun"] = true
 
-	spec := prepTest(test, flags)
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -794,7 +794,7 @@ func TestRunInit(t *testing.T) {
 				d = new test2.foo;
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -828,7 +828,7 @@ func TestIncr(t *testing.T) {
 				i++;
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	forSt, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
@@ -868,7 +868,7 @@ func TestDecr(t *testing.T) {
 				i--;
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	forSt, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
@@ -906,7 +906,7 @@ func TestAssertion(t *testing.T) {
 	test := `spec test1;
 			 assert x > y;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -930,7 +930,7 @@ func TestAssertionCompound(t *testing.T) {
 	test := `spec test1;
 			 assert x > y && x > 1;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -946,7 +946,7 @@ func TestAssertionCompound2(t *testing.T) {
 	test := `spec test1;
 			 assert x > y || x > 1;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -962,7 +962,7 @@ func TestAssumption(t *testing.T) {
 	test := `spec test1;
 			 assume x == 5;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	assert, ok := spec.Statements[1].(*ast.AssumptionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
@@ -986,7 +986,7 @@ func TestAssumptionCompound(t *testing.T) {
 	test := `spec test1;
 			 assume x == 5 || y > 1;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	assert, ok := spec.Statements[1].(*ast.AssumptionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
@@ -1002,7 +1002,7 @@ func TestAssumptionCompound2(t *testing.T) {
 	test := `spec test1;
 			 assume x == 5 && y > 1;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	assert, ok := spec.Statements[1].(*ast.AssumptionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
@@ -1022,7 +1022,7 @@ func TestFaultAssign(t *testing.T) {
 				},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -1062,7 +1062,7 @@ func TestMiscAssign(t *testing.T) {
 				},
 			 };
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -1098,7 +1098,7 @@ func TestNil(t *testing.T) {
 	test := `spec test1;
 			 const a = nil;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1114,7 +1114,7 @@ func TestAccessHistory(t *testing.T) {
 	test := `spec test1;
 			 const a = b[1][2];
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1139,7 +1139,7 @@ func TestAccessHistory2(t *testing.T) {
 	test := `spec test1;
 			 const a = b[a[2]];
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1159,7 +1159,7 @@ func TestNegInt(t *testing.T) {
 	test := `spec test1;
 			 const a = -13;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1179,7 +1179,7 @@ func TestFloat(t *testing.T) {
 	test := `spec test1;
 			 const a = 1.2;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1199,7 +1199,7 @@ func TestNegFloat(t *testing.T) {
 	test := `spec test1;
 			 const a = -1.2;
 			`
-	spec := prepTest(test, nil)
+	_, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1220,7 +1220,7 @@ func TestDeclaredType(t *testing.T) {
 			 const a = natural(1);
 			 const b = uncertain(10, 2.3);
 			`
-	spec := prepTest(test, nil)
+	l, spec := prepTest(test, nil)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1252,6 +1252,197 @@ func TestDeclaredType(t *testing.T) {
 	if uncer.Sigma != 2.3 {
 		t.Fatalf("Uncertain sigma is not 2.3. got=%f", uncer.Sigma)
 	}
+
+	if l.Uncertains["b"] != nil {
+		t.Fatal("Uncertain b not indexed")
+	}
+}
+
+func TestUnknown(t *testing.T) {
+	test := `spec test1;
+			 const a = unknown();
+
+			 def f = flow{
+				foo,
+				buzz: unknown(),
+				bizz: func{
+					x = unknown();
+					z = x + unknown(y);
+				},
+			 };
+
+			 const b;
+			`
+	l, spec := prepTest(test, nil)
+	con, ok := spec.Statements[1].(*ast.ConstantStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
+	}
+
+	unkn, ok := con.Value.(*ast.Unknown)
+	if !ok {
+		t.Fatalf("Constant is not an Unknown. got=%T", con.Value)
+	}
+
+	if unkn.Name == nil {
+		t.Fatal("Unknown identifier Name is nil.")
+	}
+
+	if unkn.Name.Value != "a" {
+		t.Fatalf("Unknown identifier is not correctly set. got=%s", unkn.Name.Value)
+	}
+
+	if unkn.Name.Spec != "test1" {
+		t.Fatalf("Unknown spec is not correctly set. got=%s", unkn.Name.Spec)
+	}
+
+	df, ok := spec.Statements[2].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[2] is not a DefStatement. got=%T", spec.Statements[2])
+	}
+
+	fl, ok := df.Value.(*ast.FlowLiteral)
+	if !ok {
+		t.Fatalf("Def block not a flow. got=%T", df.Value)
+	}
+
+	var pass int
+	for k, v := range fl.Pairs {
+		ident, ok := k.(*ast.Identifier)
+		if !ok {
+			t.Fatalf("Improper key in property pair. got=%T", k)
+		}
+		if ident.Value == "foo" {
+			val, ok := v.(*ast.Unknown)
+			if !ok {
+				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
+			}
+
+			if val.Name == nil {
+				t.Fatal("Unknown foo identifier Name is nil.")
+			}
+
+			if val.Name.Value != ident.Value {
+				t.Fatalf("Unknown has wrong identifier. got=%s", val.Name.Value)
+			}
+
+			if val.Name.Spec != "test1" {
+				t.Fatalf("Unknown has wrong spec. got=%s", val.Name.Spec)
+			}
+			pass++
+		} else if ident.Value == "buzz" {
+			val, ok := v.(*ast.Unknown)
+			if !ok {
+				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
+			}
+
+			if val.Name == nil {
+				t.Fatal("Unknown buzz identifier Name is nil.")
+			}
+
+			if val.Name.Value != ident.Value {
+				t.Fatalf("Unknown has wrong identifier. got=%s", val.Name.Value)
+			}
+
+			if val.Name.Spec != "test1" {
+				t.Fatalf("Unknown has wrong spec. got=%s", val.Name.Spec)
+			}
+			pass++
+		} else if ident.Value == "bizz" {
+			val, ok := v.(*ast.FunctionLiteral)
+			if !ok {
+				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
+			}
+
+			infix1, ok := val.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+			}
+
+			id1, ok := infix1.Left.(*ast.Identifier)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.Identifier got=%T", infix1.Left)
+			}
+
+			un1, ok := infix1.Right.(*ast.Unknown)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.Unknown got=%T", infix1.Right)
+			}
+
+			if un1.Name == nil {
+				t.Fatal("Unknown x identifier Name is nil.")
+			}
+
+			if un1.Name.Value != id1.Value {
+				t.Fatalf("Unknown has wrong identifier. got=%s", un1.Name.Value)
+			}
+
+			if un1.Name.Spec != "test1" {
+				t.Fatalf("Unknown has wrong spec. got=%s", un1.Name.Spec)
+			}
+
+			infix2, ok := val.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[1].(*ast.ExpressionStatement).Expression)
+			}
+
+			_, ok = infix2.Left.(*ast.Identifier)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.Identifier got=%T", infix2.Left)
+			}
+
+			infix3, ok := infix2.Right.(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[1].(*ast.ExpressionStatement).Expression)
+			}
+
+			un2, ok := infix3.Right.(*ast.Unknown)
+			if !ok {
+				t.Fatalf("Incorrect function statement want=*ast.Unknown got=%T", infix3.Right)
+			}
+
+			if un2.Name == nil {
+				t.Fatal("Unknown y identifier Name is nil.")
+			}
+
+			if un2.Name.Value != "y" {
+				t.Fatalf("Unknown has wrong identifier. got=%s", un1.Name.Value)
+			}
+
+			if un2.Name.Spec != "test1" {
+				t.Fatalf("Unknown has wrong spec. got=%s", un1.Name.Spec)
+			}
+
+			pass++
+		} else {
+			t.Fatalf("Flow has extra property. got=%s", ident.Value)
+		}
+	}
+	if pass != 3 {
+		t.Fatalf("Flow is missing property. want=3 got=%d", pass)
+	}
+
+	con2, ok := spec.Statements[3].(*ast.ConstantStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[3] is not a ConstantStatement. got=%T", spec.Statements[3])
+	}
+
+	unk2, ok := con2.Value.(*ast.Unknown)
+	if !ok {
+		t.Fatalf("Constant is not an Unknown. got=%T", con2.Value)
+	}
+
+	if unk2.Name.Value != "b" {
+		t.Fatalf("Unknown identifier is not correctly set. got=%s", unk2.Name.Value)
+	}
+
+	if unk2.Name.Spec != "test1" {
+		t.Fatalf("Unknown spec is not correctly set. got=%s", unk2.Name.Spec)
+	}
+
+	if len(l.Unknowns) != 5 {
+		t.Fatalf("missing an unknown want=5 got=%d", len(l.Unknowns))
+	}
 }
 
 /* THINGS TO TEST:
@@ -1262,7 +1453,7 @@ func TestDeclaredType(t *testing.T) {
 - How do Constants works in Go? (Barak)
 */
 
-func prepTest(test string, flags map[string]bool) *ast.Spec {
+func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
@@ -1270,10 +1461,10 @@ func prepTest(test string, flags map[string]bool) *ast.Spec {
 	p := parser.NewFaultParser(stream)
 	var listener *FaultListener
 	if flags != nil && flags["skipRun"] {
-		listener = &FaultListener{testing: true, skipRun: true}
+		listener = NewListener(true, true)
 	} else {
-		listener = &FaultListener{testing: true}
+		listener = NewListener(true, false)
 	}
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
-	return listener.AST
+	return listener, listener.AST
 }

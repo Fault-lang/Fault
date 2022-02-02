@@ -62,6 +62,9 @@ type FaultParserListener interface {
 	// EnterPropVar is called when entering the PropVar production.
 	EnterPropVar(c *PropVarContext)
 
+	// EnterPropSolvable is called when entering the PropSolvable production.
+	EnterPropSolvable(c *PropSolvableContext)
+
 	// EnterInitDecl is called when entering the initDecl production.
 	EnterInitDecl(c *InitDeclContext)
 
@@ -88,6 +91,12 @@ type FaultParserListener interface {
 
 	// EnterAssumption is called when entering the assumption production.
 	EnterAssumption(c *AssumptionContext)
+
+	// EnterTemporal is called when entering the temporal production.
+	EnterTemporal(c *TemporalContext)
+
+	// EnterInvariant is called when entering the invariant production.
+	EnterInvariant(c *InvariantContext)
 
 	// EnterMiscAssign is called when entering the MiscAssign production.
 	EnterMiscAssign(c *MiscAssignContext)
@@ -124,6 +133,9 @@ type FaultParserListener interface {
 
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
+
+	// EnterSolvable is called when entering the solvable production.
+	EnterSolvable(c *SolvableContext)
 
 	// EnterTyped is called when entering the Typed production.
 	EnterTyped(c *TypedContext)
@@ -236,6 +248,9 @@ type FaultParserListener interface {
 	// ExitPropVar is called when exiting the PropVar production.
 	ExitPropVar(c *PropVarContext)
 
+	// ExitPropSolvable is called when exiting the PropSolvable production.
+	ExitPropSolvable(c *PropSolvableContext)
+
 	// ExitInitDecl is called when exiting the initDecl production.
 	ExitInitDecl(c *InitDeclContext)
 
@@ -262,6 +277,12 @@ type FaultParserListener interface {
 
 	// ExitAssumption is called when exiting the assumption production.
 	ExitAssumption(c *AssumptionContext)
+
+	// ExitTemporal is called when exiting the temporal production.
+	ExitTemporal(c *TemporalContext)
+
+	// ExitInvariant is called when exiting the invariant production.
+	ExitInvariant(c *InvariantContext)
 
 	// ExitMiscAssign is called when exiting the MiscAssign production.
 	ExitMiscAssign(c *MiscAssignContext)
@@ -298,6 +319,9 @@ type FaultParserListener interface {
 
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)
+
+	// ExitSolvable is called when exiting the solvable production.
+	ExitSolvable(c *SolvableContext)
 
 	// ExitTyped is called when exiting the Typed production.
 	ExitTyped(c *TypedContext)

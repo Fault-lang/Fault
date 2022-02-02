@@ -4,7 +4,21 @@ import (
 	"fault/ast"
 	"os"
 	"strings"
+
+	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
+
+func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) ast.Token {
+	return ast.Token{
+		Type:    ast.TokenType(token),
+		Literal: literal,
+		Position: []int{start.GetLine(),
+			start.GetColumn(),
+			stop.GetLine(),
+			stop.GetColumn(),
+		},
+	}
+}
 
 func Filepath(filepath string) string {
 	if host, ok := os.LookupEnv("FAULT_HOST"); ok {

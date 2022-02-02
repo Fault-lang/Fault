@@ -12,7 +12,11 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 	switch val := c.(type) {
 	case *constant.Float:
 		id = g.advanceSSA(id)
-		return g.writeInitRule(id, "Real", val.String())
+		if g.isASolvable(id) {
+			g.declareVar(id, "Real")
+		} else {
+			return g.writeInitRule(id, "Real", val.String())
+		}
 	}
 	return ""
 }

@@ -1,0 +1,15 @@
+(declare-fun unknowns_loop_data_a_0 () Real)
+(declare-fun unknowns_loop_data_b_0 () Real)
+(declare-fun unknowns_loop_data_c_0 () Real)
+(declare-fun unknowns_loop_data_c_1 () Real)
+(declare-fun unknowns_loop_data_c_2 () Real)
+(declare-fun unknowns_loop_data_c_3 () Real)
+(assert (= unknowns_loop_data_b_0 2.0))
+(assert (= unknowns_loop_data_c_0 0.0))
+(assert (= unknowns_loop_data_c_1 (+ unknowns_loop_data_c_0 (+ unknowns_loop_data_a_0 unknowns_loop_data_b_0))))
+(assert (= unknowns_loop_data_c_2 (+ unknowns_loop_data_c_1 (+ unknowns_loop_data_a_0 unknowns_loop_data_b_0))))
+(assert (= unknowns_loop_data_c_3 (+ unknowns_loop_data_c_2 (+ unknowns_loop_data_a_0 unknowns_loop_data_b_0))))
+(assert (> unknowns_loop_data_a_0 5))
+(assert (> unknowns_loop_data_a_0 6))
+
+

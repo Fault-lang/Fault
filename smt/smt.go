@@ -165,8 +165,6 @@ func (b *branch) String() string {
 }
 
 type Generator struct {
-	callgraph       string
-	smt             []string
 	inits           []string
 	constants       []string
 	rules           []string
@@ -189,6 +187,8 @@ type Generator struct {
 	BranchTrail     map[string]map[string][]string //[branch_id] = []string{varid}
 	rawAsserts      []ast.Statement
 	rounds          map[string]map[string][]int16
+	Uncertains      map[string][]float64
+	Unknowns        []string
 }
 
 func NewGenerator() *Generator {
@@ -205,7 +205,13 @@ func NewGenerator() *Generator {
 		Branches:        make(map[string][]string),
 		BranchTrail:     make(map[string]map[string][]string),
 		rounds:          make(map[string]map[string][]int16),
+		Uncertains:      make(map[string][]float64),
 	}
+}
+
+func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string) {
+	g.Uncertains = uncertains
+	g.Unknowns = unknowns
 }
 
 func (g *Generator) SMT() string {
@@ -221,7 +227,7 @@ func (g *Generator) SMT() string {
 
 func (g *Generator) Run(llopt string) {
 	m, err := asm.ParseString("", llopt) //"" because ParseString has an
-	if err != nil {                      // optional path parameter
+	if err != nil {
 		panic(err)
 	}
 	g.newCallgraph(m)
@@ -266,8 +272,12 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		if conj == "" {
 			for _, assrt := range a1 {
 				ir := g.generateAssertRules(assrt)
-				or := fmt.Sprintf("(or %s)", strings.Join(ir, " "))
-				g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", or))
+				if len(ir) > 1 {
+					or := fmt.Sprintf("(or %s)", strings.Join(ir, " "))
+					g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", or))
+				} else if len(ir) == 1 {
+					g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", ir[0]))
+				}
 			}
 		} else {
 			g.asserts = append(g.asserts, g.generateCompound(a1, a2, conj)...)
@@ -344,6 +354,21 @@ func (g *Generator) isNumeric(char string) bool {
 		return false
 	}
 	return true
+}
+
+func (g *Generator) isASolvable(id string) bool {
+	id, _ = g.getVarBase(id)
+	for _, v := range g.Unknowns {
+		if v == id {
+			return true
+		}
+	}
+	for k := range g.Uncertains {
+		if k == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Generator) formatIdent(id string) string {

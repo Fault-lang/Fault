@@ -310,7 +310,8 @@ func TestIfCond(t *testing.T) {
 
 func TestParamReset(t *testing.T) {
 	structs := make(map[string]types.StockFlow)
-	c := NewCompiler(structs)
+	c := NewCompiler()
+	c.LoadMeta(structs, make(map[string][]float64), []string{})
 	s := NewCompiledSpec("test")
 	c.currentSpec = s
 	c.currentSpecName = "test"
@@ -338,7 +339,8 @@ func TestParamReset(t *testing.T) {
 
 func TestListSpecs(t *testing.T) {
 	structs := make(map[string]types.StockFlow)
-	c := NewCompiler(structs)
+	c := NewCompiler()
+	c.LoadMeta(structs, make(map[string][]float64), []string{})
 	s := NewCompiledSpec("test")
 	c.currentSpec = s
 	c.currentSpecName = "test"
@@ -352,7 +354,8 @@ func TestListSpecs(t *testing.T) {
 }
 func TestListSpecsVars(t *testing.T) {
 	structs := make(map[string]types.StockFlow)
-	c := NewCompiler(structs)
+	c := NewCompiler()
+	c.LoadMeta(structs, make(map[string][]float64), []string{})
 	s := NewCompiledSpec("test")
 	c.currentSpec = s
 	c.currentSpecName = "test"
@@ -375,7 +378,8 @@ func TestListSpecsVars(t *testing.T) {
 
 func TestGetInstances(t *testing.T) {
 	structs := make(map[string]types.StockFlow)
-	c := NewCompiler(structs)
+	c := NewCompiler()
+	c.LoadMeta(structs, make(map[string][]float64), []string{})
 	s := NewCompiledSpec("test")
 	c.currentSpec = s
 	c.currentSpecName = "test"
@@ -571,14 +575,15 @@ func prepTest(test string) (string, error) {
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := &listener.FaultListener{}
+	l := listener.NewListener(true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
 	if err != nil {
 		return "", err
 	}
-	compiler := NewCompiler(ty.SpecStructs)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
 	err = compiler.Compile(l.AST)
 	if err != nil {
 		return "", err

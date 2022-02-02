@@ -48,7 +48,8 @@ func InitNodes() []Node {
 		&StringLiteral{Token: token, Value: "test"},
 		&IndexExpression{Token: token, Left: &Identifier{Token: token, Value: "foo"}, Index: &IntegerLiteral{Token: token, Value: 3}},
 		&StockLiteral{Token: token, Pairs: pairs},
-		&FlowLiteral{Token: token, Pairs: pairs}}
+		&FlowLiteral{Token: token, Pairs: pairs},
+		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}}}
 }
 
 func TestTokenLiteral(t *testing.T) {
@@ -161,6 +162,9 @@ func TestString(t *testing.T) {
 		case *FlowLiteral:
 			got = t.String()
 			want = "{foo:3}"
+		case *Unknown:
+			got = t.String()
+			want = "unknown(foo)"
 		}
 		if got != want {
 			t.Fatalf("String failed for node type %T. got=%s", n, got)

@@ -71,6 +71,8 @@ structProperties
     | IDENT ':' functionLit #PropFunc
     | IDENT ':' operandName #PropVar
     | IDENT ':' prefix #PropVar
+    | IDENT ':' solvable #PropSolvable
+    | IDENT              #PropSolvable
     ;
 
 initDecl
@@ -109,11 +111,20 @@ accessHistory
     ;
 
 assertion
-    : 'assert' expression eos
+    : 'assert' temporal? invariant eos
     ;
 
 assumption
-    : 'assume' expression eos
+    : 'assume' temporal? invariant eos
+    ;
+
+temporal
+    : ('eventually' | 'always')
+    ;
+
+invariant
+    : expression
+    | expression ('nmt' | 'nft') integer
     ;
 
 assignment
@@ -159,11 +170,16 @@ faultType
     | TY_FLOAT
     | TY_NATURAL
     | TY_UNCERTAIN
+    | TY_UNKNOWN
+    ;
+
+solvable
+    : faultType '(' operand? (',' operand)* ')' 
     ;
 
 expression
     : operand                                                            #Expr
-    | faultType '(' operand (',' operand)* ')'                           #Typed
+    | solvable                                                           #Typed
     | prefix                                                             #ExprPrefix
     | expression '**' expression                                         #lrExpr
     | expression ('*' | '/' | '%' | '<<' | '>>' | '&' | '&^') expression #lrExpr

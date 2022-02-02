@@ -46,7 +46,7 @@ func TestSimpleAssert(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	err = compareResults(smt, expecting)
+	err = compareResults("SimpleAssert", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -105,7 +105,7 @@ func TestCompoundAssert(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	err = compareResults(smt, expecting)
+	err = compareResults("CompoundAssert", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -158,7 +158,7 @@ func TestAssertInfix(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	err = compareResults(smt, expecting)
+	err = compareResults("AssertInfix", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -215,7 +215,7 @@ func TestMultiVar(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	err = compareResults(smt, expecting)
+	err = compareResults("MultiVar", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -264,7 +264,7 @@ func TestSimpleAssume(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	err = compareResults(smt, expecting)
+	err = compareResults("SimpleAssume", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())

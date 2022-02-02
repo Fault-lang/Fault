@@ -98,6 +98,7 @@ func TestAddOK(t *testing.T) {
 	test := `spec test1;
 			const x = 2+2;
 			const y = 2+3.1;
+			const z = x + unknown(a);
 	`
 	checker, err := prepTest(test)
 
@@ -131,6 +132,13 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("left y node does not have an int type. got=%T", consts["y"].(*ast.InfixExpression).Left)
 	}
 
+	if consts["z"].(*ast.InfixExpression).InferredType.Type != "INT" {
+		t.Fatalf("Constant z does not have a int type. got=%T", consts["z"])
+	}
+
+	if consts["z"].(*ast.InfixExpression).Right.(*ast.Unknown).InferredType.Type != "UNKNOWN" {
+		t.Fatalf("right z node does not have a type unknown. got=%T", consts["z"].(*ast.InfixExpression).Right)
+	}
 }
 
 func TestTypeError(t *testing.T) {
@@ -865,7 +873,7 @@ func prepTest(test string) (*Checker, error) {
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := &listener.FaultListener{}
+	l := listener.NewListener(true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	ty := &Checker{}
 	err := ty.Check(l.AST)

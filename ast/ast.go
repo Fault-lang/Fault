@@ -46,6 +46,7 @@ var TYPES = map[string]int{ //Convertible Types
 	"FLOAT":     3,
 	"INT":       4,
 	"UNCERTAIN": 5,
+	"UNKNOWN":   6,
 }
 
 type Type struct {
@@ -402,6 +403,25 @@ func (u *Uncertain) String() string {
 	return out.String()
 }
 func (u *Uncertain) Position() []int { return u.Token.Position }
+
+type Unknown struct {
+	Token        Token
+	InferredType *Type
+	Name         *Identifier
+}
+
+func (u *Unknown) expressionNode()      {}
+func (u *Unknown) TokenLiteral() string { return u.Token.Literal }
+func (u *Unknown) String() string {
+	var out bytes.Buffer
+	out.WriteString("unknown(")
+	if u.Name != nil { //This sometimes is set further up the tree and might be nil
+		out.WriteString(u.Name.Value)
+	}
+	out.WriteString(")")
+	return out.String()
+}
+func (u *Unknown) Position() []int { return u.Token.Position }
 
 type PrefixExpression struct {
 	Token        Token

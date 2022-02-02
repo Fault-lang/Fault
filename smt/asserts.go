@@ -17,7 +17,7 @@ func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 		if e.Constraints.Conjuction != "" {
 			return a1, a2, e.Constraints.Conjuction
 		} else {
-			a1, a2 := removeDuplicates(a1, a2)
+			a2 = removeDuplicates(a1, a2)
 			return append(a1, a2...), nil, ""
 		}
 	case *ast.AssumptionStatement:
@@ -109,7 +109,7 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 				constant: c,
 			}
 		}
-		var wg *wrapGroup
+		var wg = &wrapGroup{}
 		for _, v := range e.Instances {
 			s, a, c := captureState(v)
 			wg.wraps = append(wg.wraps, &wrap{value: v,
@@ -258,7 +258,6 @@ func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []stri
 	for _, r := range a2 {
 		right = append(right, g.generateAssertRules(r)...)
 	}
-
 	switch op {
 	case "&&":
 		lor := fmt.Sprintf("(or %s)", strings.Join(left, " "))
@@ -320,13 +319,28 @@ func captureState(id string) (string, bool, bool) {
 
 }
 
-func removeDuplicates(a1 []*assrt, a2 []*assrt) ([]*assrt, []*assrt) {
+func removeDuplicates(a1 []*assrt, a2 []*assrt) []*assrt {
 	for _, x := range a1 {
-		for k, y := range a2 {
-			if x.assertion.String() == y.assertion.String() {
-				a2 = append(a2[0:k], a2[k+1:]...)
-			}
+		found, index := valueInList(x, a2)
+		if found {
+			a2 = removeFromList(index, a2)
 		}
 	}
-	return a1, a2
+	return a2
+}
+
+func valueInList(x *assrt, l []*assrt) (bool, int) {
+	for k, y := range l {
+		if x.assertion.String() == y.assertion.String() {
+			return true, k
+		}
+	}
+	return false, 0
+}
+
+func removeFromList(k int, l []*assrt) []*assrt {
+	if (k + 1) != len(l) {
+		return append(l[0:k], l[k+1:]...)
+	}
+	return l[0:k]
 }

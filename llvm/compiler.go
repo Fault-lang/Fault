@@ -68,16 +68,18 @@ type Compiler struct {
 
 	specGlobals  map[string]*ir.Global
 	AssertAssume []ast.Statement
+	Uncertains   map[string][]float64
+	Unknowns     []string
 }
 
-func NewCompiler(structs map[string]types.StockFlow) *Compiler {
+func NewCompiler() *Compiler {
 	c := &Compiler{
 		module: ir.NewModule(),
 
 		specs:            make(map[string]*spec),
 		instances:        make(map[string]string),
 		instanceChildren: make(map[string]string),
-		specStructs:      structs,
+		specStructs:      make(map[string]types.StockFlow),
 		specFunctions:    make(map[string]value.Value),
 
 		contextMetadata: nil,
@@ -89,9 +91,17 @@ func NewCompiler(structs map[string]types.StockFlow) *Compiler {
 
 		specGlobals: make(map[string]*ir.Global),
 		runRound:    0,
+
+		Uncertains: make(map[string][]float64),
 	}
 	c.addGlobal()
 	return c
+}
+
+func (c *Compiler) LoadMeta(structs map[string]types.StockFlow, uncertains map[string][]float64, unknowns []string) {
+	c.specStructs = structs
+	c.Unknowns = unknowns
+	c.Uncertains = uncertains
 }
 
 func (c *Compiler) Compile(root ast.Node) (err error) {
@@ -373,10 +383,10 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 		return constant.NewBool(v.Value)
 	case *ast.Natural:
 		return constant.NewFloat(irtypes.Double, float64(v.Value))
-	case *ast.Uncertain:
-		return constant.NewStruct(&irtypes.StructType{},
-			constant.NewFloat(irtypes.Double, v.Mean),
-			constant.NewFloat(irtypes.Double, v.Sigma))
+	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
+		return constant.NewFloat(irtypes.Double, float64(0))
+	case *ast.Unknown:
+		return constant.NewFloat(irtypes.Double, float64(0))
 	case *ast.Nil:
 		return constant.NewNull(&irtypes.PointerType{})
 	case *ast.Identifier:
@@ -536,8 +546,12 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 	if c.specStructs[base.Value.Spec][structName] == nil {
 		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", structName, pos[0], pos[1]))
 	}
+
 	keys := c.generateOrder(c.specStructs[base.Value.Spec][structName])
 	for _, k := range keys {
+		var isUncertain []float64
+		var isUnknown bool
+
 		id := c.getFullVariableName([]string{instName, k})
 		switch pv := c.specStructs[base.Value.Spec][structName][k].(type) {
 		case *ast.Instance:
@@ -557,15 +571,30 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		default:
 			val := c.compileValue(c.specStructs[base.Value.Spec][structName][k])
 			id, s := c.GetSpec(id)
-			c.instanceChildren[strings.Join(id, "_")] = structName
 			s.DefineSpecVar(id, val)
 			c.allocVariable(id, val, pos)
 			s.vars.ResetState(id)
-			//name := c.getVariableStateName(id)
 			name := c.getVariableName(id)
 			p := ir.NewParam(name, DoubleP)
 			s.AddParam(id, p)
+			if _, ok := pv.(*ast.Unknown); ok {
+				isUnknown = true
+			}
+			if uncertain, ok := pv.(*ast.Uncertain); ok {
+				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
+			}
 		}
+		//Track properties of instances so that we can write
+		// asserts on the struct and honor them for all instances
+		id, _ = c.GetSpec(id)
+		fvn := strings.Join(id, "_")
+		if isUnknown {
+			c.Unknowns = append(c.Unknowns, fvn)
+		}
+		if isUncertain != nil {
+			c.Uncertains[fvn] = isUncertain
+		}
+		c.instanceChildren[strings.Join(id, "_")] = structName
 	}
 	c.instances[instName] = structName
 	c.contextFuncName = parentFunction
@@ -868,6 +897,9 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		}
 
 		instas := c.fetchInstances(fvn)
+		if len(instas) == 0 {
+			instas = []string{fvns}
+		}
 		return &ast.AssertVar{
 			Token:        e.Token,
 			InferredType: e.InferredType,
@@ -887,6 +919,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	case *ast.Natural:
 		return e
 	case *ast.Uncertain:
+		return e
+	case *ast.Unknown:
 		return e
 	case *ast.PrefixExpression:
 		e.Right = c.convertAssertVariables(e.Right)
@@ -932,11 +966,16 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 }
 
 func (c *Compiler) fetchInstances(ident []string) []string {
+	// this and convertAssertVariables need a rethink. Seems brittle
+	// with lots of edge cases
 	var insta []string
 	id, _ := c.GetSpec(ident)
 	for k, v := range c.instanceChildren {
 		if v == id[1] {
-			insta = append(insta, k)
+			id2 := strings.Split(k, "_")
+			if id2[len(id2)-1] == id[len(id)-1] { //Same parameter of a different instance
+				insta = append(insta, k)
+			}
 		}
 	}
 	return insta
