@@ -519,7 +519,7 @@ func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
 
 func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 	keys := []string{}
-	for k, _ := range pairs {
+	for k := range pairs {
 		if k != "___base" {
 			keys = append(keys, k)
 		}
@@ -1095,7 +1095,3 @@ func evalInt(i1 int64, i2 int64, op string) int64 {
 }
 
 type Panic string
-
-func compilePanic(message string) {
-	panic(Panic(fmt.Sprintf("compile panic: %s\n", message)))
-}

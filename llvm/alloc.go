@@ -44,7 +44,7 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	switch v := val.(type) {
 	case *constant.CharArray:
 		l := uint64(len(v.X))
-		alloc = c.contextBlock.NewAlloca(&irtypes.ArrayType{"string", l, irtypes.I8})
+		alloc = c.contextBlock.NewAlloca(&irtypes.ArrayType{TypeName: "string", Len: l, ElemType: irtypes.I8})
 		alloc.SetName(name)
 		store = c.contextBlock.NewStore(v, alloc)
 	case *constant.Int:
