@@ -1,4 +1,4 @@
-// Code generated from FaultParser.g4 by ANTLR 4.8. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.9.3. DO NOT EDIT.
 
 package parser // FaultParser
 
@@ -16,7 +16,7 @@ var _ = reflect.Copy
 var _ = strconv.Itoa
 
 var parserATN = []uint16{
-	3, 24715, 42794, 33075, 47597, 16764, 15335, 30598, 22884, 3, 82, 481,
+	3, 24715, 42794, 33075, 47597, 16764, 15335, 30598, 22884, 3, 83, 481,
 	4, 2, 9, 2, 4, 3, 9, 3, 4, 4, 9, 4, 4, 5, 9, 5, 4, 6, 9, 6, 4, 7, 9, 7,
 	4, 8, 9, 8, 4, 9, 9, 9, 4, 10, 9, 10, 4, 11, 9, 11, 4, 12, 9, 12, 4, 13,
 	9, 13, 4, 14, 9, 14, 4, 15, 9, 15, 4, 16, 9, 16, 4, 17, 9, 17, 4, 18, 9,
@@ -70,10 +70,10 @@ var parserATN = []uint16{
 	3, 48, 3, 48, 2, 3, 72, 49, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
 	26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60,
 	62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 2,
-	17, 4, 2, 36, 36, 42, 42, 3, 2, 55, 60, 3, 2, 50, 51, 3, 2, 22, 23, 3,
-	2, 24, 25, 5, 2, 52, 52, 63, 65, 67, 72, 3, 2, 38, 39, 3, 2, 29, 35, 4,
-	2, 52, 52, 67, 72, 3, 2, 63, 65, 6, 2, 52, 52, 54, 54, 63, 65, 67, 67,
-	3, 2, 73, 75, 3, 2, 77, 78, 3, 2, 27, 28, 3, 3, 49, 49, 2, 506, 2, 96,
+	17, 4, 2, 37, 37, 43, 43, 3, 2, 56, 61, 3, 2, 51, 52, 3, 2, 22, 24, 3,
+	2, 25, 26, 5, 2, 53, 53, 64, 66, 68, 73, 3, 2, 39, 40, 3, 2, 30, 36, 4,
+	2, 53, 53, 68, 73, 3, 2, 64, 66, 6, 2, 53, 53, 55, 55, 64, 66, 68, 68,
+	3, 2, 74, 76, 3, 2, 78, 79, 3, 2, 28, 29, 3, 3, 50, 50, 2, 506, 2, 96,
 	3, 2, 2, 2, 4, 114, 3, 2, 2, 2, 6, 118, 3, 2, 2, 2, 8, 133, 3, 2, 2, 2,
 	10, 137, 3, 2, 2, 2, 12, 143, 3, 2, 2, 2, 14, 145, 3, 2, 2, 2, 16, 147,
 	3, 2, 2, 2, 18, 163, 3, 2, 2, 2, 20, 168, 3, 2, 2, 2, 22, 176, 3, 2, 2,
@@ -94,11 +94,11 @@ var parserATN = []uint16{
 	3, 2, 2, 2, 107, 110, 3, 2, 2, 2, 108, 106, 3, 2, 2, 2, 109, 111, 5, 58,
 	30, 2, 110, 109, 3, 2, 2, 2, 110, 111, 3, 2, 2, 2, 111, 112, 3, 2, 2, 2,
 	112, 113, 5, 94, 48, 2, 113, 3, 3, 2, 2, 2, 114, 115, 7, 19, 2, 2, 115,
-	116, 7, 36, 2, 2, 116, 117, 5, 94, 48, 2, 117, 5, 3, 2, 2, 2, 118, 128,
-	7, 14, 2, 2, 119, 129, 5, 8, 5, 2, 120, 124, 7, 43, 2, 2, 121, 123, 5,
+	116, 7, 37, 2, 2, 116, 117, 5, 94, 48, 2, 117, 5, 3, 2, 2, 2, 118, 128,
+	7, 14, 2, 2, 119, 129, 5, 8, 5, 2, 120, 124, 7, 44, 2, 2, 121, 123, 5,
 	8, 5, 2, 122, 121, 3, 2, 2, 2, 123, 126, 3, 2, 2, 2, 124, 122, 3, 2, 2,
 	2, 124, 125, 3, 2, 2, 2, 125, 127, 3, 2, 2, 2, 126, 124, 3, 2, 2, 2, 127,
-	129, 7, 44, 2, 2, 128, 119, 3, 2, 2, 2, 128, 120, 3, 2, 2, 2, 129, 130,
+	129, 7, 45, 2, 2, 128, 119, 3, 2, 2, 2, 128, 120, 3, 2, 2, 2, 129, 130,
 	3, 2, 2, 2, 130, 131, 5, 94, 48, 2, 131, 7, 3, 2, 2, 2, 132, 134, 9, 2,
 	2, 2, 133, 132, 3, 2, 2, 2, 133, 134, 3, 2, 2, 2, 134, 135, 3, 2, 2, 2,
 	135, 136, 5, 10, 6, 2, 136, 9, 3, 2, 2, 2, 137, 138, 5, 88, 45, 2, 138,
@@ -107,40 +107,40 @@ var parserATN = []uint16{
 	2, 2, 2, 143, 141, 3, 2, 2, 2, 143, 142, 3, 2, 2, 2, 144, 13, 3, 2, 2,
 	2, 145, 146, 9, 3, 2, 2, 146, 15, 3, 2, 2, 2, 147, 161, 7, 7, 2, 2, 148,
 	149, 5, 18, 10, 2, 149, 150, 5, 94, 48, 2, 150, 162, 3, 2, 2, 2, 151, 157,
-	7, 43, 2, 2, 152, 153, 5, 18, 10, 2, 153, 154, 5, 94, 48, 2, 154, 156,
+	7, 44, 2, 2, 152, 153, 5, 18, 10, 2, 153, 154, 5, 94, 48, 2, 154, 156,
 	3, 2, 2, 2, 155, 152, 3, 2, 2, 2, 156, 159, 3, 2, 2, 2, 157, 155, 3, 2,
 	2, 2, 157, 158, 3, 2, 2, 2, 158, 160, 3, 2, 2, 2, 159, 157, 3, 2, 2, 2,
-	160, 162, 7, 44, 2, 2, 161, 148, 3, 2, 2, 2, 161, 151, 3, 2, 2, 2, 162,
-	17, 3, 2, 2, 2, 163, 166, 5, 20, 11, 2, 164, 165, 7, 37, 2, 2, 165, 167,
+	160, 162, 7, 45, 2, 2, 161, 148, 3, 2, 2, 2, 161, 151, 3, 2, 2, 2, 162,
+	17, 3, 2, 2, 2, 163, 166, 5, 20, 11, 2, 164, 165, 7, 38, 2, 2, 165, 167,
 	5, 22, 12, 2, 166, 164, 3, 2, 2, 2, 166, 167, 3, 2, 2, 2, 167, 19, 3, 2,
-	2, 2, 168, 173, 5, 76, 39, 2, 169, 170, 7, 41, 2, 2, 170, 172, 5, 76, 39,
+	2, 2, 168, 173, 5, 76, 39, 2, 169, 170, 7, 42, 2, 2, 170, 172, 5, 76, 39,
 	2, 171, 169, 3, 2, 2, 2, 172, 175, 3, 2, 2, 2, 173, 171, 3, 2, 2, 2, 173,
 	174, 3, 2, 2, 2, 174, 21, 3, 2, 2, 2, 175, 173, 3, 2, 2, 2, 176, 181, 5,
-	72, 37, 2, 177, 178, 7, 41, 2, 2, 178, 180, 5, 72, 37, 2, 179, 177, 3,
+	72, 37, 2, 177, 178, 7, 42, 2, 2, 178, 180, 5, 72, 37, 2, 179, 177, 3,
 	2, 2, 2, 180, 183, 3, 2, 2, 2, 181, 179, 3, 2, 2, 2, 181, 182, 3, 2, 2,
 	2, 182, 23, 3, 2, 2, 2, 183, 181, 3, 2, 2, 2, 184, 185, 7, 8, 2, 2, 185,
-	186, 7, 36, 2, 2, 186, 187, 7, 37, 2, 2, 187, 188, 5, 26, 14, 2, 188, 189,
+	186, 7, 37, 2, 2, 186, 187, 7, 38, 2, 2, 187, 188, 5, 26, 14, 2, 188, 189,
 	5, 94, 48, 2, 189, 25, 3, 2, 2, 2, 190, 191, 7, 10, 2, 2, 191, 197, 7,
-	45, 2, 2, 192, 193, 5, 28, 15, 2, 193, 194, 7, 41, 2, 2, 194, 196, 3, 2,
+	46, 2, 2, 192, 193, 5, 28, 15, 2, 193, 194, 7, 42, 2, 2, 194, 196, 3, 2,
 	2, 2, 195, 192, 3, 2, 2, 2, 196, 199, 3, 2, 2, 2, 197, 195, 3, 2, 2, 2,
 	197, 198, 3, 2, 2, 2, 198, 200, 3, 2, 2, 2, 199, 197, 3, 2, 2, 2, 200,
-	213, 7, 46, 2, 2, 201, 202, 7, 20, 2, 2, 202, 208, 7, 45, 2, 2, 203, 204,
-	5, 28, 15, 2, 204, 205, 7, 41, 2, 2, 205, 207, 3, 2, 2, 2, 206, 203, 3,
+	213, 7, 47, 2, 2, 201, 202, 7, 20, 2, 2, 202, 208, 7, 46, 2, 2, 203, 204,
+	5, 28, 15, 2, 204, 205, 7, 42, 2, 2, 205, 207, 3, 2, 2, 2, 206, 203, 3,
 	2, 2, 2, 207, 210, 3, 2, 2, 2, 208, 206, 3, 2, 2, 2, 208, 209, 3, 2, 2,
-	2, 209, 211, 3, 2, 2, 2, 210, 208, 3, 2, 2, 2, 211, 213, 7, 46, 2, 2, 212,
+	2, 209, 211, 3, 2, 2, 2, 210, 208, 3, 2, 2, 2, 211, 213, 7, 47, 2, 2, 212,
 	190, 3, 2, 2, 2, 212, 201, 3, 2, 2, 2, 213, 27, 3, 2, 2, 2, 214, 215, 7,
-	36, 2, 2, 215, 216, 7, 40, 2, 2, 216, 234, 5, 80, 41, 2, 217, 218, 7, 36,
-	2, 2, 218, 219, 7, 40, 2, 2, 219, 234, 5, 88, 45, 2, 220, 221, 7, 36, 2,
-	2, 221, 222, 7, 40, 2, 2, 222, 234, 5, 92, 47, 2, 223, 224, 7, 36, 2, 2,
-	224, 225, 7, 40, 2, 2, 225, 234, 5, 76, 39, 2, 226, 227, 7, 36, 2, 2, 227,
-	228, 7, 40, 2, 2, 228, 234, 5, 78, 40, 2, 229, 230, 7, 36, 2, 2, 230, 231,
-	7, 40, 2, 2, 231, 234, 5, 70, 36, 2, 232, 234, 7, 36, 2, 2, 233, 214, 3,
+	37, 2, 2, 215, 216, 7, 41, 2, 2, 216, 234, 5, 80, 41, 2, 217, 218, 7, 37,
+	2, 2, 218, 219, 7, 41, 2, 2, 219, 234, 5, 88, 45, 2, 220, 221, 7, 37, 2,
+	2, 221, 222, 7, 41, 2, 2, 222, 234, 5, 92, 47, 2, 223, 224, 7, 37, 2, 2,
+	224, 225, 7, 41, 2, 2, 225, 234, 5, 76, 39, 2, 226, 227, 7, 37, 2, 2, 227,
+	228, 7, 41, 2, 2, 228, 234, 5, 78, 40, 2, 229, 230, 7, 37, 2, 2, 230, 231,
+	7, 41, 2, 2, 231, 234, 5, 70, 36, 2, 232, 234, 7, 37, 2, 2, 233, 214, 3,
 	2, 2, 2, 233, 217, 3, 2, 2, 2, 233, 220, 3, 2, 2, 2, 233, 223, 3, 2, 2,
 	2, 233, 226, 3, 2, 2, 2, 233, 229, 3, 2, 2, 2, 233, 232, 3, 2, 2, 2, 234,
 	29, 3, 2, 2, 2, 235, 236, 7, 15, 2, 2, 236, 237, 5, 74, 38, 2, 237, 238,
-	5, 94, 48, 2, 238, 31, 3, 2, 2, 2, 239, 241, 7, 45, 2, 2, 240, 242, 5,
+	5, 94, 48, 2, 238, 31, 3, 2, 2, 2, 239, 241, 7, 46, 2, 2, 240, 242, 5,
 	34, 18, 2, 241, 240, 3, 2, 2, 2, 241, 242, 3, 2, 2, 2, 242, 243, 3, 2,
-	2, 2, 243, 244, 7, 46, 2, 2, 244, 33, 3, 2, 2, 2, 245, 247, 5, 36, 19,
+	2, 2, 243, 244, 7, 47, 2, 2, 244, 33, 3, 2, 2, 2, 245, 247, 5, 36, 19,
 	2, 246, 245, 3, 2, 2, 2, 247, 248, 3, 2, 2, 2, 248, 246, 3, 2, 2, 2, 248,
 	249, 3, 2, 2, 2, 249, 35, 3, 2, 2, 2, 250, 258, 5, 16, 9, 2, 251, 258,
 	5, 30, 16, 2, 252, 253, 5, 38, 20, 2, 253, 254, 5, 94, 48, 2, 254, 258,
@@ -150,8 +150,8 @@ var parserATN = []uint16{
 	264, 5, 40, 21, 2, 261, 264, 5, 52, 27, 2, 262, 264, 5, 54, 28, 2, 263,
 	259, 3, 2, 2, 2, 263, 260, 3, 2, 2, 2, 263, 261, 3, 2, 2, 2, 263, 262,
 	3, 2, 2, 2, 264, 39, 3, 2, 2, 2, 265, 266, 5, 72, 37, 2, 266, 267, 9, 4,
-	2, 2, 267, 41, 3, 2, 2, 2, 268, 273, 5, 76, 39, 2, 269, 270, 7, 47, 2,
-	2, 270, 271, 5, 72, 37, 2, 271, 272, 7, 48, 2, 2, 272, 274, 3, 2, 2, 2,
+	2, 2, 267, 41, 3, 2, 2, 2, 268, 273, 5, 76, 39, 2, 269, 270, 7, 48, 2,
+	2, 270, 271, 5, 72, 37, 2, 271, 272, 7, 49, 2, 2, 272, 274, 3, 2, 2, 2,
 	273, 269, 3, 2, 2, 2, 274, 275, 3, 2, 2, 2, 275, 273, 3, 2, 2, 2, 275,
 	276, 3, 2, 2, 2, 276, 43, 3, 2, 2, 2, 277, 279, 7, 4, 2, 2, 278, 280, 5,
 	48, 25, 2, 279, 278, 3, 2, 2, 2, 279, 280, 3, 2, 2, 2, 280, 281, 3, 2,
@@ -163,11 +163,11 @@ var parserATN = []uint16{
 	6, 2, 2, 296, 297, 5, 82, 42, 2, 297, 299, 3, 2, 2, 2, 298, 293, 3, 2,
 	2, 2, 298, 294, 3, 2, 2, 2, 299, 51, 3, 2, 2, 2, 300, 302, 5, 22, 12, 2,
 	301, 303, 9, 7, 2, 2, 302, 301, 3, 2, 2, 2, 302, 303, 3, 2, 2, 2, 303,
-	304, 3, 2, 2, 2, 304, 305, 7, 37, 2, 2, 305, 306, 5, 22, 12, 2, 306, 312,
+	304, 3, 2, 2, 2, 304, 305, 7, 38, 2, 2, 305, 306, 5, 22, 12, 2, 306, 312,
 	3, 2, 2, 2, 307, 308, 5, 22, 12, 2, 308, 309, 9, 8, 2, 2, 309, 310, 5,
 	22, 12, 2, 310, 312, 3, 2, 2, 2, 311, 300, 3, 2, 2, 2, 311, 307, 3, 2,
-	2, 2, 312, 53, 3, 2, 2, 2, 313, 314, 7, 49, 2, 2, 314, 55, 3, 2, 2, 2,
-	315, 319, 7, 13, 2, 2, 316, 317, 5, 38, 20, 2, 317, 318, 7, 49, 2, 2, 318,
+	2, 2, 312, 53, 3, 2, 2, 2, 313, 314, 7, 50, 2, 2, 314, 55, 3, 2, 2, 2,
+	315, 319, 7, 13, 2, 2, 316, 317, 5, 38, 20, 2, 317, 318, 7, 50, 2, 2, 318,
 	320, 3, 2, 2, 2, 319, 316, 3, 2, 2, 2, 319, 320, 3, 2, 2, 2, 320, 321,
 	3, 2, 2, 2, 321, 322, 5, 72, 37, 2, 322, 328, 5, 32, 17, 2, 323, 326, 7,
 	9, 2, 2, 324, 327, 5, 56, 29, 2, 325, 327, 5, 32, 17, 2, 326, 324, 3, 2,
@@ -175,48 +175,48 @@ var parserATN = []uint16{
 	328, 329, 3, 2, 2, 2, 329, 57, 3, 2, 2, 2, 330, 331, 7, 11, 2, 2, 331,
 	332, 5, 60, 31, 2, 332, 333, 7, 18, 2, 2, 333, 334, 5, 64, 33, 2, 334,
 	335, 5, 94, 48, 2, 335, 59, 3, 2, 2, 2, 336, 337, 5, 82, 42, 2, 337, 61,
-	3, 2, 2, 2, 338, 339, 7, 36, 2, 2, 339, 340, 7, 42, 2, 2, 340, 345, 7,
-	36, 2, 2, 341, 342, 7, 42, 2, 2, 342, 344, 7, 36, 2, 2, 343, 341, 3, 2,
+	3, 2, 2, 2, 338, 339, 7, 37, 2, 2, 339, 340, 7, 43, 2, 2, 340, 345, 7,
+	37, 2, 2, 341, 342, 7, 43, 2, 2, 342, 344, 7, 37, 2, 2, 343, 341, 3, 2,
 	2, 2, 344, 347, 3, 2, 2, 2, 345, 343, 3, 2, 2, 2, 345, 346, 3, 2, 2, 2,
-	346, 63, 3, 2, 2, 2, 347, 345, 3, 2, 2, 2, 348, 352, 7, 45, 2, 2, 349,
+	346, 63, 3, 2, 2, 2, 347, 345, 3, 2, 2, 2, 348, 352, 7, 46, 2, 2, 349,
 	351, 5, 66, 34, 2, 350, 349, 3, 2, 2, 2, 351, 354, 3, 2, 2, 2, 352, 350,
 	3, 2, 2, 2, 352, 353, 3, 2, 2, 2, 353, 355, 3, 2, 2, 2, 354, 352, 3, 2,
-	2, 2, 355, 356, 7, 46, 2, 2, 356, 65, 3, 2, 2, 2, 357, 362, 5, 62, 32,
-	2, 358, 359, 7, 62, 2, 2, 359, 361, 5, 62, 32, 2, 360, 358, 3, 2, 2, 2,
+	2, 2, 355, 356, 7, 47, 2, 2, 356, 65, 3, 2, 2, 2, 357, 362, 5, 62, 32,
+	2, 358, 359, 7, 63, 2, 2, 359, 361, 5, 62, 32, 2, 360, 358, 3, 2, 2, 2,
 	361, 364, 3, 2, 2, 2, 362, 360, 3, 2, 2, 2, 362, 363, 3, 2, 2, 2, 363,
 	365, 3, 2, 2, 2, 364, 362, 3, 2, 2, 2, 365, 366, 5, 94, 48, 2, 366, 381,
-	3, 2, 2, 2, 367, 368, 7, 36, 2, 2, 368, 369, 7, 37, 2, 2, 369, 370, 7,
-	16, 2, 2, 370, 373, 7, 36, 2, 2, 371, 372, 7, 42, 2, 2, 372, 374, 7, 36,
+	3, 2, 2, 2, 367, 368, 7, 37, 2, 2, 368, 369, 7, 38, 2, 2, 369, 370, 7,
+	16, 2, 2, 370, 373, 7, 37, 2, 2, 371, 372, 7, 43, 2, 2, 372, 374, 7, 37,
 	2, 2, 373, 371, 3, 2, 2, 2, 373, 374, 3, 2, 2, 2, 374, 375, 3, 2, 2, 2,
 	375, 381, 5, 94, 48, 2, 376, 377, 5, 38, 20, 2, 377, 378, 5, 94, 48, 2,
 	378, 381, 3, 2, 2, 2, 379, 381, 5, 56, 29, 2, 380, 357, 3, 2, 2, 2, 380,
 	367, 3, 2, 2, 2, 380, 376, 3, 2, 2, 2, 380, 379, 3, 2, 2, 2, 381, 67, 3,
 	2, 2, 2, 382, 383, 9, 9, 2, 2, 383, 69, 3, 2, 2, 2, 384, 385, 5, 68, 35,
-	2, 385, 387, 7, 43, 2, 2, 386, 388, 5, 74, 38, 2, 387, 386, 3, 2, 2, 2,
-	387, 388, 3, 2, 2, 2, 388, 393, 3, 2, 2, 2, 389, 390, 7, 41, 2, 2, 390,
+	2, 385, 387, 7, 44, 2, 2, 386, 388, 5, 74, 38, 2, 387, 386, 3, 2, 2, 2,
+	387, 388, 3, 2, 2, 2, 388, 393, 3, 2, 2, 2, 389, 390, 7, 42, 2, 2, 390,
 	392, 5, 74, 38, 2, 391, 389, 3, 2, 2, 2, 392, 395, 3, 2, 2, 2, 393, 391,
 	3, 2, 2, 2, 393, 394, 3, 2, 2, 2, 394, 396, 3, 2, 2, 2, 395, 393, 3, 2,
-	2, 2, 396, 397, 7, 44, 2, 2, 397, 71, 3, 2, 2, 2, 398, 399, 8, 37, 1, 2,
+	2, 2, 396, 397, 7, 45, 2, 2, 397, 71, 3, 2, 2, 2, 398, 399, 8, 37, 1, 2,
 	399, 403, 5, 74, 38, 2, 400, 403, 5, 70, 36, 2, 401, 403, 5, 78, 40, 2,
 	402, 398, 3, 2, 2, 2, 402, 400, 3, 2, 2, 2, 402, 401, 3, 2, 2, 2, 403,
-	424, 3, 2, 2, 2, 404, 405, 12, 8, 2, 2, 405, 406, 7, 66, 2, 2, 406, 423,
+	424, 3, 2, 2, 2, 404, 405, 12, 8, 2, 2, 405, 406, 7, 67, 2, 2, 406, 423,
 	5, 72, 37, 9, 407, 408, 12, 7, 2, 2, 408, 409, 9, 10, 2, 2, 409, 423, 5,
 	72, 37, 8, 410, 411, 12, 6, 2, 2, 411, 412, 9, 11, 2, 2, 412, 423, 5, 72,
 	37, 7, 413, 414, 12, 5, 2, 2, 414, 415, 9, 3, 2, 2, 415, 423, 5, 72, 37,
-	6, 416, 417, 12, 4, 2, 2, 417, 418, 7, 53, 2, 2, 418, 423, 5, 72, 37, 5,
-	419, 420, 12, 3, 2, 2, 420, 421, 7, 61, 2, 2, 421, 423, 5, 72, 37, 4, 422,
+	6, 416, 417, 12, 4, 2, 2, 417, 418, 7, 54, 2, 2, 418, 423, 5, 72, 37, 5,
+	419, 420, 12, 3, 2, 2, 420, 421, 7, 62, 2, 2, 421, 423, 5, 72, 37, 4, 422,
 	404, 3, 2, 2, 2, 422, 407, 3, 2, 2, 2, 422, 410, 3, 2, 2, 2, 422, 413,
 	3, 2, 2, 2, 422, 416, 3, 2, 2, 2, 422, 419, 3, 2, 2, 2, 423, 426, 3, 2,
 	2, 2, 424, 422, 3, 2, 2, 2, 424, 425, 3, 2, 2, 2, 425, 73, 3, 2, 2, 2,
-	426, 424, 3, 2, 2, 2, 427, 438, 7, 26, 2, 2, 428, 438, 5, 80, 41, 2, 429,
+	426, 424, 3, 2, 2, 2, 427, 438, 7, 27, 2, 2, 428, 438, 5, 80, 41, 2, 429,
 	438, 5, 88, 45, 2, 430, 438, 5, 90, 46, 2, 431, 438, 5, 76, 39, 2, 432,
-	438, 5, 42, 22, 2, 433, 434, 7, 43, 2, 2, 434, 435, 5, 72, 37, 2, 435,
-	436, 7, 44, 2, 2, 436, 438, 3, 2, 2, 2, 437, 427, 3, 2, 2, 2, 437, 428,
+	438, 5, 42, 22, 2, 433, 434, 7, 44, 2, 2, 434, 435, 5, 72, 37, 2, 435,
+	436, 7, 45, 2, 2, 436, 438, 3, 2, 2, 2, 437, 427, 3, 2, 2, 2, 437, 428,
 	3, 2, 2, 2, 437, 429, 3, 2, 2, 2, 437, 430, 3, 2, 2, 2, 437, 431, 3, 2,
 	2, 2, 437, 432, 3, 2, 2, 2, 437, 433, 3, 2, 2, 2, 438, 75, 3, 2, 2, 2,
-	439, 450, 7, 36, 2, 2, 440, 450, 5, 62, 32, 2, 441, 450, 7, 21, 2, 2, 442,
-	450, 7, 6, 2, 2, 443, 444, 7, 16, 2, 2, 444, 447, 7, 36, 2, 2, 445, 446,
-	7, 42, 2, 2, 446, 448, 7, 36, 2, 2, 447, 445, 3, 2, 2, 2, 447, 448, 3,
+	439, 450, 7, 37, 2, 2, 440, 450, 5, 62, 32, 2, 441, 450, 7, 21, 2, 2, 442,
+	450, 7, 6, 2, 2, 443, 444, 7, 16, 2, 2, 444, 447, 7, 37, 2, 2, 445, 446,
+	7, 43, 2, 2, 446, 448, 7, 37, 2, 2, 447, 445, 3, 2, 2, 2, 447, 448, 3,
 	2, 2, 2, 448, 450, 3, 2, 2, 2, 449, 439, 3, 2, 2, 2, 449, 440, 3, 2, 2,
 	2, 449, 441, 3, 2, 2, 2, 449, 442, 3, 2, 2, 2, 449, 443, 3, 2, 2, 2, 450,
 	77, 3, 2, 2, 2, 451, 455, 3, 2, 2, 2, 452, 453, 9, 12, 2, 2, 453, 455,
@@ -224,9 +224,9 @@ var parserATN = []uint16{
 	2, 2, 456, 460, 5, 82, 42, 2, 457, 460, 5, 84, 43, 2, 458, 460, 5, 86,
 	44, 2, 459, 456, 3, 2, 2, 2, 459, 457, 3, 2, 2, 2, 459, 458, 3, 2, 2, 2,
 	460, 81, 3, 2, 2, 2, 461, 462, 9, 13, 2, 2, 462, 83, 3, 2, 2, 2, 463, 464,
-	7, 64, 2, 2, 464, 468, 5, 82, 42, 2, 465, 466, 7, 64, 2, 2, 466, 468, 5,
+	7, 65, 2, 2, 464, 468, 5, 82, 42, 2, 465, 466, 7, 65, 2, 2, 466, 468, 5,
 	86, 44, 2, 467, 463, 3, 2, 2, 2, 467, 465, 3, 2, 2, 2, 468, 85, 3, 2, 2,
-	2, 469, 470, 7, 76, 2, 2, 470, 87, 3, 2, 2, 2, 471, 472, 9, 14, 2, 2, 472,
+	2, 469, 470, 7, 77, 2, 2, 470, 87, 3, 2, 2, 2, 471, 472, 9, 14, 2, 2, 472,
 	89, 3, 2, 2, 2, 473, 474, 9, 15, 2, 2, 474, 91, 3, 2, 2, 2, 475, 476, 7,
 	12, 2, 2, 476, 477, 5, 32, 17, 2, 477, 93, 3, 2, 2, 2, 478, 479, 9, 16,
 	2, 2, 479, 95, 3, 2, 2, 2, 47, 100, 106, 110, 124, 128, 133, 143, 157,
@@ -234,29 +234,26 @@ var parserATN = []uint16{
 	298, 302, 311, 319, 326, 328, 345, 352, 362, 373, 380, 387, 393, 402, 422,
 	424, 437, 447, 449, 454, 459, 467,
 }
-var deserializer = antlr.NewATNDeserializer(nil)
-var deserializedATN = deserializer.DeserializeFromUInt16(parserATN)
-
 var literalNames = []string{
 	"", "'all'", "'assert'", "'assume'", "'clock'", "'const'", "'def'", "'else'",
 	"'flow'", "'for'", "'func'", "'if'", "'import'", "'init'", "'new'", "'return'",
-	"'run'", "'spec'", "'stock'", "'this'", "'eventually'", "'always'", "'nmt'",
-	"'nft'", "'nil'", "'true'", "'false'", "'string'", "'bool'", "'int'", "'float'",
-	"'natural'", "'uncertain'", "'unknown'", "", "'='", "'->'", "'<-'", "':'",
-	"','", "'.'", "'('", "')'", "'{'", "'}'", "'['", "']'", "';'", "'++'",
-	"'--'", "'&'", "'&&'", "'!'", "'=='", "'!='", "'<'", "'<='", "'>'", "'>='",
-	"'||'", "'|'", "'+'", "'-'", "'^'", "'**'", "'*'", "'/'", "'%'", "'<<'",
-	"'>>'", "'&^'",
+	"'run'", "'spec'", "'stock'", "'this'", "'eventually'", "'eventually-always'",
+	"'always'", "'nmt'", "'nft'", "'nil'", "'true'", "'false'", "'string'",
+	"'bool'", "'int'", "'float'", "'natural'", "'uncertain'", "'unknown'",
+	"", "'='", "'->'", "'<-'", "':'", "','", "'.'", "'('", "')'", "'{'", "'}'",
+	"'['", "']'", "';'", "'++'", "'--'", "'&'", "'&&'", "'!'", "'=='", "'!='",
+	"'<'", "'<='", "'>'", "'>='", "'||'", "'|'", "'+'", "'-'", "'^'", "'**'",
+	"'*'", "'/'", "'%'", "'<<'", "'>>'", "'&^'",
 }
 var symbolicNames = []string{
 	"", "ALL", "ASSERT", "ASSUME", "CLOCK", "CONST", "DEF", "ELSE", "FLOW",
 	"FOR", "FUNC", "IF", "IMPORT", "INIT", "NEW", "RETURN", "RUN", "SPEC",
-	"STOCK", "THIS", "EVENTUALLY", "ALWAYS", "NMT", "NFT", "NIL", "TRUE", "FALSE",
-	"TY_STRING", "TY_BOOL", "TY_INT", "TY_FLOAT", "TY_NATURAL", "TY_UNCERTAIN",
-	"TY_UNKNOWN", "IDENT", "ASSIGN", "ASSIGN_FLOW1", "ASSIGN_FLOW2", "COLON",
-	"COMMA", "DOT", "LPAREN", "RPAREN", "LCURLY", "RCURLY", "LBRACE", "RBRACE",
-	"SEMI", "PLUS_PLUS", "MINUS_MINUS", "AMPERSAND", "AND", "BANG", "EQUALS",
-	"NOT_EQUALS", "LESS", "LESS_OR_EQUALS", "GREATER", "GREATER_OR_EQUALS",
+	"STOCK", "THIS", "EVENTUALLY", "EVENTUALLYALWAYS", "ALWAYS", "NMT", "NFT",
+	"NIL", "TRUE", "FALSE", "TY_STRING", "TY_BOOL", "TY_INT", "TY_FLOAT", "TY_NATURAL",
+	"TY_UNCERTAIN", "TY_UNKNOWN", "IDENT", "ASSIGN", "ASSIGN_FLOW1", "ASSIGN_FLOW2",
+	"COLON", "COMMA", "DOT", "LPAREN", "RPAREN", "LCURLY", "RCURLY", "LBRACE",
+	"RBRACE", "SEMI", "PLUS_PLUS", "MINUS_MINUS", "AMPERSAND", "AND", "BANG",
+	"EQUALS", "NOT_EQUALS", "LESS", "LESS_OR_EQUALS", "GREATER", "GREATER_OR_EQUALS",
 	"OR", "PIPE", "PLUS", "MINUS", "CARET", "EXPO", "MULTI", "DIV", "MOD",
 	"LSHIFT", "RSHIFT", "BIT_CLEAR", "DECIMAL_LIT", "OCTAL_LIT", "HEX_LIT",
 	"FLOAT_LIT", "RAW_STRING_LIT", "INTERPRETED_STRING_LIT", "WS", "COMMENT",
@@ -273,21 +270,25 @@ var ruleNames = []string{
 	"expression", "operand", "operandName", "prefix", "numeric", "integer",
 	"negative", "float_", "string_", "bool_", "functionLit", "eos",
 }
-var decisionToDFA = make([]*antlr.DFA, len(deserializedATN.DecisionToState))
-
-func init() {
-	for index, ds := range deserializedATN.DecisionToState {
-		decisionToDFA[index] = antlr.NewDFA(ds, index)
-	}
-}
 
 type FaultParser struct {
 	*antlr.BaseParser
 }
 
+// NewFaultParser produces a new parser instance for the optional input antlr.TokenStream.
+//
+// The *FaultParser instance produced may be reused by calling the SetInputStream method.
+// The initial parser configuration is expensive to construct, and the object is not thread-safe;
+// however, if used within a Golang sync.Pool, the construction cost amortizes well and the
+// objects can be used in a thread-safe manner.
 func NewFaultParser(input antlr.TokenStream) *FaultParser {
 	this := new(FaultParser)
-
+	deserializer := antlr.NewATNDeserializer(nil)
+	deserializedATN := deserializer.DeserializeFromUInt16(parserATN)
+	decisionToDFA := make([]*antlr.DFA, len(deserializedATN.DecisionToState))
+	for index, ds := range deserializedATN.DecisionToState {
+		decisionToDFA[index] = antlr.NewDFA(ds, index)
+	}
 	this.BaseParser = antlr.NewBaseParser(input)
 
 	this.Interpreter = antlr.NewParserATNSimulator(this, deserializedATN, decisionToDFA, antlr.NewPredictionContextCache())
@@ -322,66 +323,67 @@ const (
 	FaultParserSTOCK                  = 18
 	FaultParserTHIS                   = 19
 	FaultParserEVENTUALLY             = 20
-	FaultParserALWAYS                 = 21
-	FaultParserNMT                    = 22
-	FaultParserNFT                    = 23
-	FaultParserNIL                    = 24
-	FaultParserTRUE                   = 25
-	FaultParserFALSE                  = 26
-	FaultParserTY_STRING              = 27
-	FaultParserTY_BOOL                = 28
-	FaultParserTY_INT                 = 29
-	FaultParserTY_FLOAT               = 30
-	FaultParserTY_NATURAL             = 31
-	FaultParserTY_UNCERTAIN           = 32
-	FaultParserTY_UNKNOWN             = 33
-	FaultParserIDENT                  = 34
-	FaultParserASSIGN                 = 35
-	FaultParserASSIGN_FLOW1           = 36
-	FaultParserASSIGN_FLOW2           = 37
-	FaultParserCOLON                  = 38
-	FaultParserCOMMA                  = 39
-	FaultParserDOT                    = 40
-	FaultParserLPAREN                 = 41
-	FaultParserRPAREN                 = 42
-	FaultParserLCURLY                 = 43
-	FaultParserRCURLY                 = 44
-	FaultParserLBRACE                 = 45
-	FaultParserRBRACE                 = 46
-	FaultParserSEMI                   = 47
-	FaultParserPLUS_PLUS              = 48
-	FaultParserMINUS_MINUS            = 49
-	FaultParserAMPERSAND              = 50
-	FaultParserAND                    = 51
-	FaultParserBANG                   = 52
-	FaultParserEQUALS                 = 53
-	FaultParserNOT_EQUALS             = 54
-	FaultParserLESS                   = 55
-	FaultParserLESS_OR_EQUALS         = 56
-	FaultParserGREATER                = 57
-	FaultParserGREATER_OR_EQUALS      = 58
-	FaultParserOR                     = 59
-	FaultParserPIPE                   = 60
-	FaultParserPLUS                   = 61
-	FaultParserMINUS                  = 62
-	FaultParserCARET                  = 63
-	FaultParserEXPO                   = 64
-	FaultParserMULTI                  = 65
-	FaultParserDIV                    = 66
-	FaultParserMOD                    = 67
-	FaultParserLSHIFT                 = 68
-	FaultParserRSHIFT                 = 69
-	FaultParserBIT_CLEAR              = 70
-	FaultParserDECIMAL_LIT            = 71
-	FaultParserOCTAL_LIT              = 72
-	FaultParserHEX_LIT                = 73
-	FaultParserFLOAT_LIT              = 74
-	FaultParserRAW_STRING_LIT         = 75
-	FaultParserINTERPRETED_STRING_LIT = 76
-	FaultParserWS                     = 77
-	FaultParserCOMMENT                = 78
-	FaultParserTERMINATOR             = 79
-	FaultParserLINE_COMMENT           = 80
+	FaultParserEVENTUALLYALWAYS       = 21
+	FaultParserALWAYS                 = 22
+	FaultParserNMT                    = 23
+	FaultParserNFT                    = 24
+	FaultParserNIL                    = 25
+	FaultParserTRUE                   = 26
+	FaultParserFALSE                  = 27
+	FaultParserTY_STRING              = 28
+	FaultParserTY_BOOL                = 29
+	FaultParserTY_INT                 = 30
+	FaultParserTY_FLOAT               = 31
+	FaultParserTY_NATURAL             = 32
+	FaultParserTY_UNCERTAIN           = 33
+	FaultParserTY_UNKNOWN             = 34
+	FaultParserIDENT                  = 35
+	FaultParserASSIGN                 = 36
+	FaultParserASSIGN_FLOW1           = 37
+	FaultParserASSIGN_FLOW2           = 38
+	FaultParserCOLON                  = 39
+	FaultParserCOMMA                  = 40
+	FaultParserDOT                    = 41
+	FaultParserLPAREN                 = 42
+	FaultParserRPAREN                 = 43
+	FaultParserLCURLY                 = 44
+	FaultParserRCURLY                 = 45
+	FaultParserLBRACE                 = 46
+	FaultParserRBRACE                 = 47
+	FaultParserSEMI                   = 48
+	FaultParserPLUS_PLUS              = 49
+	FaultParserMINUS_MINUS            = 50
+	FaultParserAMPERSAND              = 51
+	FaultParserAND                    = 52
+	FaultParserBANG                   = 53
+	FaultParserEQUALS                 = 54
+	FaultParserNOT_EQUALS             = 55
+	FaultParserLESS                   = 56
+	FaultParserLESS_OR_EQUALS         = 57
+	FaultParserGREATER                = 58
+	FaultParserGREATER_OR_EQUALS      = 59
+	FaultParserOR                     = 60
+	FaultParserPIPE                   = 61
+	FaultParserPLUS                   = 62
+	FaultParserMINUS                  = 63
+	FaultParserCARET                  = 64
+	FaultParserEXPO                   = 65
+	FaultParserMULTI                  = 66
+	FaultParserDIV                    = 67
+	FaultParserMOD                    = 68
+	FaultParserLSHIFT                 = 69
+	FaultParserRSHIFT                 = 70
+	FaultParserBIT_CLEAR              = 71
+	FaultParserDECIMAL_LIT            = 72
+	FaultParserOCTAL_LIT              = 73
+	FaultParserHEX_LIT                = 74
+	FaultParserFLOAT_LIT              = 75
+	FaultParserRAW_STRING_LIT         = 76
+	FaultParserINTERPRETED_STRING_LIT = 77
+	FaultParserWS                     = 78
+	FaultParserCOMMENT                = 79
+	FaultParserTERMINATOR             = 80
+	FaultParserLINE_COMMENT           = 81
 )
 
 // FaultParser rules.
@@ -580,6 +582,9 @@ func (s *SpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Spec() (localctx ISpecContext) {
+	this := p
+	_ = this
+
 	localctx = NewSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 0, FaultParserRULE_spec)
 	var _la int
@@ -739,6 +744,9 @@ func (s *SpecClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) SpecClause() (localctx ISpecClauseContext) {
+	this := p
+	_ = this
+
 	localctx = NewSpecClauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 2, FaultParserRULE_specClause)
 
@@ -889,6 +897,9 @@ func (s *ImportDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ImportDecl() (localctx IImportDeclContext) {
+	this := p
+	_ = this
+
 	localctx = NewImportDeclContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 4, FaultParserRULE_importDecl)
 	var _la int
@@ -1046,6 +1057,9 @@ func (s *ImportSpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ImportSpec() (localctx IImportSpecContext) {
+	this := p
+	_ = this
+
 	localctx = NewImportSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 6, FaultParserRULE_importSpec)
 	var _la int
@@ -1172,6 +1186,9 @@ func (s *ImportPathContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ImportPath() (localctx IImportPathContext) {
+	this := p
+	_ = this
+
 	localctx = NewImportPathContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 8, FaultParserRULE_importPath)
 
@@ -1309,6 +1326,9 @@ func (s *DeclarationContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *FaultParser) Declaration() (localctx IDeclarationContext) {
+	this := p
+	_ = this
+
 	localctx = NewDeclarationContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 10, FaultParserRULE_declaration)
 
@@ -1460,6 +1480,9 @@ func (s *ComparisonContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Comparison() (localctx IComparisonContext) {
+	this := p
+	_ = this
+
 	localctx = NewComparisonContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 12, FaultParserRULE_comparison)
 	var _la int
@@ -1485,7 +1508,7 @@ func (p *FaultParser) Comparison() (localctx IComparisonContext) {
 		p.SetState(143)
 		_la = p.GetTokenStream().LA(1)
 
-		if !(((_la-53)&-(0x1f+1)) == 0 && ((1<<uint((_la-53)))&((1<<(FaultParserEQUALS-53))|(1<<(FaultParserNOT_EQUALS-53))|(1<<(FaultParserLESS-53))|(1<<(FaultParserLESS_OR_EQUALS-53))|(1<<(FaultParserGREATER-53))|(1<<(FaultParserGREATER_OR_EQUALS-53)))) != 0) {
+		if !(((_la-54)&-(0x1f+1)) == 0 && ((1<<uint((_la-54)))&((1<<(FaultParserEQUALS-54))|(1<<(FaultParserNOT_EQUALS-54))|(1<<(FaultParserLESS-54))|(1<<(FaultParserLESS_OR_EQUALS-54))|(1<<(FaultParserGREATER-54))|(1<<(FaultParserGREATER_OR_EQUALS-54)))) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -1623,6 +1646,9 @@ func (s *ConstDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ConstDecl() (localctx IConstDeclContext) {
+	this := p
+	_ = this
+
 	localctx = NewConstDeclContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 14, FaultParserRULE_constDecl)
 	var _la int
@@ -1790,6 +1816,9 @@ func (s *ConstSpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ConstSpec() (localctx IConstSpecContext) {
+	this := p
+	_ = this
+
 	localctx = NewConstSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 16, FaultParserRULE_constSpec)
 	var _la int
@@ -1934,6 +1963,9 @@ func (s *IdentListContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) IdentList() (localctx IIdentListContext) {
+	this := p
+	_ = this
+
 	localctx = NewIdentListContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 18, FaultParserRULE_identList)
 	var _la int
@@ -2081,6 +2113,9 @@ func (s *ExpressionListContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *FaultParser) ExpressionList() (localctx IExpressionListContext) {
+	this := p
+	_ = this
+
 	localctx = NewExpressionListContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 20, FaultParserRULE_expressionList)
 	var _la int
@@ -2229,6 +2264,9 @@ func (s *StructDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) StructDecl() (localctx IStructDeclContext) {
+	this := p
+	_ = this
+
 	localctx = NewStructDeclContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 22, FaultParserRULE_structDecl)
 
@@ -2490,6 +2528,9 @@ func (s *FlowContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) StructType() (localctx IStructTypeContext) {
+	this := p
+	_ = this
+
 	localctx = NewStructTypeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 24, FaultParserRULE_structType)
 	var _la int
@@ -2940,6 +2981,9 @@ func (s *PropVarContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) StructProperties() (localctx IStructPropertiesContext) {
+	this := p
+	_ = this
+
 	localctx = NewStructPropertiesContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 26, FaultParserRULE_structProperties)
 
@@ -3164,6 +3208,9 @@ func (s *InitDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) InitDecl() (localctx IInitDeclContext) {
+	this := p
+	_ = this
+
 	localctx = NewInitDeclContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 28, FaultParserRULE_initDecl)
 
@@ -3287,6 +3334,9 @@ func (s *BlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Block() (localctx IBlockContext) {
+	this := p
+	_ = this
+
 	localctx = NewBlockContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 30, FaultParserRULE_block)
 
@@ -3421,6 +3471,9 @@ func (s *StatementListContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *FaultParser) StatementList() (localctx IStatementListContext) {
+	this := p
+	_ = this
+
 	localctx = NewStatementListContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 32, FaultParserRULE_statementList)
 
@@ -3595,6 +3648,9 @@ func (s *StatementContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Statement() (localctx IStatementContext) {
+	this := p
+	_ = this
+
 	localctx = NewStatementContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 34, FaultParserRULE_statement)
 
@@ -3770,6 +3826,9 @@ func (s *SimpleStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) SimpleStmt() (localctx ISimpleStmtContext) {
+	this := p
+	_ = this
+
 	localctx = NewSimpleStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 36, FaultParserRULE_simpleStmt)
 
@@ -3912,6 +3971,9 @@ func (s *IncDecStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) IncDecStmt() (localctx IIncDecStmtContext) {
+	this := p
+	_ = this
+
 	localctx = NewIncDecStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 38, FaultParserRULE_incDecStmt)
 	var _la int
@@ -4070,6 +4132,9 @@ func (s *AccessHistoryContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *FaultParser) AccessHistory() (localctx IAccessHistoryContext) {
+	this := p
+	_ = this
+
 	localctx = NewAccessHistoryContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 40, FaultParserRULE_accessHistory)
 
@@ -4230,6 +4295,9 @@ func (s *AssertionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Assertion() (localctx IAssertionContext) {
+	this := p
+	_ = this
+
 	localctx = NewAssertionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 42, FaultParserRULE_assertion)
 
@@ -4379,6 +4447,9 @@ func (s *AssumptionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Assumption() (localctx IAssumptionContext) {
+	this := p
+	_ = this
+
 	localctx = NewAssumptionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 44, FaultParserRULE_assumption)
 
@@ -4471,6 +4542,10 @@ func (s *TemporalContext) ALWAYS() antlr.TerminalNode {
 	return s.GetToken(FaultParserALWAYS, 0)
 }
 
+func (s *TemporalContext) EVENTUALLYALWAYS() antlr.TerminalNode {
+	return s.GetToken(FaultParserEVENTUALLYALWAYS, 0)
+}
+
 func (s *TemporalContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
@@ -4502,6 +4577,9 @@ func (s *TemporalContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Temporal() (localctx ITemporalContext) {
+	this := p
+	_ = this
+
 	localctx = NewTemporalContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 46, FaultParserRULE_temporal)
 	var _la int
@@ -4527,7 +4605,7 @@ func (p *FaultParser) Temporal() (localctx ITemporalContext) {
 		p.SetState(289)
 		_la = p.GetTokenStream().LA(1)
 
-		if !(_la == FaultParserEVENTUALLY || _la == FaultParserALWAYS) {
+		if !(((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<FaultParserEVENTUALLY)|(1<<FaultParserEVENTUALLYALWAYS)|(1<<FaultParserALWAYS))) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -4635,6 +4713,9 @@ func (s *InvariantContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Invariant() (localctx IInvariantContext) {
+	this := p
+	_ = this
+
 	localctx = NewInvariantContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 48, FaultParserRULE_invariant)
 	var _la int
@@ -4921,6 +5002,9 @@ func (s *FaultAssignContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *FaultParser) Assignment() (localctx IAssignmentContext) {
+	this := p
+	_ = this
+
 	localctx = NewAssignmentContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 50, FaultParserRULE_assignment)
 	var _la int
@@ -4955,12 +5039,12 @@ func (p *FaultParser) Assignment() (localctx IAssignmentContext) {
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
-		if ((_la-50)&-(0x1f+1)) == 0 && ((1<<uint((_la-50)))&((1<<(FaultParserAMPERSAND-50))|(1<<(FaultParserPLUS-50))|(1<<(FaultParserMINUS-50))|(1<<(FaultParserCARET-50))|(1<<(FaultParserMULTI-50))|(1<<(FaultParserDIV-50))|(1<<(FaultParserMOD-50))|(1<<(FaultParserLSHIFT-50))|(1<<(FaultParserRSHIFT-50))|(1<<(FaultParserBIT_CLEAR-50)))) != 0 {
+		if ((_la-51)&-(0x1f+1)) == 0 && ((1<<uint((_la-51)))&((1<<(FaultParserAMPERSAND-51))|(1<<(FaultParserPLUS-51))|(1<<(FaultParserMINUS-51))|(1<<(FaultParserCARET-51))|(1<<(FaultParserMULTI-51))|(1<<(FaultParserDIV-51))|(1<<(FaultParserMOD-51))|(1<<(FaultParserLSHIFT-51))|(1<<(FaultParserRSHIFT-51))|(1<<(FaultParserBIT_CLEAR-51)))) != 0 {
 			{
 				p.SetState(299)
 				_la = p.GetTokenStream().LA(1)
 
-				if !(((_la-50)&-(0x1f+1)) == 0 && ((1<<uint((_la-50)))&((1<<(FaultParserAMPERSAND-50))|(1<<(FaultParserPLUS-50))|(1<<(FaultParserMINUS-50))|(1<<(FaultParserCARET-50))|(1<<(FaultParserMULTI-50))|(1<<(FaultParserDIV-50))|(1<<(FaultParserMOD-50))|(1<<(FaultParserLSHIFT-50))|(1<<(FaultParserRSHIFT-50))|(1<<(FaultParserBIT_CLEAR-50)))) != 0) {
+				if !(((_la-51)&-(0x1f+1)) == 0 && ((1<<uint((_la-51)))&((1<<(FaultParserAMPERSAND-51))|(1<<(FaultParserPLUS-51))|(1<<(FaultParserMINUS-51))|(1<<(FaultParserCARET-51))|(1<<(FaultParserMULTI-51))|(1<<(FaultParserDIV-51))|(1<<(FaultParserMOD-51))|(1<<(FaultParserLSHIFT-51))|(1<<(FaultParserRSHIFT-51))|(1<<(FaultParserBIT_CLEAR-51)))) != 0) {
 					p.GetErrorHandler().RecoverInline(p)
 				} else {
 					p.GetErrorHandler().ReportMatch(p)
@@ -5079,6 +5163,9 @@ func (s *EmptyStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) EmptyStmt() (localctx IEmptyStmtContext) {
+	this := p
+	_ = this
+
 	localctx = NewEmptyStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 52, FaultParserRULE_emptyStmt)
 
@@ -5241,6 +5328,9 @@ func (s *IfStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) IfStmt() (localctx IIfStmtContext) {
+	this := p
+	_ = this
+
 	localctx = NewIfStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 54, FaultParserRULE_ifStmt)
 
@@ -5427,6 +5517,9 @@ func (s *ForStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ForStmt() (localctx IForStmtContext) {
+	this := p
+	_ = this
+
 	localctx = NewForStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 56, FaultParserRULE_forStmt)
 
@@ -5550,6 +5643,9 @@ func (s *RoundsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Rounds() (localctx IRoundsContext) {
+	this := p
+	_ = this
+
 	localctx = NewRoundsContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 58, FaultParserRULE_rounds)
 
@@ -5663,6 +5759,9 @@ func (s *ParamCallContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) ParamCall() (localctx IParamCallContext) {
+	this := p
+	_ = this
+
 	localctx = NewParamCallContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 60, FaultParserRULE_paramCall)
 
@@ -5821,6 +5920,9 @@ func (s *RunBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) RunBlock() (localctx IRunBlockContext) {
+	this := p
+	_ = this
+
 	localctx = NewRunBlockContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 62, FaultParserRULE_runBlock)
 
@@ -6143,6 +6245,9 @@ func (s *RunExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) RunStep() (localctx IRunStepContext) {
+	this := p
+	_ = this
+
 	localctx = NewRunStepContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 64, FaultParserRULE_runStep)
 	var _la int
@@ -6357,6 +6462,9 @@ func (s *FaultTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) FaultType() (localctx IFaultTypeContext) {
+	this := p
+	_ = this
+
 	localctx = NewFaultTypeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 66, FaultParserRULE_faultType)
 	var _la int
@@ -6382,7 +6490,7 @@ func (p *FaultParser) FaultType() (localctx IFaultTypeContext) {
 		p.SetState(380)
 		_la = p.GetTokenStream().LA(1)
 
-		if !(((_la-27)&-(0x1f+1)) == 0 && ((1<<uint((_la-27)))&((1<<(FaultParserTY_STRING-27))|(1<<(FaultParserTY_BOOL-27))|(1<<(FaultParserTY_INT-27))|(1<<(FaultParserTY_FLOAT-27))|(1<<(FaultParserTY_NATURAL-27))|(1<<(FaultParserTY_UNCERTAIN-27))|(1<<(FaultParserTY_UNKNOWN-27)))) != 0) {
+		if !(((_la-28)&-(0x1f+1)) == 0 && ((1<<uint((_la-28)))&((1<<(FaultParserTY_STRING-28))|(1<<(FaultParserTY_BOOL-28))|(1<<(FaultParserTY_INT-28))|(1<<(FaultParserTY_FLOAT-28))|(1<<(FaultParserTY_NATURAL-28))|(1<<(FaultParserTY_UNCERTAIN-28))|(1<<(FaultParserTY_UNKNOWN-28)))) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -6511,6 +6619,9 @@ func (s *SolvableContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Solvable() (localctx ISolvableContext) {
+	this := p
+	_ = this
+
 	localctx = NewSolvableContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 68, FaultParserRULE_solvable)
 	var _la int
@@ -6544,7 +6655,7 @@ func (p *FaultParser) Solvable() (localctx ISolvableContext) {
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	if (((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<FaultParserCLOCK)|(1<<FaultParserNEW)|(1<<FaultParserTHIS)|(1<<FaultParserNIL)|(1<<FaultParserTRUE)|(1<<FaultParserFALSE))) != 0) || (((_la-34)&-(0x1f+1)) == 0 && ((1<<uint((_la-34)))&((1<<(FaultParserIDENT-34))|(1<<(FaultParserLPAREN-34))|(1<<(FaultParserMINUS-34)))) != 0) || (((_la-71)&-(0x1f+1)) == 0 && ((1<<uint((_la-71)))&((1<<(FaultParserDECIMAL_LIT-71))|(1<<(FaultParserOCTAL_LIT-71))|(1<<(FaultParserHEX_LIT-71))|(1<<(FaultParserFLOAT_LIT-71))|(1<<(FaultParserRAW_STRING_LIT-71))|(1<<(FaultParserINTERPRETED_STRING_LIT-71)))) != 0) {
+	if (((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<FaultParserCLOCK)|(1<<FaultParserNEW)|(1<<FaultParserTHIS)|(1<<FaultParserNIL)|(1<<FaultParserTRUE)|(1<<FaultParserFALSE))) != 0) || (((_la-35)&-(0x1f+1)) == 0 && ((1<<uint((_la-35)))&((1<<(FaultParserIDENT-35))|(1<<(FaultParserLPAREN-35))|(1<<(FaultParserMINUS-35)))) != 0) || (((_la-72)&-(0x1f+1)) == 0 && ((1<<uint((_la-72)))&((1<<(FaultParserDECIMAL_LIT-72))|(1<<(FaultParserOCTAL_LIT-72))|(1<<(FaultParserHEX_LIT-72))|(1<<(FaultParserFLOAT_LIT-72))|(1<<(FaultParserRAW_STRING_LIT-72))|(1<<(FaultParserINTERPRETED_STRING_LIT-72)))) != 0) {
 		{
 			p.SetState(384)
 			p.Operand()
@@ -6921,6 +7032,9 @@ func (p *FaultParser) Expression() (localctx IExpressionContext) {
 }
 
 func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
+	this := p
+	_ = this
+
 	var _parentctx antlr.ParserRuleContext = p.GetParserRuleContext()
 	_parentState := p.GetState()
 	localctx = NewExpressionContext(p, p.GetParserRuleContext(), _parentState)
@@ -7024,7 +7138,7 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 					p.SetState(406)
 					_la = p.GetTokenStream().LA(1)
 
-					if !(((_la-50)&-(0x1f+1)) == 0 && ((1<<uint((_la-50)))&((1<<(FaultParserAMPERSAND-50))|(1<<(FaultParserMULTI-50))|(1<<(FaultParserDIV-50))|(1<<(FaultParserMOD-50))|(1<<(FaultParserLSHIFT-50))|(1<<(FaultParserRSHIFT-50))|(1<<(FaultParserBIT_CLEAR-50)))) != 0) {
+					if !(((_la-51)&-(0x1f+1)) == 0 && ((1<<uint((_la-51)))&((1<<(FaultParserAMPERSAND-51))|(1<<(FaultParserMULTI-51))|(1<<(FaultParserDIV-51))|(1<<(FaultParserMOD-51))|(1<<(FaultParserLSHIFT-51))|(1<<(FaultParserRSHIFT-51))|(1<<(FaultParserBIT_CLEAR-51)))) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -7048,7 +7162,7 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 					p.SetState(409)
 					_la = p.GetTokenStream().LA(1)
 
-					if !(((_la-61)&-(0x1f+1)) == 0 && ((1<<uint((_la-61)))&((1<<(FaultParserPLUS-61))|(1<<(FaultParserMINUS-61))|(1<<(FaultParserCARET-61)))) != 0) {
+					if !(((_la-62)&-(0x1f+1)) == 0 && ((1<<uint((_la-62)))&((1<<(FaultParserPLUS-62))|(1<<(FaultParserMINUS-62))|(1<<(FaultParserCARET-62)))) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -7072,7 +7186,7 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 					p.SetState(412)
 					_la = p.GetTokenStream().LA(1)
 
-					if !(((_la-53)&-(0x1f+1)) == 0 && ((1<<uint((_la-53)))&((1<<(FaultParserEQUALS-53))|(1<<(FaultParserNOT_EQUALS-53))|(1<<(FaultParserLESS-53))|(1<<(FaultParserLESS_OR_EQUALS-53))|(1<<(FaultParserGREATER-53))|(1<<(FaultParserGREATER_OR_EQUALS-53)))) != 0) {
+					if !(((_la-54)&-(0x1f+1)) == 0 && ((1<<uint((_la-54)))&((1<<(FaultParserEQUALS-54))|(1<<(FaultParserNOT_EQUALS-54))|(1<<(FaultParserLESS-54))|(1<<(FaultParserLESS_OR_EQUALS-54))|(1<<(FaultParserGREATER-54))|(1<<(FaultParserGREATER_OR_EQUALS-54)))) != 0) {
 						p.GetErrorHandler().RecoverInline(p)
 					} else {
 						p.GetErrorHandler().ReportMatch(p)
@@ -7270,6 +7384,9 @@ func (s *OperandContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Operand() (localctx IOperandContext) {
+	this := p
+	_ = this
+
 	localctx = NewOperandContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 72, FaultParserRULE_operand)
 
@@ -7643,6 +7760,9 @@ func (s *OpThisContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) OperandName() (localctx IOperandNameContext) {
+	this := p
+	_ = this
+
 	localctx = NewOperandNameContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 74, FaultParserRULE_operandName)
 
@@ -7831,6 +7951,9 @@ func (s *PrefixContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Prefix() (localctx IPrefixContext) {
+	this := p
+	_ = this
+
 	localctx = NewPrefixContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 76, FaultParserRULE_prefix)
 	var _la int
@@ -7863,7 +7986,7 @@ func (p *FaultParser) Prefix() (localctx IPrefixContext) {
 			p.SetState(450)
 			_la = p.GetTokenStream().LA(1)
 
-			if !(((_la-50)&-(0x1f+1)) == 0 && ((1<<uint((_la-50)))&((1<<(FaultParserAMPERSAND-50))|(1<<(FaultParserBANG-50))|(1<<(FaultParserPLUS-50))|(1<<(FaultParserMINUS-50))|(1<<(FaultParserCARET-50))|(1<<(FaultParserMULTI-50)))) != 0) {
+			if !(((_la-51)&-(0x1f+1)) == 0 && ((1<<uint((_la-51)))&((1<<(FaultParserAMPERSAND-51))|(1<<(FaultParserBANG-51))|(1<<(FaultParserPLUS-51))|(1<<(FaultParserMINUS-51))|(1<<(FaultParserCARET-51))|(1<<(FaultParserMULTI-51)))) != 0) {
 				p.GetErrorHandler().RecoverInline(p)
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
@@ -7979,6 +8102,9 @@ func (s *NumericContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Numeric() (localctx INumericContext) {
+	this := p
+	_ = this
+
 	localctx = NewNumericContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 78, FaultParserRULE_numeric)
 
@@ -8111,6 +8237,9 @@ func (s *IntegerContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Integer() (localctx IIntegerContext) {
+	this := p
+	_ = this
+
 	localctx = NewIntegerContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 80, FaultParserRULE_integer)
 	var _la int
@@ -8136,7 +8265,7 @@ func (p *FaultParser) Integer() (localctx IIntegerContext) {
 		p.SetState(459)
 		_la = p.GetTokenStream().LA(1)
 
-		if !(((_la-71)&-(0x1f+1)) == 0 && ((1<<uint((_la-71)))&((1<<(FaultParserDECIMAL_LIT-71))|(1<<(FaultParserOCTAL_LIT-71))|(1<<(FaultParserHEX_LIT-71)))) != 0) {
+		if !(((_la-72)&-(0x1f+1)) == 0 && ((1<<uint((_la-72)))&((1<<(FaultParserDECIMAL_LIT-72))|(1<<(FaultParserOCTAL_LIT-72))|(1<<(FaultParserHEX_LIT-72)))) != 0) {
 			p.GetErrorHandler().RecoverInline(p)
 		} else {
 			p.GetErrorHandler().ReportMatch(p)
@@ -8240,6 +8369,9 @@ func (s *NegativeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Negative() (localctx INegativeContext) {
+	this := p
+	_ = this
+
 	localctx = NewNegativeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 82, FaultParserRULE_negative)
 
@@ -8362,6 +8494,9 @@ func (s *Float_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Float_() (localctx IFloat_Context) {
+	this := p
+	_ = this
+
 	localctx = NewFloat_Context(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 84, FaultParserRULE_float_)
 
@@ -8467,6 +8602,9 @@ func (s *String_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) String_() (localctx IString_Context) {
+	this := p
+	_ = this
+
 	localctx = NewString_Context(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 86, FaultParserRULE_string_)
 	var _la int
@@ -8580,6 +8718,9 @@ func (s *Bool_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Bool_() (localctx IBool_Context) {
+	this := p
+	_ = this
+
 	localctx = NewBool_Context(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 88, FaultParserRULE_bool_)
 	var _la int
@@ -8699,6 +8840,9 @@ func (s *FunctionLitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *FaultParser) FunctionLit() (localctx IFunctionLitContext) {
+	this := p
+	_ = this
+
 	localctx = NewFunctionLitContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 90, FaultParserRULE_functionLit)
 
@@ -8808,6 +8952,9 @@ func (s *EosContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *FaultParser) Eos() (localctx IEosContext) {
+	this := p
+	_ = this
+
 	localctx = NewEosContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 92, FaultParserRULE_eos)
 	var _la int
@@ -8859,6 +9006,9 @@ func (p *FaultParser) Sempred(localctx antlr.RuleContext, ruleIndex, predIndex i
 }
 
 func (p *FaultParser) Expression_Sempred(localctx antlr.RuleContext, predIndex int) bool {
+	this := p
+	_ = this
+
 	switch predIndex {
 	case 0:
 		return p.Precpred(p.GetParserRuleContext(), 6)

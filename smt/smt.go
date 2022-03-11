@@ -435,6 +435,12 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, on string, off 
 			return fmt.Sprintf("(assert %s)", or)
 		}
 		return fmt.Sprintf("(assert %s)", ir[0])
+	case "eventually-always":
+		if len(ir) > 1 {
+			or := g.eventuallyAlways(ir)
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
 	default:
 		if len(ir) > 1 {
 			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
@@ -442,4 +448,13 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, on string, off 
 		}
 		return fmt.Sprintf("(assert %s)", ir[0])
 	}
+}
+
+func (g *Generator) eventuallyAlways(ir []string) string {
+	var progression []string
+	for i, _ := range ir {
+		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
+		progression = append(progression, s)
+	}
+	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
 }

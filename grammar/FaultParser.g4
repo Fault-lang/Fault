@@ -119,7 +119,7 @@ assumption
     ;
 
 temporal
-    : ('eventually' | 'always')
+    : ('eventually' | 'always' | 'eventually-always' )
     ;
 
 invariant
