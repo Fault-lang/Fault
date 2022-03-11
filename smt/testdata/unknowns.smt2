@@ -9,7 +9,7 @@
 (assert (= unknowns_loop_data_c_1 (+ unknowns_loop_data_c_0 (+ unknowns_loop_data_a_0 unknowns_loop_data_b_0))))
 (assert (= unknowns_loop_data_c_2 (+ unknowns_loop_data_c_1 (+ unknowns_loop_data_a_0 unknowns_loop_data_b_0))))
 (assert (= unknowns_loop_data_c_3 (+ unknowns_loop_data_c_2 (+ unknowns_loop_data_a_0 unknowns_loop_data_b_0))))
-(assert (> unknowns_loop_data_a_0 5))
 (assert (> unknowns_loop_data_a_0 6))
+(assert (> unknowns_loop_data_a_0 5))
 
 

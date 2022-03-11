@@ -3,6 +3,7 @@ package util
 import (
 	"fault/ast"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -101,6 +102,26 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 		}
 	}
 	return results
+}
+
+func CaptureState(id string) (string, bool, bool) {
+	var a, c bool
+	raw := strings.Split(id, "_")
+	if len(raw) > 2 { //Not a constant
+		c = false
+		a = true
+	} else {
+		c = true
+		a = false
+	}
+
+	_, err := strconv.Atoi(raw[len(raw)-1])
+	if err != nil {
+		return "", a, c
+	} else {
+		return raw[len(raw)-1], false, false
+	}
+
 }
 
 func product(list1 [][]string, list2 []string) [][]string {

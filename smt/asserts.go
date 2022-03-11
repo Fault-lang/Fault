@@ -11,20 +11,20 @@ import (
 func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 	switch e := assert.(type) {
 	case *ast.AssertionStatement:
-		a1 := g.generateAsserts(e.Constraints.Variable, e.Constraints.Comparison, e.Constraints)
-		a2 := g.generateAsserts(e.Constraints.Expression, e.Constraints.Comparison, e.Constraints)
+		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints)
+		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints)
 
-		if e.Constraints.Conjuction != "" {
-			return a1, a2, e.Constraints.Conjuction
+		if e.Constraints.Operator != "&&" && e.Constraints.Operator != "||" {
+			return a1, a2, e.Constraints.Operator
 		} else {
 			a2 = removeDuplicates(a1, a2)
 			return append(a1, a2...), nil, ""
 		}
 	case *ast.AssumptionStatement:
-		a1 := g.generateAsserts(e.Constraints.Variable, e.Constraints.Comparison, e.Constraints)
-		a2 := g.generateAsserts(e.Constraints.Expression, e.Constraints.Comparison, e.Constraints)
-		if e.Constraints.Conjuction != "" {
-			return a1, a2, e.Constraints.Conjuction
+		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints)
+		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints)
+		if e.Constraints.Operator != "&&" && e.Constraints.Operator != "||" {
+			return a1, a2, e.Constraints.Operator
 		} else {
 			return append(a1, a2...), nil, ""
 		}
@@ -41,7 +41,7 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 	case *ast.InfixExpression:
 		ident = g.findIdent(v)
 		for _, id := range ident {
-			assrt = append(assrt, g.packageAssert(id, v.Operator, v))
+			assrt = append(assrt, g.packageAssert(id, comp, v))
 		}
 		return assrt
 	case *ast.Identifier:
@@ -61,6 +61,12 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 			assrt = append(assrt, g.packageAssert(v, comp, constr))
 		}
 		return assrt
+	case *ast.IndexExpression:
+		ident = g.findIdent(v)
+		for _, id := range ident {
+			assrt = append(assrt, g.packageAssert(id, comp, constr))
+		}
+		return assrt
 	case *ast.IntegerLiteral:
 		return assrt
 	case *ast.FloatLiteral:
@@ -75,20 +81,14 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 }
 
 func (g *Generator) parseInvariant(ex ast.Expression) rule {
-
 	switch e := ex.(type) {
-	case *ast.Invariant:
-		left := g.parseInvariant(e.Variable)
-		right := g.parseInvariant(e.Expression)
-		var conj string
-		if e.Conjuction != "" {
-			conj = e.Conjuction
-		} else {
-			conj = e.Comparison
-		}
+	case *ast.InvariantClause:
+		left := g.parseInvariant(e.Left)
+		right := g.parseInvariant(e.Right)
+
 		return &invariant{
 			left:        left,
-			conjunction: conj,
+			conjunction: e.Operator,
 			right:       right,
 		}
 	case *ast.InfixExpression:
@@ -155,6 +155,11 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 	case *ast.PrefixExpression:
 	case *ast.Nil:
 	case *ast.IndexExpression:
+		return &wrap{value: g.convertIndexExpr(e),
+			state:    "",
+			all:      false,
+			constant: true,
+		}
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
@@ -175,12 +180,19 @@ func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression
 		assertion:   g.parseInvariant(expr)}
 }
 
+func (g *Generator) convertIndexExpr(idx *ast.IndexExpression) string {
+	return strings.Join([]string{idx.Left.String(), idx.Index.String()}, "_")
+}
+
 func (g *Generator) findIdent(n ast.Node) []string {
 	switch v := n.(type) {
 	case *ast.InfixExpression:
 		return g.findIdent(v.Left)
 	case *ast.PrefixExpression:
 		return g.findIdent(v.Right)
+	case *ast.IndexExpression:
+		s := g.convertIndexExpr(v)
+		return []string{s}
 	case *ast.Identifier:
 		return []string{v.Value}
 	case *ast.ParameterCall:

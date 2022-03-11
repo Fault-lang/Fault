@@ -66,10 +66,11 @@ type Compiler struct {
 	// Where a condition should jump when done
 	contextCondAfter []*ir.Block
 
-	specGlobals  map[string]*ir.Global
-	AssertAssume []ast.Statement
-	Uncertains   map[string][]float64
-	Unknowns     []string
+	specGlobals map[string]*ir.Global
+	Asserts     []*ast.AssertionStatement
+	Assumes     []*ast.AssumptionStatement
+	Uncertains  map[string][]float64
+	Unknowns    []string
 }
 
 func NewCompiler() *Compiler {
@@ -124,7 +125,7 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 	return
 }
 
-func (c *Compiler) processSpec(root ast.Node, isImport bool) []ast.Statement {
+func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionStatement, []*ast.AssumptionStatement) {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
@@ -143,12 +144,16 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) []ast.Statement {
 	}
 
 	if !isImport {
-		for _, assert := range c.AssertAssume {
-			c.AssertAssume = c.AssertAssume[1:] //Pop
+		for _, assert := range c.Asserts {
+			c.Asserts = c.Asserts[1:] //Pop
+			c.compileAssert(assert)
+		}
+		for _, assert := range c.Assumes {
+			c.Assumes = c.Assumes[1:] //Pop
 			c.compileAssert(assert)
 		}
 	}
-	return c.AssertAssume
+	return c.Asserts, c.Assumes
 }
 
 func (c *Compiler) compile(node ast.Node) {
@@ -158,8 +163,9 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ImportStatement:
 		parent := c.currentSpecName
 		parentSp := c.currentSpec
-		asserts := c.processSpec(v.Tree, true) //Move all asserts to the end of the compilation process
-		c.AssertAssume = append(c.AssertAssume, asserts...)
+		asserts, assumes := c.processSpec(v.Tree, true) //Move all asserts to the end of the compilation process
+		c.Asserts = append(c.Asserts, asserts...)
+		c.Assumes = append(c.Assumes, assumes...)
 		c.currentSpecName = parent
 		c.currentSpec = parentSp
 	case *ast.ConstantStatement:
@@ -176,10 +182,10 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.AssumptionStatement:
 		// Need to do these after the run block so we move them
-		c.AssertAssume = append(c.AssertAssume, v)
+		c.Assumes = append(c.Assumes, v)
 
 	case *ast.AssertionStatement:
-		c.AssertAssume = append(c.AssertAssume, v)
+		c.Asserts = append(c.Asserts, v)
 		//c.compileAssertion(v)
 
 	case *ast.ForStatement:
@@ -455,21 +461,20 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 	//Not implemented, using preparse from type checker
 }
 
-func (c *Compiler) compileAssert(assert ast.Statement) {
-	var v, e ast.Expression
+func (c *Compiler) compileAssert(assert ast.Node) {
+	var l, r ast.Expression
 	switch a := assert.(type) {
 	case *ast.AssertionStatement:
-		v = negate(a.Constraints.Variable)
-		e = negate(a.Constraints.Expression)
-		a.Constraints.Comparison = OP_NEGATE[a.Constraints.Comparison]
-		a.Constraints.Conjuction = OP_NEGATE[a.Constraints.Conjuction]
-		a.Constraints.Variable = c.convertAssertVariables(v)
-		a.Constraints.Expression = c.convertAssertVariables(e)
-		c.AssertAssume = append(c.AssertAssume, a)
+		l = negate(a.Constraints.Left)
+		r = negate(a.Constraints.Right)
+		a.Constraints.Operator = OP_NEGATE[a.Constraints.Operator]
+		a.Constraints.Left = c.convertAssertVariables(l)
+		a.Constraints.Right = c.convertAssertVariables(r)
+		c.Asserts = append(c.Asserts, a)
 	case *ast.AssumptionStatement:
-		a.Constraints.Variable = c.convertAssertVariables(a.Constraints.Variable)
-		a.Constraints.Expression = c.convertAssertVariables(a.Constraints.Expression)
-		c.AssertAssume = append(c.AssertAssume, a)
+		a.Constraints.Left = c.convertAssertVariables(a.Constraints.Left)
+		a.Constraints.Right = c.convertAssertVariables(a.Constraints.Right)
+		c.Assumes = append(c.Assumes, a)
 	default:
 		panic("statement must be an assert or an assumption.")
 	}
@@ -864,6 +869,7 @@ func (c *Compiler) resetParaState(p []*ir.Param) {
 func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	switch e := ex.(type) {
 	case *ast.InfixExpression:
+
 		e.Left = c.convertAssertVariables(e.Left)
 		e.Right = c.convertAssertVariables(e.Right)
 		return e
@@ -929,7 +935,7 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.IndexExpression:
 		e.Left = c.convertAssertVariables(e.Left)
-		return e //This needs more work
+		return e
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))

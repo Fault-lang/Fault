@@ -185,7 +185,8 @@ type Generator struct {
 	branchId        int
 	Branches        map[string][]string            // [varid] = branch_id
 	BranchTrail     map[string]map[string][]string //[branch_id] = []string{varid}
-	rawAsserts      []ast.Statement
+	rawAsserts      []*ast.AssertionStatement
+	rawAssumes      []*ast.AssumptionStatement
 	rounds          map[string]map[string][]int16
 	Uncertains      map[string][]float64
 	Unknowns        []string
@@ -268,22 +269,28 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	}
 
 	for _, v := range g.rawAsserts {
-		a1, a2, conj := g.parseAssert(v)
-		if conj == "" {
+		a1, a2, op := g.parseAssert(v)
+		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
 				ir := g.generateAssertRules(assrt)
-				if len(ir) > 1 {
-					or := fmt.Sprintf("(or %s)", strings.Join(ir, " "))
-					g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", or))
-				} else if len(ir) == 1 {
-					g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", ir[0]))
-				}
+				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, "and", "or"))
 			}
 		} else {
-			g.asserts = append(g.asserts, g.generateCompound(a1, a2, conj)...)
+			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
 		}
 	}
 
+	for _, v := range g.rawAssumes {
+		a1, a2, op := g.parseAssert(v)
+		if op != "&&" && op != "||" {
+			for _, assrt := range a1 {
+				ir := g.generateAssertRules(assrt)
+				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, "or", "and"))
+			}
+		} else {
+			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
+		}
+	}
 }
 
 func (g *Generator) newConstants(globals []*ir.Global) []string {
@@ -412,4 +419,27 @@ func (g *Generator) getVarBase(id string) (string, int) {
 		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
 	}
 	return strings.Join(v[0:len(v)-1], "_"), num
+}
+
+func (g *Generator) applyTemporalLogic(temp string, ir []string, on string, off string) string {
+	switch temp {
+	case "eventually":
+		if len(ir) > 1 {
+			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	case "always":
+		if len(ir) > 1 {
+			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	default:
+		if len(ir) > 1 {
+			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	}
 }

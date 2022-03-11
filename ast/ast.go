@@ -191,7 +191,9 @@ func (ds *DefStatement) String() string {
 
 type AssertionStatement struct {
 	Token       Token
-	Constraints *Invariant
+	Variables   []Expression
+	Constraints *InvariantClause
+	Temporal    string
 }
 
 func (as *AssertionStatement) statementNode()       {}
@@ -201,16 +203,18 @@ func (as *AssertionStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(as.TokenLiteral() + " ")
-	out.WriteString(as.Constraints.Variable.String())
-	out.WriteString(as.Constraints.Comparison)
-	out.WriteString(as.Constraints.Expression.String())
+	out.WriteString(as.Constraints.Left.String())
+	out.WriteString(as.Constraints.Operator)
+	out.WriteString(as.Constraints.Right.String())
 	out.WriteString(";")
 	return out.String()
 }
 
 type AssumptionStatement struct {
 	Token       Token
-	Constraints *Invariant
+	Variables   []Expression
+	Constraints *InvariantClause
+	Temporal    string
 }
 
 func (as *AssumptionStatement) statementNode()       {}
@@ -220,9 +224,32 @@ func (as *AssumptionStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(as.TokenLiteral() + " ")
-	out.WriteString(as.Constraints.Variable.String())
-	out.WriteString(as.Constraints.Comparison)
-	out.WriteString(as.Constraints.Expression.String())
+	out.WriteString(as.Constraints.Left.String())
+	out.WriteString(as.Constraints.Operator)
+	out.WriteString(as.Constraints.Right.String())
+	out.WriteString(";")
+	return out.String()
+}
+
+type InvariantClause struct {
+	Token        Token
+	Left         Expression
+	Operator     string
+	Right        Expression
+	InferredType *Type
+}
+
+func (i *InvariantClause) expressionNode()      {}
+func (i *InvariantClause) TokenLiteral() string { return i.Token.Literal }
+func (i *InvariantClause) Position() []int      { return i.Token.Position }
+func (i *InvariantClause) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(i.TokenLiteral() + "assert ")
+	out.WriteString(i.Left.String())
+	out.WriteString(i.Operator)
+	out.WriteString(i.Right.String())
+
 	out.WriteString(";")
 	return out.String()
 }

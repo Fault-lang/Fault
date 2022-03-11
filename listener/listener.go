@@ -1059,30 +1059,29 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 	token := util.GenerateToken("ASSERT", "assert", c.GetStart(), c.GetStop())
 
 	expr := l.pop()
-	var con *ast.Invariant
+	var con *ast.InvariantClause
 	switch e := expr.(type) {
 	default:
 		panic(fmt.Sprintf("invariant unusable. Must be expression not boolean line: %d, col: %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	case *ast.InfixExpression:
-		var comp, conj string
-		if e.Operator == "&&" || e.Operator == "||" {
-			conj = e.Operator
-		} else {
-			comp = e.Operator
-		}
 
-		con = &ast.Invariant{
-			Token:      e.Token,
-			Variable:   e.Left,
-			Comparison: comp,
-			Expression: e.Right,
-			Conjuction: conj,
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e.Left,
+			Operator: e.Operator,
+			Right:    e.Right,
 		}
+	}
+
+	var temporal string
+	if c.Temporal() != nil {
+		temporal = c.Temporal().GetText()
 	}
 
 	l.push(&ast.AssertionStatement{
 		Token:       token,
 		Constraints: con,
+		Temporal:    temporal,
 	})
 }
 
@@ -1090,30 +1089,29 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	token := util.GenerateToken("ASSUME", "assume", c.GetStart(), c.GetStop())
 
 	expr := l.pop()
-	var con *ast.Invariant
+	var con *ast.InvariantClause
 	switch e := expr.(type) {
 	default:
 		panic(fmt.Sprintf("invariant unusable. Must be expression not boolean line: %d, col: %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	case *ast.InfixExpression:
-		var comp, conj string
-		if e.Operator == "&&" || e.Operator == "||" {
-			conj = e.Operator
-		} else {
-			comp = e.Operator
-		}
 
-		con = &ast.Invariant{
-			Token:      e.Token,
-			Variable:   e.Left,
-			Comparison: comp,
-			Expression: e.Right,
-			Conjuction: conj,
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e.Left,
+			Operator: e.Operator,
+			Right:    e.Right,
 		}
+	}
+
+	var temporal string
+	if c.Temporal() != nil {
+		temporal = c.Temporal().GetText()
 	}
 
 	l.push(&ast.AssumptionStatement{
 		Token:       token,
 		Constraints: con,
+		Temporal:    temporal,
 	})
 }
 
