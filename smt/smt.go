@@ -20,10 +20,12 @@ type rule interface {
 
 type assrt struct {
 	rule
-	variable    *wrap
-	conjunction string
-	assertion   rule
-	tag         *branch
+	variable       *wrap
+	conjunction    string
+	assertion      rule
+	tag            *branch
+	temporalFilter string
+	temporalN      int
 }
 
 func (a *assrt) ruleNode() {}
@@ -80,10 +82,12 @@ func (ite *ite) Tag(k1 string, k2 string) {
 
 type invariant struct {
 	rule
-	left        rule
-	conjunction string
-	right       rule
-	tag         *branch
+	left           rule
+	conjunction    string
+	right          rule
+	tag            *branch
+	temporalFilter string
+	temporalN      int
 }
 
 func (i *invariant) ruleNode() {}
@@ -272,7 +276,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		a1, a2, op := g.parseAssert(v)
 		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
-				ir := g.generateAssertRules(assrt)
+				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
 				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, "and", "or"))
 			}
 		} else {
@@ -284,7 +288,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		a1, a2, op := g.parseAssert(v)
 		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
-				ir := g.generateAssertRules(assrt)
+				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
 				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, "or", "and"))
 			}
 		} else {

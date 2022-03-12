@@ -1014,6 +1014,66 @@ func TestAssumptionCompound2(t *testing.T) {
 
 }
 
+func TestTemporal(t *testing.T) {
+	test := `spec test1;
+			 assert x > y eventually;
+			`
+	_, spec := prepTest(test, nil)
+	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
+	}
+
+	if assert.Constraints.Left.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Left.(*ast.Identifier).Value)
+	}
+
+	if assert.Constraints.Operator != ">" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=>", assert.Constraints.Operator)
+	}
+
+	if assert.Constraints.Right.String() != "y" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Right.(*ast.Identifier).Value)
+	}
+
+	if assert.Temporal != "eventually" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=eventually", assert.Temporal)
+	}
+
+}
+
+func TestTemporalFilter(t *testing.T) {
+	test := `spec test1;
+			 assert x > y nmt 3;
+			`
+	_, spec := prepTest(test, nil)
+	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
+	}
+
+	if assert.Constraints.Left.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Left.(*ast.Identifier).Value)
+	}
+
+	if assert.Constraints.Operator != ">" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=>", assert.Constraints.Operator)
+	}
+
+	if assert.Constraints.Right.String() != "y" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Right.(*ast.Identifier).Value)
+	}
+
+	if assert.TemporalFilter != "nmt" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=nmt", assert.TemporalFilter)
+	}
+
+	if assert.TemporalN != 3 {
+		t.Fatalf("assert comparison is not correct. got=%d, want=3", assert.TemporalN)
+	}
+
+}
+
 func TestFaultAssign(t *testing.T) {
 	test := `spec test1;
 			 def foo = flow{

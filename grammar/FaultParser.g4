@@ -111,20 +111,20 @@ accessHistory
     ;
 
 assertion
-    : 'assert' temporal? invariant eos
+    : 'assert' invariant temporal? eos
     ;
 
 assumption
-    : 'assume' temporal? invariant eos
+    : 'assume' invariant temporal? eos
     ;
 
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
+    | ('nmt' | 'nft') integer
     ;
 
 invariant
     : expression
-    | expression ('nmt' | 'nft') integer
     ;
 
 assignment

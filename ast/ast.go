@@ -190,10 +190,12 @@ func (ds *DefStatement) String() string {
 }
 
 type AssertionStatement struct {
-	Token       Token
-	Variables   []Expression
-	Constraints *InvariantClause
-	Temporal    string
+	Token          Token
+	Variables      []Expression
+	Constraints    *InvariantClause
+	Temporal       string
+	TemporalFilter string
+	TemporalN      int
 }
 
 func (as *AssertionStatement) statementNode()       {}
@@ -211,10 +213,12 @@ func (as *AssertionStatement) String() string {
 }
 
 type AssumptionStatement struct {
-	Token       Token
-	Variables   []Expression
-	Constraints *InvariantClause
-	Temporal    string
+	Token          Token
+	Variables      []Expression
+	Constraints    *InvariantClause
+	Temporal       string
+	TemporalFilter string
+	TemporalN      int
 }
 
 func (as *AssumptionStatement) statementNode()       {}

@@ -135,6 +135,43 @@ func product(list1 [][]string, list2 []string) [][]string {
 	return results
 }
 
+func Combinations(l [][]string, n int) [][][]string {
+	var subset [][][]string
+	for idx, itm := range l {
+		if len(l) > idx+1 {
+			i := idx
+			for {
+				pos := i + n
+				if pos > len(l) {
+					break
+				}
+				items := append([][]string{itm}, l[i+1:pos]...)
+				subset = append(subset, items)
+				i++
+			}
+		}
+	}
+	return subset
+}
+
+func NotInSet(o [][]string, c [][]string) [][]string {
+	var s [][]string
+	for _, r := range c {
+		sw := true
+	exit:
+		for _, in := range o {
+			if strings.Join(r, "") == strings.Join(in, "") {
+				sw = false
+				break exit
+			}
+		}
+		if sw {
+			s = append(s, r)
+		}
+	}
+	return s
+}
+
 func IsCompare(op string) bool {
 	switch op {
 	case ">":

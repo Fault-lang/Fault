@@ -2,6 +2,7 @@ package smt
 
 import (
 	"fault/ast"
+	"fault/llvm"
 	"fault/util"
 	"fmt"
 	"strconv"
@@ -11,8 +12,8 @@ import (
 func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 	switch e := assert.(type) {
 	case *ast.AssertionStatement:
-		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints)
-		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints)
+		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints, e)
+		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints, e)
 
 		if e.Constraints.Operator != "&&" && e.Constraints.Operator != "||" {
 			return a1, a2, e.Constraints.Operator
@@ -21,8 +22,8 @@ func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 			return append(a1, a2...), nil, ""
 		}
 	case *ast.AssumptionStatement:
-		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints)
-		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints)
+		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints, e)
+		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints, e)
 		if e.Constraints.Operator != "&&" && e.Constraints.Operator != "||" {
 			return a1, a2, e.Constraints.Operator
 		} else {
@@ -34,37 +35,37 @@ func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 	}
 }
 
-func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.Expression) []*assrt {
+func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.Expression, stmt ast.Statement) []*assrt {
 	var ident []string
 	var assrt []*assrt
 	switch v := exp.(type) {
 	case *ast.InfixExpression:
 		ident = g.findIdent(v)
 		for _, id := range ident {
-			assrt = append(assrt, g.packageAssert(id, comp, v))
+			assrt = append(assrt, g.packageAssert(id, comp, v, stmt))
 		}
 		return assrt
 	case *ast.Identifier:
 		ident = g.findIdent(v)
 		for _, id := range ident {
-			assrt = append(assrt, g.packageAssert(id, comp, constr))
+			assrt = append(assrt, g.packageAssert(id, comp, constr, stmt))
 		}
 		return assrt
 	case *ast.ParameterCall:
 		ident = g.findIdent(v)
 		for _, id := range ident {
-			assrt = append(assrt, g.packageAssert(id, comp, constr))
+			assrt = append(assrt, g.packageAssert(id, comp, constr, stmt))
 		}
 		return assrt
 	case *ast.AssertVar:
 		for _, v := range v.Instances {
-			assrt = append(assrt, g.packageAssert(v, comp, constr))
+			assrt = append(assrt, g.packageAssert(v, comp, constr, stmt))
 		}
 		return assrt
 	case *ast.IndexExpression:
 		ident = g.findIdent(v)
 		for _, id := range ident {
-			assrt = append(assrt, g.packageAssert(id, comp, constr))
+			assrt = append(assrt, g.packageAssert(id, comp, constr, stmt))
 		}
 		return assrt
 	case *ast.IntegerLiteral:
@@ -167,7 +168,19 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 	return nil
 }
 
-func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression) *assrt {
+func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt ast.Statement) *assrt {
+	var temporalFilter string
+	var temporalN int
+
+	switch st := stmt.(type) {
+	case *ast.AssertionStatement:
+		temporalFilter = st.TemporalFilter
+		temporalN = st.TemporalN
+	case *ast.AssumptionStatement:
+		temporalFilter = st.TemporalFilter
+		temporalN = st.TemporalN
+	}
+
 	s, a, c := captureState(ident)
 	w := &wrap{value: ident,
 		state:    s,
@@ -175,9 +188,11 @@ func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression
 		constant: c,
 	}
 	return &assrt{
-		variable:    w,
-		conjunction: comp,
-		assertion:   g.parseInvariant(expr)}
+		variable:       w,
+		conjunction:    comp,
+		assertion:      g.parseInvariant(expr),
+		temporalFilter: temporalFilter,
+		temporalN:      temporalN}
 }
 
 func (g *Generator) convertIndexExpr(idx *ast.IndexExpression) string {
@@ -205,7 +220,7 @@ func (g *Generator) findIdent(n ast.Node) []string {
 	}
 }
 
-func (g *Generator) generateAssertRules(ru rule) []string {
+func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	// assert x == true;
 	// negated: x != true;
 	// (assert (or (= x0 false) (= x1 false) (= x2 false)))
@@ -227,7 +242,7 @@ func (g *Generator) generateAssertRules(ru rule) []string {
 	var i *invariant
 	switch r := ru.(type) {
 	case *assrt:
-		return g.generateAssertRules(r.assertion)
+		return g.generateAssertRules(r.assertion, t, tn)
 	case *invariant:
 		i = r
 	case *wrap:
@@ -246,29 +261,29 @@ func (g *Generator) generateAssertRules(ru rule) []string {
 
 	switch l := i.left.(type) {
 	case *invariant:
-		left = g.generateAssertRules(l)
+		left = g.generateAssertRules(l, t, tn)
 	case *wrap:
 		left = g.wrapPerm(l)
 	}
 
 	switch r := i.right.(type) {
 	case *invariant:
-		right = g.generateAssertRules(r)
+		right = g.generateAssertRules(r, t, tn)
 	case *wrap:
 		right = g.wrapPerm(r)
 	}
 
-	return cartesianAsserts(left, right, i.conjunction)
+	return expandAssertStateGraph(left, right, i.conjunction, t, tn)
 }
 
 func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []string {
 	var left, right []string
 	for _, l := range a1 {
-		left = append(left, g.generateAssertRules(l)...)
+		left = append(left, g.generateAssertRules(l, l.temporalFilter, l.temporalN)...)
 	}
 
 	for _, r := range a2 {
-		right = append(right, g.generateAssertRules(r)...)
+		right = append(right, g.generateAssertRules(r, r.temporalFilter, r.temporalN)...)
 	}
 	switch op {
 	case "&&":
@@ -302,13 +317,80 @@ func (g *Generator) wrapPerm(w *wrap) []string {
 	panic(fmt.Sprintf("Inproperly formatted metadata for value %s in assert", w.value))
 }
 
-func cartesianAsserts(list1 []string, list2 []string, op string) []string {
+func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalFilter string, temporalN int) []string {
 	var product []string
-	for _, a := range util.Cartesian(list1, list2) {
+	var x [][]string
+	c := util.Cartesian(list1, list2)
+	switch temporalFilter {
+	// For logic like "no more than X times" "no fewer than X times"
+	// We need to flip some of the operators and build out more
+	// states before packaging the asserts
+	case "nmt":
+		// (and (or on on on) (and off off))
+		on := util.Combinations(c, temporalN) //generate all combinations of possible on states
+		pairs := impliesOnOffPairs(on, c)     //for each combination prepare a list of states that must logically be off
+		for _, p := range pairs {
+			var o []string
+			var f []string
+			for _, on := range p[0] {
+				// Write the clauses
+				o = append(o, fmt.Sprintf("(%s %s %s)", op, on[0], on[1]))
+			}
+			// For nmt any of the potential on states can be on
+			onStr := fmt.Sprintf("(%s %s)", "or", strings.Join(o, " "))
+
+			offOp := llvm.OP_NEGATE[op]
+			for _, off := range p[1] {
+				f = append(o, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+			}
+			// But these states must be off
+			offStr := fmt.Sprintf("(%s %s)", "and", strings.Join(f, " "))
+
+			x = append(x, []string{onStr, offStr})
+		}
+		op = "or" // Reset the operator
+	case "nft":
+		// (and (and on on on) (or off off))
+		on := util.Combinations(c, temporalN)
+		pairs := impliesOnOffPairs(on, c)
+		for _, p := range pairs {
+			var o []string
+			var f []string
+			for _, on := range p[0] {
+				o = append(o, fmt.Sprintf("(%s %s %s)", op, on[0], on[1]))
+			}
+			// For nft all on states in this possibility MUST be on
+			onStr := fmt.Sprintf("(%s %s)", "and", strings.Join(o, " "))
+
+			offOp := llvm.OP_NEGATE[op]
+			for _, off := range p[1] {
+				f = append(o, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+			}
+			// The off states can be on or off
+			offStr := fmt.Sprintf("(%s %s)", "or", strings.Join(f, " "))
+
+			x = append(x, []string{onStr, offStr})
+		}
+		op = "or"
+	default:
+		x = c //No need to do anything
+	}
+
+	for _, a := range x {
 		s := fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
 		product = append(product, s)
 	}
 	return product
+}
+
+func impliesOnOffPairs(on [][][]string, c [][]string) [][][][]string {
+	var oop [][][][]string
+	for _, o := range on {
+		off := util.NotInSet(o, c)
+		p := [][][]string{o, off}
+		oop = append(oop, p)
+	}
+	return oop
 }
 
 func captureState(id string) (string, bool, bool) {

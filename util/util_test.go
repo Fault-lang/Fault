@@ -196,3 +196,138 @@ func TestMergeStrSlices(t *testing.T) {
 	}
 
 }
+
+func TestCombinations(t *testing.T) {
+	input := [][]string{{"a", "", "b"}, {"c", "", "d"}, {"h", "", "i"}, {"r", "", "s"}}
+	expected := [][][]string{
+		{
+			{"a", "", "b"}, {"c", "", "d"},
+		},
+		{
+			{"a", "", "b"}, {"h", "", "i"},
+		},
+		{
+			{"a", "", "b"}, {"r", "", "s"},
+		},
+		{
+			{"c", "", "d"}, {"h", "", "i"},
+		},
+		{
+			{"c", "", "d"}, {"r", "", "s"},
+		},
+		{
+			{"h", "", "i"}, {"r", "", "s"},
+		},
+	}
+
+	results := Combinations(input, 2)
+	if results[0][0][0] != expected[0][0][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[0][0][0], expected[0][0][0])
+	}
+
+	if results[0][1][0] != expected[0][1][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[0][1][0], expected[0][1][0])
+	}
+
+	if results[2][1][0] != expected[2][1][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[2][1][0], expected[2][1][0])
+	}
+
+	if results[2][1][1] != expected[2][1][1] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[2][1][0], expected[2][1][0])
+	}
+
+	if results[4][1][2] != expected[4][1][2] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[4][1][2], expected[4][1][2])
+	}
+
+	if results[5][0][2] != expected[5][0][2] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[5][0][2], expected[5][0][2])
+	}
+}
+
+func TestMoreCombinations(t *testing.T) {
+	input := [][]string{{"a", "b"}, {"c", "d"}, {"h", "i"}, {"r", "s"}}
+	expected := [][][]string{
+		{
+			{"a", "b"}, {"c", "d"}, {"h", "i"},
+		},
+		{
+			{"a", "b"}, {"h", "i"}, {"r", "s"},
+		},
+		{
+			{"c", "d"}, {"h", "i"}, {"r", "s"},
+		},
+	}
+
+	results := Combinations(input, 3)
+	if results[0][0][0] != expected[0][0][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[0][0][0], expected[0][0][0])
+	}
+
+	if results[0][1][0] != expected[0][1][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[0][1][0], expected[0][1][0])
+	}
+	if results[0][2][0] != expected[0][2][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[0][2][0], expected[0][2][0])
+	}
+
+	if results[2][1][0] != expected[2][1][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[2][1][0], expected[2][1][0])
+	}
+
+	if results[2][1][1] != expected[2][1][1] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[2][1][1], expected[2][1][1])
+	}
+
+	if results[2][2][1] != expected[2][2][1] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[2][2][1], expected[2][2][1])
+	}
+
+}
+
+func TestNotInSet(t *testing.T) {
+	inputC := [][]string{{"a", "b"}, {"c", "d"}, {"h", "i"}, {"r", "s"}}
+	iOn1 := [][]string{
+		{"a", "b"}, {"c", "d"}, {"h", "i"},
+	}
+
+	e1 := [][]string{{"r", "s"}}
+
+	r1 := NotInSet(iOn1, inputC)
+	if r1[0][0] != e1[0][0] {
+		t.Fatalf("incorrect value returned for NotInSet1 got=%s want=%s", r1[0][0], e1[0][0])
+	}
+	if r1[0][1] != e1[0][1] {
+		t.Fatalf("incorrect value returned for NotInSet1 got=%s want=%s", r1[0][1], e1[0][1])
+	}
+
+	iOn2 := [][]string{
+		{"a", "b"}, {"h", "i"}, {"r", "s"},
+	}
+
+	e2 := [][]string{{"c", "d"}}
+
+	r2 := NotInSet(iOn2, inputC)
+	if r2[0][0] != e2[0][0] {
+		t.Fatalf("incorrect value returned for NotInSet2 got=%s want=%s", r2[0][0], e2[0][0])
+	}
+	if r2[0][1] != e2[0][1] {
+		t.Fatalf("incorrect value returned for NotInSet2 got=%s want=%s", r2[0][1], e2[0][1])
+	}
+
+	iOn3 := [][]string{
+		{"c", "d"}, {"h", "i"}, {"r", "s"},
+	}
+
+	e3 := [][]string{{"a", "b"}}
+
+	r3 := NotInSet(iOn3, inputC)
+	if r3[0][0] != e3[0][0] {
+		t.Fatalf("incorrect value returned for NotInSet3 got=%s want=%s", r3[0][0], e3[0][0])
+	}
+	if r3[0][1] != e3[0][1] {
+		t.Fatalf("incorrect value returned for NotInSet3 got=%s want=%s", r3[0][1], e3[0][1])
+	}
+
+}

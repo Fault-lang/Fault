@@ -1058,11 +1058,33 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 	token := util.GenerateToken("ASSERT", "assert", c.GetStart(), c.GetStop())
 
+	var temporal string
+	var temporalFilter string
+	var temporalN int
+	var err error
+	if c.Temporal() != nil {
+		if c.Temporal().GetChildCount() == 2 {
+			l.pop() // Discard the int
+			temporalRaw := c.Temporal().GetText()
+			temporal = ""
+			temporalFilter = temporalRaw[0 : len(temporalRaw)-1]
+			temporalN, err = strconv.Atoi(string(temporalRaw[len(temporalRaw)-1]))
+			if err != nil {
+				pos := token.Position
+				panic(fmt.Sprintf("temporal logic not value, filter should be an int: line %d col %d", pos[0], pos[1]))
+			}
+		} else {
+			temporal = c.Temporal().GetText()
+		}
+	}
+
 	expr := l.pop()
 	var con *ast.InvariantClause
 	switch e := expr.(type) {
 	default:
-		panic(fmt.Sprintf("invariant unusable. Must be expression not boolean line: %d, col: %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	case *ast.IntegerLiteral:
+		// Disregard, this is part of the temporal filter
 	case *ast.InfixExpression:
 
 		con = &ast.InvariantClause{
@@ -1073,26 +1095,43 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		}
 	}
 
-	var temporal string
-	if c.Temporal() != nil {
-		temporal = c.Temporal().GetText()
-	}
-
 	l.push(&ast.AssertionStatement{
-		Token:       token,
-		Constraints: con,
-		Temporal:    temporal,
+		Token:          token,
+		Constraints:    con,
+		Temporal:       temporal,
+		TemporalFilter: temporalFilter,
+		TemporalN:      temporalN,
 	})
 }
 
 func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	token := util.GenerateToken("ASSUME", "assume", c.GetStart(), c.GetStop())
 
+	var temporal string
+	var temporalFilter string
+	var temporalN int
+	var err error
+	if c.Temporal() != nil {
+		if c.Temporal().GetChildCount() == 2 {
+			l.pop() // Discard the int
+			temporalRaw := c.Temporal().GetText()
+			temporal = ""
+			temporalFilter = temporalRaw[0 : len(temporalRaw)-1]
+			temporalN, err = strconv.Atoi(string(temporalRaw[len(temporalRaw)-1]))
+			if err != nil {
+				pos := token.Position
+				panic(fmt.Sprintf("temporal logic not value, filter should be an int: line %d col %d", pos[0], pos[1]))
+			}
+		} else {
+			temporal = c.Temporal().GetText()
+		}
+	}
+
 	expr := l.pop()
 	var con *ast.InvariantClause
 	switch e := expr.(type) {
 	default:
-		panic(fmt.Sprintf("invariant unusable. Must be expression not boolean line: %d, col: %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	case *ast.InfixExpression:
 
 		con = &ast.InvariantClause{
@@ -1103,15 +1142,12 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 		}
 	}
 
-	var temporal string
-	if c.Temporal() != nil {
-		temporal = c.Temporal().GetText()
-	}
-
 	l.push(&ast.AssumptionStatement{
-		Token:       token,
-		Constraints: con,
-		Temporal:    temporal,
+		Token:          token,
+		Constraints:    con,
+		Temporal:       temporal,
+		TemporalFilter: temporalFilter,
+		TemporalN:      temporalN,
 	})
 }
 

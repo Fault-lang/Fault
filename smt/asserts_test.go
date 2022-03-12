@@ -334,7 +334,7 @@ func TestEventually(t *testing.T) {
 		},
 	};
 
-	assume eventually amount.value > 0;
+	assume amount.value > 0 eventually;
 
 	for 5 run {
 		t = new test;
@@ -383,7 +383,7 @@ func TestEventuallyAlways(t *testing.T) {
 		},
 	};
 
-	assume eventually-always amount.value > 0;
+	assume amount.value > 0 eventually-always;
 
 	for 5 run {
 		t = new test;
@@ -439,7 +439,7 @@ func TestEventuallyAlways2(t *testing.T) {
 		},
 	};
 
-	assert eventually-always amount.value > 0;
+	assert amount.value > 0 eventually-always;
 
 	for 5 run {
 		t = new test;
