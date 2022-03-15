@@ -136,12 +136,18 @@ func product(list1 [][]string, list2 []string) [][]string {
 }
 
 func Combinations(l [][]string, n int) [][][]string {
+	if len(l) <= n {
+		return [][][]string{l}
+	}
+
 	var subset [][][]string
 	for idx, itm := range l {
-		if len(l) > idx+1 {
-			i := idx
+		if n == 1 {
+			subset = append(subset, [][]string{itm})
+		} else if len(l) > idx+1 {
+			i := idx //0
 			for {
-				pos := i + n
+				pos := i + n // 1
 				if pos > len(l) {
 					break
 				}

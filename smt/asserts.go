@@ -87,19 +87,30 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 		left := g.parseInvariant(e.Left)
 		right := g.parseInvariant(e.Right)
 
-		return &invariant{
+		i := &invariant{
 			left:        left,
-			conjunction: e.Operator,
+			conjunction: smtlibOperators(e.Operator),
 			right:       right,
 		}
+		if e.Operator == "!=" { //Not valid in SMTLib
+			return &invariant{conjunction: "not",
+				right: i}
+		}
+		return i
+
 	case *ast.InfixExpression:
 		left := g.parseInvariant(e.Left)
 		right := g.parseInvariant(e.Right)
-		return &invariant{
+		i := &invariant{
 			left:        left,
-			conjunction: e.Operator,
+			conjunction: smtlibOperators(e.Operator),
 			right:       right,
 		}
+		if e.Operator == "!=" { //Not valid in SMTLib
+			return &invariant{conjunction: "not",
+				right: i}
+		}
+		return i
 
 	case *ast.AssertVar:
 		if len(e.Instances) == 1 {
@@ -258,12 +269,13 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	}
 
 	var left, right []string
-
 	switch l := i.left.(type) {
 	case *invariant:
 		left = g.generateAssertRules(l, t, tn)
 	case *wrap:
 		left = g.wrapPerm(l)
+	default:
+		left = nil
 	}
 
 	switch r := i.right.(type) {
@@ -271,6 +283,16 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 		right = g.generateAssertRules(r, t, tn)
 	case *wrap:
 		right = g.wrapPerm(r)
+	default:
+		right = nil
+	}
+
+	if left == nil { // Typically (not (some rule))
+		var ret []string
+		for _, r := range right {
+			ret = append(ret, fmt.Sprintf("(%s %s)", i.conjunction, r))
+		}
+		return ret
 	}
 
 	return expandAssertStateGraph(left, right, i.conjunction, t, tn)
@@ -285,6 +307,7 @@ func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []stri
 	for _, r := range a2 {
 		right = append(right, g.generateAssertRules(r, r.temporalFilter, r.temporalN)...)
 	}
+
 	switch op {
 	case "&&":
 		lor := fmt.Sprintf("(or %s)", strings.Join(left, " "))
@@ -318,7 +341,6 @@ func (g *Generator) wrapPerm(w *wrap) []string {
 }
 
 func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalFilter string, temporalN int) []string {
-	var product []string
 	var x [][]string
 	c := util.Cartesian(list1, list2)
 	switch temporalFilter {
@@ -327,8 +349,8 @@ func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalF
 	// states before packaging the asserts
 	case "nmt":
 		// (and (or on on on) (and off off))
-		on := util.Combinations(c, temporalN) //generate all combinations of possible on states
-		pairs := impliesOnOffPairs(on, c)     //for each combination prepare a list of states that must logically be off
+		combos := util.Combinations(c, temporalN) //generate all combinations of possible on states
+		pairs := impliesOnOffPairs(combos, c)     //for each combination prepare a list of states that must logically be off
 		for _, p := range pairs {
 			var o []string
 			var f []string
@@ -337,50 +359,90 @@ func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalF
 				o = append(o, fmt.Sprintf("(%s %s %s)", op, on[0], on[1]))
 			}
 			// For nmt any of the potential on states can be on
-			onStr := fmt.Sprintf("(%s %s)", "or", strings.Join(o, " "))
+			var onStr string
+			if len(o) == 1 {
+				onStr = o[0]
+			} else {
+				onStr = fmt.Sprintf("(%s %s)", "or", strings.Join(o, " "))
+			}
 
 			offOp := llvm.OP_NEGATE[op]
 			for _, off := range p[1] {
-				f = append(o, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+				if op == "=" {
+					f = append(f, fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1]))
+				} else {
+					f = append(f, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+				}
 			}
 			// But these states must be off
-			offStr := fmt.Sprintf("(%s %s)", "and", strings.Join(f, " "))
-
+			var offStr string
+			if len(f) == 1 {
+				offStr = f[0]
+			} else {
+				offStr = fmt.Sprintf("(%s %s)", "and", strings.Join(f, " "))
+			}
 			x = append(x, []string{onStr, offStr})
 		}
-		op = "or" // Reset the operator
+		return packageStateGraph(x, "and")
 	case "nft":
-		// (and (and on on on) (or off off))
-		on := util.Combinations(c, temporalN)
-		pairs := impliesOnOffPairs(on, c)
+		// (or (and on on on))
+		combos := util.Combinations(c, temporalN)
+		pairs := impliesOnOffPairs(combos, c)
 		for _, p := range pairs {
 			var o []string
-			var f []string
+			//var f []string
 			for _, on := range p[0] {
 				o = append(o, fmt.Sprintf("(%s %s %s)", op, on[0], on[1]))
 			}
 			// For nft all on states in this possibility MUST be on
-			onStr := fmt.Sprintf("(%s %s)", "and", strings.Join(o, " "))
-
-			offOp := llvm.OP_NEGATE[op]
-			for _, off := range p[1] {
-				f = append(o, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+			var onStr string
+			if len(o) == 1 {
+				onStr = o[0]
+			} else {
+				onStr = fmt.Sprintf("(%s %s)", "and", strings.Join(o, " "))
 			}
-			// The off states can be on or off
-			offStr := fmt.Sprintf("(%s %s)", "or", strings.Join(f, " "))
 
-			x = append(x, []string{onStr, offStr})
+			// offOp := llvm.OP_NEGATE[op]
+			// for _, off := range p[1] {
+			// 	if op == "=" {
+			// 		f = append(f, fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1]))
+			// 	} else {
+			// 		f = append(f, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+			// 	}
+			// }
+			// // The off states can be on or off
+			// offStr := fmt.Sprintf("(%s %s)", "or", strings.Join(f, " "))
+
+			x = append(x, []string{onStr})
 		}
-		op = "or"
+		return packageStateGraph(x, "or")
 	default:
-		x = c //No need to do anything
+		return packageStateGraph(c, op)
 	}
+}
 
+func packageStateGraph(x [][]string, op string) []string {
+	var product []string
 	for _, a := range x {
-		s := fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
-		product = append(product, s)
+		if len(a) == 1 {
+			product = append(product, a[0])
+		} else {
+			s := fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
+			product = append(product, s)
+		}
 	}
 	return product
+}
+
+func smtlibOperators(op string) string {
+	switch op {
+	case "==":
+		return "="
+	case "!=": //Invalid in SMTLib
+		return "="
+	default:
+		return op
+	}
 }
 
 func impliesOnOffPairs(on [][][]string, c [][]string) [][][][]string {

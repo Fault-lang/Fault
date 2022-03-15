@@ -286,6 +286,42 @@ func TestMoreCombinations(t *testing.T) {
 
 }
 
+func TestCombinationsN1(t *testing.T) {
+	input := [][]string{{"a", "b"}, {"c", "d"}, {"h", "i"}, {"r", "s"}}
+	expected := [][][]string{
+		{
+			{"a", "b"},
+		},
+		{
+			{"c", "d"},
+		},
+		{
+			{"h", "i"},
+		},
+		{
+			{"r", "s"},
+		},
+	}
+
+	results := Combinations(input, 1)
+	if results[0][0][0] != expected[0][0][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[0][0][0], expected[0][0][0])
+	}
+
+	if results[1][0][0] != expected[1][0][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[1][0][0], expected[1][0][0])
+	}
+
+	if results[2][0][0] != expected[2][0][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[2][0][0], expected[2][0][0])
+	}
+
+	if results[3][0][0] != expected[3][0][0] {
+		t.Fatalf("combinations not calculated correctly got=%s want=%s", results[3][0][0], expected[3][0][0])
+	}
+
+}
+
 func TestNotInSet(t *testing.T) {
 	inputC := [][]string{{"a", "b"}, {"c", "d"}, {"h", "i"}, {"r", "s"}}
 	iOn1 := [][]string{

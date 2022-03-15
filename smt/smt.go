@@ -41,11 +41,12 @@ func (a *assrt) Tag(k1 string, k2 string) {
 
 type infix struct {
 	rule
-	x   rule
-	y   rule
-	ty  string
-	op  string
-	tag *branch
+	x           rule
+	y           rule
+	ty          string
+	op          string
+	declareOnly bool //For solvables which need to be declared but have no starting value
+	tag         *branch
 }
 
 func (i *infix) ruleNode() {}
@@ -277,7 +278,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
 				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
-				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, "and", "or"))
+				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "and", "or"))
 			}
 		} else {
 			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
@@ -289,7 +290,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
 				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
-				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, "or", "and"))
+				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "or", "and"))
 			}
 		} else {
 			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
@@ -345,11 +346,11 @@ func (g *Generator) convertIdent(val string) string {
 		}
 	} else {
 		id := val
-		if string(id[0]) == "%" {
+		if string(id[0]) == "%" || g.isGlobal(id) {
 			id = g.formatIdent(id)
 			return fmt.Sprint(id, "_", g.ssa[id])
 		}
-		return id //Is a value, not in identifier
+		return id //Is a value, not an identifier
 	}
 }
 
@@ -358,6 +359,10 @@ func (g *Generator) isTemp(id string) bool {
 		return true
 	}
 	return false
+}
+
+func (g *Generator) isGlobal(id string) bool {
+	return string(id[0]) == "@"
 }
 
 func (g *Generator) isNumeric(char string) bool {
@@ -425,7 +430,7 @@ func (g *Generator) getVarBase(id string) (string, int) {
 	return strings.Join(v[0:len(v)-1], "_"), num
 }
 
-func (g *Generator) applyTemporalLogic(temp string, ir []string, on string, off string) string {
+func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter string, on string, off string) string {
 	switch temp {
 	case "eventually":
 		if len(ir) > 1 {
@@ -447,7 +452,16 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, on string, off 
 		return fmt.Sprintf("(assert %s)", ir[0])
 	default:
 		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+			var op string
+			switch temporalFilter {
+			case "nft":
+				op = "or"
+			case "nmt":
+				op = "or"
+			default:
+				op = off
+			}
+			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
 			return fmt.Sprintf("(assert %s)", or)
 		}
 		return fmt.Sprintf("(assert %s)", ir[0])

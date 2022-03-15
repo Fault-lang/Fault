@@ -35,6 +35,7 @@ var OP_NEGATE = map[string]string{
 	"<":  ">=",
 	"&&": "||",
 	"||": "&&",
+	//"=": "!=",
 }
 
 type Compiler struct {
@@ -390,9 +391,9 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.Natural:
 		return constant.NewFloat(irtypes.Double, float64(v.Value))
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
-		return constant.NewFloat(irtypes.Double, float64(0))
+		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Unknown:
-		return constant.NewFloat(irtypes.Double, float64(0))
+		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Nil:
 		return constant.NewNull(&irtypes.PointerType{})
 	case *ast.Identifier:
@@ -465,9 +466,19 @@ func (c *Compiler) compileAssert(assert ast.Node) {
 	var l, r ast.Expression
 	switch a := assert.(type) {
 	case *ast.AssertionStatement:
-		l = negate(a.Constraints.Left)
-		r = negate(a.Constraints.Right)
-		a.Constraints.Operator = OP_NEGATE[a.Constraints.Operator]
+		if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
+			l = negate(a.Constraints.Left)
+			r = negate(a.Constraints.Right)
+			a.Constraints.Operator = OP_NEGATE[a.Constraints.Operator]
+		} else {
+			l = a.Constraints.Left
+			r = a.Constraints.Right
+			a.TemporalFilter, a.TemporalN = negateTemporal(a.TemporalFilter, a.TemporalN)
+			if a.TemporalN < 0 {
+				pos := a.Position()
+				panic(fmt.Sprintf("temporal logic not value, filter searching for fewer than 0 states: line %d col %d", pos[0], pos[1]))
+			}
+		}
 		a.Constraints.Left = c.convertAssertVariables(l)
 		a.Constraints.Right = c.convertAssertVariables(r)
 		c.Asserts = append(c.Asserts, a)
@@ -574,6 +585,15 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		case *ast.BlockStatement:
 			c.compileBlock(pv)
 		default:
+			_, ok := pv.(*ast.Uncertain)
+			if ok {
+				isUnknown = true
+			}
+
+			uncertain, ok2 := pv.(*ast.Uncertain)
+			if ok2 {
+				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
+			}
 			val := c.compileValue(c.specStructs[base.Value.Spec][structName][k])
 			id, s := c.GetSpec(id)
 			s.DefineSpecVar(id, val)
@@ -582,12 +602,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 			name := c.getVariableName(id)
 			p := ir.NewParam(name, DoubleP)
 			s.AddParam(id, p)
-			if _, ok := pv.(*ast.Unknown); ok {
-				isUnknown = true
-			}
-			if uncertain, ok := pv.(*ast.Uncertain); ok {
-				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
-			}
+
 		}
 		//Track properties of instances so that we can write
 		// asserts on the struct and honor them for all instances
@@ -959,7 +974,6 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 		// Might be a spec global constant
 		g := id[len(id)-1]
 		global := s.GetSpecVar([]string{id[0], g})
-
 		if global == nil {
 			panic(fmt.Sprintf("variable %s not defined line: %d col: %d", strings.Join(id, "_"), pos[0], pos[1]))
 		}
@@ -1013,6 +1027,20 @@ func negate(e ast.Expression) ast.Expression {
 		return negate(n.Right)
 	}
 	return e
+}
+
+func negateTemporal(op string, n int) (string, int) {
+	var op2 string
+	var n2 int
+	switch op {
+	case "nmt":
+		op2 = "nft"
+		n2 = n + 1
+	case "nft":
+		op2 = "nmt"
+		n2 = n - 1
+	}
+	return op2, n2
 }
 
 func evaluate(n *ast.InfixExpression) ast.Expression {
