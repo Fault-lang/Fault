@@ -88,12 +88,12 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 		right := g.parseInvariant(e.Right)
 
 		i := &invariant{
-			left:        left,
-			conjunction: smtlibOperators(e.Operator),
-			right:       right,
+			left:     left,
+			operator: smtlibOperators(e.Operator),
+			right:    right,
 		}
 		if e.Operator == "!=" { //Not valid in SMTLib
-			return &invariant{conjunction: "not",
+			return &invariant{operator: "not",
 				right: i}
 		}
 		return i
@@ -102,12 +102,12 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 		left := g.parseInvariant(e.Left)
 		right := g.parseInvariant(e.Right)
 		i := &invariant{
-			left:        left,
-			conjunction: smtlibOperators(e.Operator),
-			right:       right,
+			left:     left,
+			operator: smtlibOperators(e.Operator),
+			right:    right,
 		}
 		if e.Operator == "!=" { //Not valid in SMTLib
-			return &invariant{conjunction: "not",
+			return &invariant{operator: "not",
 				right: i}
 		}
 		return i
@@ -290,12 +290,12 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	if left == nil { // Typically (not (some rule))
 		var ret []string
 		for _, r := range right {
-			ret = append(ret, fmt.Sprintf("(%s %s)", i.conjunction, r))
+			ret = append(ret, fmt.Sprintf("(%s %s)", i.operator, r))
 		}
 		return ret
 	}
 
-	return expandAssertStateGraph(left, right, i.conjunction, t, tn)
+	return expandAssertStateGraph(left, right, i.operator, t, tn)
 }
 
 func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []string {

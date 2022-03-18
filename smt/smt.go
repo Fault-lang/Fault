@@ -84,7 +84,7 @@ func (ite *ite) Tag(k1 string, k2 string) {
 type invariant struct {
 	rule
 	left           rule
-	conjunction    string
+	operator       string
 	right          rule
 	tag            *branch
 	temporalFilter string
@@ -93,7 +93,7 @@ type invariant struct {
 
 func (i *invariant) ruleNode() {}
 func (i *invariant) String() string {
-	return fmt.Sprint(i.left.String(), i.conjunction, i.right.String())
+	return fmt.Sprint(i.left.String(), i.operator, i.right.String())
 }
 func (i *invariant) Tag(k1 string, k2 string) {
 	i.tag = &branch{

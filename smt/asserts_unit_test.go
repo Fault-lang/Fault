@@ -51,19 +51,19 @@ func TestGenerateAssertRules(t *testing.T) {
 	left := &invariant{
 		left:        &wrap{value: "x", constant: true},
 		right:       &wrap{value: "y", constant: true},
-		conjunction: "&&",
+		operator: "&&",
 	}
 
 	right := &invariant{
 		left:        &wrap{value: "z", constant: true},
 		right:       &wrap{value: "a", constant: true},
-		conjunction: "||",
+		operator: "||",
 	}
 
 	ru2 := &invariant{
 		left:        left,
 		right:       right,
-		conjunction: "&&",
+		operator: "&&",
 	}
 
 	r2 := g.generateAssertRules(ru2, stmt.TemporalFilter, stmt.TemporalN)

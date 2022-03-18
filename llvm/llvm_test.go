@@ -330,13 +330,13 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-	expecting := `@test1_a = global double 0.0
-	@test1_b = global double 0.0
+	expecting := `@test1_a = global double 0x3DA3CA8CB153A753
+	@test1_b = global double 0x3DA3CA8CB153A753
 	
 	define void @__run() {
 	block-11:
 		%test1_t_u_x = alloca double
-		store double 0.0, double* %test1_t_u_x
+		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
 		call void @test1_t_bar(double* %test1_t_u_x), !ef486bcefdf32416542f0c0e7dafd2a7 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_t_bar(double* %test1_t_u_x), !\36b15db79f1be6a7c6e58e1703ad79489 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_t_bar(double* %test1_t_u_x), !e4b288b91e48b4956fd9ecd3cf0a7950 !DIBasicType(tag: DW_TAG_string_type)
