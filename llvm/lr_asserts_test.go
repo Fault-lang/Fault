@@ -25,20 +25,20 @@ func TestSimpleAssert(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	for _, v := range llvm.AssertAssume {
+	for _, v := range llvm.Asserts {
 
-		c := v.(*ast.AssertionStatement).Constraints
-		av := c.Variable.(*ast.AssertVar)
+		c := v.Constraints
+		av := c.Left.(*ast.AssertVar)
 		if av.Instances[0] != "test1_hello" {
 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
 		}
 
-		if c.Comparison != "!=" {
-			t.Fatalf("assert has wrong comparison. got=%s", c.Comparison)
+		if c.Operator != "!=" {
+			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
 		}
 
-		if _, ok := c.Expression.(*ast.Boolean); !ok {
-			t.Fatalf("assert has wrong operator. got=%s", c.Expression)
+		if _, ok := c.Right.(*ast.Boolean); !ok {
+			t.Fatalf("assert has wrong operator. got=%s", c.Right)
 		}
 
 	}
@@ -56,23 +56,23 @@ func TestAssertWConjunc(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	for _, v := range llvm.AssertAssume {
+	for _, v := range llvm.Asserts {
 
-		c := v.(*ast.AssertionStatement).Constraints
-		av := c.Variable.(*ast.InfixExpression).Left.(*ast.AssertVar)
+		c := v.Constraints
+		av := c.Left.(*ast.InfixExpression).Left.(*ast.AssertVar)
 		if av.Instances[0] != "test1_hello" {
 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
 		}
 
-		if c.Conjuction != "||" {
-			t.Fatalf("assert has wrong comparison. got=%s", c.Conjuction)
+		if c.Operator != "||" {
+			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
 		}
 
-		if c.Variable.(*ast.InfixExpression).Operator != "!=" {
-			t.Fatalf("assert has wrong operator. got=%s", c.Variable.(*ast.InfixExpression).Operator)
+		if c.Left.(*ast.InfixExpression).Operator != "!=" {
+			t.Fatalf("assert has wrong operator. got=%s", c.Left.(*ast.InfixExpression).Operator)
 		}
 
-		right := c.Expression.(*ast.InfixExpression)
+		right := c.Right.(*ast.InfixExpression)
 		if right.Operator != "<=" {
 			t.Fatalf("assert has wrong operator. got=%s", right.Operator)
 		}
@@ -108,14 +108,14 @@ func TestAssertState(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	for i, v := range llvm.AssertAssume {
-		c := v.(*ast.AssertionStatement).Constraints
-		compareAsserts(t, c.Variable, i)
+	for i, v := range llvm.Asserts {
+		c := v.Constraints
+		compareAsserts(t, c.Left, i)
 
-		if c.Comparison != "<=" {
-			t.Fatalf("assert %d has wrong comparison. got=%s", i, c.Comparison)
+		if c.Operator != "<=" {
+			t.Fatalf("assert %d has wrong comparison. got=%s", i, c.Operator)
 		}
-		compareAsserts(t, c.Expression, i)
+		compareAsserts(t, c.Right, i)
 	}
 }
 

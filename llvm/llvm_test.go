@@ -308,6 +308,73 @@ func TestIfCond(t *testing.T) {
 	}
 }
 
+func TestUnknowns(t *testing.T) {
+	test := `spec test1;
+			 const a;
+			 const b;
+			 
+			 def s = stock{
+				x: unknown(),
+			 };
+
+			 def test = flow{
+			     u: new s,
+				 bar: func{
+					u.x <- a + b;
+				 },
+			 };
+
+	for 5 run {
+		t = new test;
+		t.bar;
+	};
+	`
+
+	expecting := `@test1_a = global double 0x3DA3CA8CB153A753
+	@test1_b = global double 0x3DA3CA8CB153A753
+	
+	define void @__run() {
+	block-11:
+		%test1_t_u_x = alloca double
+		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
+		call void @test1_t_bar(double* %test1_t_u_x), !ef486bcefdf32416542f0c0e7dafd2a7 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !\36b15db79f1be6a7c6e58e1703ad79489 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !e4b288b91e48b4956fd9ecd3cf0a7950 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !\38a55f57c625b7c5382fc6522c9ede93a !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !\37242f7face5577b201458fee71ac6cd6 !DIBasicType(tag: DW_TAG_string_type)
+		ret void
+	}
+	
+	define void @test1_t_bar(double* %test1_t_u_x) {
+	block-12:
+		%0 = load double, double* %test1_t_u_x
+		%1 = load double, double* @test1_a
+		%2 = load double, double* @test1_b
+		%3 = fadd double %1, %2
+		%4 = fadd double %0, %3
+		store double %4, double* %test1_t_u_x
+		ret void
+	}`
+
+	llvm, err := prepTest(test)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
 func TestParamReset(t *testing.T) {
 	structs := make(map[string]types.StockFlow)
 	c := NewCompiler()

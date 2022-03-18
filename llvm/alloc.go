@@ -136,6 +136,7 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 	default:
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
 	}
+
 }
 
 func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloca) {

@@ -507,6 +507,61 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		// If both are Nil, return Nil.
 		// Nils are kind of vestigial in Fault, unclear when
 		// they will ever actually come up in the context of SMT
+		_, nilL := node.Left.(*ast.Nil)
+		_, nilR := node.Right.(*ast.Nil)
+		if nilL && nilR {
+			node.InferredType = &ast.Type{Type: "NIL",
+				Scope:      0,
+				Parameters: nil}
+			return node, err
+		} else if nilL {
+			node.InferredType = right
+			return node, err
+
+		} else if nilR {
+			node.InferredType = left
+			return node, err
+		}
+
+		ty, err := typeAdju(left, right, node.Operator)
+		if err != nil {
+			return nil, err
+		}
+		node.InferredType = ty
+		return node, err
+
+	case *ast.InvariantClause:
+		var nl, nr ast.Node
+		if c.isValue(node.Left) {
+			nl, err = c.infer(node.Left, p)
+		} else {
+			nl, err = c.inferFunction(node.Left, p)
+		}
+		if err != nil {
+			return nil, err
+		}
+		left := typeable(nl)
+
+		if c.isValue(node.Right) {
+			nr, err = c.infer(node.Right, p)
+
+		} else {
+			nr, err = c.inferFunction(node.Right, p)
+		}
+		if err != nil {
+			return nil, err
+		}
+		right := typeable(nr)
+
+		node.Left = nl.(ast.Expression)
+		node.Right = nr.(ast.Expression)
+
+		if COMPARE[node.Operator] {
+			node.InferredType = &ast.Type{Type: "BOOL",
+				Scope:      0,
+				Parameters: nil}
+			return node, err
+		}
 
 		_, nilL := node.Left.(*ast.Nil)
 		_, nilR := node.Right.(*ast.Nil)
@@ -523,59 +578,11 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 			node.InferredType = left
 			return node, err
 		}
-		if left != right {
-			if ast.TYPES[left.Type] == 0 || ast.TYPES[right.Type] == 0 {
-				return nil, fmt.Errorf("type mismatch: got=%s,%s", left.Type, right.Type)
-			}
-			if ast.TYPES[left.Type] > ast.TYPES[right.Type] {
-				node.InferredType = right
-				return node, err
-			}
-		}
-		node.InferredType = left
-		return node, err
-
-	case *ast.Invariant:
-		var nl, nr ast.Node
-		if c.isValue(node.Variable) {
-			nl, err = c.infer(node.Variable, p)
-		} else {
-			nl, err = c.inferFunction(node.Variable, p)
-		}
+		ty, err := typeAdju(left, right, node.Operator)
 		if err != nil {
 			return nil, err
 		}
-		left := typeable(nl)
-
-		if c.isValue(node.Expression) {
-			nr, err = c.infer(node.Expression, p)
-
-		} else {
-			nr, err = c.inferFunction(node.Expression, p)
-		}
-		if err != nil {
-			return nil, err
-		}
-		right := typeable(nr)
-
-		node.Variable = nl.(ast.Expression)
-		node.Expression = nr.(ast.Expression)
-
-		if COMPARE[node.Conjuction] && left.Type == "BOOL" && right.Type == "BOOL" {
-			node.InferredType = &ast.Type{Type: "BOOL",
-				Scope:      0,
-				Parameters: nil}
-			return node, err
-		}
-
-		if COMPARE[node.Comparison] {
-			node.InferredType = &ast.Type{Type: "BOOL",
-				Scope:      0,
-				Parameters: nil}
-			return node, err
-		}
-
-		node.InferredType = right
+		node.InferredType = ty
 		return node, err
 
 	case *ast.IfExpression:
@@ -680,6 +687,21 @@ func (c *Checker) calculateBase(s string) int32 {
 	return 1
 }
 
+func typeAdju(left *ast.Type, right *ast.Type, op string) (*ast.Type, error) {
+	if !COMPARE[op] && (left.Type == "BOOL" || right.Type == "BOOL") {
+		return nil, fmt.Errorf("invalid expression: got=%s %s %s", left.Type, op, right.Type)
+	}
+	if left != right {
+		if ast.TYPES[left.Type] == 0 || ast.TYPES[right.Type] == 0 {
+			return nil, fmt.Errorf("type mismatch: got=%s,%s", left.Type, right.Type)
+		}
+		if ast.TYPES[left.Type] > ast.TYPES[right.Type] {
+			return right, nil
+		}
+	}
+	return left, nil
+}
+
 func typeable(node ast.Node) *ast.Type {
 	switch n := node.(type) {
 	case *ast.ConstantStatement:
@@ -730,7 +752,7 @@ func typeable(node ast.Node) *ast.Type {
 		return n.InferredType
 	case *ast.FlowLiteral:
 		return n.InferredType
-	case *ast.Invariant:
+	case *ast.InvariantClause:
 		return n.InferredType
 	default:
 		return nil

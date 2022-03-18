@@ -20,10 +20,12 @@ type rule interface {
 
 type assrt struct {
 	rule
-	variable    *wrap
-	conjunction string
-	assertion   rule
-	tag         *branch
+	variable       *wrap
+	conjunction    string
+	assertion      rule
+	tag            *branch
+	temporalFilter string
+	temporalN      int
 }
 
 func (a *assrt) ruleNode() {}
@@ -39,11 +41,12 @@ func (a *assrt) Tag(k1 string, k2 string) {
 
 type infix struct {
 	rule
-	x   rule
-	y   rule
-	ty  string
-	op  string
-	tag *branch
+	x           rule
+	y           rule
+	ty          string
+	op          string
+	declareOnly bool //For solvables which need to be declared but have no starting value
+	tag         *branch
 }
 
 func (i *infix) ruleNode() {}
@@ -80,15 +83,17 @@ func (ite *ite) Tag(k1 string, k2 string) {
 
 type invariant struct {
 	rule
-	left        rule
-	conjunction string
-	right       rule
-	tag         *branch
+	left           rule
+	operator       string
+	right          rule
+	tag            *branch
+	temporalFilter string
+	temporalN      int
 }
 
 func (i *invariant) ruleNode() {}
 func (i *invariant) String() string {
-	return fmt.Sprint(i.left.String(), i.conjunction, i.right.String())
+	return fmt.Sprint(i.left.String(), i.operator, i.right.String())
 }
 func (i *invariant) Tag(k1 string, k2 string) {
 	i.tag = &branch{
@@ -185,7 +190,8 @@ type Generator struct {
 	branchId        int
 	Branches        map[string][]string            // [varid] = branch_id
 	BranchTrail     map[string]map[string][]string //[branch_id] = []string{varid}
-	rawAsserts      []ast.Statement
+	rawAsserts      []*ast.AssertionStatement
+	rawAssumes      []*ast.AssumptionStatement
 	rounds          map[string]map[string][]int16
 	Uncertains      map[string][]float64
 	Unknowns        []string
@@ -268,22 +274,28 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	}
 
 	for _, v := range g.rawAsserts {
-		a1, a2, conj := g.parseAssert(v)
-		if conj == "" {
+		a1, a2, op := g.parseAssert(v)
+		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
-				ir := g.generateAssertRules(assrt)
-				if len(ir) > 1 {
-					or := fmt.Sprintf("(or %s)", strings.Join(ir, " "))
-					g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", or))
-				} else if len(ir) == 1 {
-					g.asserts = append(g.asserts, fmt.Sprintf("(assert %s)", ir[0]))
-				}
+				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
+				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "and", "or"))
 			}
 		} else {
-			g.asserts = append(g.asserts, g.generateCompound(a1, a2, conj)...)
+			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
 		}
 	}
 
+	for _, v := range g.rawAssumes {
+		a1, a2, op := g.parseAssert(v)
+		if op != "&&" && op != "||" {
+			for _, assrt := range a1 {
+				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
+				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "or", "and"))
+			}
+		} else {
+			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
+		}
+	}
 }
 
 func (g *Generator) newConstants(globals []*ir.Global) []string {
@@ -334,11 +346,11 @@ func (g *Generator) convertIdent(val string) string {
 		}
 	} else {
 		id := val
-		if string(id[0]) == "%" {
+		if string(id[0]) == "%" || g.isGlobal(id) {
 			id = g.formatIdent(id)
 			return fmt.Sprint(id, "_", g.ssa[id])
 		}
-		return id //Is a value, not in identifier
+		return id //Is a value, not an identifier
 	}
 }
 
@@ -347,6 +359,10 @@ func (g *Generator) isTemp(id string) bool {
 		return true
 	}
 	return false
+}
+
+func (g *Generator) isGlobal(id string) bool {
+	return string(id[0]) == "@"
 }
 
 func (g *Generator) isNumeric(char string) bool {
@@ -412,4 +428,51 @@ func (g *Generator) getVarBase(id string) (string, int) {
 		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
 	}
 	return strings.Join(v[0:len(v)-1], "_"), num
+}
+
+func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter string, on string, off string) string {
+	switch temp {
+	case "eventually":
+		if len(ir) > 1 {
+			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	case "always":
+		if len(ir) > 1 {
+			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	case "eventually-always":
+		if len(ir) > 1 {
+			or := g.eventuallyAlways(ir)
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	default:
+		if len(ir) > 1 {
+			var op string
+			switch temporalFilter {
+			case "nft":
+				op = "or"
+			case "nmt":
+				op = "or"
+			default:
+				op = off
+			}
+			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
+			return fmt.Sprintf("(assert %s)", or)
+		}
+		return fmt.Sprintf("(assert %s)", ir[0])
+	}
+}
+
+func (g *Generator) eventuallyAlways(ir []string) string {
+	var progression []string
+	for i, _ := range ir {
+		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
+		progression = append(progression, s)
+	}
+	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
 }

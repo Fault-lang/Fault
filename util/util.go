@@ -3,6 +3,7 @@ package util
 import (
 	"fault/ast"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -103,6 +104,26 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	return results
 }
 
+func CaptureState(id string) (string, bool, bool) {
+	var a, c bool
+	raw := strings.Split(id, "_")
+	if len(raw) > 2 { //Not a constant
+		c = false
+		a = true
+	} else {
+		c = true
+		a = false
+	}
+
+	_, err := strconv.Atoi(raw[len(raw)-1])
+	if err != nil {
+		return "", a, c
+	} else {
+		return raw[len(raw)-1], false, false
+	}
+
+}
+
 func product(list1 [][]string, list2 []string) [][]string {
 	var results [][]string
 	for _, l := range list1 {
@@ -112,6 +133,49 @@ func product(list1 [][]string, list2 []string) [][]string {
 		}
 	}
 	return results
+}
+
+func Combinations(l [][]string, n int) [][][]string {
+	if len(l) <= n {
+		return [][][]string{l}
+	}
+
+	var subset [][][]string
+	for idx, itm := range l {
+		if n == 1 {
+			subset = append(subset, [][]string{itm})
+		} else if len(l) > idx+1 {
+			i := idx //0
+			for {
+				pos := i + n // 1
+				if pos > len(l) {
+					break
+				}
+				items := append([][]string{itm}, l[i+1:pos]...)
+				subset = append(subset, items)
+				i++
+			}
+		}
+	}
+	return subset
+}
+
+func NotInSet(o [][]string, c [][]string) [][]string {
+	var s [][]string
+	for _, r := range c {
+		sw := true
+	exit:
+		for _, in := range o {
+			if strings.Join(r, "") == strings.Join(in, "") {
+				sw = false
+				break exit
+			}
+		}
+		if sw {
+			s = append(s, r)
+		}
+	}
+	return s
 }
 
 func IsCompare(op string) bool {

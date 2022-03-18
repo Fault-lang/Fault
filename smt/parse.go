@@ -92,7 +92,8 @@ func (g *Generator) parseInstruct(block *ir.Block, startVars map[string]string) 
 			callee := g.callRule(inst)
 			g.callstack[g.call] = append(g.callstack[g.call], callee)
 		default:
-			fmt.Printf("%T", inst)
+			panic(fmt.Sprintf("unrecognized instruction: %s", inst))
+
 		}
 	}
 	return rules, startVars

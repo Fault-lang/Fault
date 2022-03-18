@@ -148,7 +148,7 @@ func TestInvariantType(t *testing.T) {
 			value: "x",
 			all:   true,
 		},
-		conjunction: "&&",
+		operator: "&&",
 		right: &wrap{
 			value: "y",
 			all:   true,

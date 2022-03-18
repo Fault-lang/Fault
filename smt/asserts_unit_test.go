@@ -9,27 +9,28 @@ func TestGenerateAsserts(t *testing.T) {
 	g := NewGenerator()
 	comp := ">"
 	constr := &ast.Boolean{}
+	stmt := &ast.AssertionStatement{TemporalFilter: "", TemporalN: 0}
 
 	exp1 := &ast.IntegerLiteral{}
-	results1 := g.generateAsserts(exp1, comp, constr)
+	results1 := g.generateAsserts(exp1, comp, constr, stmt)
 	if len(results1) != 0 {
 		t.Fatalf("generateAsserts returned wrong number of values. got=%d", len(results1))
 	}
 
 	exp2 := &ast.FloatLiteral{}
-	results2 := g.generateAsserts(exp2, comp, constr)
+	results2 := g.generateAsserts(exp2, comp, constr, stmt)
 	if len(results2) != 0 {
 		t.Fatalf("generateAsserts returned wrong number of values. got=%d", len(results2))
 	}
 
 	exp3 := &ast.StringLiteral{}
-	results3 := g.generateAsserts(exp3, comp, constr)
+	results3 := g.generateAsserts(exp3, comp, constr, stmt)
 	if len(results3) != 0 {
 		t.Fatalf("generateAsserts returned wrong number of values. got=%d", len(results3))
 	}
 
 	exp4 := &ast.Boolean{}
-	results4 := g.generateAsserts(exp4, comp, constr)
+	results4 := g.generateAsserts(exp4, comp, constr, stmt)
 	if len(results4) != 0 {
 		t.Fatalf("generateAsserts returned wrong number of values. got=%d", len(results4))
 	}
@@ -38,7 +39,8 @@ func TestGenerateAsserts(t *testing.T) {
 func TestGenerateAssertRules(t *testing.T) {
 	g := NewGenerator()
 	ru := &wrap{value: "test", constant: true}
-	r := g.generateAssertRules(ru)
+	stmt := &ast.AssertionStatement{TemporalFilter: "", TemporalN: 0}
+	r := g.generateAssertRules(ru, stmt.TemporalFilter, stmt.TemporalN)
 	if len(r) != 1 {
 		t.Fatalf("assert generation failed")
 	}
@@ -49,22 +51,22 @@ func TestGenerateAssertRules(t *testing.T) {
 	left := &invariant{
 		left:        &wrap{value: "x", constant: true},
 		right:       &wrap{value: "y", constant: true},
-		conjunction: "&&",
+		operator: "&&",
 	}
 
 	right := &invariant{
 		left:        &wrap{value: "z", constant: true},
 		right:       &wrap{value: "a", constant: true},
-		conjunction: "||",
+		operator: "||",
 	}
 
 	ru2 := &invariant{
 		left:        left,
 		right:       right,
-		conjunction: "&&",
+		operator: "&&",
 	}
 
-	r2 := g.generateAssertRules(ru2)
+	r2 := g.generateAssertRules(ru2, stmt.TemporalFilter, stmt.TemporalN)
 
 	if len(r2) != 1 {
 		t.Fatalf("assert generation failed")

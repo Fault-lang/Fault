@@ -56,7 +56,12 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				id = g.advanceSSA(id)
 				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
-				rules = append(rules, &infix{x: wid, ty: "Real", y: r})
+				if g.isASolvable(r.x.String()) {
+					rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true}) // Still need to declare the new state
+					rules = append(rules, &infix{x: wid, ty: "Real", y: r, op: "="})
+				} else {
+					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
+				}
 			default:
 				id = g.advanceSSA(id)
 				//g.trackRounds(id, inst)

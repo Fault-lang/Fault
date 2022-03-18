@@ -676,9 +676,9 @@ func TestInvalidAssert(t *testing.T) {
 	_, err := prepTest(test)
 	//sym := checker.SymbolTypes
 
-	actual := "assert statement not testing a Boolean expression. got=INT"
+	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
-	if err.Error() != actual {
+	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
 	}
 
@@ -695,7 +695,7 @@ func TestInvalidAssert2(t *testing.T) {
 
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
-	if err.Error() != actual {
+	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
 	}
 
@@ -710,9 +710,9 @@ func TestInvalidAssert3(t *testing.T) {
 	_, err := prepTest(test)
 	//sym := checker.SymbolTypes
 
-	actual := "assert statement not testing a Boolean expression. got=FLOAT"
+	actual := "invalid expression: got=BOOL + FLOAT"
 
-	if err.Error() != actual {
+	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
 	}
 
@@ -741,7 +741,7 @@ func TestInvalidInfix(t *testing.T) {
 
 	actual := "type mismatch: got=INT,STRING"
 
-	if err.Error() != actual {
+	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
 	}
 
@@ -756,7 +756,7 @@ func TestInvalidInfix2(t *testing.T) {
 
 	actual := "type mismatch: got=STRING,INT"
 
-	if err.Error() != actual {
+	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
 	}
 

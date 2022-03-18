@@ -11,7 +11,6 @@ import (
 func (g *Generator) runParallel(perm [][]string, vars map[string]string) {
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
-
 	for i, calls := range perm {
 		branchBlock := fmt.Sprint("option_", i)
 		var opts [][]rule
@@ -195,18 +194,25 @@ func (g *Generator) writeRule(ru rule) string {
 	case *infix:
 		y := g.unpackRule(r.y)
 		x := g.unpackRule(r.x)
-		if r.op != "" {
+
+		if y == "0x3DA3CA8CB153A753" { //An uncertain or unknown value
+			g.declareVar(x, r.ty)
+			return ""
+		}
+
+		if r.op != "" && r.op != "=" {
 			return g.writeInfix(x, y, r.op)
 		}
 		//If tagged, sort into branch for later formatting
 		if r.tag != nil {
 			g.buildBranchTrails(x, r.tag)
 		}
-		if g.isASolvable(x) {
-			g.declareVar(x, r.ty)
-		} else {
-			return g.writeInitRule(x, r.ty, y)
-		}
+
+		// if g.isASolvable(x){
+		// 	g.declareVar(x, r.ty)
+		// } else {
+		return g.writeInitRule(x, r.ty, y)
+		//}
 	case *ite:
 		cond := g.writeRule(r.cond)
 		tstate := g.paraStateChanges([][]rule{r.t})

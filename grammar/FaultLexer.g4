@@ -32,6 +32,7 @@ SPEC: 'spec';
 STOCK: 'stock';
 THIS: 'this';
 EVENTUALLY: 'eventually';
+EVENTUALLYALWAYS: 'eventually-always';
 ALWAYS: 'always';
 NMT: 'nmt';
 NFT: 'nft';

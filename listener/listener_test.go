@@ -912,16 +912,16 @@ func TestAssertion(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
 	}
 
-	if assert.Constraints.Variable.(*ast.Identifier).Value != "x" {
-		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Variable.(*ast.Identifier).Value)
+	if assert.Constraints.Left.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Left.(*ast.Identifier).Value)
 	}
 
-	if assert.Constraints.Comparison != ">" {
-		t.Fatalf("assert comparison is not correct. got=%s, want=>", assert.Constraints.Comparison)
+	if assert.Constraints.Operator != ">" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=>", assert.Constraints.Operator)
 	}
 
-	if assert.Constraints.Expression.String() != "y" {
-		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Expression.(*ast.Identifier).Value)
+	if assert.Constraints.Right.String() != "y" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Right.(*ast.Identifier).Value)
 	}
 
 }
@@ -936,8 +936,8 @@ func TestAssertionCompound(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
 	}
 
-	if assert.Constraints.Conjuction != "&&" {
-		t.Fatalf("assert comparison is not correct. got=%s, want=&&", assert.Constraints.Conjuction)
+	if assert.Constraints.Operator != "&&" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=&&", assert.Constraints.Operator)
 	}
 
 }
@@ -952,8 +952,8 @@ func TestAssertionCompound2(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
 	}
 
-	if assert.Constraints.Conjuction != "||" {
-		t.Fatalf("assert comparison is not correct. got=%s, want=||", assert.Constraints.Conjuction)
+	if assert.Constraints.Operator != "||" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=||", assert.Constraints.Operator)
 	}
 
 }
@@ -968,16 +968,16 @@ func TestAssumption(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
 	}
 
-	if assert.Constraints.Variable.(*ast.Identifier).Value != "x" {
-		t.Fatalf("assumption variable is not correct. got=%s, want=x", assert.Constraints.Variable.(*ast.Identifier).Value)
+	if assert.Constraints.Left.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assumption variable is not correct. got=%s, want=x", assert.Constraints.Left.(*ast.Identifier).Value)
 	}
 
-	if assert.Constraints.Comparison != "==" {
-		t.Fatalf("assumption comparison is not correct. got=%s, want=>", assert.Constraints.Comparison)
+	if assert.Constraints.Operator != "==" {
+		t.Fatalf("assumption comparison is not correct. got=%s, want=>", assert.Constraints.Operator)
 	}
 
-	if assert.Constraints.Expression.String() != "5" {
-		t.Fatalf("assumption comparison is not correct. got=%d, want=5", assert.Constraints.Expression.(*ast.IntegerLiteral).Value)
+	if assert.Constraints.Right.String() != "5" {
+		t.Fatalf("assumption comparison is not correct. got=%d, want=5", assert.Constraints.Right.(*ast.IntegerLiteral).Value)
 	}
 
 }
@@ -992,8 +992,8 @@ func TestAssumptionCompound(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
 	}
 
-	if assert.Constraints.Conjuction != "||" {
-		t.Fatalf("assumption comparison is not correct. got=%s, want=&&", assert.Constraints.Conjuction)
+	if assert.Constraints.Operator != "||" {
+		t.Fatalf("assumption comparison is not correct. got=%s, want=&&", assert.Constraints.Operator)
 	}
 
 }
@@ -1008,8 +1008,68 @@ func TestAssumptionCompound2(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
 	}
 
-	if assert.Constraints.Conjuction != "&&" {
-		t.Fatalf("assumption comparison is not correct. got=%s, want=&&", assert.Constraints.Conjuction)
+	if assert.Constraints.Operator != "&&" {
+		t.Fatalf("assumption comparison is not correct. got=%s, want=&&", assert.Constraints.Operator)
+	}
+
+}
+
+func TestTemporal(t *testing.T) {
+	test := `spec test1;
+			 assert x > y eventually;
+			`
+	_, spec := prepTest(test, nil)
+	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
+	}
+
+	if assert.Constraints.Left.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Left.(*ast.Identifier).Value)
+	}
+
+	if assert.Constraints.Operator != ">" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=>", assert.Constraints.Operator)
+	}
+
+	if assert.Constraints.Right.String() != "y" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Right.(*ast.Identifier).Value)
+	}
+
+	if assert.Temporal != "eventually" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=eventually", assert.Temporal)
+	}
+
+}
+
+func TestTemporalFilter(t *testing.T) {
+	test := `spec test1;
+			 assert x > y nmt 3;
+			`
+	_, spec := prepTest(test, nil)
+	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
+	}
+
+	if assert.Constraints.Left.(*ast.Identifier).Value != "x" {
+		t.Fatalf("assert variable is not correct. got=%s, want=x", assert.Constraints.Left.(*ast.Identifier).Value)
+	}
+
+	if assert.Constraints.Operator != ">" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=>", assert.Constraints.Operator)
+	}
+
+	if assert.Constraints.Right.String() != "y" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=y", assert.Constraints.Right.(*ast.Identifier).Value)
+	}
+
+	if assert.TemporalFilter != "nmt" {
+		t.Fatalf("assert comparison is not correct. got=%s, want=nmt", assert.TemporalFilter)
+	}
+
+	if assert.TemporalN != 3 {
+		t.Fatalf("assert comparison is not correct. got=%d, want=3", assert.TemporalN)
 	}
 
 }
