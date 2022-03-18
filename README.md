@@ -45,9 +45,9 @@ _incomplete list. Items to be added as I think of them_
 | SMTLib2 generation | :white_check_mark: | | |
 | Spec imports | :white_check_mark: | | |
 | Conditionals | :white_check_mark: | | |
-| Uncertain data types | :white_check_mark: | | |
+| Uncertain data types | :white_check_mark: | :white_check_mark: | |
 | Non-negative data types | | | |
-| Assertions | :white_check_mark: | | |
+| Assertions | :white_check_mark: | :white_check_mark: | |
 
 ### Development Strategy
 The assumption Fault is making is that since both system dynamic models and first order logic models represent things as state machines it should be possible for a language to take the imperative structure of system dynamic DSLs, compile them to the declarative structure of logic DSLs and create a model checker better suited for the day-to-day software work of professionals.
@@ -56,7 +56,10 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (2/2/2022)
+### Current Status (3/18/2022)
+Took another look at assert generation and made them tweaks. Found some bugs in unknown variables. Big deal is implemented temporal logic on assert generation. Now in addition to generating asserts for traditional temporal logic like "always", "eventually" and "eventually-always", Fault also has a set of specific temporal functions like "no more than" (nmt) and "no fewer than" (nft) which allow model checking a stable loop.
+
+#### (2/2/2022)
 In the process of adding support for unknown variables I realized I never fully connected the dots on uncertain values (whoops). So finished both of those although the logic around asserts over multiple instances is kind of wonky and brittle. May need a rethink.
 
 #### (1/26/2022)
