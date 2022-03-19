@@ -9,7 +9,7 @@ import (
 )
 
 type FaultErrorListener struct {
-	antlr.ErrorListener
+	*antlr.DefaultErrorListener
 	Filename string
 }
 
