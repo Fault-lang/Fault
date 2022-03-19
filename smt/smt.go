@@ -215,9 +215,11 @@ func NewGenerator() *Generator {
 	}
 }
 
-func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string) {
+func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) {
 	g.Uncertains = uncertains
 	g.Unknowns = unknowns
+	g.rawAsserts = asserts
+	g.rawAssumes = assumes
 }
 
 func (g *Generator) SMT() string {

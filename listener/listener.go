@@ -1106,7 +1106,6 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 
 func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	token := util.GenerateToken("ASSUME", "assume", c.GetStart(), c.GetStop())
-
 	var temporal string
 	var temporalFilter string
 	var temporalN int

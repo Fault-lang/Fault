@@ -68,6 +68,8 @@ type Compiler struct {
 	contextCondAfter []*ir.Block
 
 	specGlobals map[string]*ir.Global
+	RawAsserts  []*ast.AssertionStatement
+	RawAssumes  []*ast.AssumptionStatement
 	Asserts     []*ast.AssertionStatement
 	Assumes     []*ast.AssumptionStatement
 	Uncertains  map[string][]float64
@@ -145,12 +147,10 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	}
 
 	if !isImport {
-		for _, assert := range c.Asserts {
-			c.Asserts = c.Asserts[1:] //Pop
+		for _, assert := range c.RawAsserts {
 			c.compileAssert(assert)
 		}
-		for _, assert := range c.Assumes {
-			c.Assumes = c.Assumes[1:] //Pop
+		for _, assert := range c.RawAssumes {
 			c.compileAssert(assert)
 		}
 	}
@@ -183,10 +183,10 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.AssumptionStatement:
 		// Need to do these after the run block so we move them
-		c.Assumes = append(c.Assumes, v)
+		c.RawAssumes = append(c.RawAssumes, v)
 
 	case *ast.AssertionStatement:
-		c.Asserts = append(c.Asserts, v)
+		c.RawAsserts = append(c.RawAsserts, v)
 		//c.compileAssertion(v)
 
 	case *ast.ForStatement:

@@ -125,9 +125,7 @@ func prepTest(test string) (string, error) {
 		return "", err
 	}
 	generator := NewGenerator()
-	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns)
-	generator.rawAsserts = compiler.Asserts
-	generator.rawAssumes = compiler.Assumes
+	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	//fmt.Println(compiler.GetIR())
 	generator.Run(compiler.GetIR())
 	return generator.SMT(), nil

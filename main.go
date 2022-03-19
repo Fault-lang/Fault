@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fault/ast"
 	"fault/execute"
 	"fault/listener"
 	"fault/llvm"
@@ -58,9 +59,9 @@ func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 	return compiler
 }
 
-func smt2(ir string, uncertains map[string][]float64, unknowns []string) *smt.Generator {
+func smt2(ir string, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) *smt.Generator {
 	generator := smt.NewGenerator()
-	generator.LoadMeta(uncertains, unknowns)
+	generator.LoadMeta(uncertains, unknowns, asserts, assumes)
 	generator.Run(ir)
 	return generator
 }
@@ -119,8 +120,7 @@ func run(filepath string, mode string, input string) {
 			return
 		}
 
-		generator := smt2(compiler.GetIR(), uncertains, unknowns)
-
+		generator := smt2(compiler.GetIR(), uncertains, unknowns, compiler.Asserts, compiler.Assumes)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
@@ -131,7 +131,7 @@ func run(filepath string, mode string, input string) {
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "ll":
-		generator := smt2(d, uncertains, unknowns)
+		generator := smt2(d, uncertains, unknowns, nil, nil)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
