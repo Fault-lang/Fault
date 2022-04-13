@@ -179,7 +179,11 @@ type Generator struct {
 	ref             map[string]rule
 	call            int
 	parallel        string
-	parallelEnds    map[string][]int
+	parallelEnds    map[string][]int16
+	inPhiState      bool //Flag, are we in a conditional or parallel?
+	phis            map[string]int16
+	phiTempStates   map[string][]int16
+	tempStates      map[string][]int //Delete me :)
 	callstack       map[int][]string
 	functions       map[string]*ir.Func
 	blocks          map[string][]rule
@@ -200,9 +204,12 @@ type Generator struct {
 func NewGenerator() *Generator {
 	return &Generator{
 		ssa:             make(map[string]int16),
+		phis:            make(map[string]int16),
 		loads:           make(map[string]value.Value),
 		ref:             make(map[string]rule),
-		parallelEnds:    make(map[string][]int),
+		parallelEnds:    make(map[string][]int16),
+		phiTempStates:   make(map[string][]int16),
+		tempStates:      make(map[string][]int), //Delete me :)
 		callstack:       make(map[int][]string),
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rule),
@@ -259,11 +266,12 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		var raw []rule
 		if len(g.callstack[i]) > 1 {
 			//Generate parallel runs
+			//g.inPhiState = true
 			perm := g.parallelPermutations(g.callstack[i])
 			startVars := make(map[string]string)
 			startVars = g.gatherStarts(g.callstack[i], startVars)
 			g.runParallel(perm, startVars)
-
+			//g.inPhiState = false
 		} else {
 			fname := g.callstack[i][0]
 			v := g.functions[fname]
@@ -423,6 +431,31 @@ func (g *Generator) advanceSSA(id string) string {
 	}
 }
 
+// When we have conditionals back to back (but not if elseif else)
+// we need to make sure to track the phi
+func (g *Generator) getLastState(id string) int16 {
+	if p, ok := g.phis[id]; ok {
+		return p
+	}
+	return 0
+}
+
+func (g *Generator) storeLastState(id string, n int16) {
+	if _, ok := g.phis[id]; ok {
+		g.phis[id] = n
+	} else {
+		g.phis[id] = 0
+	}
+}
+
+func (g *Generator) setPhiTempState(id string, n int16) {
+	if g.phiTempStates[id] != nil {
+		g.phiTempStates[id] = []int16{n}
+	} else {
+		g.phiTempStates[id] = append(g.phiTempStates[id], n)
+	}
+}
+
 func (g *Generator) getVarBase(id string) (string, int) {
 	v := strings.Split(id, "_")
 	num, err := strconv.Atoi(v[len(v)-1])
@@ -472,9 +505,18 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter 
 
 func (g *Generator) eventuallyAlways(ir []string) string {
 	var progression []string
-	for i, _ := range ir {
+	for i := range ir {
 		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
 		progression = append(progression, s)
 	}
 	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
+}
+
+func (g *Generator) filterOutTempStates(v string, i int) bool {
+	for _, n := range g.tempStates[v] {
+		if n == i {
+			return true
+		}
+	}
+	return false
 }

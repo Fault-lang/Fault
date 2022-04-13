@@ -14,7 +14,7 @@ func (g *Generator) runParallel(perm [][]string, vars map[string]string) {
 	for i, calls := range perm {
 		branchBlock := fmt.Sprint("option_", i)
 		var opts [][]rule
-		startVars := make(map[string]string)
+		startVars := make(map[string]string) //Making a deep copy
 		for k, v := range vars {
 			startVars[k] = v
 		}
@@ -49,49 +49,63 @@ func (g *Generator) parallelRules(r [][]rule) []rule {
 func (g *Generator) capParallel() []string {
 	// writes OR nodes to end each parallel run
 	var rules []string
+	fmt.Println(g.parallelEnds)
 	for k, v := range g.parallelEnds {
 		id := g.advanceSSA(k)
+
 		g.declareVar(id, "Real")
 		ends := g.formatEnds(k, v, id)
 		//(assert (or (= bathtub_drawn_water_level_10 bathtub_drawn_water_level_7) (= bathtub_drawn_water_level_10  bathtub_drawn_water_level_9)))
 		rule := g.writeAssert("or", ends)
 		rules = append(rules, rule)
+
+		n := g.ssa[id]
+		g.storeLastState(id, n)
 	}
-	g.parallelEnds = map[string][]int{}
+	g.parallelEnds = map[string][]int16{}
 	return rules
 }
 
-func (g *Generator) capCond(state map[string]map[int][]int) []string {
-	var ends []string
-	for i, num := range state {
-		end := g.getEnds(num)
-		id := g.advanceSSA(i)
-		g.declareVar(id, "Real")
-		ends = append(ends, g.formatEnds(i, []int{end}, id))
-	}
-	return ends
-}
+// func (g *Generator) capCond(state map[string]map[int][]int) []string {
+// 	var ends []string
+// 	for i, num := range state {
+// 		end := g.getEnds(num)
+// 		id := g.advanceSSA(i)
 
-func (g *Generator) capCondSync(tstate map[string]map[int][]int, fstate map[string]map[int][]int) ([]string, []string) {
-	var tends []string
-	var fends []string
-	for i, num := range fstate {
-		if tstate[i] == nil {
-			start := g.getStarts(num)
-			id := g.getSSA(i)
-			tends = append(tends, g.formatEnds(i, []int{start}, id))
-		}
-	}
+// 		g.declareVar(id, "Real")
+// 		ends = append(ends, g.formatEnds(i, []int16{end}, id))
+// 	}
+// 	return ends
+// }
 
-	for i, num := range tstate {
-		if fstate[i] == nil {
-			start := g.getStarts(num)
-			id := g.getSSA(i)
-			fends = append(fends, g.formatEnds(i, []int{start}, id))
-		}
-	}
-	return tends, fends
-}
+// func (g *Generator) capCondSync(tstate map[string]map[int][]int, fstate map[string]map[int][]int) ([]string, []string) {
+// 	var tends []string
+// 	var fends []string
+// 	for i, _ := range fstate {
+// 		if tstate[i] == nil {
+// 			//start := g.getStarts(num)
+// 			start := g.getLastState(i)
+// 			id := g.getSSA(i)
+// 			tends = append(tends, g.formatEnds(i, []int16{start}, id))
+
+// 			n := g.ssa[i]
+// 			g.storeLastState(i, n)
+// 		}
+// 	}
+
+// 	for i, _ := range tstate {
+// 		if fstate[i] == nil {
+// 			start := g.getLastState(i)
+// 			//start := g.getStarts(num)
+// 			id := g.getSSA(i)
+// 			fends = append(fends, g.formatEnds(i, []int16{start}, id))
+
+// 			n := g.ssa[i]
+// 			g.storeLastState(i, n)
+// 		}
+// 	}
+// 	return tends, fends
+// }
 
 func (g *Generator) setStartVar(id string, startVars map[string]string) map[string]string {
 	if _, ok := startVars[id]; !ok {
@@ -117,7 +131,7 @@ func (g *Generator) gatherStarts(p []string, startVars map[string]string) map[st
 }
 
 func (g *Generator) getStarts(n map[int][]int) int {
-	start := 0
+	start := n[0][0]
 	for _, v := range n {
 		if v[0] < start {
 			start = v[0]
@@ -126,20 +140,20 @@ func (g *Generator) getStarts(n map[int][]int) int {
 	return start
 }
 
-func (g *Generator) getEnds(n map[int][]int) int {
-	end := 0
+func (g *Generator) getEnds(n map[int][]int) int16 {
+	end := n[0][0]
 	for _, v := range n {
 		if v[len(v)-1] > end {
 			end = v[len(v)-1]
 		}
 	}
-	return end
+	return int16(end)
 }
 
-func (g *Generator) formatEnds(k string, nums []int, id string) string {
+func (g *Generator) formatEnds(k string, nums []int16, id string) string {
 	var e []string
 	for _, v := range nums {
-		v := fmt.Sprint(k, "_", strconv.Itoa(v))
+		v := fmt.Sprint(k, "_", strconv.Itoa(int(v)))
 		r := g.writeInfix(id, v, "=")
 		e = append(e, r)
 	}
@@ -160,7 +174,17 @@ func (g *Generator) paraStateChanges(r [][]rule) map[string]map[int][]int {
 						state[id][i] = append(state[id][i], num)
 					} else {
 						state[id] = make(map[int][]int)
+						//start := g.getLastState(id) //This needs to be the state coming into the conditional/parallel
+						//state[id][i] = append(state[id][i], int(start))
 						state[id][i] = append(state[id][i], num)
+					}
+
+					// Keep a record of this for generating invariants with temporal logic
+					if _, ok := g.tempStates[id]; ok {
+						g.tempStates[id] = append(g.tempStates[id], num)
+					} else {
+						g.tempStates[id] = []int{}
+						g.tempStates[id] = append(g.tempStates[id], num)
 					}
 				}
 			}
@@ -189,6 +213,14 @@ func (g *Generator) writeAssert(op string, stmt string) string {
 	return fmt.Sprintf("(assert (%s %s))", op, stmt)
 }
 
+func (g *Generator) writeBranchRule(r *infix) string {
+	y := g.unpackRule(r.y)
+	x := g.unpackRule(r.x)
+
+	//g.declareVar(x, r.ty)
+	return fmt.Sprintf("(%s %s %s)", r.op, x, y)
+}
+
 func (g *Generator) writeRule(ru rule) string {
 	switch r := ru.(type) {
 	case *infix:
@@ -215,33 +247,44 @@ func (g *Generator) writeRule(ru rule) string {
 		//}
 	case *ite:
 		cond := g.writeRule(r.cond)
-		tstate := g.paraStateChanges([][]rule{r.t})
-		fstate := g.paraStateChanges([][]rule{r.f})
-		var tRule, fRule string
-		tEnds := g.capCond(tstate)
-		fEnds := g.capCond(fstate)
+		// tstate := g.paraStateChanges([][]rule{r.t})
+		// fstate := g.paraStateChanges([][]rule{r.f})
 
-		// Keep variable names in sync across branches
-		tSync, fSync := g.capCondSync(tstate, fstate)
-		tEnds = append(tEnds, tSync...)
-		fEnds = append(fEnds, fSync...)
+		// var tRule, fRule string
+		// tEnds := g.capCond(tstate)
+		// fEnds := g.capCond(fstate)
+
+		// // Keep variable names in sync across branches
+		// tSync, fSync := g.capCondSync(tstate, fstate)
+		// tEnds = append(tEnds, tSync...)
+		// fEnds = append(fEnds, fSync...)
+
+		var tRule, fRule string
+		var tEnds, fEnds []string
+		for _, t := range r.t {
+			tEnds = append(tEnds, g.writeBranchRule(t.(*infix)))
+		}
+
+		for _, f := range r.f {
+			fEnds = append(fEnds, g.writeBranchRule(f.(*infix)))
+		}
 
 		if len(tEnds) > 1 {
 			tRule = fmt.Sprintf("(and %s)", strings.Join(tEnds, " "))
 		} else if len(tEnds) == 1 {
-			tRule = strings.Join(tEnds, " ")
+			tRule = tEnds[0]
 		}
 
 		if len(fEnds) > 1 {
 			fRule = fmt.Sprintf("(and %s)", strings.Join(fEnds, " "))
 		} else if len(fEnds) == 1 {
-			fRule = strings.Join(fEnds, " ")
+			fRule = fEnds[0]
 		}
 
 		br := g.writeBranch("ite", cond, tRule, fRule)
 		return g.writeAssert("", br)
 	case *wrap:
-
+		return r.value
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}

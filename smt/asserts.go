@@ -333,7 +333,9 @@ func (g *Generator) wrapPerm(w *wrap) []string {
 		var states []string
 		end := g.ssa[w.value]
 		for i := 0; i < int(end+1); i++ {
-			states = append(states, fmt.Sprint(w.value, "_", i))
+			if !g.filterOutTempStates(w.value, i) {
+				states = append(states, fmt.Sprint(w.value, "_", i))
+			}
 		}
 		return states
 	}

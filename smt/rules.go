@@ -26,18 +26,7 @@ func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	g.loads[id] = inst.Src
 }
 
-// func (g *Generator) trackRounds(id string, inst *ir.InstStore) {
-// 	for _, v := range inst.Metadata {
-// 		if v.Name[0:5] == "rounds-" {
-// 			i := g.ssa[id]
-// 			if g.rounds[v.Name[5:]] == nil {
-// 				g.rounds[v.Name[5:]] = map[string][]int16{id: []int16{i}}
-// 			} else {
-// 				g.rounds[v.Name[5:]][id] = append(g.rounds[v.Name[5:]][id], i)
-// 			}
-// 		}
-// 	}
-// }
+
 
 func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	id := g.formatIdent(inst.Dst.Ident())
@@ -45,14 +34,25 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 		srcId := inst.Src.Ident()
 		if val, ok := g.loads[srcId]; ok {
 			ty := g.getType(val)
+			n := g.ssa[id]
+			if g.inPhiState {
+				g.setPhiTempState(id, n+1)
+			} else {
+				g.storeLastState(id, n+1)
+			}
 			id = g.advanceSSA(id)
-			//g.trackRounds(id, inst)
 			rules = append(rules, g.parseRule(id, g.formatValue(val), ty, ""))
 		} else if ref, ok := g.ref[srcId]; ok {
 			switch r := ref.(type) {
 			case *infix:
 				r.x = g.tempToIdent(r.x)
 				r.y = g.tempToIdent(r.y)
+				n := g.ssa[id]
+				if g.inPhiState {
+					g.setPhiTempState(id, n+1)
+				} else {
+					g.storeLastState(id, n+1)
+				}
 				id = g.advanceSSA(id)
 				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
@@ -63,8 +63,13 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
 				}
 			default:
+				n := g.ssa[id]
+				if g.inPhiState {
+					g.setPhiTempState(id, n+1)
+				} else {
+					g.storeLastState(id, n+1)
+				}
 				id = g.advanceSSA(id)
-				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
 				rules = append(rules, &infix{x: wid, ty: "Real", y: r})
 			}
@@ -73,8 +78,13 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 		}
 	} else {
 		ty := g.getType(inst.Src)
+		n := g.ssa[id]
+		if g.inPhiState {
+			g.setPhiTempState(id, n+1)
+		} else {
+			g.storeLastState(id, n+1)
+		}
 		id = g.advanceSSA(id)
-		//g.trackRounds(id, inst)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
 	g.last = rules[len(rules)-1]
@@ -124,6 +134,12 @@ func (g *Generator) tempToIdent(ru rule) rule {
 func (g *Generator) fetchIdent(id string, r rule) rule {
 	if g.isTemp(id) {
 		if v, ok := g.loads[id]; ok {
+			n := g.ssa[id]
+			if g.inPhiState {
+				g.setPhiTempState(id, n+1)
+			} else {
+				g.storeLastState(id, n+1)
+			}
 			id = g.advanceSSA(v.Ident())
 			wid := &wrap{value: id}
 			return wid
