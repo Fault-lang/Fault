@@ -20,6 +20,7 @@ func (g *Generator) parseFunction(f *ir.Func, startVars map[string]string) []rul
 			r1, _ := g.parseTerms(block.Term.Succs(), startVars)
 			switch term := block.Term.(type) {
 			case *ir.TermCondBr:
+				g.inPhiState = true
 				id := term.Cond.Ident()
 				if g.isTemp(id) {
 					if v, ok := g.ref[id]; ok {
@@ -27,10 +28,10 @@ func (g *Generator) parseFunction(f *ir.Func, startVars map[string]string) []rul
 					}
 				}
 
+				g.inPhiState = false
 			}
 			rules = append(rules, r1...)
 		}
-
 	}
 	return rules
 }
@@ -87,6 +88,7 @@ func (g *Generator) parseInstruct(block *ir.Block, startVars map[string]string) 
 				g.ref[id] = r
 				return rules, startVars
 			}
+
 			rules = append(rules, r)
 		case *ir.InstCall:
 			callee := g.callRule(inst)
@@ -104,7 +106,7 @@ func (g *Generator) parseTerms(terms []*ir.Block, startVars map[string]string) (
 	var sv map[string]string
 	//Conditionals are considered terminals
 	if len(terms) > 1 { //more than one terminal == branch
-		var t, f []rule
+		var t, f, a []rule
 		var tvars, fvars map[string]string
 		g.branchId = g.branchId + 1
 		branch := fmt.Sprint("branch_", g.branchId)
@@ -112,26 +114,44 @@ func (g *Generator) parseTerms(terms []*ir.Block, startVars map[string]string) (
 			bname := strings.Split(term.Ident(), "-")
 			switch bname[len(bname)-1] {
 			case "true":
+				g.inPhiState = true
 				branchBlock := "true"
 				g.skipBlocks[term.Ident()] = 1
-				sv = make(map[string]string)
 				t, tvars = g.parseInstruct(term, startVars)
 				t = g.tagRules(t, branch, branchBlock)
 				rules = append(rules, t...)
+				g.inPhiState = false
 			case "false":
+				g.inPhiState = true
 				branchBlock := "false"
 				g.skipBlocks[term.Ident()] = 1
-				sv = make(map[string]string)
 				f, fvars = g.parseInstruct(term, startVars)
 				f = g.tagRules(f, branch, branchBlock)
 				rules = append(rules, f...)
+				g.inPhiState = false
 			case "after":
-				g.skipBlocks[term.Ident()] = 1
+				//g.skipBlocks[term.Ident()] = 1
+				a, sv = g.parseInstruct(term, startVars)
+				//rules = append(rules, a...)
 			default:
 				panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
 			}
 		}
-		rules = append(rules, &ite{cond: nil, t: t, tvars: tvars, f: f, fvars: fvars})
+		if t != nil || f != nil {
+			tstate := g.paraStateChanges([][]rule{t})
+			fstate := g.paraStateChanges([][]rule{f})
+
+			tEnds := g.capCond(tstate)
+			fEnds := g.capCond(fstate)
+
+			// Keep variable names in sync across branches
+			tSync, fSync := g.capCondSyncRules(tstate, fstate)
+			tEnds = append(tEnds, tSync...)
+			fEnds = append(fEnds, fSync...)
+
+			rules = append(rules, &ite{cond: nil, t: tEnds, tvars: tvars, f: fEnds, fvars: fvars})
+		}
+		rules = append(rules, a...) //Because it's AFTER
 	}
 	if len(terms) == 1 { // Jump to that block
 		var r []rule
@@ -159,9 +179,24 @@ func (g *Generator) releaseStartVar(x string, startVars map[string]string) (stri
 	return x, startVars
 }
 
+// func (g *Generator) convertInfixVar(x string) string {
+// 	if g.isTemp(x) {
+// 		if v, ok := g.loads[x]; ok {
+// 			xid := v.Ident()
+// 			xidNoPercent := g.formatIdent(xid)
+// 			x = g.getSSA(xidNoPercent)
+// 		}
+// 	}
+// 	return x
+// }
+
 func (g *Generator) parseInfix(id string, x string, y string, op string, startVars map[string]string) (rule, map[string]string) {
 	x, startVars = g.releaseStartVar(x, startVars)
 	y, startVars = g.releaseStartVar(y, startVars)
+
+	// x = g.convertInfixVar(x)
+	// y = g.convertInfixVar(y)
+
 	g.ref[id] = g.parseRule(x, y, "", op)
 	g.last = g.ref[id]
 	return g.ref[id], startVars
@@ -228,6 +263,62 @@ func (g *Generator) parseCompareOp(op string) string {
 	default:
 		return op
 	}
+}
+
+func (g *Generator) capRule(k string, nums []int16, id string) []rule {
+	var e []rule
+	for _, v := range nums {
+		id2 := fmt.Sprint(k, "_", v)
+		r := &infix{
+			x:  &wrap{value: id},
+			y:  &wrap{value: id2},
+			op: "=",
+			ty: "Real",
+		}
+		e = append(e, r)
+	}
+	return e
+}
+
+func (g *Generator) capCond(state map[string]map[int][]int) []rule {
+	var ends []rule
+	for i, num := range state {
+		end := g.getEnds(num)
+		id := g.advanceSSA(i)
+
+		g.declareVar(id, "Real")
+		ends = append(ends, g.capRule(i, []int16{end}, id)...)
+	}
+	return ends
+}
+
+func (g *Generator) capCondSyncRules(tstate map[string]map[int][]int, fstate map[string]map[int][]int) ([]rule, []rule) {
+	var tends []rule
+	var fends []rule
+	for i := range fstate {
+		if tstate[i] == nil {
+			//start := g.getStarts(num)
+			start := g.getLastState(i)
+			id := g.getSSA(i)
+			tends = append(tends, g.capRule(i, []int16{start}, id)...)
+
+			n := g.ssa[i]
+			g.storeLastState(i, n)
+		}
+	}
+
+	for i := range tstate {
+		if fstate[i] == nil {
+			start := g.getLastState(i)
+			//start := g.getStarts(num)
+			id := g.getSSA(i)
+			fends = append(fends, g.capRule(i, []int16{start}, id)...)
+
+			n := g.ssa[i]
+			g.storeLastState(i, n)
+		}
+	}
+	return tends, fends
 }
 
 // func (g *Generator) assertOperators(op string) bool {
