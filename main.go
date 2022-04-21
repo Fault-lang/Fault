@@ -9,14 +9,14 @@ import (
 	"fault/smt"
 	"fault/types"
 	"fault/util"
-	"flag"
+	"fault/bubbles"
 	"fmt"
 	"log"
 	"os"
 	gopath "path"
-	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/olekukonko/tablewriter"
 )
 
@@ -148,51 +148,59 @@ func run(filepath string, mode string, input string) {
 }
 
 func main() {
-	var mode string
-	var input string
-	var filepath string
-	modeCommand := flag.String("mode", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
-	inputCommand := flag.String("input", "fspec", "format of the input file (default: fspec)")
-	fpCommand := flag.String("filepath", "", "path to file to compile")
-	//helpCommand := flag.Bool("help", false, "path to file to compile")
-
-	flag.Parse()
-
-	if *fpCommand == "" {
-		flag.PrintDefaults()
-		fmt.Printf("must provide path of file to compile")
+	p := tea.NewProgram(bubbles.New())
+	if err := p.Start(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
-	filepath = *fpCommand
-
-	if *modeCommand == "" {
-		mode = "check"
-	} else {
-		mode = strings.ToLower(*modeCommand)
-		switch mode {
-		case "ast":
-		case "ir":
-		case "smt":
-		case "check":
-		default:
-			fmt.Printf("%s is not a valid mode", mode)
-			os.Exit(1)
-		}
-	}
-
-	if *inputCommand == "" {
-		input = "fspec"
-	} else {
-		input = strings.ToLower(*inputCommand)
-		switch input {
-		case "fspec":
-		case "ll":
-		case "smt2":
-		default:
-			fmt.Printf("%s is not a valid input format", input)
-			os.Exit(1)
-		}
-	}
-
-	run(filepath, mode, input)
 }
+
+// func main() {
+// 	var mode string
+// 	var input string
+// 	var filepath string
+// 	modeCommand := flag.String("mode", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
+// 	inputCommand := flag.String("input", "fspec", "format of the input file (default: fspec)")
+// 	fpCommand := flag.String("filepath", "", "path to file to compile")
+// 	//helpCommand := flag.Bool("help", false, "path to file to compile")
+
+// 	flag.Parse()
+
+// 	if *fpCommand == "" {
+// 		flag.PrintDefaults()
+// 		fmt.Printf("must provide path of file to compile")
+// 		os.Exit(1)
+// 	}
+// 	filepath = *fpCommand
+
+// 	if *modeCommand == "" {
+// 		mode = "check"
+// 	} else {
+// 		mode = strings.ToLower(*modeCommand)
+// 		switch mode {
+// 		case "ast":
+// 		case "ir":
+// 		case "smt":
+// 		case "check":
+// 		default:
+// 			fmt.Printf("%s is not a valid mode", mode)
+// 			os.Exit(1)
+// 		}
+// 	}
+
+// 	if *inputCommand == "" {
+// 		input = "fspec"
+// 	} else {
+// 		input = strings.ToLower(*inputCommand)
+// 		switch input {
+// 		case "fspec":
+// 		case "ll":
+// 		case "smt2":
+// 		default:
+// 			fmt.Printf("%s is not a valid input format", input)
+// 			os.Exit(1)
+// 		}
+// 	}
+
+// 	run(filepath, mode, input)
+// }
