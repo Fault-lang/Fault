@@ -119,4 +119,12 @@ func TestParallelGroup(t *testing.T) {
 	if expecting != results {
 		t.Fatalf("ParallelGroup does not return correct hash got=%s want=%s", results, expecting)
 	}
+
+	data2 := []byte(fmt.Sprint("test", 1))
+	expecting2 := fmt.Sprintf("%x", md5.Sum(data2))
+	results2 := ParallelGroup("test")
+
+	if expecting2 != results2 {
+		t.Fatal("ParallelGroup does not iterate correctly")
+	}
 }
