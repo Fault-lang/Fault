@@ -1,12 +1,10 @@
 package execute
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
-
-	"github.com/olekukonko/tablewriter"
 )
 
 /*
@@ -15,17 +13,14 @@ import (
 */
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Variable", "State (Weight)"})
-	var row []string
+	var out bytes.Buffer
 	results = definePath(results, mc.branchTrail)
 	for k, v := range results {
-		row = append(row, k)
+		out.WriteString(k + "\n")
 		r := generateRows(v)
-		row = append(row, strings.Join(r, " "))
-		table.Append(row)
+		out.WriteString(strings.Join(r, " ") + "\n\n")
 	}
-	table.Render()
+	fmt.Println(out.String())
 }
 
 func generateRows(v Scenario) []string {

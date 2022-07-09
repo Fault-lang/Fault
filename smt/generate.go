@@ -49,7 +49,6 @@ func (g *Generator) parallelRules(r [][]rule) []rule {
 func (g *Generator) capParallel() []string {
 	// writes OR nodes to end each parallel run
 	var rules []string
-	fmt.Println(g.parallelEnds)
 	for k, v := range g.parallelEnds {
 		id := g.advanceSSA(k)
 
