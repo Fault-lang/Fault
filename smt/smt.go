@@ -440,6 +440,10 @@ func (g *Generator) getLastState(id string) int16 {
 	return 0
 }
 
+func (g *Generator) GetPhis() map[string]int16 {
+	return g.phis
+}
+
 func (g *Generator) storeLastState(id string, n int16) {
 	if _, ok := g.phis[id]; ok {
 		g.phis[id] = n
