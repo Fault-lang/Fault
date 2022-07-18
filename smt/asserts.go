@@ -5,6 +5,7 @@ import (
 	"fault/llvm"
 	"fault/util"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -322,6 +323,20 @@ func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []stri
 	}
 }
 
+func (g *Generator) filterOutTempStates(v string, i int16) bool {
+	for _, opt := range g.forks {
+		choices := opt[v]
+		for _, c := range choices {
+			c.values = c.values[1:] //First value is not temp
+			t := sort.Search(len(c.values), func(k int) bool { return c.values[k] == i })
+			if c.values[t] == i {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (g *Generator) wrapPerm(w *wrap) []string {
 	if w.constant {
 		return []string{w.value}
@@ -331,9 +346,9 @@ func (g *Generator) wrapPerm(w *wrap) []string {
 	}
 	if w.all {
 		var states []string
-		end := g.ssa[w.value]
+		end := g.variables.ssa[w.value]
 		for i := 0; i < int(end+1); i++ {
-			if !g.filterOutTempStates(w.value, i) {
+			if !g.filterOutTempStates(w.value, int16(i)) {
 				states = append(states, fmt.Sprint(w.value, "_", i))
 			}
 		}

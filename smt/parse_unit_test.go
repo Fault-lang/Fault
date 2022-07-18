@@ -68,7 +68,7 @@ func TestParseCond(t *testing.T) {
 		},
 		op: ">",
 	}
-	inst := g.parseCond(cond, make(map[string]string))
+	inst := g.parseCond(cond)
 
 	if inst.(*infix).y.(*wrap).value != "y" {
 		t.Fatalf("parseCond returns the wrong value. got=%s", inst.(*infix).String())
@@ -85,7 +85,7 @@ func TestParseCond(t *testing.T) {
 		},
 		op: "true",
 	}
-	inst2 := g.parseCond(cond2, make(map[string]string))
+	inst2 := g.parseCond(cond2)
 
 	if inst2.(*infix).y.(*wrap).value != "True" {
 		t.Fatalf("parseCond returns the wrong value. got=%s", inst2.(*infix).String())
@@ -100,25 +100,25 @@ func TestParseTerms(t *testing.T) {
 	alloc.SetName("test_this_var")
 	val := constant.NewFloat(irtypes.Double, 2)
 	store := b.NewStore(val, alloc)
-	g.ssa["test_this_var"] = 0
+	g.variables.ssa["test_this_var"] = 0
 
 	alloc2 := b.NewAlloca(irtypes.Double)
 	alloc2.SetName("test_this_var2")
 	val2 := constant.NewFloat(irtypes.Double, 3)
 	store2 := b.NewStore(val2, alloc2)
-	g.ssa["test_this_var2"] = 0
+	g.variables.ssa["test_this_var2"] = 0
 
 	terms := ir.NewBlock("test")
 	terms.NewFCmp(enum.FPredOGT, store.Src, store2.Src)
-	_, _ = g.parseTerms([]*ir.Block{terms}, make(map[string]string))
-	if len(g.ref) != 1 {
+	g.parseTerms([]*ir.Block{terms})
+	if len(g.variables.ref) != 1 {
 		t.Fatal("parse terms failed to save a rule.")
 	}
-	if g.ref["%0"].(*infix).x.(*wrap).value != "2.0" {
-		t.Fatalf("parse terms produced the wrong x value. got=%s", g.ref["%0"].(*infix).x.(*wrap).value)
+	if g.variables.ref["%0"].(*infix).x.(*wrap).value != "2.0" {
+		t.Fatalf("parse terms produced the wrong x value. got=%s", g.variables.ref["%0"].(*infix).x.(*wrap).value)
 	}
 
-	if g.ref["%0"].(*infix).y.(*wrap).value != "3.0" {
-		t.Fatalf("parse terms produced the wrong y value. got=%s", g.ref["%0"].(*infix).y.(*wrap).value)
+	if g.variables.ref["%0"].(*infix).y.(*wrap).value != "3.0" {
+		t.Fatalf("parse terms produced the wrong y value. got=%s", g.variables.ref["%0"].(*infix).y.(*wrap).value)
 	}
 }

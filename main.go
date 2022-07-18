@@ -61,12 +61,13 @@ func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 
 func smt2(ir string, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) *smt.Generator {
 	generator := smt.NewGenerator()
+	fmt.Println(generator.GetPhis())
 	generator.LoadMeta(uncertains, unknowns, asserts, assumes)
 	generator.Run(ir)
 	return generator
 }
 
-func probability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, map[string]execute.Scenario) {
+func probability(smt string, uncertains map[string][]float64, unknowns []string, phis map[string]int16) (*execute.ModelChecker, map[string]execute.Scenario) {
 	ex := execute.NewModelChecker("z3")
 	ex.LoadModel(smt, uncertains, unknowns)
 	ok, err := ex.Check()
@@ -89,6 +90,7 @@ func run(filepath string, mode string, input string) {
 	filepath = util.Filepath(filepath)
 	uncertains := make(map[string][]float64)
 	unknowns := []string{}
+	phis := map[string]int16{}
 
 	data, err := os.ReadFile(filepath)
 	if err != nil {
@@ -103,8 +105,6 @@ func run(filepath string, mode string, input string) {
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
-		uncertains = lstnr.Uncertains
-		unknowns = lstnr.Unknowns
 
 		if mode == "ast" {
 			fmt.Println(lstnr.AST)
@@ -126,7 +126,7 @@ func run(filepath string, mode string, input string) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns)
+		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.GetPhis())
 		mc.LoadMeta(generator.Branches, generator.BranchTrail)
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
@@ -137,25 +137,17 @@ func run(filepath string, mode string, input string) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns)
+		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.GetPhis())
 		mc.LoadMeta(generator.Branches, generator.BranchTrail)
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "smt2":
-		mc, data := probability(d, uncertains, unknowns)
+		mc, data := probability(d, uncertains, unknowns, phis)
 
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	}
 }
-
-// func main() {
-// 	p := tea.NewProgram(bubbles.New())
-// 	if err := p.Start(); err != nil {
-// 		fmt.Printf("Alas, there's been an error: %v", err)
-// 		os.Exit(1)
-// 	}
-// }
 
 func main() {
 	var mode string

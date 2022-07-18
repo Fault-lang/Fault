@@ -4,66 +4,60 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/llir/llvm/ir"
 )
 
-func (g *Generator) runParallel(perm [][]string, vars map[string]string) {
-	g.branchId = g.branchId + 1
-	branch := fmt.Sprint("branch_", g.branchId)
-	for i, calls := range perm {
-		branchBlock := fmt.Sprint("option_", i)
-		var opts [][]rule
-		startVars := make(map[string]string) //Making a deep copy
-		for k, v := range vars {
-			startVars[k] = v
-		}
-		for _, c := range calls {
-			v := g.functions[c]
-			raw := g.parseFunction(v, startVars)
-			raw = g.tagRules(raw, branch, branchBlock)
-			opts = append(opts, raw)
-		}
-		raw := g.parallelRules(opts)
-		for _, v := range raw {
-			g.rules = append(g.rules, g.writeRule(v))
-		}
-	}
-	g.rules = append(g.rules, g.capParallel()...)
-}
+// func (g *Generator) runParallel(perm [][]string) {
+// 	g.branchId = g.branchId + 1
+// 	branch := fmt.Sprint("branch_", g.branchId)
+// 	for i, calls := range perm {
+// 		branchBlock := fmt.Sprint("option_", i)
+// 		var opts [][]rule
+// 		for _, c := range calls {
+// 			v := g.functions[c]
+// 			raw := g.parseFunction(v)
+// 			raw = g.tagRules(raw, branch, branchBlock)
+// 			opts = append(opts, raw)
+// 		}
+// 		raw := g.parallelRules(opts)
+// 		for _, v := range raw {
+// 			g.rules = append(g.rules, g.writeRule(v))
+// 		}
+// 	}
+// 	g.rules = append(g.rules, g.capParallel()...)
+// }
 
-func (g *Generator) parallelRules(r [][]rule) []rule {
-	var rules []rule
-	s := g.paraStateChanges(r)
-	for k, v := range s {
-		if len(v) > 1 {
-			g.parallelEnds[k] = append(g.parallelEnds[k], g.getEnds(v))
-		}
-	}
-	for _, op := range r {
-		rules = append(rules, op...) // Flatten
-	}
-	return rules
-}
+// func (g *Generator) parallelRules(r [][]rule) []rule {
+// 	var rules []rule
+// 	s := g.paraStateChanges(r)
+// 	for k, v := range s {
+// 		if len(v) > 1 {
+// 			g.parallelEnds[k] = append(g.parallelEnds[k], g.getEnds(v))
+// 		}
+// 	}
+// 	for _, op := range r {
+// 		rules = append(rules, op...) // Flatten
+// 	}
+// 	return rules
+// }
 
-func (g *Generator) capParallel() []string {
-	// writes OR nodes to end each parallel run
-	var rules []string
-	for k, v := range g.parallelEnds {
-		id := g.advanceSSA(k)
+// func (g *Generator) capParallel() []string {
+// 	// writes OR nodes to end each parallel run
+// 	var rules []string
+// 	for k, v := range g.parallelEnds {
+// 		id := g.advanceSSA(k)
 
-		g.declareVar(id, "Real")
-		ends := g.formatEnds(k, v, id)
-		//(assert (or (= bathtub_drawn_water_level_10 bathtub_drawn_water_level_7) (= bathtub_drawn_water_level_10  bathtub_drawn_water_level_9)))
-		rule := g.writeAssert("or", ends)
-		rules = append(rules, rule)
+// 		g.declareVar(id, "Real")
+// 		ends := g.formatEnds(k, v, id)
+// 		//(assert (or (= bathtub_drawn_water_level_10 bathtub_drawn_water_level_7) (= bathtub_drawn_water_level_10  bathtub_drawn_water_level_9)))
+// 		rule := g.writeAssert("or", ends)
+// 		rules = append(rules, rule)
 
-		n := g.ssa[id]
-		g.storeLastState(id, n)
-	}
-	g.parallelEnds = map[string][]int16{}
-	return rules
-}
+// 		n := g.ssa[id]
+// 		g.storeLastState(id, n)
+// 	}
+// 	g.parallelEnds = map[string][]int16{}
+// 	return rules
+// }
 
 // func (g *Generator) capCond(state map[string]map[int][]int) []string {
 // 	var ends []string
@@ -106,28 +100,28 @@ func (g *Generator) capParallel() []string {
 // 	return tends, fends
 // }
 
-func (g *Generator) setStartVar(id string, startVars map[string]string) map[string]string {
-	if _, ok := startVars[id]; !ok {
-		startVars[id] = fmt.Sprint(id, "_", g.ssa[id])
-	}
-	return startVars
-}
+// func (g *Generator) setStartVar(id string, startVars map[string]string) map[string]string {
+// 	if _, ok := startVars[id]; !ok {
+// 		startVars[id] = fmt.Sprint(id, "_", g.ssa[id])
+// 	}
+// 	return startVars
+// }
 
-func (g *Generator) gatherStarts(p []string, startVars map[string]string) map[string]string {
-	for _, fname := range p {
-		f := g.functions[fname]
-		for _, block := range f.Blocks {
-			for _, inst := range block.Insts {
-				switch inst := inst.(type) {
-				case *ir.InstLoad:
-					id := g.formatIdent(inst.Src.Ident())
-					startVars = g.setStartVar(id, startVars)
-				}
-			}
-		}
-	}
-	return startVars
-}
+// func (g *Generator) gatherStarts(p []string, startVars map[string]string) map[string]string {
+// 	for _, fname := range p {
+// 		f := g.functions[fname]
+// 		for _, block := range f.Blocks {
+// 			for _, inst := range block.Insts {
+// 				switch inst := inst.(type) {
+// 				case *ir.InstLoad:
+// 					id := g.variables.formatIdent(inst.Src.Ident())
+// 					startVars = g.setStartVar(id, startVars)
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return startVars
+//}
 
 func (g *Generator) getStarts(n map[int][]int) int {
 	start := n[0][0]
@@ -168,7 +162,7 @@ func (g *Generator) paraStateChanges(r [][]rule) map[string]map[int][]int {
 			switch r := ru.(type) {
 			case *infix:
 				if r.ty != "" { //Variable assignment
-					id, num := g.getVarBase(r.x.String())
+					id, num := g.variables.getVarBase(r.x.String())
 					if _, ok := state[id]; ok {
 						state[id][i] = append(state[id][i], num)
 					} else {
@@ -179,12 +173,12 @@ func (g *Generator) paraStateChanges(r [][]rule) map[string]map[int][]int {
 					}
 
 					// Keep a record of this for generating invariants with temporal logic
-					if _, ok := g.tempStates[id]; ok {
-						g.tempStates[id] = append(g.tempStates[id], num)
-					} else {
-						g.tempStates[id] = []int{}
-						g.tempStates[id] = append(g.tempStates[id], num)
-					}
+					// if _, ok := g.tempStates[id]; ok {
+					// 	g.tempStates[id] = append(g.tempStates[id], num)
+					// } else {
+					// 	g.tempStates[id] = []int{}
+					// 	g.tempStates[id] = append(g.tempStates[id], num)
+					// }
 				}
 			}
 		}
@@ -235,9 +229,9 @@ func (g *Generator) writeRule(ru rule) string {
 			return g.writeInfix(x, y, r.op)
 		}
 		//If tagged, sort into branch for later formatting
-		if r.tag != nil {
-			g.buildBranchTrails(x, r.tag)
-		}
+		// if r.tag != nil {
+		// 	g.buildBranchTrails(x, r.tag)
+		// }
 
 		// if g.isASolvable(x){
 		// 	g.declareVar(x, r.ty)
@@ -287,7 +281,6 @@ func (g *Generator) writeRule(ru rule) string {
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
-	return ""
 }
 
 func (g *Generator) unpackRule(x rule) string {
@@ -334,12 +327,12 @@ func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
-func (g *Generator) buildBranchTrails(ident string, b *branch) {
-	// Storing where each variable is to
-	// help display results correctly.
-	g.Branches[ident] = []string{b.branch, b.block}
-	if _, ok := g.BranchTrail[b.branch]; !ok {
-		g.BranchTrail[b.branch] = make(map[string][]string)
-	}
-	g.BranchTrail[b.branch][b.block] = append(g.BranchTrail[b.branch][b.block], ident)
-}
+// func (g *Generator) buildBranchTrails(ident string, b *branch) {
+// 	// Storing where each variable is to
+// 	// help display results correctly.
+// 	g.Branches[ident] = []string{b.branch, b.block}
+// 	if _, ok := g.BranchTrail[b.branch]; !ok {
+// 		g.BranchTrail[b.branch] = make(map[string][]string)
+// 	}
+// 	g.BranchTrail[b.branch][b.block] = append(g.BranchTrail[b.branch][b.block], ident)
+// }
