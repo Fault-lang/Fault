@@ -181,3 +181,43 @@ func (g *variables) storeLastState(id string, n int16) {
 		g.phis[id] = 0
 	}
 }
+
+////////////////////////
+// Some functions specific to variable names in rules
+////////////////////////
+
+func (g *Generator) tempToIdent(ru rule) rule {
+	switch r := ru.(type) {
+	case *wrap:
+		return g.fetchIdent(r.value, r)
+	case *infix:
+		r.x = g.tempToIdent(r.x)
+		r.y = g.tempToIdent(r.y)
+		return r
+	}
+	return ru
+}
+
+func (g *Generator) fetchIdent(id string, r rule) rule {
+	if g.variables.isTemp(id) {
+		if v, ok := g.variables.loads[id]; ok {
+			n := g.variables.ssa[id]
+			if !g.inPhiState {
+				g.variables.storeLastState(id, n+1)
+			}
+			id = g.variables.advanceSSA(v.Ident())
+			wid := &wrap{value: id}
+			return wid
+		} else if ref, ok := g.variables.ref[id]; ok {
+			switch r := ref.(type) {
+			case *infix:
+				r.x = g.tempToIdent(r.x)
+				r.y = g.tempToIdent(r.y)
+				return r
+			}
+		} else {
+			panic(fmt.Sprintf("smt generation error, value for %s not found", id))
+		}
+	}
+	return r
+}

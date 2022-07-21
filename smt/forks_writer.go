@@ -3,6 +3,10 @@ package smt
 import (
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/llir/llvm/ir"
 )
 
 // Key is the base variable name
@@ -112,6 +116,24 @@ func (g *Generator) allStateChangesInRule(ru rule) []string {
 // Logic Behind Parallel Runs
 //////////////////////////////
 
+func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
+	var rc func([]string, int)
+	rc = func(a []string, k int) {
+		if k == len(a) {
+			permuts = append(permuts, append([]string{}, a...))
+		} else {
+			for i := k; i < len(p); i++ {
+				a[k], a[i] = a[i], a[k]
+				rc(a, k+1)
+				a[k], a[i] = a[i], a[k]
+			}
+		}
+	}
+	rc(p, 0)
+
+	return permuts
+}
+
 func (g *Generator) runParallel(perm [][]string) {
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
@@ -148,6 +170,18 @@ func (g *Generator) parallelRules(r [][]rule) []rule {
 		rules = append(rules, op...) // Flatten
 	}
 	return rules
+}
+
+func (g *Generator) parallelMeta(parallelGroup string, meta ir.Metadata) string {
+	for _, v := range meta {
+		if v.Name != parallelGroup {
+			g.call = g.call + 1
+		}
+		if v.Name[0:5] != "round-" {
+			g.parallelGrouping = v.Name
+		}
+	}
+	return g.parallelGrouping
 }
 
 func (g *Generator) capParallel() []string {
@@ -272,4 +306,14 @@ func (g *Generator) tagRule(ru rule, branch string, block string) rule {
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", ru))
 	}
+}
+
+func (g *Generator) formatEnds(k string, nums []int16, id string) string {
+	var e []string
+	for _, v := range nums {
+		v := fmt.Sprint(k, "_", strconv.Itoa(int(v)))
+		r := g.writeInfix(id, v, "=")
+		e = append(e, r)
+	}
+	return strings.Join(e, " ")
 }

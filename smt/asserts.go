@@ -132,13 +132,6 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 			})
 		}
 		return wg
-	// case *ast.Identifier:
-	// 	s, a, c := captureState(e.Value)
-	// 	return &wrap{value: e.Value,
-	// 		state:    s,
-	// 		all:      a,
-	// 		constant: c,
-	// 	}
 	case *ast.IntegerLiteral:
 		return &wrap{value: fmt.Sprint(e.Value),
 			state:    "",
@@ -163,8 +156,6 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 			all:      false,
 			constant: true,
 		}
-	//case *ast.Natural:
-	//case *ast.Uncertain:
 	case *ast.PrefixExpression:
 	case *ast.Nil:
 	case *ast.IndexExpression:
@@ -407,7 +398,6 @@ func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalF
 		pairs := impliesOnOffPairs(combos, c)
 		for _, p := range pairs {
 			var o []string
-			//var f []string
 			for _, on := range p[0] {
 				o = append(o, fmt.Sprintf("(%s %s %s)", op, on[0], on[1]))
 			}
@@ -418,18 +408,6 @@ func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalF
 			} else {
 				onStr = fmt.Sprintf("(%s %s)", "and", strings.Join(o, " "))
 			}
-
-			// offOp := llvm.OP_NEGATE[op]
-			// for _, off := range p[1] {
-			// 	if op == "=" {
-			// 		f = append(f, fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1]))
-			// 	} else {
-			// 		f = append(f, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
-			// 	}
-			// }
-			// // The off states can be on or off
-			// offStr := fmt.Sprintf("(%s %s)", "or", strings.Join(f, " "))
-
 			x = append(x, []string{onStr})
 		}
 		return packageStateGraph(x, "or")

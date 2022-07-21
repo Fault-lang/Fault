@@ -1,24 +1,6 @@
 package smt
 
-import (
-	"testing"
-)
-
-func TestGetStartsEnds(t *testing.T) {
-	g := NewGenerator()
-	data := make(map[int][]int)
-	data[0] = []int{2, 3, 4}
-	data[1] = []int{7, 8}
-	data[2] = []int{-2, 6}
-
-	if g.getStarts(data) != -2 {
-		t.Fatalf("getStarts returned the wrong result. got=%d", g.getStarts(data))
-	}
-
-	if g.getEnds(data) != 8 {
-		t.Fatalf("getEnds returned the wrong result. got=%d", g.getEnds(data))
-	}
-}
+import "testing"
 
 func TestParallelPermutations(t *testing.T) {
 	g := NewGenerator()

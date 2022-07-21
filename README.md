@@ -56,7 +56,11 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (3/18/2022)
+### Current Status (7/24/2022)
+For the past couples of months I've been stuck on the Fault interface. When Z3 returns results how should that be displayed so that the user understands the failure case described by the model? This is tricky because Z3 will solve for all defined variables, even the ones in branches not relevant to the rest of the model.
+Initially I was playing around with the idea of using Bubble Tea to do a more robust visual interface from the command line, but eventually a scrapped that as being too complicated. The real problem was filtering out inactive branches after the phi. I had a couple of pieced together approaches, but there was a lot of technical debt in figuring out SMT generation that made the code difficult to read and overwhelming. I finally decided to just completely rewrite the SMT package to make it a little bit easier to figure out and the bake in filtering of return values for the interface.
+
+#### (3/18/2022)
 Took another look at assert generation and made them tweaks. Found some bugs in unknown variables. Big deal is implemented temporal logic on assert generation. Now in addition to generating asserts for traditional temporal logic like "always", "eventually" and "eventually-always", Fault also has a set of specific temporal functions like "no more than" (nmt) and "no fewer than" (nft) which allow model checking a stable loop.
 
 #### (2/2/2022)
