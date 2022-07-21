@@ -37,10 +37,13 @@ func (g *variables) isGlobal(id string) bool {
 }
 
 func (g *variables) isNumeric(char string) bool {
-	if _, err := strconv.Atoi(char); err != nil {
-		return false
+	if _, err := strconv.ParseFloat(char, 64); err == nil {
+		return true
 	}
-	return true
+	if _, err := strconv.Atoi(char); err == nil {
+		return true
+	}
+	return false
 }
 
 func (g *Generator) isASolvable(id string) bool {
@@ -105,7 +108,13 @@ func (g *Generator) convertInfixVar(x string) string {
 		if v, ok := g.variables.loads[x]; ok {
 			xid := v.Ident()
 			xidNoPercent := g.variables.formatIdent(xid)
-			x = g.variables.getSSA(xidNoPercent)
+			if g.parallelRunStart {
+				n := g.variables.getLastState(xidNoPercent)
+				x = fmt.Sprintf("%s_%d", xidNoPercent, n)
+				g.parallelRunStart = false
+			} else {
+				x = g.variables.getSSA(xidNoPercent)
+			}
 		}
 	}
 	return x
@@ -151,6 +160,18 @@ func (g *variables) getLastState(id string) int16 {
 		return p
 	}
 	return 0
+}
+
+func (v *variables) saveState() map[string]int16 {
+	state := make(map[string]int16)
+	for k, v := range v.phis {
+		state[k] = v
+	}
+	return state
+}
+
+func (v *variables) loadState(state map[string]int16) {
+	v.phis = state
 }
 
 func (g *variables) storeLastState(id string, n int16) {

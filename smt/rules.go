@@ -33,7 +33,9 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 		if val, ok := g.variables.loads[srcId]; ok {
 			ty := g.getType(val)
 			n := g.variables.ssa[id]
-			g.variables.storeLastState(id, n+1)
+			if !g.inPhiState {
+				g.variables.storeLastState(id, n+1)
+			}
 			id = g.variables.advanceSSA(id)
 			rules = append(rules, g.parseRule(id, g.variables.formatValue(val), ty, ""))
 		} else if ref, ok := g.variables.ref[srcId]; ok {
@@ -42,7 +44,9 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				r.x = g.tempToIdent(r.x)
 				r.y = g.tempToIdent(r.y)
 				n := g.variables.ssa[id]
-				g.variables.storeLastState(id, n+1)
+				if !g.inPhiState {
+					g.variables.storeLastState(id, n+1)
+				}
 				id = g.variables.advanceSSA(id)
 				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
@@ -54,7 +58,9 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				}
 			default:
 				n := g.variables.ssa[id]
-				g.variables.storeLastState(id, n+1)
+				if !g.inPhiState {
+					g.variables.storeLastState(id, n+1)
+				}
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
 				rules = append(rules, &infix{x: wid, ty: "Real", y: r})
@@ -65,7 +71,9 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	} else {
 		ty := g.getType(inst.Src)
 		n := g.variables.ssa[id]
-		g.variables.storeLastState(id, n+1)
+		if !g.inPhiState {
+			g.variables.storeLastState(id, n+1)
+		}
 		id = g.variables.advanceSSA(id)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
@@ -115,7 +123,9 @@ func (g *Generator) fetchIdent(id string, r rule) rule {
 	if g.variables.isTemp(id) {
 		if v, ok := g.variables.loads[id]; ok {
 			n := g.variables.ssa[id]
-			g.variables.storeLastState(id, n+1)
+			if !g.inPhiState {
+				g.variables.storeLastState(id, n+1)
+			}
 			id = g.variables.advanceSSA(v.Ident())
 			wid := &wrap{value: id}
 			return wid

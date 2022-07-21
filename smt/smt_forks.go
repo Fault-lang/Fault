@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-// Key is hash of rule that creates the fork
+// Key is the base variable name
 type fork map[string][]*choice
 
 type choice struct {
@@ -14,9 +14,10 @@ type choice struct {
 	values []int16 // All the versions of this variable in this branch
 }
 
-func (c *choice) addChoiceValue(n int16) {
-	sort.Slice(c.values, func(i, j int) bool { return c.values[i] < c.values[j] })
+func (c *choice) addChoiceValue(n int16) *choice {
 	c.values = append(c.values, n)
+	sort.Slice(c.values, func(i, j int) bool { return c.values[i] < c.values[j] })
+	return c
 }
 
 func (c *choice) getEnd() int16 {
@@ -60,14 +61,15 @@ func (g *Generator) buildForkChoice(rules []rule, b string) {
 		// Have we seen this variable in a previous branch of
 		// this fork?
 		if _, ok := fork[base]; ok {
-			// Have we seen this variable before in this branch?
-			if seenVar[base] {
-				fork[base][len(fork[base])-1].addChoiceValue(n)
+			if seenVar[base] && // Have we seen this variable before?
+				fork[base][len(fork[base])-1].branch == b { // in this branch?
+				fork[base][len(fork[base])-1] = fork[base][len(fork[base])-1].addChoiceValue(n)
 			} else {
 				seenVar[base] = true
 				fork[base] = append(fork[base], g.newChoice(base, n, b))
 			}
 		} else {
+			seenVar[base] = true
 			fork[base] = []*choice{g.newChoice(base, n, b)}
 		}
 	}
@@ -99,7 +101,7 @@ func (g *Generator) allStateChangesInRule(ru rule) []string {
 			wg = append(wg, ch...)
 		}
 	case *wrap:
-		if _, ok := g.variables.ssa[r.value]; ok { // Wraps might be static values
+		if !g.variables.isNumeric(r.value) { // Wraps might be static values
 			return []string{r.value}
 		}
 	}
@@ -113,22 +115,26 @@ func (g *Generator) allStateChangesInRule(ru rule) []string {
 func (g *Generator) runParallel(perm [][]string) {
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
+	g.newFork()
 	for i, calls := range perm {
 		branchBlock := fmt.Sprint("option_", i)
 		var opts [][]rule
-		g.newFork()
+		varState := g.variables.saveState()
 		for _, c := range calls {
+			g.parallelRunStart = true
+			g.inPhiState = false //Don't behave like we're in Phi inside the function
 			v := g.functions[c]
 			raw := g.parseFunction(v)
+			g.inPhiState = true
 			raw = g.tagRules(raw, branch, branchBlock)
-			// Pull all the variables out of the rules and
-			// sort them into fork choices
-			g.buildForkChoice(raw, "")
 			opts = append(opts, raw)
-			i += 1
 		}
 		//Flat the rules
 		raw := g.parallelRules(opts)
+		// Pull all the variables out of the rules and
+		// sort them into fork choices
+		g.buildForkChoice(raw, "")
+		g.variables.loadState(varState)
 		for _, v := range raw {
 			g.rules = append(g.rules, g.writeRule(v))
 		}
@@ -164,8 +170,9 @@ func (g *Generator) capParallel() []string {
 		rule := g.writeAssert("or", ends)
 		rules = append(rules, rule)
 
-		n := g.variables.ssa[id]
-		g.variables.storeLastState(id, n)
+		base, i := g.variables.getVarBase(id)
+		n := int16(i)
+		g.variables.storeLastState(base, n)
 
 	}
 	return rules
@@ -186,12 +193,22 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rule {
 	return e
 }
 
-func (g *Generator) capCond(b string) []rule {
+func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[string]string) {
 	fork := g.getCurrentFork()
 	var rules []rule
 	for k, v := range fork {
-		id := g.variables.advanceSSA(k)
-		g.declareVar(id, "Real")
+		// Because we're looking at all the variables in
+		// the true branch THEN all the variables in the
+		// false branch, we only increment the variable
+		// when we produce the phi value for the first time
+		var id string
+		if phi, ok := phis[k]; !ok {
+			id = g.variables.advanceSSA(k)
+			g.declareVar(id, "Real")
+			phis[k] = id
+		} else {
+			id = phi
+		}
 
 		for _, c := range v {
 			if c.branch == b {
@@ -199,31 +216,31 @@ func (g *Generator) capCond(b string) []rule {
 			}
 		}
 	}
-	return rules
+	return rules, phis
 }
 
-// func (g *Generator) capCondSyncRules() ([]rule, []rule) {
-// 	// For cases where variables changed in one branch are not
-// 	// present in the other, add a rule
-// 	var tends []rule
-// 	var fends []rule
-// 	fork := g.getCurrentFork()
-// 	for k, c := range fork {
-// 		if len(c) == 1 {
-// 			start := g.variables.getLastState(k)
-// 			id := g.variables.getSSA(k)
-// 			switch c[0].branch {
-// 			case "true":
-// 				tends = append(tends, g.capRule(k, []int16{start}, id)...)
-// 			case "false":
-// 				fends = append(fends, g.capRule(k, []int16{start}, id)...)
-// 			}
-// 			n := g.variables.ssa[k]
-// 			g.variables.storeLastState(k, n)
-// 		}
-// 	}
-// 	return tends, fends
-// }
+func (g *Generator) capCondSyncRules() ([]rule, []rule) {
+	// For cases where variables changed in one branch are not
+	// present in the other, add a rule
+	var tends []rule
+	var fends []rule
+	fork := g.getCurrentFork()
+	for k, c := range fork {
+		if len(c) == 1 {
+			start := g.variables.getLastState(k)
+			id := g.variables.getSSA(k)
+			switch c[0].branch {
+			case "true":
+				fends = append(fends, g.capRule(k, []int16{start}, id)...)
+			case "false":
+				tends = append(tends, g.capRule(k, []int16{start}, id)...)
+			}
+			n := g.variables.ssa[k]
+			g.variables.storeLastState(k, n)
+		}
+	}
+	return tends, fends
+}
 
 func (g *Generator) tagRules(rules []rule, branch string, block string) []rule {
 	var tagged []rule

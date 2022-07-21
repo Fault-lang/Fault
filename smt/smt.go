@@ -30,6 +30,7 @@ type Generator struct {
 	callstack        map[int][]string
 	parallelGrouping string
 	inPhiState       bool //Flag, are we in a conditional or parallel?
+	parallelRunStart bool //Flag, make sure all branches with parallel runs begin from the same point
 	parentFork       fork
 
 	blocks          map[string][]rule

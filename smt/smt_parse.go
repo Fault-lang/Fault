@@ -140,13 +140,13 @@ func (g *Generator) parseTerms(terms []*ir.Block) []rule {
 			g.buildForkChoice(t, "true")
 			g.buildForkChoice(f, "false")
 
-			tEnds := g.capCond("true")
-			fEnds := g.capCond("false")
+			tEnds, phis := g.capCond("true", make(map[string]string))
+			fEnds, _ := g.capCond("false", phis)
 
 			// Keep variable names in sync across branches
-			// tSync, fSync := g.capCondSyncRules()
-			// tEnds = append(tEnds, tSync...)
-			// fEnds = append(fEnds, fSync...)
+			tSync, fSync := g.capCondSyncRules()
+			tEnds = append(tEnds, tSync...)
+			fEnds = append(fEnds, fSync...)
 
 			rules = append(rules, &ite{cond: nil, t: tEnds, tvars: tvars, f: fEnds, fvars: fvars})
 		}
@@ -170,7 +170,7 @@ func (g *Generator) parseRule(id string, val string, ty string, op string) rule 
 func (g *Generator) parseInfix(id string, x string, y string, op string) rule {
 	x = g.convertInfixVar(x)
 	y = g.convertInfixVar(y)
-	
+
 	g.variables.ref[id] = g.parseRule(x, y, "", op)
 	return g.variables.ref[id]
 }
