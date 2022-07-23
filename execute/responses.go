@@ -47,7 +47,8 @@ func (l *SMTListener) ExitFunction_def(c *parser.Function_defContext) {
 
 	value := convertTerm(sort.(string), term.(string))
 	key, id := splitIdent(sym.(string))
-	k, err := strconv.ParseInt(key, 10, 64)
+	i, err := strconv.ParseInt(key, 10, 16)
+	k := int16(i)
 	if err != nil {
 		panic(fmt.Sprintf("symbol returned from model is malformed. got=%s", sym.(string)))
 	}

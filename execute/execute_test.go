@@ -60,7 +60,7 @@ func TestProbability(t *testing.T) {
 }
 
 func prepTest(smt string, uncertains map[string][]float64) *ModelChecker {
-	ex := NewModelChecker("z3")
+	ex := NewModelChecker()
 	ex.LoadModel(smt, uncertains)
 	return ex
 }*/

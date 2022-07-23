@@ -10,44 +10,53 @@ import (
 )
 
 // Key is the base variable name
-type fork map[string][]*choice
+type Fork map[string][]*Choice
 
-type choice struct {
-	base   string  // What variable?
-	branch string  // For conditionals, is this the true block or false block?
-	values []int16 // All the versions of this variable in this branch
+func GetForkEndPoints(c []*Choice) []int16 {
+	var ends []int16
+	for _, v := range c{
+		e := v.Values[len(v.Values)-1]
+		ends = append(ends,e)
+	}
+	return ends
 }
 
-func (c *choice) addChoiceValue(n int16) *choice {
-	c.values = append(c.values, n)
-	sort.Slice(c.values, func(i, j int) bool { return c.values[i] < c.values[j] })
+type Choice struct {
+	Base   string  // What variable?
+	Branch string  // For conditionals, is this the true block or false block?
+	Values []int16 // All the versions of this variable in this branch
+}
+
+func (c *Choice) addChoiceValue(n int16) *Choice {
+	c.Values = append(c.Values, n)
+	sort.Slice(c.Values, func(i, j int) bool { return c.Values[i] < c.Values[j] })
 	return c
 }
 
-func (c *choice) getEnd() int16 {
-	return c.values[len(c.values)-1]
+func (c *Choice) getEnd() int16 {
+	return c.Values[len(c.Values)-1]
 }
 
 func (g *Generator) newFork() {
 	if g.inPhiState { // a fork inside a fork (facepalm)
 		g.parentFork = g.getCurrentFork()
-		g.forks = append(g.forks[0:len(g.forks)-1], fork{})
+		g.forks = append(g.forks[0:len(g.forks)-1], Fork{})
 	} else {
 		g.parentFork = nil
 		g.inPhiState = true
-		g.forks = append(g.forks, fork{})
+		g.forks = append(g.forks, Fork{})
 	}
 }
 
-func (g *Generator) newChoice(base string, n int16, b string) *choice {
-	return &choice{
-		base:   base,
-		branch: b,
-		values: []int16{n},
+func (g *Generator) newChoice(base string, n int16, b string) *Choice {
+	return &Choice{
+		Base:   base,
+		Branch: b,
+		Values: []int16{n},
 	}
 }
 
-func (g *Generator) getCurrentFork() fork {
+func (g *Generator) getCurrentFork() Fork {
 	return g.forks[len(g.forks)-1]
 }
 
@@ -66,7 +75,7 @@ func (g *Generator) buildForkChoice(rules []rule, b string) {
 		// this fork?
 		if _, ok := fork[base]; ok {
 			if seenVar[base] && // Have we seen this variable before?
-				fork[base][len(fork[base])-1].branch == b { // in this branch?
+				fork[base][len(fork[base])-1].Branch == b { // in this branch?
 				fork[base][len(fork[base])-1] = fork[base][len(fork[base])-1].addChoiceValue(n)
 			} else {
 				seenVar[base] = true
@@ -74,7 +83,7 @@ func (g *Generator) buildForkChoice(rules []rule, b string) {
 			}
 		} else {
 			seenVar[base] = true
-			fork[base] = []*choice{g.newChoice(base, n, b)}
+			fork[base] = []*Choice{g.newChoice(base, n, b)}
 		}
 	}
 	g.forks[len(g.forks)-1] = fork
@@ -245,7 +254,7 @@ func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[strin
 		}
 
 		for _, c := range v {
-			if c.branch == b {
+			if c.Branch == b {
 				rules = append(rules, g.capRule(k, []int16{c.getEnd()}, id)...)
 			}
 		}
@@ -263,7 +272,7 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 		if len(c) == 1 {
 			start := g.variables.getLastState(k)
 			id := g.variables.getSSA(k)
-			switch c[0].branch {
+			switch c[0].Branch {
 			case "true":
 				fends = append(fends, g.capRule(k, []int16{start}, id)...)
 			case "false":

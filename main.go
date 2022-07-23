@@ -61,14 +61,13 @@ func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 
 func smt2(ir string, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) *smt.Generator {
 	generator := smt.NewGenerator()
-	fmt.Println(generator.GetPhis())
 	generator.LoadMeta(uncertains, unknowns, asserts, assumes)
 	generator.Run(ir)
 	return generator
 }
 
-func probability(smt string, uncertains map[string][]float64, unknowns []string, phis map[string]int16) (*execute.ModelChecker, map[string]execute.Scenario) {
-	ex := execute.NewModelChecker("z3")
+func probability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, map[string]execute.Scenario) {
+	ex := execute.NewModelChecker()
 	ex.LoadModel(smt, uncertains, unknowns)
 	ok, err := ex.Check()
 	if err != nil {
@@ -90,8 +89,7 @@ func run(filepath string, mode string, input string) {
 	filepath = util.Filepath(filepath)
 	uncertains := make(map[string][]float64)
 	unknowns := []string{}
-	phis := map[string]int16{}
-
+	
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		log.Fatal(err)
@@ -126,8 +124,8 @@ func run(filepath string, mode string, input string) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.GetPhis())
-		mc.LoadMeta(generator.Branches, generator.BranchTrail)
+		mc, data := probability(generator.SMT(), uncertains, unknowns)
+		mc.LoadMeta(generator.GetForks())
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "ll":
@@ -137,12 +135,12 @@ func run(filepath string, mode string, input string) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.GetPhis())
-		mc.LoadMeta(generator.Branches, generator.BranchTrail)
+		mc, data := probability(generator.SMT(), uncertains, unknowns)
+		mc.LoadMeta(generator.GetForks())
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "smt2":
-		mc, data := probability(d, uncertains, unknowns, phis)
+		mc, data := probability(d, uncertains, unknowns)
 
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)

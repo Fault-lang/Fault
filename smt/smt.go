@@ -25,13 +25,13 @@ type Generator struct {
 	asserts   []string
 
 	variables        *variables
-	forks            []fork
+	forks            []Fork
 	call             int
 	callstack        map[int][]string
 	parallelGrouping string
 	inPhiState       bool //Flag, are we in a conditional or parallel?
 	parallelRunStart bool //Flag, make sure all branches with parallel runs begin from the same point
-	parentFork       fork
+	parentFork       Fork
 
 	blocks          map[string][]rule
 	skipBlocks      map[string]int
@@ -66,6 +66,10 @@ func (g *Generator) Run(llopt string) {
 	}
 	g.newCallgraph(m)
 
+}
+
+func (g *Generator) GetForks() []Fork {
+	return g.forks
 }
 
 func (g *Generator) newConstants(globals []*ir.Global) []string {
