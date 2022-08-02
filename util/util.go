@@ -135,6 +135,16 @@ func product(list1 [][]string, list2 []string) [][]string {
 	return results
 }
 
+func MaxInt16(nums []int16) int16 {
+	var temp int16
+	for _, i := range nums {
+		if temp < i {
+			temp = i
+		}
+	}
+	return temp
+}
+
 func Combinations(l [][]string, n int) [][][]string {
 	if len(l) <= n {
 		return [][][]string{l}

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fault/execute/parser"
+	"fault/smt"
+	"fault/util"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,20 +25,18 @@ type Solver struct {
 }
 
 type ModelChecker struct {
-	SMT         string
-	Uncertains  map[string][]float64
-	Unknowns    []string
-	solver      map[string]*Solver
-	branches    map[string][]string
-	branchTrail map[string]map[string][]string
+	SMT        string
+	Uncertains map[string][]float64
+	Unknowns   []string
+	solver     map[string]*Solver
+	forks      map[string][]*Branch
 }
 
-func NewModelChecker(mode string) *ModelChecker {
+func NewModelChecker() *ModelChecker {
 
 	mc := &ModelChecker{
-		solver:      GenerateSolver(),
-		branches:    make(map[string][]string),
-		branchTrail: make(map[string]map[string][]string),
+		solver: GenerateSolver(),
+		forks:  make(map[string][]*Branch),
 	}
 	return mc
 }
@@ -68,10 +68,25 @@ func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, u
 	mc.Unknowns = unknowns
 }
 
-func (mc *ModelChecker) LoadMeta(branches map[string][]string, trail map[string]map[string][]string) {
+func (mc *ModelChecker) LoadMeta(forks []smt.Fork) {
 	// Load metadata that helps the results display nicely
-	mc.branches = branches
-	mc.branchTrail = trail
+	tree := make(map[string][]*Branch)
+	for _, f := range forks {
+		for k, c := range f {
+			ends := smt.GetForkEndPoints(c)
+			phi := util.MaxInt16(ends)
+			var branches []*Branch
+			for _, v := range c {
+				branches = append(branches, &Branch{
+					trail: v.Values,
+					phi:   phi + 1, //assume the phi value is +1 the highest SSA in the branch for that variable
+					base:  k,
+				})
+			}
+			tree[k] = append(tree[k], branches...)
+		}
+	}
+	mc.forks = tree
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
@@ -89,12 +104,6 @@ func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(out.String()), err
-	/*model := fmt.Sprint(mc.SMT, strings.Join(actions, "\n"))
-	ret, err := mc.solver[command].Run(model)
-	if err != nil {
-		panic(err)
-	}
-	return strings.TrimSpace(ret), nil*/
 }
 
 func (mc *ModelChecker) Check() (bool, error) {

@@ -67,7 +67,7 @@ func smt2(ir string, uncertains map[string][]float64, unknowns []string, asserts
 }
 
 func probability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, map[string]execute.Scenario) {
-	ex := execute.NewModelChecker("z3")
+	ex := execute.NewModelChecker()
 	ex.LoadModel(smt, uncertains, unknowns)
 	ok, err := ex.Check()
 	if err != nil {
@@ -89,7 +89,7 @@ func run(filepath string, mode string, input string) {
 	filepath = util.Filepath(filepath)
 	uncertains := make(map[string][]float64)
 	unknowns := []string{}
-
+	
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		log.Fatal(err)
@@ -103,8 +103,6 @@ func run(filepath string, mode string, input string) {
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
-		uncertains = lstnr.Uncertains
-		unknowns = lstnr.Unknowns
 
 		if mode == "ast" {
 			fmt.Println(lstnr.AST)
@@ -127,7 +125,7 @@ func run(filepath string, mode string, input string) {
 		}
 
 		mc, data := probability(generator.SMT(), uncertains, unknowns)
-		mc.LoadMeta(generator.Branches, generator.BranchTrail)
+		mc.LoadMeta(generator.GetForks())
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "ll":
@@ -138,7 +136,7 @@ func run(filepath string, mode string, input string) {
 		}
 
 		mc, data := probability(generator.SMT(), uncertains, unknowns)
-		mc.LoadMeta(generator.Branches, generator.BranchTrail)
+		mc.LoadMeta(generator.GetForks())
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "smt2":

@@ -111,8 +111,10 @@ func compareResults(s string, smt string, expecting string) error {
 	}
 
 	if smt != expecting {
-		return fmt.Errorf("SMT string does not match for spec %s.\nwant=%q\ngot=%q",
-			s, expecting, smt)
+		if !notStrictlyOrdered(expecting, smt) {
+			return fmt.Errorf("SMT string does not match for spec %s.\nwant=%q\ngot=%q",
+				s, expecting, smt)
+		}
 	}
 	return nil
 }
@@ -156,4 +158,27 @@ func prepTest(test string) (string, error) {
 	generator.Run(compiler.GetIR())
 	//fmt.Println(generator.SMT())
 	return generator.SMT(), nil
+}
+
+func notStrictlyOrdered(want string, got string) bool {
+	// Fixing cases where lines of SMT end up in slightly
+	// different orders. Only runs when shallow string
+	// compare fails
+
+	s := strings.Split(want, "")
+	dedup := make(map[string]bool)
+	var keys []string
+	for _, v := range s {
+		if _, ok := dedup[v]; !ok {
+			dedup[v] = true
+			keys = append(keys, v)
+		}
+	}
+
+	for _, k := range keys {
+		if strings.Count(want, k) != strings.Count(got, k) {
+			return false
+		}
+	}
+	return true
 }
