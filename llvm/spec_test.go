@@ -1,7 +1,6 @@
 package llvm
 
 import (
-	"fault/ast"
 	"fault/llvm/name"
 	"strings"
 	"testing"
@@ -9,6 +8,7 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
+	irtypes "github.com/llir/llvm/ir/types"
 )
 
 func TestDefineSpecVar(t *testing.T) {
@@ -81,7 +81,7 @@ func TestSpecTypes(t *testing.T) {
 	s := initSpec(id)
 
 	fvn := strings.Join(id, "_")
-	s.DefineSpecType(fvn, ast.Type{})
+	s.DefineSpecType(id, irtypes.I32)
 
 	if _, ok := s.GetSpecType(fvn, true); !ok {
 		t.Fatal("spec var this.func is missing type")

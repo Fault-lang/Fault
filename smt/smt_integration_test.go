@@ -18,11 +18,13 @@ func TestTestData(t *testing.T) {
 	specs := []string{"testdata/bathtub.fspec",
 		"testdata/simple.fspec",
 		"testdata/bathtub2.fspec",
+		"testdata/booleans.fspec",
 		//"testdata/unknowns.fspec",
 	}
 	smt2s := []string{"testdata/bathtub.smt2",
 		"testdata/simple.smt2",
 		"testdata/bathtub2.smt2",
+		"testdata/booleans.smt2",
 		//"testdata/unknowns.smt2",
 	}
 	for i, s := range specs {
@@ -37,7 +39,7 @@ func TestTestData(t *testing.T) {
 		smt, err := prepTest(string(data))
 
 		if err != nil {
-			t.Fatalf("compilation failed on valid spec. got=%s", err)
+			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
 		}
 
 		err = compareResults(s, smt, string(expecting))
@@ -61,7 +63,7 @@ func TestIndividual(t *testing.T) {
 	smt, err := prepTest(string(data))
 
 	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
+		t.Fatalf("compilation failed on valid spec testdata/unknowns.fspec. got=%s", err)
 	}
 
 	err = compareResults("testdata/unknowns.fspec", smt, string(expecting))
@@ -84,7 +86,7 @@ func TestMultiCond(t *testing.T) {
 	smt, err := prepTest(string(data))
 
 	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
+		t.Fatalf("compilation failed on valid spec testdata/multicond.fspec. got=%s", err)
 	}
 
 	// Order of statements is not deterministic for some reason.

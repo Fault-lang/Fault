@@ -28,7 +28,6 @@ func (g *Generator) writeBranchRule(r *infix) string {
 	y := g.unpackRule(r.y)
 	x := g.unpackRule(r.x)
 
-	//g.declareVar(x, r.ty)
 	return fmt.Sprintf("(%s %s %s)", r.op, x, y)
 }
 
@@ -46,9 +45,10 @@ func (g *Generator) writeRule(ru rule) string {
 		if r.op != "" && r.op != "=" {
 			return g.writeInfix(x, y, r.op)
 		}
+
 		return g.writeInitRule(x, r.ty, y)
 	case *ite:
-		cond := g.writeRule(r.cond)
+		cond := g.writeCond(r.cond.(*infix))
 		var tRule, fRule string
 		var tEnds, fEnds []string
 		for _, t := range r.t {
@@ -78,6 +78,13 @@ func (g *Generator) writeRule(ru rule) string {
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
+}
+
+func (g *Generator) writeCond(r *infix) string {
+	y := g.unpackRule(r.y)
+	x := g.unpackRule(r.x)
+
+	return g.writeInfix(x, y, r.op)
 }
 
 func (g *Generator) unpackRule(x rule) string {

@@ -56,6 +56,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#PropString.
 	VisitPropString(ctx *PropStringContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropBool.
+	VisitPropBool(ctx *PropBoolContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#PropFunc.
 	VisitPropFunc(ctx *PropFuncContext) interface{}
 

@@ -72,6 +72,10 @@ func (v *BaseFaultParserVisitor) VisitPropString(ctx *PropStringContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitPropBool(ctx *PropBoolContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitPropFunc(ctx *PropFuncContext) interface{} {
 	return v.VisitChildren(ctx)
 }

@@ -56,6 +56,9 @@ type FaultParserListener interface {
 	// EnterPropString is called when entering the PropString production.
 	EnterPropString(c *PropStringContext)
 
+	// EnterPropBool is called when entering the PropBool production.
+	EnterPropBool(c *PropBoolContext)
+
 	// EnterPropFunc is called when entering the PropFunc production.
 	EnterPropFunc(c *PropFuncContext)
 
@@ -241,6 +244,9 @@ type FaultParserListener interface {
 
 	// ExitPropString is called when exiting the PropString production.
 	ExitPropString(c *PropStringContext)
+
+	// ExitPropBool is called when exiting the PropBool production.
+	ExitPropBool(c *PropBoolContext)
 
 	// ExitPropFunc is called when exiting the PropFunc production.
 	ExitPropFunc(c *PropFuncContext)

@@ -68,6 +68,7 @@ structType
 structProperties
     : IDENT ':' numeric #PropInt 
     | IDENT ':' string_ #PropString
+    | IDENT ':' bool_ #PropBool
     | IDENT ':' functionLit #PropFunc
     | IDENT ':' operandName #PropVar
     | IDENT ':' prefix #PropVar

@@ -170,11 +170,12 @@ func (b *branch) String() string {
 func (g *Generator) constantRule(id string, c constant.Constant) string {
 	switch val := c.(type) {
 	case *constant.Float:
+		ty := g.variables.lookupType(id, val)
 		id = g.variables.advanceSSA(id)
 		if g.isASolvable(id) {
-			g.declareVar(id, "Real")
+			g.declareVar(id, ty)
 		} else {
-			return g.writeInitRule(id, "Real", val.String())
+			return g.writeInitRule(id, ty, val.String())
 		}
 	}
 	return ""
@@ -190,7 +191,7 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	if g.variables.isTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
 		if val, ok := g.variables.loads[srcId]; ok {
-			ty := g.getType(val)
+			ty := g.variables.lookupType(srcId, val)
 			n := g.variables.ssa[id]
 			if !g.inPhiState {
 				g.variables.storeLastState(id, n+1)
@@ -209,8 +210,11 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				id = g.variables.advanceSSA(id)
 				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
-				if g.isASolvable(r.x.String()) {
-					rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true}) // Still need to declare the new state
+				if g.variables.isBolean(r.y.String()) {
+					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, declareOnly: true}) // Still need to declare the new state
+					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, op: "="})
+				} else if g.isASolvable(r.x.String()) {
+					rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true})
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r, op: "="})
 				} else {
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
@@ -220,15 +224,16 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				if !g.inPhiState {
 					g.variables.storeLastState(id, n+1)
 				}
+				ty := g.variables.lookupType(id, nil)
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
-				rules = append(rules, &infix{x: wid, ty: "Real", y: r})
+				rules = append(rules, &infix{x: wid, ty: ty, y: r})
 			}
 		} else {
 			panic(fmt.Sprintf("smt generation error, value for %s not found", id))
 		}
 	} else {
-		ty := g.getType(inst.Src)
+		ty := g.variables.lookupType(id, inst.Src)
 		n := g.variables.ssa[id]
 		if !g.inPhiState {
 			g.variables.storeLastState(id, n+1)

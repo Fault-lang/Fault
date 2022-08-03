@@ -234,23 +234,3 @@ func TestBranchType(t *testing.T) {
 		t.Fatalf("assrt String() failed got=%s", b.String())
 	}
 }
-
-// func TestFilterOutTempStates(t *testing.T) {
-// 	g := NewGenerator()
-// 	g.tempStates["test"] = []int{2, 3, 4}
-// 	t1 := g.filterOutTempStates("test", 2)
-// 	if !t1 {
-// 		t.Fatalf("Temp state test_2 not filtered out")
-// 	}
-
-// 	t2 := g.filterOutTempStates("test", 1)
-// 	if t2 {
-// 		t.Fatalf("Temp state test_1 not filtered out")
-// 	}
-
-// 	t3 := g.filterOutTempStates("test", 3)
-// 	if !t3 {
-// 		t.Fatalf("Temp state test_1 not filtered out")
-// 	}
-
-// }
