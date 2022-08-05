@@ -1,27 +1,25 @@
 package llvm
 
 import (
-	"fault/ast"
 	"fault/llvm/variables"
 	"fmt"
 	"unicode"
 
 	"github.com/llir/llvm/ir"
+	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
 
 // Representation of a spec
 type spec struct {
-	name  string
-	types map[string]ast.Type
-	vars  *variables.LookupTable
+	name string
+	vars *variables.LookupTable
 }
 
 func NewCompiledSpec(name string) *spec {
 	return &spec{
-		name:  name,
-		types: make(map[string]ast.Type),
-		vars:  variables.NewTable(),
+		name: name,
+		vars: variables.NewTable(),
 	}
 }
 
@@ -53,15 +51,18 @@ func (s *spec) AddParam(id []string, p value.Value) {
 	s.vars.AddParam(id, p)
 }
 
-func (s *spec) DefineSpecType(name string, ty ast.Type) {
-	s.types[name] = ty
+func (s *spec) DefineSpecType(id []string, ty irtypes.Type) {
+	s.vars.Type(id, ty)
 }
 
-func (s *spec) GetSpecType(name string, inSamePackage bool) (ast.Type, bool) {
+func (s *spec) GetSpecType(name string, inSamePackage bool) (irtypes.Type, bool) {
 	if unicode.IsLower([]rune(name)[0]) && !inSamePackage {
 		panic(fmt.Sprintf("Can't use %s from outside of %s", name, s.name))
 	}
 
-	v, ok := s.types[name]
-	return v, ok
+	ty := s.vars.GetType(name)
+	if ty != nil {
+		return ty, true
+	}
+	return nil, false
 }

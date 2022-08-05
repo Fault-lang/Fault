@@ -862,6 +862,81 @@ func TestString(t *testing.T) {
 
 }
 
+func TestFloatPara(t *testing.T) {
+	test := `spec test1;
+			def st = stock{
+				value: 3.0,
+			};
+	`
+	checker, err := prepTest(test)
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	val := checker.SpecStructs["test1"].Get("st", "value")
+
+	if val.(*ast.FloatLiteral).InferredType.Type != "FLOAT" {
+		t.Fatalf("Variable a does not have a float type. got=%s", val.(*ast.Boolean).InferredType.Type)
+	}
+
+}
+
+func TestIntPara(t *testing.T) {
+	test := `spec test1;
+			def st = stock{
+				value: 3,
+			};
+	`
+	checker, err := prepTest(test)
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	val := checker.SpecStructs["test1"].Get("st", "value")
+
+	if val.(*ast.IntegerLiteral).InferredType.Type != "INT" {
+		t.Fatalf("Variable a does not have a int type. got=%s", val.(*ast.Boolean).InferredType.Type)
+	}
+
+}
+func TestBooleanPara(t *testing.T) {
+	test := `spec test1;
+			def st = stock{
+				value: true,
+			};
+	`
+	checker, err := prepTest(test)
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+	val := checker.SpecStructs["test1"].Get("st", "value")
+
+	if val.(*ast.Boolean).InferredType.Type != "BOOL" {
+		t.Fatalf("Variable a does not have a bool type. got=%s", val.(*ast.Boolean).InferredType.Type)
+	}
+
+}
+
+func TestTempValues(t *testing.T) {
+	test := `spec test1;
+			def fl = flow{
+				value: func{
+					x = 4;
+				},
+			};
+	`
+	_, err := prepTest(test)
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+}
+
 // Infix, Prefix, ... what other types of expressions?
 // Type check init matches expression type. init cannot be an uncertain. Uncertains are immutable... can only be declared as constants?
 // check float + float returns a the larger scope

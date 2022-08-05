@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/llir/llvm/ir"
+	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
 
@@ -13,6 +14,7 @@ type LookupTable struct {
 	pointers *Pointers
 	values   map[string][]value.Value
 	params   map[string][]value.Value
+	types    map[string]irtypes.Type
 }
 
 func NewTable() *LookupTable {
@@ -21,6 +23,7 @@ func NewTable() *LookupTable {
 		pointers: NewPointers(),
 		values:   make(map[string][]value.Value),
 		params:   make(map[string][]value.Value),
+		types:    make(map[string]irtypes.Type),
 	}
 	return l
 }
@@ -96,4 +99,13 @@ func (l *LookupTable) Update(id []string, val value.Value) {
 	ident := strings.Join(id, "_")
 	l.values[ident] = append(l.values[ident], val)
 	l.state[ident] = l.state[ident] + 1
+}
+
+func (l *LookupTable) Type(id []string, ty irtypes.Type) {
+	ident := strings.Join(id, "_")
+	l.types[ident] = ty
+}
+
+func (l *LookupTable) GetType(name string) irtypes.Type {
+	return l.types[name]
 }

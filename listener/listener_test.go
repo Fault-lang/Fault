@@ -46,6 +46,26 @@ func TestConstDecl(t *testing.T) {
 	}
 }
 
+func TestBoolean(t *testing.T) {
+	test := `spec test1;
+			 const x = false;
+			`
+	_, spec := prepTest(test, nil)
+
+	if spec == nil {
+		t.Fatalf("prepTest() returned nil")
+	}
+	if len(spec.Statements) != 2 {
+		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
+	}
+	if spec.Statements[1].TokenLiteral() != "CONST_DECL" {
+		t.Fatalf("spec.Statement[1] is not CONST_DECL. got=%s", spec.Statements[1].TokenLiteral())
+	}
+	if _, ok := spec.Statements[1].(*ast.ConstantStatement).Value.(*ast.Boolean); !ok {
+		t.Fatalf("Constant is not a Boolean. got=%T", spec.Statements[1].(*ast.ConstantStatement).Value)
+	}
+}
+
 func TestConstMultiDecl(t *testing.T) {
 	test := `spec test1;
 			 const x,y = 5;

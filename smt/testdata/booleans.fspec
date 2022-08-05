@@ -1,0 +1,21 @@
+spec booleans;
+
+def st = stock{
+    value: true,
+};
+
+def fl = flow{
+    vault: new st,
+    fn: func{
+        if vault.value {
+            vault.value = false;
+        }else{
+            vault.value = true;
+        }
+    },
+};
+
+for 1 run {
+    l = new fl;
+    l.fn;
+}

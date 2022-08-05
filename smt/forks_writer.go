@@ -14,9 +14,9 @@ type Fork map[string][]*Choice
 
 func GetForkEndPoints(c []*Choice) []int16 {
 	var ends []int16
-	for _, v := range c{
+	for _, v := range c {
 		e := v.Values[len(v.Values)-1]
-		ends = append(ends,e)
+		ends = append(ends, e)
 	}
 	return ends
 }
@@ -69,6 +69,9 @@ func (g *Generator) buildForkChoice(rules []rule, b string) {
 
 	seenVar := make(map[string]bool)
 	for _, s := range stateChanges {
+		if g.variables.isBolean(s) || g.variables.isNumeric(s) {
+			continue
+		}
 		base, i := g.variables.getVarBase(s)
 		n := int16(i)
 		// Have we seen this variable in a previous branch of
@@ -202,7 +205,7 @@ func (g *Generator) capParallel() []string {
 	var rules []string
 	for k, v := range fork {
 		id := g.variables.advanceSSA(k)
-		g.declareVar(id, "Real")
+		g.declareVar(id, g.variables.lookupType(k, nil))
 
 		var nums []int16
 		for _, c := range v {
@@ -225,13 +228,23 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rule {
 	var e []rule
 	for _, v := range nums {
 		id2 := fmt.Sprint(k, "_", v)
-		r := &infix{
-			x:  &wrap{value: id},
-			y:  &wrap{value: id2},
-			op: "=",
-			ty: "Real",
+		if g.variables.isBolean(id2) {
+			r := &infix{
+				x:  &wrap{value: id},
+				y:  &wrap{value: id2},
+				op: "=",
+				ty: "Bool",
+			}
+			e = append(e, r)
+		} else {
+			r := &infix{
+				x:  &wrap{value: id},
+				y:  &wrap{value: id2},
+				op: "=",
+				ty: "Real",
+			}
+			e = append(e, r)
 		}
-		e = append(e, r)
 	}
 	return e
 }
@@ -247,7 +260,7 @@ func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[strin
 		var id string
 		if phi, ok := phis[k]; !ok {
 			id = g.variables.advanceSSA(k)
-			g.declareVar(id, "Real")
+			g.declareVar(id, g.variables.lookupType(k, nil))
 			phis[k] = id
 		} else {
 			id = phi

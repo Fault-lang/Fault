@@ -272,6 +272,19 @@ func (l *FaultListener) ExitPropInt(c *parser.PropIntContext) {
 	l.push(val)
 }
 
+func (l *FaultListener) ExitPropBool(c *parser.PropBoolContext) {
+	val := l.pop()
+	token := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	l.push(&ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	})
+
+	l.push(val)
+}
+
 func (l *FaultListener) ExitPropString(c *parser.PropStringContext) {
 	val := l.pop()
 

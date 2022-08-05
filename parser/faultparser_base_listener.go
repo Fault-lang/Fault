@@ -117,6 +117,12 @@ func (s *BaseFaultParserListener) EnterPropString(ctx *PropStringContext) {}
 // ExitPropString is called when production PropString is exited.
 func (s *BaseFaultParserListener) ExitPropString(ctx *PropStringContext) {}
 
+// EnterPropBool is called when production PropBool is entered.
+func (s *BaseFaultParserListener) EnterPropBool(ctx *PropBoolContext) {}
+
+// ExitPropBool is called when production PropBool is exited.
+func (s *BaseFaultParserListener) ExitPropBool(ctx *PropBoolContext) {}
+
 // EnterPropFunc is called when production PropFunc is entered.
 func (s *BaseFaultParserListener) EnterPropFunc(ctx *PropFuncContext) {}
 

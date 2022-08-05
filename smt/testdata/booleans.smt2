@@ -1,0 +1,11 @@
+(declare-fun booleans_l_vault_value_0 () Bool)
+(declare-fun booleans_l_vault_value_3 () Bool)
+(declare-fun booleans_l_vault_value_1 () Bool)
+(declare-fun booleans_l_vault_value_2 () Bool)
+(assert (= booleans_l_vault_value_0 true))
+(assert (= booleans_l_vault_value_1 false))
+(assert (= booleans_l_vault_value_2 true))
+(assert (ite
+    (= booleans_l_vault_value_0 true)
+    (= booleans_l_vault_value_3 booleans_l_vault_value_1)
+    (= booleans_l_vault_value_3 booleans_l_vault_value_2)))

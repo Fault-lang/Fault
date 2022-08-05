@@ -24,6 +24,26 @@ func (c *Compiler) getVariableName(id []string) string {
 	return strings.Join(id, "_")
 }
 
+func (c *Compiler) getVariableType(name string) irtypes.Type {
+	return c.currentSpec.vars.GetType(name)
+}
+
+func (c *Compiler) getPointerType(name string) irtypes.Type {
+	ty := c.currentSpec.vars.GetType(name)
+	if ty != nil {
+		switch ty {
+		case irtypes.Double:
+			return DoubleP
+		case irtypes.I1:
+			return I1P
+		default:
+			fmt.Printf("problem here %T", ty)
+		}
+	}
+	fmt.Printf("no type found for %s", name)
+	return DoubleP
+}
+
 func (c *Compiler) updateVariableStateName(id []string) string {
 	id, s := c.GetSpec(id)
 	if len(id) == 2 { // This is a constant, doesn't change
@@ -75,6 +95,10 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFRem:
 		alloc = c.contextBlock.NewAlloca(irtypes.Double)
+		alloc.SetName(name)
+		store = c.contextBlock.NewStore(v, alloc)
+	case *ir.InstICmp: //Needed for if true {} constructions
+		alloc = c.contextBlock.NewAlloca(irtypes.I1)
 		alloc.SetName(name)
 		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.InstFCmp:
@@ -129,6 +153,8 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 	case *ir.InstFDiv:
 		c.allocVariable(id, val, pos)
 	case *ir.InstFRem:
+		c.allocVariable(id, val, pos)
+	case *ir.InstICmp:
 		c.allocVariable(id, val, pos)
 	case *ir.InstFCmp:
 		c.allocVariable(id, val, pos)

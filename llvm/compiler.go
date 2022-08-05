@@ -25,6 +25,7 @@ import (
 // Gustav Westling <gustav@westling.xyz>
 
 var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
+var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
 
 var OP_NEGATE = map[string]string{
 	"==": "!=",
@@ -215,6 +216,10 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	pos := node.Position()
 	switch node.Operator {
 	case "=": // Used to store temporary local values
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		r := c.compileValue(node.Right)
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			var fvn []string
@@ -234,12 +239,17 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			}
 			id, s := c.GetSpec(fvn)
 			s.DefineSpecVar(id, r)
+			s.DefineSpecType(id, r.Type())
 			if c.alloc {
 				c.allocVariable(id, r, node.Left.Position())
 			}
 		}
 		return nil
 	case "<-":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		r := c.compileValue(node.Right)
 		n, ok := node.Left.(*ast.ParameterCall)
 		if !ok {
@@ -262,70 +272,120 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		c.contextBlock.NewStore(r, pointer)
 		return nil
 	case "+":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		add := c.contextBlock.NewFAdd(l, r)
 		return add
 	case "-":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		sub := c.contextBlock.NewFSub(l, r)
 		return sub
 	case "*":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		mul := c.contextBlock.NewFMul(l, r)
 		return mul
 	case "/":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		div := c.contextBlock.NewFDiv(l, r)
 		return div
 	case "%":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		rem := c.contextBlock.NewFRem(l, r)
 		return rem
 	case ">":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 		ogt := c.contextBlock.NewFCmp(enum.FPredOGT, l, r)
 		return ogt
 	case ">=":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		oge := c.contextBlock.NewFCmp(enum.FPredOGE, l, r)
 		return oge
 	case "<":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		olt := c.contextBlock.NewFCmp(enum.FPredOLT, l, r)
 		return olt
 	case "<=":
+		if !c.validOperator(node, false) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
 		ole := c.contextBlock.NewFCmp(enum.FPredOLE, l, r)
 		return ole
 	case "==":
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
-		oeq := c.contextBlock.NewFCmp(enum.FPredOEQ, l, r)
-		return oeq
+		if node.Right.Type() == "BOOL" {
+			return c.contextBlock.NewICmp(enum.IPredEQ, l, r)
+		} else {
+			return c.contextBlock.NewFCmp(enum.FPredOEQ, l, r)
+		}
 	case "!=":
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
 		l := c.compilerInfixNode(node.Left)
 		r := c.compilerInfixNode(node.Right)
 
-		one := c.contextBlock.NewFCmp(enum.FPredONE, l, r)
-		return one
+		if node.Right.Type() == "BOOL" {
+			return c.contextBlock.NewICmp(enum.IPredNE, l, r)
+		} else {
+			return c.contextBlock.NewFCmp(enum.FPredONE, l, r)
+		}
 	default:
 		panic(fmt.Sprintf("unknown operator %s. line: %d, col: %d", node.Operator, pos[0], pos[1]))
 	}
@@ -597,10 +657,12 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 			val := c.compileValue(c.specStructs[base.Value.Spec][structName][k])
 			id, s := c.GetSpec(id)
 			s.DefineSpecVar(id, val)
+			s.DefineSpecType(id, val.Type())
 			c.allocVariable(id, val, pos)
 			s.vars.ResetState(id)
 			name := c.getVariableName(id)
-			p := ir.NewParam(name, DoubleP)
+			ty := c.getPointerType(name)
+			p := ir.NewParam(name, ty)
 			s.AddParam(id, p)
 
 		}
@@ -625,7 +687,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 }
 
 func (c *Compiler) compileIf(n *ast.IfExpression) {
-	cond := c.compileValue(n.Condition)
+	cond := c.compileConditional(n.Condition)
 
 	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
 	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-true")
@@ -666,6 +728,57 @@ func (c *Compiler) compileIf(n *ast.IfExpression) {
 	if len(c.contextCondAfter) > 0 {
 		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
 	}
+}
+
+func (c *Compiler) compileConditional(n ast.Node) value.Value {
+	// Reformat the conditional clause to accept
+	// things like if a {} or if !a {} and replace them
+	// with a == true or a == false
+	switch conditional := n.(type) {
+	case *ast.InfixExpression:
+		return c.compileValue(conditional)
+	case *ast.PrefixExpression:
+		if conditional.Operator == "!" {
+			right := &ast.Boolean{
+				Token:        conditional.Token,
+				InferredType: conditional.InferredType,
+				Value:        false,
+			}
+			n := &ast.InfixExpression{Token: conditional.Token,
+				InferredType: conditional.InferredType,
+				Left:         conditional.Right,
+				Operator:     "==",
+				Right:        right}
+			return c.compileValue(n)
+		} else {
+			panic("invalid conditional statement in if")
+		}
+	case *ast.Identifier:
+		right := &ast.Boolean{
+			Token:        conditional.Token,
+			InferredType: conditional.InferredType,
+			Value:        true,
+		}
+		n := &ast.InfixExpression{Token: conditional.Token,
+			InferredType: conditional.InferredType,
+			Left:         conditional,
+			Operator:     "==",
+			Right:        right}
+		return c.compileValue(n)
+	case *ast.ParameterCall:
+		right := &ast.Boolean{
+			Token:        conditional.Token,
+			InferredType: conditional.InferredType,
+			Value:        true,
+		}
+		n := &ast.InfixExpression{Token: conditional.Token,
+			InferredType: conditional.InferredType,
+			Left:         conditional,
+			Operator:     "==",
+			Right:        right}
+		return c.compileValue(n)
+	}
+	return c.compileValue(n)
 }
 
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
@@ -721,8 +834,10 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			//name := c.getVariableStateName(id)
 			name := c.getVariableName(id)
 			pointer := s.GetSpecVarPointer(name)
-			c.contextBlock.NewLoad(irtypes.Double, pointer)
+			ty := c.getVariableType(name)
+			c.contextBlock.NewLoad(ty, pointer)
 		} else {
+			s.DefineSpecType(id, val.Type())
 			s.DefineSpecVar(id, val)
 			c.allocVariable(id, val, pc.Position())
 		}
@@ -812,6 +927,7 @@ func (c *Compiler) setConst(id []string, val value.Value) {
 		panic(fmt.Sprintf("variable %s is a constant and cannot be reassigned", fid))
 	}
 	c.specs[c.currentSpecName].DefineSpecVar(id, val)
+	c.specs[c.currentSpecName].DefineSpecType(id, val.Type())
 }
 
 func (c *Compiler) isVarSet(id []string) bool {
@@ -848,6 +964,13 @@ func (c *Compiler) isFunction(node ast.Node) bool {
 	}
 }
 
+func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) bool {
+	if !boolsAllowed && (node.Left.Type() == "BOOL" || node.Right.Type() == "BOOL") {
+		return false
+	}
+	return true
+}
+
 func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*ir.Param {
 	var p []*ir.Param
 	keys := c.generateOrder(data)
@@ -865,7 +988,8 @@ func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*
 			if !c.isFunction(n) {
 				pid := append(id, k)
 				name := c.getVariableName(c.getFullVariableName(pid))
-				p = append(p, ir.NewParam(name, DoubleP))
+				ty := c.getPointerType(name)
+				p = append(p, ir.NewParam(name, ty))
 			}
 		}
 	}
@@ -967,7 +1091,8 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 		//name = c.getVariableStateName(id)
 		name = c.getVariableName(id)
 		pointer := s.GetSpecVarPointer(name)
-		load := c.contextBlock.NewLoad(irtypes.Double, pointer)
+		ty := c.getVariableType(name)
+		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
 	} else {
 
@@ -981,7 +1106,8 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 
 	}
 	pointer := c.specGlobals[name]
-	load := c.contextBlock.NewLoad(irtypes.Double, pointer)
+	ty := c.getVariableType(name)
+	load := c.contextBlock.NewLoad(ty, pointer)
 	return load
 }
 

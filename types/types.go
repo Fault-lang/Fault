@@ -378,6 +378,7 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 	if spec, ok := c.SpecStructs[id[0]]; ok {
 		if len(id) == 3 {
 			n, err := c.pass2(spec[id[1]][id[2]], p)
+			c.SpecStructs[id[0]][id[1]][id[2]] = n
 			return typeable(n), err
 		}
 	}
@@ -397,10 +398,12 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 					return nil, fmt.Errorf("struct %s missing property, line:%d, col:%d", id[0], pos[0], pos[1])
 				}
 				n, err := c.pass2(c.SpecStructs[ty.Value.Spec][structIdent][id[1]], p)
+				c.SpecStructs[ty.Value.Spec][structIdent][id[1]] = n
 				return typeable(n), err
 			}
 		default:
 			n, err := c.pass2(s, p)
+			s = n
 			return typeable(n), err
 		}
 
@@ -422,7 +425,9 @@ func (c *Checker) lookupType(node ast.Node, p map[string]ast.Node) (*ast.Type, e
 func (c *Checker) complexInstances(base ast.Node, id []string, p map[string]ast.Node) (ast.Node, error) {
 	b, ok := base.(*ast.Instance)
 	if !ok {
-		return c.pass2(base, p)
+		n, err := c.pass2(base, p)
+		base = n
+		return base, err
 	}
 	switch len(id) {
 	case 1: //Do nothing, keep id as is
@@ -688,6 +693,14 @@ func (c *Checker) calculateBase(s string) int32 {
 }
 
 func typeAdju(left *ast.Type, right *ast.Type, op string) (*ast.Type, error) {
+	if op == "=" && left == nil { //Allow variables local to functions
+		return right, nil
+	} else if op == "=" && right.Type == left.Type { // Allow functions to change variables
+		return right, nil
+	} else if op == "=" && right.Type != left.Type { // ...as long as they're the same type
+		return nil, fmt.Errorf("cannot assign value of type %s to variable declared type %s", left.Type, right.Type)
+	}
+
 	if !COMPARE[op] && (left.Type == "BOOL" || right.Type == "BOOL") {
 		return nil, fmt.Errorf("invalid expression: got=%s %s %s", left.Type, op, right.Type)
 	}

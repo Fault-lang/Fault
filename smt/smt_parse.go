@@ -25,6 +25,9 @@ func (g *Generator) parseFunction(f *ir.Func) []rule {
 					if v, ok := g.variables.ref[id]; ok {
 						r1[len(r1)-1].(*ite).cond = g.parseCond(v)
 					}
+				} else if g.variables.isBolean(id) ||
+					g.variables.isNumeric(id) {
+					r1[len(r1)-1].(*ite).cond = &wrap{value: id}
 				}
 
 				g.inPhiState = false
@@ -89,11 +92,29 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			}
 
 			rules = append(rules, r)
+		case *ir.InstICmp:
+			var r rule
+			op, y := g.parseCompare(inst.Pred.String())
+			if op == "true" || op == "false" {
+				r = g.parseInfix(inst.Ident(),
+					inst.X.Ident(), y.(*wrap).value, op)
+			} else {
+				r = g.parseInfix(inst.Ident(),
+					inst.X.Ident(), inst.Y.Ident(), op)
+			}
+
+			id := inst.Ident()
+			if g.variables.isTemp(id) {
+				g.variables.ref[id] = r
+				return rules
+			}
+
+			rules = append(rules, r)
 		case *ir.InstCall:
 			callee := g.callRule(inst)
 			g.callstack[g.call] = append(g.callstack[g.call], callee)
 		default:
-			panic(fmt.Sprintf("unrecognized instruction: %s", inst))
+			panic(fmt.Sprintf("unrecognized instruction: %T", inst))
 
 		}
 	}
@@ -209,6 +230,8 @@ func (g *Generator) parseCompareOp(op string) string {
 		return "false"
 	case "oeq":
 		return "="
+	case "eq":
+		return "="
 	case "oge":
 		return ">="
 	case "ogt":
@@ -218,6 +241,8 @@ func (g *Generator) parseCompareOp(op string) string {
 	case "olt":
 		return "<"
 	case "one":
+		return "!="
+	case "ne":
 		return "!="
 	case "true":
 		return "true"

@@ -75,7 +75,7 @@ jobs:
           name: Mutate and take over the world
           command: | # Don't test the fuzzer or main.go, for the time being skip execute because it needs to be rewritten
             mkdir -p /tmp/test-mutate-reports
-            go-mutesting $(go list ./... | grep -v fault/execute | grep -v fault/parser | grep -v "^fault$" | circleci tests split) --fail-only --score=.6
+            go-mutesting $(go list ./... | grep -v fault/execute | grep -v fault/parser | grep -v "^fault$" | circleci tests split) --fail-only --score=.55
       - store_test_results:
           path: /tmp/test-mutate-reports
 

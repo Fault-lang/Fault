@@ -14,6 +14,7 @@ type variables struct {
 	ref   map[string]rule
 	loads map[string]value.Value
 	phis  map[string]int16
+	types map[string]string
 }
 
 func NewVariables() *variables {
@@ -22,6 +23,7 @@ func NewVariables() *variables {
 		ref:   make(map[string]rule),
 		loads: make(map[string]value.Value),
 		phis:  make(map[string]int16),
+		types: make(map[string]string),
 	}
 }
 
@@ -46,6 +48,13 @@ func (g *variables) isNumeric(char string) bool {
 	return false
 }
 
+func (g *variables) isBolean(id string) bool {
+	if id == "true" || id == "false" {
+		return true
+	}
+	return false
+}
+
 func (g *Generator) isASolvable(id string) bool {
 	id, _ = g.variables.getVarBase(id)
 	for _, v := range g.Unknowns {
@@ -61,13 +70,13 @@ func (g *Generator) isASolvable(id string) bool {
 	return false
 }
 
-func (g *Generator) getType(val value.Value) string {
-	switch val.Type().(type) {
-	case *irtypes.FloatType:
-		return "Real"
-	}
-	return ""
-}
+// func (g *Generator) getType(val value.Value) string {
+// 	switch val.Type().(type) {
+// 	case *irtypes.FloatType:
+// 		return "Real"
+// 	}
+// 	return ""
+// }
 
 func (g *variables) convertIdent(val string) string {
 	if g.isTemp(val) {
@@ -127,6 +136,35 @@ func (g *variables) getVarBase(id string) (string, int) {
 		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
 	}
 	return strings.Join(v[0:len(v)-1], "_"), num
+}
+
+func (v *variables) lookupType(id string, value value.Value) string {
+	if cache, ok := v.types[id]; ok { //If we've seen this one before
+		return cache
+	}
+
+	val := v.loads[id]
+	if val == nil { // A backup method
+		switch value.Type().(type) {
+		case *irtypes.FloatType:
+			v.types[id] = "Real"
+			return "Real"
+		case *irtypes.IntType: // LLVM doesn't have a bool type
+			v.types[id] = "Bool" // Just int type with a bitsize 1
+			return "Bool"        // since all Fault numbers are floats,
+		} // ints are probably bools
+	}
+
+	// The preferred method
+	if v.isBolean(val.Ident()) {
+		v.types[id] = "Bool"
+		return "Bool"
+	} else if v.isNumeric(val.Ident()) {
+		v.types[id] = "Real"
+		return "Real"
+	}
+
+	panic(fmt.Sprintf("smt generation error, value for %s not found", id))
 }
 
 func (g *variables) formatValue(val value.Value) string {
