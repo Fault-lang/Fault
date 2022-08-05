@@ -10,17 +10,23 @@ func InitNodes() []Node {
 	pairs := make(map[Expression]Expression)
 	pairs[&Identifier{Token: token, Value: "foo"}] = &IntegerLiteral{Token: token, Value: 3}
 
+	baseType := &Type{Type: "test"}
+	stringType := &Type{Type: "STRING"}
+	//boolType := &Type{Type: "BOOL"}
+	//floatType := &Type{Type: "FLOAT"}
+	intType := &Type{Type: "INT"}
+
 	return []Node{
-		&Spec{Statements: []Statement{&SpecDeclStatement{Token: token, Name: &Identifier{Token: token, Value: "foo"}}}},
-		&SpecDeclStatement{Token: token, Name: &Identifier{Token: token, Value: "foo"}},
-		&ImportStatement{Token: token, Name: &Identifier{Token: token, Value: "bar"}, Path: &StringLiteral{Token: token, Value: "foo/bar/baz"}},
-		&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "fuzz"}, Value: &IntegerLiteral{Token: token, Value: 24}},
-		&DefStatement{Token: token, Name: &Identifier{Token: token, Value: "buzz"}, Value: &IntegerLiteral{Token: token, Value: 3}},
+		&Spec{Statements: []Statement{&SpecDeclStatement{Token: token, Name: &Identifier{InferredType: baseType, Token: token, Value: "foo"}}}},
+		&SpecDeclStatement{Token: token, Name: &Identifier{InferredType: baseType, Token: token, Value: "foo"}},
+		&ImportStatement{Token: token, Name: &Identifier{InferredType: baseType, Token: token, Value: "bar"}, Path: &StringLiteral{InferredType: stringType, Token: token, Value: "foo/bar/baz"}},
+		&ConstantStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "fuzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 24}},
+		&DefStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "buzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 3}},
 		&AssertionStatement{Token: token, Constraints: &InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}}},
 		&AssumptionStatement{Token: token, Constraints: &InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}}},
 		&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Comparison: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		&ForStatement{Token: token, Rounds: &IntegerLiteral{Token: token, Value: 5}, Body: &BlockStatement{}},
-		&Identifier{Token: token, Value: "foo"},
+		&Identifier{InferredType: baseType, Token: token, Value: "foo"},
 		&ParameterCall{Token: token, Value: []string{"foo", "bar"}},
 		&AssertVar{Token: token, Spec: "test", Instances: []string{"foo", "bar"}},
 		&Instance{Token: token, Value: &Identifier{Token: token, Value: "foo"}, Name: "test"},
@@ -168,6 +174,117 @@ func TestString(t *testing.T) {
 		}
 		if got != want {
 			t.Fatalf("String failed for node type %T. got=%s", n, got)
+		}
+	}
+}
+
+func TestTypes(t *testing.T) {
+	var got, want string
+	nodes := InitNodes()
+	for _, n := range nodes {
+		switch t := n.(type) {
+		case *Spec:
+			got = t.Type()
+			want = ""
+		case *SpecDeclStatement:
+			got = t.Type()
+			want = ""
+		case *ImportStatement:
+			got = t.Type()
+			want = ""
+		case *ConstantStatement:
+			got = t.Type()
+			want = "INT"
+		case *DefStatement:
+			got = t.Type()
+			want = "INT"
+		case *AssertionStatement:
+			got = t.Type()
+			want = "INT"
+		case *AssumptionStatement:
+			got = t.Type()
+			want = "INT"
+		case *Invariant:
+			got = t.Type()
+			want = "INT"
+		case *ForStatement:
+			got = t.Type()
+			want = ""
+		case *Identifier:
+			got = t.Type()
+			want = "test"
+		case *ParameterCall:
+			got = t.Type()
+			want = ""
+		case *AssertVar:
+			got = t.Type()
+			want = ""
+		case *Instance:
+			got = t.Type()
+			want = ""
+		case *IntegerLiteral:
+			got = t.Type()
+			want = "INT"
+		case *FloatLiteral:
+			got = t.Type()
+			want = "FLOAT"
+		case *Natural:
+			got = t.Type()
+			want = "NATURAL"
+		case *Uncertain:
+			got = t.Type()
+			want = "UNCERTAIN"
+		case *PrefixExpression:
+			got = t.Type()
+			want = "INT"
+		case *InfixExpression:
+			got = t.Type()
+			want = "INT"
+		case *Boolean:
+			got = t.Type()
+			want = "BOOL"
+		case *This:
+			got = t.Type()
+			want = ""
+		case *Clock:
+			got = t.Type()
+			want = ""
+		case *Nil:
+			got = t.Type()
+			want = ""
+		case *BlockStatement:
+			got = t.Type()
+			want = ""
+		case *ParallelFunctions:
+			got = t.Type()
+			want = ""
+		case *InitExpression:
+			got = t.Type()
+			want = ""
+		case *IfExpression:
+			got = t.Type()
+			want = ""
+		case *FunctionLiteral:
+			got = t.Type()
+			want = ""
+		case *StringLiteral:
+			got = t.Type()
+			want = "STRING"
+		case *IndexExpression:
+			got = t.Type()
+			want = ""
+		case *StockLiteral:
+			got = t.Type()
+			want = "STOCK"
+		case *FlowLiteral:
+			got = t.Type()
+			want = "FLOW"
+		case *Unknown:
+			got = t.Type()
+			want = "UNKNOWN"
+		}
+		if got != want {
+			t.Fatalf("Type failed for node type %T. got=%s", n, got)
 		}
 	}
 }
