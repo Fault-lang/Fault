@@ -20,7 +20,7 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string) (*listener.FaultListener, *types.Checker) {
+func parse(data string, path string, file string, filetype string) (*listener.FaultListener, *types.Checker) {
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
@@ -38,7 +38,12 @@ func parse(data string, path string, file string) (*listener.FaultListener, *typ
 	// Finally parse the expression
 	lstnr := listener.NewListener(false, false)
 	lstnr.Path = path
-	antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())
+	switch filetype {
+	case "fspec":
+		antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())
+	case "fsystem":
+		antlr.ParseTreeWalkerDefault.Walk(lstnr, p.SysSpec())
+	}
 
 	// Infer Types and Build Symbol Table
 	ty := &types.Checker{}
@@ -86,6 +91,11 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string)
 }
 
 func run(filepath string, mode string, input string) {
+	filetype := util.DetectMode(filepath)
+	if filetype == "" {
+		log.Fatal("file provided is not a .fspec or .fsystem file")
+	}
+
 	filepath = util.Filepath(filepath)
 	uncertains := make(map[string][]float64)
 	unknowns := []string{}
@@ -99,7 +109,7 @@ func run(filepath string, mode string, input string) {
 
 	switch input {
 	case "fspec":
-		lstnr, ty := parse(d, path, filepath)
+		lstnr, ty := parse(d, path, filepath, filetype)
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}

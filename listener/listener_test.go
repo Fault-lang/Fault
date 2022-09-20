@@ -626,10 +626,10 @@ func TestInit(t *testing.T) {
 }
 
 func TestImport(t *testing.T) {
-	test := `spec test1;
+	test := `system test1;
 			 import "hello";
 			`
-	_, spec := prepTest(test, nil)
+	_, spec := prepSysTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -651,10 +651,10 @@ func TestImport(t *testing.T) {
 }
 
 func TestImportWIdent(t *testing.T) {
-	test := `spec test1;
+	test := `system test1;
 			 import helloWorld "../../hello";
 			`
-	_, spec := prepTest(test, nil)
+	_, spec := prepSysTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -676,11 +676,11 @@ func TestImportWIdent(t *testing.T) {
 }
 
 func TestMultiImport(t *testing.T) {
-	test := `spec test1;
+	test := `system test1;
 			 import("hello"
 			         x "world");
 			`
-	_, spec := prepTest(test, nil)
+	_, spec := prepSysTest(test, nil)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -1525,13 +1525,109 @@ func TestUnknown(t *testing.T) {
 	}
 }
 
-/* THINGS TO TEST:
-- check String() in ast does not return Token Literal
-- Could DefStatement be Infix Expressions
-- Check grammar for ?*+ and handle as list of branches
-- Check Position() is declared for all
-- How do Constants works in Go? (Barak)
-*/
+func TestSysSpec(t *testing.T) {
+	test := `system test1;
+
+			import "foo.fspec";
+
+			 def f = component{
+				test: new foo.bar,
+				initial: state{
+					advance(this.next);
+				},
+				next: state{
+					stay();
+				},
+			 };
+
+			
+			for 1 run {
+				car = new f;
+				bot = new foo.bar;
+				car.test = bot;
+			}
+			`
+	_, sys := prepSysTest(test, nil)
+
+	_, ok := sys.Statements[0].(*ast.SysDeclStatement)
+	if !ok {
+		t.Fatalf("sys.Statements[0] is not an SysDeclStatement. got=%T", sys.Statements[1])
+	}
+
+	_, ok2 := sys.Statements[1].(*ast.ImportStatement)
+	if !ok2 {
+		t.Fatalf("sys.Statements[1] is not an ImportStatement. got=%T", sys.Statements[1])
+	}
+
+	component, ok3 := sys.Statements[2].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	if !ok3 {
+		t.Fatalf("sys.Statements[2] is not a ComponentLiteral. got=%T", sys.Statements[2])
+	}
+
+	if len(component.Pairs) != 3 {
+		t.Fatalf("wrong number of component pairs. got=%d", len(component.Pairs))
+	}
+
+	_, ok4 := sys.Statements[3].(*ast.ForStatement)
+	if !ok4 {
+		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])
+	}
+
+}
+
+func TestSysGlobal(t *testing.T) {
+	test := `system test1;
+
+			import "foo.fspec";
+
+			global t = new foo.test;
+			`
+	_, sys := prepSysTest(test, nil)
+
+	global, ok := sys.Statements[2].(*ast.DefStatement).Value.(*ast.Instance)
+	if !ok {
+		t.Fatalf("sys.Statements[2] is not a ComponentLiteral. got=%T", sys.Statements[2])
+	}
+
+	if global.Value.Value != "test" {
+		t.Fatalf("wrong value for global instance. got=%s", global.Value.Value)
+	}
+
+	if global.Value.Spec != "foo" {
+		t.Fatalf("wrong spec value for global instance. got=%s", global.Value.Spec)
+	}
+
+	if global.Name != "t" {
+		t.Fatalf("wrong name for global instance. got=%s", global.Name)
+	}
+
+}
+
+func TestSysStart(t *testing.T) {
+	test := `system test1;
+
+			def test = component{
+				idle: state{},
+				active: state{},
+			};
+
+			def test2 = component{
+				idle: state{},
+				active: state{},
+			};
+
+			start {
+				test:idle,
+				test2:active,
+			};
+			`
+	l, _ := prepSysTest(test, nil)
+
+	if len(l.StartStates) != 2 {
+		t.Fatalf("start block has the wrong number of expressions. got=%d", len(l.StartStates))
+	}
+
+}
 
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	is := antlr.NewInputStream(test)
@@ -1546,5 +1642,21 @@ func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 		listener = NewListener(true, false)
 	}
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
+	return listener, listener.AST
+}
+
+func prepSysTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	var listener *FaultListener
+	if flags != nil && flags["skipRun"] {
+		listener = NewListener(true, true)
+	} else {
+		listener = NewListener(true, false)
+	}
+	antlr.ParseTreeWalkerDefault.Walk(listener, p.SysSpec())
 	return listener, listener.AST
 }

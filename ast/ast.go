@@ -72,8 +72,14 @@ type Expression interface {
 	expressionNode()
 }
 
+type Operand interface {
+	Expression
+	operandNode()
+}
+
 type Spec struct {
 	Statements []Statement
+	Ext        string // Is this a fspec or fsystem?
 }
 
 func (s *Spec) TokenLiteral() string {
@@ -127,6 +133,26 @@ func (sd *SpecDeclStatement) String() string {
 	return out.String()
 }
 func (sd *SpecDeclStatement) Type() string {
+	return ""
+}
+
+type SysDeclStatement struct {
+	Token Token
+	Name  *Identifier
+}
+
+func (sd *SysDeclStatement) statementNode()       {}
+func (sd *SysDeclStatement) TokenLiteral() string { return sd.Token.Literal }
+func (sd *SysDeclStatement) Position() []int      { return sd.Token.Position }
+func (sd *SysDeclStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(sd.TokenLiteral() + " ")
+	out.WriteString(sd.Name.String())
+	out.WriteString(";")
+	return out.String()
+}
+func (sd *SysDeclStatement) Type() string {
 	return ""
 }
 
@@ -346,6 +372,7 @@ type Identifier struct {
 	Value        string
 }
 
+func (i *Identifier) operandNode()         {}
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) Position() []int      { return i.Token.Position }
@@ -365,6 +392,7 @@ type ParameterCall struct {
 	Value        []string
 }
 
+func (p *ParameterCall) operandNode()         {}
 func (p *ParameterCall) expressionNode()      {}
 func (p *ParameterCall) TokenLiteral() string { return p.Token.Literal }
 func (p *ParameterCall) Position() []int      { return p.Token.Position }
@@ -804,6 +832,57 @@ func (fl *FunctionLiteral) String() string {
 }
 func (fl *FunctionLiteral) Type() string { return fl.Body.Type() }
 
+type StateLiteral struct {
+	Token      Token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (sl *StateLiteral) expressionNode()      {}
+func (sl *StateLiteral) TokenLiteral() string { return sl.Token.Literal }
+func (sl *StateLiteral) Position() []int      { return sl.Token.Position }
+func (sl *StateLiteral) String() string {
+	var out bytes.Buffer
+	params := []string{}
+	for _, p := range sl.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(sl.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+	out.WriteString(sl.Body.String())
+
+	return out.String()
+}
+func (sl *StateLiteral) Type() string { return sl.Body.Type() }
+
+type BuiltIn struct {
+	Token      Token
+	Parameters []Operand
+	Function   string
+}
+
+func (b *BuiltIn) expressionNode()      {}
+func (b *BuiltIn) TokenLiteral() string { return b.Token.Literal }
+func (b *BuiltIn) Position() []int      { return b.Token.Position }
+func (b *BuiltIn) String() string {
+	var out bytes.Buffer
+	params := []string{}
+	for _, p := range b.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(b.Function)
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+
+	return out.String()
+}
+func (b *BuiltIn) Type() string { return "builtin" }
+
 type StringLiteral struct {
 	Token        Token
 	InferredType *Type
@@ -897,3 +976,28 @@ func (fl *FlowLiteral) String() string {
 	return out.String()
 }
 func (fl *FlowLiteral) Type() string { return "FLOW" }
+
+type ComponentLiteral struct {
+	Token        Token
+	InferredType *Type
+	Pairs        map[Expression]Expression
+}
+
+func (cl *ComponentLiteral) expressionNode()      {}
+func (cl *ComponentLiteral) TokenLiteral() string { return cl.Token.Literal }
+func (cl *ComponentLiteral) Position() []int      { return cl.Token.Position }
+func (cl *ComponentLiteral) String() string {
+	var out bytes.Buffer
+
+	pairs := []string{}
+	for key, value := range cl.Pairs {
+		pairs = append(pairs, key.String()+":"+value.String())
+	}
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
+
+	return out.String()
+}
+func (cl *ComponentLiteral) Type() string { return "COMPONENT" }

@@ -9,11 +9,15 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* componentDecl* (assertion | assumption)? forStmt? eos
+    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt? eos
     ;
 
 sysClause
     : 'system' IDENT eos
+    ;
+
+globalDecl
+    : 'global' IDENT '=' operand
     ;
 
 componentDecl
@@ -21,9 +25,21 @@ componentDecl
     ;
 
 stateLists
+    : structProperties
+    | stateInit
+    ;
+
+stateInit
     : IDENT ':' 'state' block
     ;
 
+startBlock
+    : 'start' '{' (startPair ',')* '}' eos
+    ;
+
+startPair
+    : IDENT ':' IDENT
+    ;
 /*
     Individual specs of state changes
 */

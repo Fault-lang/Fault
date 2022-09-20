@@ -45,7 +45,9 @@ FALSE: 'false';
 // State Chart Keywords
 ADVANCE: 'advance';
 COMPONENT: 'component';
+GLOBAL: 'global';
 SYSTEM: 'system';
+START: 'start';
 STATE: 'state';
 STAY: 'stay';
 

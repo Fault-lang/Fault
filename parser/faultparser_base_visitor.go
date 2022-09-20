@@ -8,6 +8,38 @@ type BaseFaultParserVisitor struct {
 	*antlr.BaseParseTreeVisitor
 }
 
+func (v *BaseFaultParserVisitor) VisitSysSpec(ctx *SysSpecContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitSysClause(ctx *SysClauseContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitGlobalDecl(ctx *GlobalDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitComponentDecl(ctx *ComponentDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateLists(ctx *StateListsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateInit(ctx *StateInitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStartBlock(ctx *StartBlockContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStartPair(ctx *StartPairContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitSpec(ctx *SpecContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -109,6 +141,10 @@ func (v *BaseFaultParserVisitor) VisitSimpleStmt(ctx *SimpleStmtContext) interfa
 }
 
 func (v *BaseFaultParserVisitor) VisitIncDecStmt(ctx *IncDecStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBuiltins(ctx *BuiltinsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

@@ -8,6 +8,30 @@ import "github.com/antlr/antlr4/runtime/Go/antlr"
 type FaultParserListener interface {
 	antlr.ParseTreeListener
 
+	// EnterSysSpec is called when entering the sysSpec production.
+	EnterSysSpec(c *SysSpecContext)
+
+	// EnterSysClause is called when entering the sysClause production.
+	EnterSysClause(c *SysClauseContext)
+
+	// EnterGlobalDecl is called when entering the globalDecl production.
+	EnterGlobalDecl(c *GlobalDeclContext)
+
+	// EnterComponentDecl is called when entering the componentDecl production.
+	EnterComponentDecl(c *ComponentDeclContext)
+
+	// EnterStateLists is called when entering the stateLists production.
+	EnterStateLists(c *StateListsContext)
+
+	// EnterStateInit is called when entering the stateInit production.
+	EnterStateInit(c *StateInitContext)
+
+	// EnterStartBlock is called when entering the startBlock production.
+	EnterStartBlock(c *StartBlockContext)
+
+	// EnterStartPair is called when entering the startPair production.
+	EnterStartPair(c *StartPairContext)
+
 	// EnterSpec is called when entering the spec production.
 	EnterSpec(c *SpecContext)
 
@@ -85,6 +109,9 @@ type FaultParserListener interface {
 
 	// EnterIncDecStmt is called when entering the incDecStmt production.
 	EnterIncDecStmt(c *IncDecStmtContext)
+
+	// EnterBuiltins is called when entering the builtins production.
+	EnterBuiltins(c *BuiltinsContext)
 
 	// EnterAccessHistory is called when entering the accessHistory production.
 	EnterAccessHistory(c *AccessHistoryContext)
@@ -197,6 +224,30 @@ type FaultParserListener interface {
 	// EnterEos is called when entering the eos production.
 	EnterEos(c *EosContext)
 
+	// ExitSysSpec is called when exiting the sysSpec production.
+	ExitSysSpec(c *SysSpecContext)
+
+	// ExitSysClause is called when exiting the sysClause production.
+	ExitSysClause(c *SysClauseContext)
+
+	// ExitGlobalDecl is called when exiting the globalDecl production.
+	ExitGlobalDecl(c *GlobalDeclContext)
+
+	// ExitComponentDecl is called when exiting the componentDecl production.
+	ExitComponentDecl(c *ComponentDeclContext)
+
+	// ExitStateLists is called when exiting the stateLists production.
+	ExitStateLists(c *StateListsContext)
+
+	// ExitStateInit is called when exiting the stateInit production.
+	ExitStateInit(c *StateInitContext)
+
+	// ExitStartBlock is called when exiting the startBlock production.
+	ExitStartBlock(c *StartBlockContext)
+
+	// ExitStartPair is called when exiting the startPair production.
+	ExitStartPair(c *StartPairContext)
+
 	// ExitSpec is called when exiting the spec production.
 	ExitSpec(c *SpecContext)
 
@@ -274,6 +325,9 @@ type FaultParserListener interface {
 
 	// ExitIncDecStmt is called when exiting the incDecStmt production.
 	ExitIncDecStmt(c *IncDecStmtContext)
+
+	// ExitBuiltins is called when exiting the builtins production.
+	ExitBuiltins(c *BuiltinsContext)
 
 	// ExitAccessHistory is called when exiting the accessHistory production.
 	ExitAccessHistory(c *AccessHistoryContext)

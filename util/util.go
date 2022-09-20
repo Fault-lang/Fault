@@ -3,6 +3,7 @@ package util
 import (
 	"fault/ast"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -210,5 +211,16 @@ func IsCompare(op string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func DetectMode(filename string) string {
+	switch filepath.Ext(filename) {
+	case ".fspec":
+		return "fspec"
+	case ".fsystem":
+		return "fsystem"
+	default:
+		return ""
 	}
 }
