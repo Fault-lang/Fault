@@ -24,14 +24,6 @@ func (v *BaseFaultParserVisitor) VisitComponentDecl(ctx *ComponentDeclContext) i
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitStateLists(ctx *StateListsContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseFaultParserVisitor) VisitStateInit(ctx *StateInitContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseFaultParserVisitor) VisitStartBlock(ctx *StartBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }

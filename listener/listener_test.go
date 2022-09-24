@@ -1530,12 +1530,12 @@ func TestSysSpec(t *testing.T) {
 
 			import "foo.fspec";
 
-			 def f = component{
+			component f = states{
 				test: new foo.bar,
-				initial: state{
+				initial: func{
 					advance(this.next);
 				},
-				next: state{
+				next: func{
 					stay();
 				},
 			 };
@@ -1606,14 +1606,14 @@ func TestSysGlobal(t *testing.T) {
 func TestSysStart(t *testing.T) {
 	test := `system test1;
 
-			def test = component{
-				idle: state{},
-				active: state{},
+			component test = states{
+				idle: func{},
+				active: func{},
 			};
 
-			def test2 = component{
-				idle: state{},
-				active: state{},
+			component test2 = states{
+				idle: func{},
+				active: func{},
 			};
 
 			start {

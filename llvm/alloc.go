@@ -11,9 +11,9 @@ import (
 )
 
 func (c *Compiler) getFullVariableName(id []string) []string {
-	if c.currScope != "" && c.contextFuncName != "__run" &&
-		c.currScope != c.contextFuncName {
-		return append([]string{c.currScope}, id...)
+	if c.currScope[0] != "" && c.contextFuncName != "__run" &&
+		strings.Join(c.currScope,"_") != c.contextFuncName {
+		return append(c.currScope, id...)
 	} else {
 		return id
 	}

@@ -4,19 +4,19 @@ import "simple.fspec";
 
 global flow = new simple.fl;
 
-def drain = component{
-    initial: state{
+component drain = states{
+    initial: func{
         if !flow.active {
             flow.active = true;
             advance(this.open);
         }
     },
-    open: state{
+    open: func{
         if flow.vault.value < 0 {
             advance(this.close);
         }
     },
-    close: state{
+    close: func{
         flow.active = false;
     },
 };

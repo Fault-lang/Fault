@@ -21,16 +21,7 @@ globalDecl
     ;
 
 componentDecl
-    : 'def' IDENT '=' 'component' '{' (stateLists ',')* '}' eos
-    ;
-
-stateLists
-    : structProperties
-    | stateInit
-    ;
-
-stateInit
-    : IDENT ':' 'state' block
+    : 'component' IDENT '=' 'states' '{' (structProperties ',')* '}' eos
     ;
 
 startBlock

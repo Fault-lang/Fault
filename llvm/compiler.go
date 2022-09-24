@@ -48,7 +48,7 @@ type Compiler struct {
 	currentSpec      *spec
 
 	currentSpecName string
-	currScope       string
+	currScope       []string
 
 	specStructs   map[string]types.StockFlow
 	specFunctions map[string]value.Value
@@ -75,6 +75,7 @@ type Compiler struct {
 	Assumes     []*ast.AssumptionStatement
 	Uncertains  map[string][]float64
 	Unknowns    []string
+	Components  map[string]map[string]string
 }
 
 func NewCompiler() *Compiler {
@@ -91,6 +92,7 @@ func NewCompiler() *Compiler {
 		alloc:           true,
 
 		allocatedPointers: make([]map[string]*ir.InstAlloca, 0),
+		currScope:         []string{""},
 
 		contextCondAfter: make([]*ir.Block, 0),
 
@@ -98,6 +100,7 @@ func NewCompiler() *Compiler {
 		runRound:    0,
 
 		Uncertains: make(map[string][]float64),
+		Components: make(map[string]map[string]string),
 	}
 	c.addGlobal()
 	return c
@@ -125,6 +128,7 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 			)
 		}
 	}()
+
 	c.processSpec(root, false)
 	return
 }
@@ -134,12 +138,17 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
 	}
-	decl, ok := specfile.Statements[0].(*ast.SpecDeclStatement)
-	if !ok {
-		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", decl))
+
+	var name string
+	switch decl := specfile.Statements[0].(type) {
+	case *ast.SpecDeclStatement:
+		name = decl.Name.Value
+	case *ast.SysDeclStatement:
+		name = decl.Name.Value
+	default:
+		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	name := decl.Name.Value
 	c.currentSpec = NewCompiledSpec(name)
 	c.currentSpecName = name
 	c.specs[c.currentSpecName] = c.currentSpec
@@ -161,6 +170,8 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 func (c *Compiler) compile(node ast.Node) {
 	switch v := node.(type) {
 	case *ast.SpecDeclStatement:
+		break
+	case *ast.SysDeclStatement:
 		break
 	case *ast.ImportStatement:
 		parent := c.currentSpecName
@@ -206,6 +217,44 @@ func (c *Compiler) compile(node ast.Node) {
 	// IfExpression
 	// IndexExpression <-- Is this still used?
 
+}
+
+func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
+	for k, p := range node.Pairs {
+		var pname string
+		key := k.(*ast.Identifier)
+		scopeName := []string{cname, key.Value}
+
+		oldScope := c.currScope
+		oldBlock := c.contextBlock
+
+		c.contextFuncName = strings.Join(scopeName, "_")
+		c.currScope = scopeName
+
+		switch v := p.(type) {
+		case *ast.StateLiteral:
+			params := []*ir.Param{}
+			//params := c.generateParameters(v.Body, key.Spec)
+			//c.resetParaState(params)
+			f := c.module.NewFunc(key.Value, irtypes.Void, params...)
+			c.contextFunc = f
+			pname = name.Block()
+			c.contextBlock = f.NewBlock(pname)
+			if c.Components[cname] != nil {
+				c.Components[cname][key.Value] = pname
+			} else {
+				c.Components[cname] = map[string]string{key.Value: pname}
+			}
+			val := c.compileBlock(v.Body)
+			c.contextBlock.NewRet(val)
+			c.contextBlock = oldBlock
+			c.contextFuncName = "__run"
+			c.currScope = oldScope
+			c.contextFunc = nil
+		case *ast.Instance:
+			c.compileInstance(v, cname)
+		}
+	}
 }
 
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
@@ -276,8 +325,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		add := c.contextBlock.NewFAdd(l, r)
 		return add
@@ -286,8 +335,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		sub := c.contextBlock.NewFSub(l, r)
 		return sub
@@ -296,8 +345,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		mul := c.contextBlock.NewFMul(l, r)
 		return mul
@@ -306,8 +355,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		div := c.contextBlock.NewFDiv(l, r)
 		return div
@@ -316,8 +365,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		rem := c.contextBlock.NewFRem(l, r)
 		return rem
@@ -326,8 +375,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 		ogt := c.contextBlock.NewFCmp(enum.FPredOGT, l, r)
 		return ogt
 	case ">=":
@@ -335,8 +384,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		oge := c.contextBlock.NewFCmp(enum.FPredOGE, l, r)
 		return oge
@@ -345,8 +394,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		olt := c.contextBlock.NewFCmp(enum.FPredOLT, l, r)
 		return olt
@@ -355,8 +404,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		ole := c.contextBlock.NewFCmp(enum.FPredOLE, l, r)
 		return ole
@@ -365,8 +414,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		if node.Right.Type() == "BOOL" {
 			return c.contextBlock.NewICmp(enum.IPredEQ, l, r)
@@ -378,8 +427,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		if node.Right.Type() == "BOOL" {
 			return c.contextBlock.NewICmp(enum.IPredNE, l, r)
@@ -391,9 +440,12 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	}
 }
 
-func (c *Compiler) compilerInfixNode(node ast.Node) value.Value {
+func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
+		if v.Value[0] == "this" {
+			v.Value[0] = c.currScope[0]
+		}
 		return c.lookupIdent(v.Value, node.Position())
 	default:
 		return c.compileValue(node)
@@ -519,7 +571,12 @@ func (c *Compiler) addGlobal() {
 }
 
 func (c *Compiler) compileStruct(def *ast.DefStatement) {
-	//Not implemented, using preparse from type checker
+	switch def.Type() {
+	case "GLOBAL":
+		c.compileInstance(def.Value.(*ast.Instance), def.Value.(*ast.Instance).Name)
+	case "COMPONENT":
+		c.compileComponent(def.Value.(*ast.ComponentLiteral), def.Name.Value)
+	}
 }
 
 func (c *Compiler) compileAssert(assert ast.Node) {
@@ -611,7 +668,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		return
 	}
 	if c.contextFuncName == "__run" {
-		c.currScope = instName
+		c.currScope = []string{instName}
 		c.alloc = false
 	}
 
@@ -681,7 +738,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 	c.instances[instName] = structName
 	c.contextFuncName = parentFunction
 	if c.contextFuncName == "__run" {
-		c.currScope = ""
+		c.currScope = []string{""}
 		c.alloc = true
 	}
 }
@@ -802,7 +859,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			oldBlock := c.contextBlock
 
 			c.contextFuncName = fname
-			c.currScope = pc.Value[0]
+			c.currScope = []string{pc.Value[0]}
 			c.contextBlock = f.NewBlock(name.Block())
 
 			val := c.compileValue(c.specStructs[id[0]][structName][pc.Value[1]])
@@ -820,8 +877,8 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	}
 
 	// Otherwise inline the parameter...
-	if c.currScope == "" {
-		c.currScope = pc.Value[0]
+	if c.currScope[0] == "" {
+		c.currScope = []string{pc.Value[0]}
 	}
 	parentFunction := c.contextFuncName
 	c.contextFuncName = pc.Value[0]
@@ -842,8 +899,8 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			c.allocVariable(id, val, pc.Position())
 		}
 	}
-	if c.currScope == pc.Value[0] {
-		c.currScope = ""
+	if c.currScope[0] == pc.Value[0] {
+		c.currScope = []string{""}
 	}
 	c.contextFuncName = parentFunction
 	return val
@@ -886,6 +943,9 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 
 	case *ast.ParameterCall:
 		return c.compileParameterCall(v)
+
+	case *ast.BuiltIn:
+		return nil //We don't need this because state charts are not real functions
 
 	default:
 		pos := node.Position()
@@ -1088,23 +1148,21 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 
 	local := s.GetSpecVar(id)
 	if local != nil {
-		//name = c.getVariableStateName(id)
 		name = c.getVariableName(id)
 		pointer := s.GetSpecVarPointer(name)
 		ty := c.getVariableType(name)
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
-	} else {
-
-		// Might be a spec global constant
-		g := id[len(id)-1]
-		global := s.GetSpecVar([]string{id[0], g})
-		if global == nil {
-			panic(fmt.Sprintf("variable %s not defined line: %d col: %d", strings.Join(id, "_"), pos[0], pos[1]))
-		}
-		name = strings.Join([]string{id[0], g}, "_")
-
 	}
+
+	// Might be a spec global constant
+	g := id[len(id)-1]
+	global := s.GetSpecVar([]string{id[0], g})
+	if global == nil {
+		panic(fmt.Sprintf("variable %s not defined line: %d col: %d", strings.Join(id, "_"), pos[0], pos[1]))
+	}
+	name = strings.Join([]string{id[0], g}, "_")
+
 	pointer := c.specGlobals[name]
 	ty := c.getVariableType(name)
 	load := c.contextBlock.NewLoad(ty, pointer)

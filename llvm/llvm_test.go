@@ -595,6 +595,159 @@ func TestEval(t *testing.T) {
 	}
 }
 
+func TestComponent(t *testing.T) {
+	tests := &ast.DefStatement{
+		Token: ast.Token{
+			Type:     ast.TokenType("COMPONENT"),
+			Literal:  "COMPONENT",
+			Position: []int{0, 0, 0, 0},
+		},
+		Name: &ast.Identifier{
+			Spec:  "test",
+			Value: "foo",
+		},
+		Value: &ast.ComponentLiteral{
+			Pairs: map[ast.Expression]ast.Expression{
+				&ast.Identifier{Spec: "test", Value: "initial"}: &ast.StateLiteral{
+					Body: &ast.BlockStatement{
+						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
+							Condition: &ast.InfixExpression{Left: &ast.Identifier{Spec: "test", Value: "x"},
+								Operator: ">",
+								Right:    &ast.IntegerLiteral{Value: 2}},
+							Consequence: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: []ast.Operand{&ast.ParameterCall{Value: []string{"this", "alert"}}},
+									Function:   "advance",
+								}}}},
+							Alternative: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: []ast.Operand{},
+									Function:   "stay",
+								}}}},
+						}}},
+					},
+				},
+				&ast.Identifier{Spec: "test", Value: "alert"}: &ast.StateLiteral{
+					Body: &ast.BlockStatement{
+						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
+							Condition: &ast.InfixExpression{Left: &ast.Identifier{Spec: "test", Value: "y"},
+								Operator: "==",
+								Right:    &ast.IntegerLiteral{Value: 5}},
+							Consequence: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: []ast.Operand{&ast.ParameterCall{Value: []string{"this", "close"}}},
+									Function:   "advance",
+								}}}},
+							Alternative: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: []ast.Operand{},
+									Function:   "stay",
+								}}}},
+						}}},
+					},
+				},
+				&ast.Identifier{Spec: "test", Value: "close"}: &ast.StateLiteral{
+					Body: &ast.BlockStatement{
+						Statements: []ast.Statement{},
+					},
+				},
+			},
+		},
+	}
+
+	compiler := NewCompiler()
+	compiler.currentSpec = NewCompiledSpec("test")
+	compiler.currentSpecName = "test"
+	compiler.specs[compiler.currentSpecName] = compiler.currentSpec
+	id1 := []string{"test", "x"}
+	val1 := constant.NewFloat(irtypes.Double, 7.0)
+	compiler.currentSpec.DefineSpecVar(id1, val1)
+	compiler.allocVariable(id1, val1, []int{0, 0, 0})
+	compiler.currentSpec.DefineSpecType(id1, irtypes.Double)
+	id2 := []string{"test", "y"}
+	val2 := constant.NewFloat(irtypes.Double, 2.0)
+	compiler.currentSpec.DefineSpecVar(id2, val2)
+	compiler.allocVariable(id2, val2, []int{0, 0, 0})
+	compiler.currentSpec.DefineSpecType(id2, irtypes.Double)
+
+	compiler.compileStruct(tests)
+
+	component, ok := compiler.Components["foo"]
+
+	if !ok {
+		t.Fatalf("components not found after compiling")
+	}
+
+	i, ok2 := component["initial"]
+
+	if !ok2 {
+		t.Fatalf("component foo missing state initial")
+	}
+
+	a, ok3 := component["alert"]
+
+	if !ok3 {
+		t.Fatalf("component foo missing state alert")
+	}
+
+	c, ok4 := component["close"]
+
+	if !ok4 {
+		t.Fatalf("component foo missing state close")
+	}
+
+	for _, k := range []string{a, i, c} {
+		if !strings.Contains(compiler.GetIR(), k) {
+			t.Fatalf("block %s missing from IR", k)
+		}
+	}
+
+}
+
+func TestComponentIR(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		x: 8,
+		initial: func{
+			if this.x > 10{
+				stay();
+			}else{
+				advance(this.alarm);
+			}
+		},
+		alarm: func{
+			advance(this.close);
+		},
+	};
+
+	start { 
+		foo: initial,
+	};
+	`
+
+	expecting := ``
+	llvm, err := prepTestSys(test)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+}
+
 // run block
 // init values
 // instances (target/source)
@@ -644,6 +797,29 @@ func prepTest(test string) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	ty := &types.Checker{}
+	err := ty.Check(l.AST)
+	if err != nil {
+		return "", err
+	}
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	err = compiler.Compile(l.AST)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Println(compiler.GetIR())
+	return compiler.GetIR(), err
+}
+
+func prepTestSys(test string) (string, error) {
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(true, false)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
 	if err != nil {

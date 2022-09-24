@@ -937,6 +937,31 @@ func TestTempValues(t *testing.T) {
 
 }
 
+func TestComponents(t *testing.T) {
+	test := `system test;
+
+	def foo = component{
+		x: 8,
+		initial: state{
+			if this.x > 10{
+				stay();
+			}else{
+				advance(this.alarm);
+			}
+		},
+		alarm: state{
+			advance(this.close);
+		},
+	};
+	`
+	_, err := prepTestSys(test)
+
+	if err != nil {
+		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
+	}
+
+}
+
 // Infix, Prefix, ... what other types of expressions?
 // Type check init matches expression type. init cannot be an uncertain. Uncertains are immutable... can only be declared as constants?
 // check float + float returns a the larger scope
@@ -950,6 +975,19 @@ func prepTest(test string) (*Checker, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	ty := &Checker{}
+	err := ty.Check(l.AST)
+	return ty, err
+}
+
+func prepTestSys(test string) (*Checker, error) {
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(true, false)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	ty := &Checker{}
 	err := ty.Check(l.AST)
 	return ty, err

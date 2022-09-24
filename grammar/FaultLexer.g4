@@ -48,7 +48,7 @@ COMPONENT: 'component';
 GLOBAL: 'global';
 SYSTEM: 'system';
 START: 'start';
-STATE: 'state';
+STATE: 'states';
 STAY: 'stay';
 
 // Types

@@ -45,18 +45,6 @@ func (s *BaseFaultParserListener) EnterComponentDecl(ctx *ComponentDeclContext) 
 // ExitComponentDecl is called when production componentDecl is exited.
 func (s *BaseFaultParserListener) ExitComponentDecl(ctx *ComponentDeclContext) {}
 
-// EnterStateLists is called when production stateLists is entered.
-func (s *BaseFaultParserListener) EnterStateLists(ctx *StateListsContext) {}
-
-// ExitStateLists is called when production stateLists is exited.
-func (s *BaseFaultParserListener) ExitStateLists(ctx *StateListsContext) {}
-
-// EnterStateInit is called when production stateInit is entered.
-func (s *BaseFaultParserListener) EnterStateInit(ctx *StateInitContext) {}
-
-// ExitStateInit is called when production stateInit is exited.
-func (s *BaseFaultParserListener) ExitStateInit(ctx *StateInitContext) {}
-
 // EnterStartBlock is called when production startBlock is entered.
 func (s *BaseFaultParserListener) EnterStartBlock(ctx *StartBlockContext) {}
 

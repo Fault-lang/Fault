@@ -20,12 +20,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#componentDecl.
 	VisitComponentDecl(ctx *ComponentDeclContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#stateLists.
-	VisitStateLists(ctx *StateListsContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#stateInit.
-	VisitStateInit(ctx *StateInitContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#startBlock.
 	VisitStartBlock(ctx *StartBlockContext) interface{}
 

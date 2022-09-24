@@ -20,12 +20,6 @@ type FaultParserListener interface {
 	// EnterComponentDecl is called when entering the componentDecl production.
 	EnterComponentDecl(c *ComponentDeclContext)
 
-	// EnterStateLists is called when entering the stateLists production.
-	EnterStateLists(c *StateListsContext)
-
-	// EnterStateInit is called when entering the stateInit production.
-	EnterStateInit(c *StateInitContext)
-
 	// EnterStartBlock is called when entering the startBlock production.
 	EnterStartBlock(c *StartBlockContext)
 
@@ -235,12 +229,6 @@ type FaultParserListener interface {
 
 	// ExitComponentDecl is called when exiting the componentDecl production.
 	ExitComponentDecl(c *ComponentDeclContext)
-
-	// ExitStateLists is called when exiting the stateLists production.
-	ExitStateLists(c *StateListsContext)
-
-	// ExitStateInit is called when exiting the stateInit production.
-	ExitStateInit(c *StateInitContext)
 
 	// ExitStartBlock is called when exiting the startBlock production.
 	ExitStartBlock(c *StartBlockContext)

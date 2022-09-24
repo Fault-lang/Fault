@@ -1296,7 +1296,7 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 }
 
 func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
-	pairs := c.AllStateLists()
+	pairs := c.AllStructProperties()
 	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
 
 	val :=
@@ -1321,24 +1321,24 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 		})
 }
 
-func (l *FaultListener) ExitStateInit(c *parser.StateInitContext) {
-	token := util.GenerateToken("STATE", "STATE", c.GetStart(), c.GetStop())
+// func (l *FaultListener) ExitStateInit(c *parser.StateInitContext) {
+// 	token := util.GenerateToken("STATE", "STATE", c.GetStart(), c.GetStop())
 
-	b := l.pop()
+// 	b := l.pop()
 
-	f := &ast.StateLiteral{
-		Token: token,
-		Body:  b.(*ast.BlockStatement),
-	}
+// 	f := &ast.StateLiteral{
+// 		Token: token,
+// 		Body:  b.(*ast.BlockStatement),
+// 	}
 
-	l.push(&ast.Identifier{
-		Token: token,
-		Value: c.IDENT().GetText(),
-		Spec:  l.currSpec,
-	})
+// 	l.push(&ast.Identifier{
+// 		Token: token,
+// 		Value: c.IDENT().GetText(),
+// 		Spec:  l.currSpec,
+// 	})
 
-	l.push(f)
-}
+// 	l.push(f)
+// }
 
 func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 	token := util.GenerateToken("BUILTIN", "BUILTIN", c.GetStart(), c.GetStop())
