@@ -1621,10 +1621,15 @@ func TestSysStart(t *testing.T) {
 				test2:active,
 			};
 			`
-	l, _ := prepSysTest(test, nil)
+	_, sys := prepSysTest(test, nil)
 
-	if len(l.StartStates) != 2 {
-		t.Fatalf("start block has the wrong number of expressions. got=%d", len(l.StartStates))
+	starts, ok := sys.Statements[3].(*ast.StartStatement)
+	if !ok {
+		t.Fatalf("sys.Statements[3] is not a StartStatement. got=%T", sys.Statements[3])
+	}
+
+	if len(starts.Pairs) != 2 {
+		t.Fatalf("start block has the wrong number of expressions. got=%d", len(starts.Pairs))
 	}
 
 }

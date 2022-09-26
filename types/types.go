@@ -199,6 +199,8 @@ func (c *Checker) pass1(n ast.Node) error {
 		return err
 	case *ast.ForStatement:
 		return err
+	case *ast.StartStatement:
+		return err
 	default:
 		return fmt.Errorf("unimplemented: %T", node)
 	}

@@ -373,6 +373,34 @@ func (fs *ForStatement) Type() string {
 	return ""
 }
 
+type StartStatement struct {
+	Token Token
+	Pairs [][]string
+}
+
+func (ss *StartStatement) statementNode()       {}
+func (ss *StartStatement) TokenLiteral() string { return ss.Token.Literal }
+func (ss *StartStatement) Position() []int      { return ss.Token.GetPosition() }
+func (ss *StartStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ss.TokenLiteral() + " ")
+	pairs := []string{}
+	for _, value := range ss.Pairs {
+		pairs = append(pairs, strings.Join(value, " : "))
+	}
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
+
+	out.WriteString(";")
+	return out.String()
+}
+func (ss *StartStatement) Type() string {
+	return ""
+}
+
 type Identifier struct {
 	Token        Token
 	InferredType *Type
@@ -938,6 +966,7 @@ func (ie *IndexExpression) Type() string {
 type StockLiteral struct {
 	Token        Token
 	InferredType *Type
+	Order        []string
 	Pairs        map[Expression]Expression
 }
 
@@ -963,6 +992,7 @@ func (sl *StockLiteral) Type() string { return "STOCK" }
 type FlowLiteral struct {
 	Token        Token
 	InferredType *Type
+	Order        []string
 	Pairs        map[Expression]Expression
 }
 
@@ -988,6 +1018,7 @@ func (fl *FlowLiteral) Type() string { return "FLOW" }
 type ComponentLiteral struct {
 	Token        Token
 	InferredType *Type
+	Order        []string
 	Pairs        map[Expression]Expression
 }
 

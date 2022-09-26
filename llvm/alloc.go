@@ -12,9 +12,15 @@ import (
 
 func (c *Compiler) getFullVariableName(id []string) []string {
 	if c.currScope[0] != "" && c.contextFuncName != "__run" &&
-		strings.Join(c.currScope,"_") != c.contextFuncName {
+		strings.Join(c.currScope, "_") != c.contextFuncName {
+		if id[0] == "this" {
+			return append(c.currScope, id[1:]...)
+		}
 		return append(c.currScope, id...)
 	} else {
+		if len(id) >= 3 && c.isFunction(c.specStructs[id[0]][id[1]][id[2]]) {
+			return append(id[0:2], id[3:]...) //This variable is being accessed from a function, remove function name
+		}
 		return id
 	}
 }
@@ -40,7 +46,7 @@ func (c *Compiler) getPointerType(name string) irtypes.Type {
 			fmt.Printf("problem here %T", ty)
 		}
 	}
-	fmt.Printf("no type found for %s", name)
+	fmt.Printf("no type found for %s\n", name)
 	return DoubleP
 }
 

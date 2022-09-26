@@ -18,24 +18,22 @@ import (
 
 type FaultListener struct {
 	*parser.BaseFaultParserListener
-	stack       []interface{}
-	AST         *ast.Spec
-	scope       string
-	currSpec    string
-	skipRun     bool
-	Path        string // The location of the main spec
-	testing     bool   // bypass imports when we're running unit tests
-	Uncertains  map[string][]float64
-	Unknowns    []string
-	StartStates map[string]string
+	stack      []interface{}
+	AST        *ast.Spec
+	scope      string
+	currSpec   string
+	skipRun    bool
+	Path       string // The location of the main spec
+	testing    bool   // bypass imports when we're running unit tests
+	Uncertains map[string][]float64
+	Unknowns   []string
 }
 
 func NewListener(testing bool, skipRun bool) *FaultListener {
 	return &FaultListener{
-		testing:     testing,
-		skipRun:     skipRun,
-		Uncertains:  make(map[string][]float64),
-		StartStates: make(map[string]string),
+		testing:    testing,
+		skipRun:    skipRun,
+		Uncertains: make(map[string][]float64),
 	}
 }
 
@@ -243,10 +241,12 @@ func (l *FaultListener) ExitStock(c *parser.StockContext) {
 	pairs := c.AllStructProperties()
 	token := util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
+	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 	l.push(
 		&ast.StockLiteral{
 			Token: token,
-			Pairs: l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()}),
+			Order: order,
+			Pairs: p,
 		})
 }
 
@@ -254,10 +254,12 @@ func (l *FaultListener) ExitFlow(c *parser.FlowContext) {
 	pairs := c.AllStructProperties()
 	token := util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
 
+	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 	l.push(
 		&ast.FlowLiteral{
 			Token: token,
-			Pairs: l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()}),
+			Order: order,
+			Pairs: p,
 		},
 	)
 }
@@ -1188,7 +1190,8 @@ func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	return listener.AST
 }
 
-func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expression {
+func (l *FaultListener) getPairs(p int, pos []int) (map[ast.Expression]ast.Expression, []string) {
+	var order []string
 	pairs := make(map[ast.Expression]ast.Expression)
 	for i := 0; i < p; i++ {
 		right := l.pop()
@@ -1214,9 +1217,10 @@ func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expres
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
 		}
+		order = append([]string{ident.Value}, order...)
 		pairs[ident] = right.(ast.Expression)
 	}
-	return pairs
+	return pairs, order
 }
 
 func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
@@ -1299,10 +1303,12 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 	pairs := c.AllStructProperties()
 	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
 
+	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 	val :=
 		&ast.ComponentLiteral{
 			Token: token,
-			Pairs: l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()}),
+			Order: order,
+			Pairs: p,
 		}
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
@@ -1363,9 +1369,13 @@ func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
 }
 
 func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
+	token := util.GenerateToken("START", "START", c.GetStart(), c.GetStop())
+	var pairs [][]string
 	for i := 0; i < len(c.AllStartPair()); i++ {
 		p := l.pop()
 		pair := p.([]string)
-		l.StartStates[pair[0]] = pair[1]
+		pairs = append(pairs, pair)
 	}
+
+	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
 }
