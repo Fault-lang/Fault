@@ -8,7 +8,6 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime/debug"
-	"sort"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -248,7 +247,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 
 		switch v := p.(type) {
 		case *ast.StateLiteral:
-			params := c.generateParameters(c.specStructs[key.Spec][cname], []string{key.Spec, cname, key.Value})
+			params := c.generateParameters(cname, c.specStructs[key.Spec][cname], []string{key.Spec, cname, key.Value})
 			c.resetParaState(params)
 			f := c.module.NewFunc(key.Value, irtypes.Void, params...)
 			c.contextFunc = f
@@ -600,6 +599,10 @@ func (c *Compiler) addGlobal() {
 
 func (c *Compiler) compileStruct(def *ast.DefStatement) {
 	switch def.Type() {
+	case "FLOW":
+		c.structPropOrder[def.Name.Value] = def.Value.(*ast.FlowLiteral).Order
+	case "STOCK":
+		c.structPropOrder[def.Name.Value] = def.Value.(*ast.StockLiteral).Order
 	case "GLOBAL":
 		c.compileInstance(def.Value.(*ast.Instance), def.Value.(*ast.Instance).Name)
 	case "COMPONENT":
@@ -637,63 +640,11 @@ func (c *Compiler) compileAssert(assert ast.Node) {
 	}
 }
 
-func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
-	vars := make(map[string][]string)
-	switch e := ex.(type) {
-	case *ast.InfixExpression:
-		left := c.getInstances(e.Left)
-		for k, v := range left {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-
-		right := c.getInstances(e.Right)
-		for k, v := range right {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-		return vars
-	case *ast.Identifier:
-		return nil
-	case *ast.ParameterCall:
-		id := e.Value
-		for k, v := range c.instances {
-			if v == id[0] {
-				vars[v] = util.MergeStrSlices(vars[v], []string{k})
-			}
-		}
-		return vars
-
-	case *ast.PrefixExpression:
-		right := c.getInstances(e.Right)
-		for k, v := range right {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-		return vars
-	case *ast.IndexExpression:
-		left := c.getInstances(e.Left)
-		for k, v := range left {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-		return vars
-	default:
-		return nil
-	}
-}
-
 func (c *Compiler) generateOrder(structName string, pairs map[string]ast.Node) []string {
 	if c.structPropOrder[structName] != nil {
 		return c.structPropOrder[structName]
 	}
-
-	keys := []string{}
-	for k := range pairs {
-		if k != "___base" {
-			keys = append(keys, k)
-		}
-	}
-	sort.SliceStable(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	return keys
+	panic(fmt.Sprintf("no property order found for struct %s ", structName))
 }
 
 func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
@@ -730,7 +681,7 @@ func (c *Compiler) processFunc(id []string, structName string, round int /*pos [
 	fname := strings.Join(id, "_")
 
 	if round == 0 { //initialize
-		params := c.generateParameters(c.specStructs[spec][structName], id)
+		params := c.generateParameters(structName, c.specStructs[spec][structName], id)
 		c.resetParaState(params)
 		f := c.module.NewFunc(fname, irtypes.Void, params...)
 		c.contextFunc = f
@@ -995,7 +946,7 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 		//Is this the first time we're seeing this builtin?
 		if c.builtIns[v.Function] == nil {
 			var param []*ir.Param
-			for k, _ := range v.Parameters {
+			for k := range v.Parameters {
 				param = append(param, ir.NewParam(k, irtypes.NewPointer(irtypes.I8)))
 			}
 			oldBlock := c.contextBlock
@@ -1103,17 +1054,18 @@ func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) b
 	return true
 }
 
-func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*ir.Param {
+func (c *Compiler) generateParameters(structName string, data map[string]ast.Node, id []string) []*ir.Param {
 	var p []*ir.Param
-	keys := c.generateOrder(id[1], data)
+	keys := c.generateOrder(structName, data)
+	fmt.Println(keys)
 	for _, k := range keys {
 		switch n := data[k].(type) {
 		case *ast.Instance:
 			var ip []*ir.Param
 			if n.Complex {
-				ip = c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], append(id, k))
+				ip = c.generateParameters(n.Value.Value, c.specStructs[n.Value.Spec][n.Value.Value], append(id, k))
 			} else {
-				ip = c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
+				ip = c.generateParameters(n.Value.Value, c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
 			}
 			p = append(p, ip...)
 		default:
@@ -1238,24 +1190,6 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 	ty := c.getVariableType(name)
 	load := c.contextBlock.NewLoad(ty, pointer)
 	return load
-}
-
-func (c *Compiler) lookupSpecStruct(id []string) ast.Node {
-	if len(id) != 3 {
-		return nil
-	}
-
-	spec, ok := c.specStructs[id[0]]
-	if !ok {
-		return nil
-	}
-
-	str, ok2 := spec[id[1]]
-	if !ok2 {
-		return nil
-	}
-
-	return str[id[2]]
 }
 
 func (c *Compiler) fetchInstances(ident []string) []string {

@@ -142,8 +142,8 @@ func TestStockDecl(t *testing.T) {
 	if len(spec.Statements) != 2 {
 		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
 	}
-	if spec.Statements[1].TokenLiteral() != "=" {
-		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
+	if spec.Statements[1].TokenLiteral() != "STOCK" {
+		t.Fatalf("spec.Statement[1] is not STOCK. got='%s'", spec.Statements[1].TokenLiteral())
 	}
 	if spec.Statements[1].(*ast.DefStatement).Name.Value != "foo" {
 		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.Value)
@@ -197,8 +197,8 @@ func TestStockDeclFloat(t *testing.T) {
 	if len(spec.Statements) != 2 {
 		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
 	}
-	if spec.Statements[1].TokenLiteral() != "=" {
-		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
+	if spec.Statements[1].TokenLiteral() != "STOCK" {
+		t.Fatalf("spec.Statement[1] is not STOCK. got='%s'", spec.Statements[1].TokenLiteral())
 	}
 	if spec.Statements[1].(*ast.DefStatement).Name.Value != "foo" {
 		t.Fatalf("Stock identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.Value)
@@ -231,8 +231,8 @@ func TestFlowDecl(t *testing.T) {
 	if len(spec.Statements) != 2 {
 		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
 	}
-	if spec.Statements[1].TokenLiteral() != "=" {
-		t.Fatalf("spec.Statement[1] is not ASSIGN. got='%s'", spec.Statements[1].TokenLiteral())
+	if spec.Statements[1].TokenLiteral() != "FLOW" {
+		t.Fatalf("spec.Statement[1] is not FLOW. got='%s'", spec.Statements[1].TokenLiteral())
 	}
 	if spec.Statements[1].(*ast.DefStatement).Name.Value != "foo" {
 		t.Fatalf("Flow identifier is not foo. got=%s", spec.Statements[1].(*ast.DefStatement).Name.Value)

@@ -443,45 +443,6 @@ func TestListSpecsVars(t *testing.T) {
 
 }
 
-func TestGetInstances(t *testing.T) {
-	structs := make(map[string]types.StockFlow)
-	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{})
-	s := NewCompiledSpec("test")
-	c.currentSpec = s
-	c.currentSpecName = "test"
-	c.specs["test"] = s
-	c.instances["insta1"] = "fake1"
-	c.instances["insta2"] = "fake2"
-	c.instances["insta3"] = "fake1"
-
-	infix := &ast.InfixExpression{
-		Left: &ast.IndexExpression{Left: &ast.ParameterCall{Value: []string{"fake1", "prop1"}}},
-		Right: &ast.InfixExpression{
-			Left:  &ast.IndexExpression{Left: &ast.ParameterCall{Value: []string{"fake1", "prop3"}}},
-			Right: &ast.PrefixExpression{Right: &ast.ParameterCall{Value: []string{"fake2", "prop2"}}}}}
-	results := c.getInstances(infix)
-
-	if len(results["fake1"]) != 2 {
-		t.Fatalf("incorrect results returned. got=%d want=2", len(results["fake1"]))
-	}
-	if results["fake1"][0] != "insta1" && results["fake1"][0] != "insta3" {
-		t.Fatalf("instance not correct. got=%s want=insta1", results["fake1"][0])
-	}
-
-	if results["fake1"][1] != "insta3" && results["fake1"][1] != "insta1" {
-		t.Fatalf("instance not correct. got=%s want=insta3", results["fake1"][1])
-	}
-
-	if len(results["fake2"]) != 1 {
-		t.Fatalf("incorrect results returned. got=%d want=1", len(results["fake2"]))
-	}
-
-	if results["fake2"][0] != "insta2" {
-		t.Fatalf("instance not correct. got=%s want=insta2", results["fake2"][0])
-	}
-}
-
 func TestNegate(t *testing.T) {
 	test := &ast.InfixExpression{
 		Left: &ast.Boolean{
@@ -607,6 +568,7 @@ func TestComponent(t *testing.T) {
 			Value: "foo",
 		},
 		Value: &ast.ComponentLiteral{
+			Order: []string{"initial", "alert", "close"},
 			Pairs: map[ast.Expression]ast.Expression{
 				&ast.Identifier{Spec: "test", Value: "initial"}: &ast.StateLiteral{
 					Body: &ast.BlockStatement{
@@ -844,7 +806,7 @@ func prepTest(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(compiler.GetIR())
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 

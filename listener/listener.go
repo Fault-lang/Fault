@@ -207,14 +207,18 @@ func (l *FaultListener) EnterStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
-	token := util.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
-
 	right := l.pop()
 	var val ast.Expression
+	var token ast.Token
 	switch right.(type) {
-	case *ast.StockLiteral, *ast.FlowLiteral:
+	case *ast.StockLiteral:
+		token = util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
+		val = right.(ast.Expression)
+	case *ast.FlowLiteral:
+		token = util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
 		val = right.(ast.Expression)
 	default:
+		token = util.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
 		if right == nil {
 			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 		}
@@ -1304,6 +1308,7 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+	fmt.Println(order)
 	val :=
 		&ast.ComponentLiteral{
 			Token: token,
