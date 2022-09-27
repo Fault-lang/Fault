@@ -1160,8 +1160,8 @@ func TestMiscAssign(t *testing.T) {
 		if !ok {
 			t.Fatalf("Function body missing InfixExpression. got=%T", s.Expression)
 		}
-		if assign.Left.String() != "testfuzz" {
-			t.Fatalf("Left value is not testfuzz. got=%s", assign.Left.String())
+		if assign.Left.String() != "test.fuzz" {
+			t.Fatalf("Left value is not test.fuzz. got=%s", assign.Left.String())
 		}
 
 		_, ok = assign.Right.(*ast.IntegerLiteral)

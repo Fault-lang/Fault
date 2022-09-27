@@ -435,9 +435,7 @@ func (p *ParameterCall) Position() []int      { return p.Token.GetPosition() }
 func (p *ParameterCall) String() string {
 	var out bytes.Buffer
 
-	for _, s := range p.Value {
-		out.WriteString(s)
-	}
+	out.WriteString(strings.Join(p.Value, "."))
 
 	return out.String()
 }
@@ -896,7 +894,7 @@ func (sl *StateLiteral) Type() string { return sl.Body.Type() }
 
 type BuiltIn struct {
 	Token      Token
-	Parameters []Operand
+	Parameters map[string]Operand
 	Function   string
 }
 

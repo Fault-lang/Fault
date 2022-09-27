@@ -1353,11 +1353,13 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 		Token: token,
 	}
 
-	if c.GetChildCount() > 3 {
-		p := l.pop()
-		f.Parameters = append(f.Parameters, p.(ast.Operand))
-	}
 	f.Function = c.GetChild(0).(antlr.TerminalNode).GetText()
+	f.Parameters = make(map[string]ast.Operand)
+
+	if f.Function == "advance" {
+		p := l.pop()
+		f.Parameters["toState"] = p.(ast.Operand)
+	}
 
 	l.push(f)
 }

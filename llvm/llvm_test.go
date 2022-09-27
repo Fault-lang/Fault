@@ -152,21 +152,21 @@ func TestRunBlock(t *testing.T) {
 		store double 10.0, double* %test1_test_buzz_a
 		%test1_test_buzz_b = alloca double
 		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\38487cfbf67279c764a526213b15d255a !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !c9992c8be1f85a2932d63eba0e893a05 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33240cd436a5c85a09944540236db4ad2 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33ac50f9e8b06ceef11bd5da91ee43fcc !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\31496d8c243d2229e0186bb2919665d37 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3227b3938f885317dea9c644434cb82dd !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\387c9dfef940c096cf145af18149d3600 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\370ad8bfb0509411d97738ac929bc3d01 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !e57d2299cbd9024a113885402ef4e089 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\340b3487db7f69f408810fb4cb8b544eb !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
 	
@@ -260,7 +260,7 @@ func TestIfCond(t *testing.T) {
 		store double 10.0, double* %test1_test_buzz_a
 		%test1_test_buzz_b = alloca double
 		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d13399dec07511570da1e17fb6f98374 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d44e0a3fc2944aa552d9118f291d3106 !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
 	
@@ -286,7 +286,7 @@ func TestIfCond(t *testing.T) {
 	block-10-false:
 		store double 10.0, double* %test1_test_buzz_a
 		br label %block-8-after
-	}	
+	}		
 	`
 
 	llvm, err := prepTest(test)
@@ -337,11 +337,11 @@ func TestUnknowns(t *testing.T) {
 	block-11:
 		%test1_t_u_x = alloca double
 		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
-		call void @test1_t_bar(double* %test1_t_u_x), !ef486bcefdf32416542f0c0e7dafd2a7 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !\36b15db79f1be6a7c6e58e1703ad79489 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !e4b288b91e48b4956fd9ecd3cf0a7950 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !\38a55f57c625b7c5382fc6522c9ede93a !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !\37242f7face5577b201458fee71ac6cd6 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
 	
@@ -616,12 +616,12 @@ func TestComponent(t *testing.T) {
 								Right:    &ast.IntegerLiteral{Value: 2}},
 							Consequence: &ast.BlockStatement{
 								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: []ast.Operand{&ast.ParameterCall{Value: []string{"this", "alert"}}},
+									Parameters: map[string]ast.Operand{"toState": &ast.ParameterCall{Value: []string{"this", "alert"}}},
 									Function:   "advance",
 								}}}},
 							Alternative: &ast.BlockStatement{
 								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: []ast.Operand{},
+									Parameters: map[string]ast.Operand{},
 									Function:   "stay",
 								}}}},
 						}}},
@@ -635,12 +635,12 @@ func TestComponent(t *testing.T) {
 								Right:    &ast.IntegerLiteral{Value: 5}},
 							Consequence: &ast.BlockStatement{
 								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: []ast.Operand{&ast.ParameterCall{Value: []string{"this", "close"}}},
+									Parameters: map[string]ast.Operand{"toState": &ast.ParameterCall{Value: []string{"this", "close"}}},
 									Function:   "advance",
 								}}}},
 							Alternative: &ast.BlockStatement{
 								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: []ast.Operand{},
+									Parameters: map[string]ast.Operand{},
 									Function:   "stay",
 								}}}},
 						}}},
@@ -727,7 +727,43 @@ func TestComponentIR(t *testing.T) {
 	};
 	`
 
-	expecting := ``
+	expecting := `define void @__run() {
+		block-29:
+			%test_foo_x = alloca double
+			store double 8.0, double* %test_foo_x
+			ret void
+		}
+		
+		define void @test_foo_initial(double* %test_foo_x) {
+		block-30:
+			%0 = load double, double* %test_foo_x
+			%1 = fcmp ogt double %0, 10.0
+			br i1 %1, label %block-32-true, label %block-33-false
+		
+		block-31-after:
+			ret void
+		
+		block-32-true:
+			call void @stay()
+			br label %block-31-after
+		
+		block-33-false:
+			%2 = alloca [10 x i8]
+			store [10 x i8] c"this.alarm", [10 x i8]* %2
+			%3 = bitcast [10 x i8]* %2 to i8*
+			call void @advance(i8* %3)
+			br label %block-31-after
+		}
+		
+		define void @stay() {
+		block-34:
+			ret void
+		}
+		
+		define void @advance(i8* %toState) {
+		block-35:
+			ret void
+		}`
 	llvm, err := prepTestSys(test)
 
 	if err != nil {
@@ -808,7 +844,7 @@ func prepTest(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println(compiler.GetIR())
+	fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 
@@ -831,7 +867,7 @@ func prepTestSys(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(compiler.GetIR())
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 

@@ -53,6 +53,7 @@ type Compiler struct {
 	specStructs     map[string]types.StockFlow
 	specFunctions   map[string]value.Value
 	structPropOrder map[string][]string
+	builtIns        map[string]*ir.Func
 
 	contextFuncName string
 	contextMetadata *metadata.Attachment
@@ -90,6 +91,7 @@ func NewCompiler() *Compiler {
 		specStructs:      make(map[string]types.StockFlow),
 		specFunctions:    make(map[string]value.Value),
 		structPropOrder:  make(map[string][]string),
+		builtIns:         make(map[string]*ir.Func),
 
 		contextMetadata: nil,
 		alloc:           true,
@@ -919,34 +921,6 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	if c.contextFuncName == "__run" &&
 		c.isFunction(c.specStructs[id[0]][structName][pc.Value[1]]) {
 		return c.processFunc(id, structName, int(c.runRound))
-		// //IR Function + Call
-		// fname := strings.Join(id, "_")
-
-		// if c.runRound == 0 {
-		// 	params := c.generateParameters(c.specStructs[id[0]][structName], id)
-		// 	c.resetParaState(params)
-		// 	f := c.module.NewFunc(fname, irtypes.Void, params...)
-		// 	c.contextFunc = f
-
-		// 	oldScope := c.currScope
-		// 	oldBlock := c.contextBlock
-
-		// 	c.contextFuncName = fname
-		// 	c.currScope = []string{pc.Value[0]}
-		// 	c.contextBlock = f.NewBlock(name.Block())
-
-		// 	val := c.compileValue(c.specStructs[id[0]][structName][pc.Value[1]])
-		// 	c.contextBlock.NewRet(val)
-
-		// 	c.contextBlock = oldBlock
-		// 	c.contextFuncName = "__run"
-		// 	c.currScope = oldScope
-		// 	c.specFunctions[fname] = f
-		// 	c.contextFunc = nil
-		// 	c.resetParaState(params)
-		// }
-
-		// return c.specFunctions[fname]
 	}
 
 	// Otherwise inline the parameter...
@@ -1018,7 +992,32 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 		return c.compileParameterCall(v)
 
 	case *ast.BuiltIn:
-		return nil //We don't need this because state charts are not real functions
+		//Is this the first time we're seeing this builtin?
+		if c.builtIns[v.Function] == nil {
+			var param []*ir.Param
+			for k, _ := range v.Parameters {
+				param = append(param, ir.NewParam(k, irtypes.NewPointer(irtypes.I8)))
+			}
+			oldBlock := c.contextBlock
+			f := c.module.NewFunc(v.Function, irtypes.Void, param...)
+			c.contextBlock = f.NewBlock(name.Block())
+
+			c.contextBlock.NewRet(nil)
+			c.contextBlock = oldBlock
+
+			c.builtIns[v.Function] = f
+		}
+		var params []value.Value
+		for _, v := range v.Parameters {
+			l := uint64(len(v.String()))
+			alloc := c.contextBlock.NewAlloca(irtypes.NewArray(l, irtypes.I8))
+			c.contextBlock.NewStore(constant.NewCharArrayFromString(v.String()), alloc)
+			//load := c.contextBlock.NewLoad(irtypes.I8, alloc)
+			cast := c.contextBlock.NewBitCast(alloc, irtypes.I8Ptr)
+			params = append(params, cast)
+		}
+
+		c.contextBlock.NewCall(c.builtIns[v.Function], params...)
 
 	default:
 		pos := node.Position()
