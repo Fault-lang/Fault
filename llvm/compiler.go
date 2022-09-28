@@ -8,7 +8,6 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime/debug"
-	"sort"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -48,10 +47,12 @@ type Compiler struct {
 	currentSpec      *spec
 
 	currentSpecName string
-	currScope       string
+	currScope       []string
 
-	specStructs   map[string]types.StockFlow
-	specFunctions map[string]value.Value
+	specStructs     map[string]types.StockFlow
+	specFunctions   map[string]value.Value
+	structPropOrder map[string][]string
+	builtIns        map[string]*ir.Func
 
 	contextFuncName string
 	contextMetadata *metadata.Attachment
@@ -68,13 +69,15 @@ type Compiler struct {
 	// Where a condition should jump when done
 	contextCondAfter []*ir.Block
 
-	specGlobals map[string]*ir.Global
-	RawAsserts  []*ast.AssertionStatement
-	RawAssumes  []*ast.AssumptionStatement
-	Asserts     []*ast.AssertionStatement
-	Assumes     []*ast.AssumptionStatement
-	Uncertains  map[string][]float64
-	Unknowns    []string
+	specGlobals     map[string]*ir.Global
+	RawAsserts      []*ast.AssertionStatement
+	RawAssumes      []*ast.AssumptionStatement
+	Asserts         []*ast.AssertionStatement
+	Assumes         []*ast.AssumptionStatement
+	Uncertains      map[string][]float64
+	Unknowns        []string
+	Components      map[string]map[string]string
+	ComponentStarts map[string]string
 }
 
 func NewCompiler() *Compiler {
@@ -86,18 +89,23 @@ func NewCompiler() *Compiler {
 		instanceChildren: make(map[string]string),
 		specStructs:      make(map[string]types.StockFlow),
 		specFunctions:    make(map[string]value.Value),
+		structPropOrder:  make(map[string][]string),
+		builtIns:         make(map[string]*ir.Func),
 
 		contextMetadata: nil,
 		alloc:           true,
 
 		allocatedPointers: make([]map[string]*ir.InstAlloca, 0),
+		currScope:         []string{""},
 
 		contextCondAfter: make([]*ir.Block, 0),
 
 		specGlobals: make(map[string]*ir.Global),
 		runRound:    0,
 
-		Uncertains: make(map[string][]float64),
+		Uncertains:      make(map[string][]float64),
+		Components:      make(map[string]map[string]string),
+		ComponentStarts: make(map[string]string),
 	}
 	c.addGlobal()
 	return c
@@ -125,6 +133,7 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 			)
 		}
 	}()
+
 	c.processSpec(root, false)
 	return
 }
@@ -134,12 +143,17 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
 	}
-	decl, ok := specfile.Statements[0].(*ast.SpecDeclStatement)
-	if !ok {
-		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", decl))
+
+	var name string
+	switch decl := specfile.Statements[0].(type) {
+	case *ast.SpecDeclStatement:
+		name = decl.Name.Value
+	case *ast.SysDeclStatement:
+		name = decl.Name.Value
+	default:
+		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	name := decl.Name.Value
 	c.currentSpec = NewCompiledSpec(name)
 	c.currentSpecName = name
 	c.specs[c.currentSpecName] = c.currentSpec
@@ -161,6 +175,8 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 func (c *Compiler) compile(node ast.Node) {
 	switch v := node.(type) {
 	case *ast.SpecDeclStatement:
+		break
+	case *ast.SysDeclStatement:
 		break
 	case *ast.ImportStatement:
 		parent := c.currentSpecName
@@ -197,6 +213,15 @@ func (c *Compiler) compile(node ast.Node) {
 			c.runRound = c.runRound + 1
 		}
 		c.contextFuncName = ""
+
+	case *ast.StartStatement:
+		for _, p := range v.Pairs {
+			id := c.getFullVariableName([]string{p[0], p[1]})
+			id, _ = c.GetSpec(id)
+			c.processFunc(id, p[0], 0)
+			c.ComponentStarts[p[0]] = p[1]
+		}
+
 	default:
 		pos := node.Position()
 		panic(fmt.Sprintf("node type %T unimplemented line: %d col: %d", v, pos[0], pos[1]))
@@ -206,6 +231,60 @@ func (c *Compiler) compile(node ast.Node) {
 	// IfExpression
 	// IndexExpression <-- Is this still used?
 
+}
+
+func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
+	for k, p := range node.Pairs {
+		var pname string
+		key := k.(*ast.Identifier)
+		scopeName := []string{cname, key.Value}
+
+		oldScope := c.currScope
+		oldBlock := c.contextBlock
+
+		c.contextFuncName = strings.Join(scopeName, "_")
+		c.currScope = scopeName
+
+		switch v := p.(type) {
+		case *ast.StateLiteral:
+			params := c.generateParameters(cname, c.specStructs[key.Spec][cname], []string{key.Spec, cname, key.Value})
+			c.resetParaState(params)
+			f := c.module.NewFunc(key.Value, irtypes.Void, params...)
+			c.contextFunc = f
+			pname = name.Block()
+			c.contextBlock = f.NewBlock(pname)
+			if c.Components[cname] != nil {
+				c.Components[cname][key.Value] = pname
+			} else {
+				c.Components[cname] = map[string]string{key.Value: pname}
+			}
+			val := c.compileBlock(v.Body)
+			c.contextBlock.NewRet(val)
+			c.contextBlock = oldBlock
+			c.contextFuncName = "__run"
+			c.currScope = oldScope
+			c.contextFunc = nil
+		case *ast.Instance:
+			c.compileInstance(v, cname)
+		default:
+			val := c.compileValue(v)
+
+			if val != nil {
+				id := []string{cname, key.Value}
+				id, s := c.GetSpec(id)
+				if s.GetSpecVar(id) != nil {
+					name := c.getVariableName(id)
+					pointer := s.GetSpecVarPointer(name)
+					ty := c.getVariableType(name)
+					c.contextBlock.NewLoad(ty, pointer)
+				} else {
+					s.DefineSpecType(id, val.Type())
+					s.DefineSpecVar(id, val)
+					c.allocVariable(id, val, []int{0, 0, 0, 0})
+				}
+			}
+		}
+	}
 }
 
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
@@ -260,7 +339,6 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		id := n.Value
 		pos := n.Position()
 		fvn := c.getFullVariableName(id)
-		//fvns := c.getVariableStateName(fvn)
 		fvns := c.getVariableName(fvn)
 
 		if !c.isVarSet(fvn) {
@@ -276,8 +354,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		add := c.contextBlock.NewFAdd(l, r)
 		return add
@@ -286,8 +364,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		sub := c.contextBlock.NewFSub(l, r)
 		return sub
@@ -296,8 +374,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		mul := c.contextBlock.NewFMul(l, r)
 		return mul
@@ -306,8 +384,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		div := c.contextBlock.NewFDiv(l, r)
 		return div
@@ -316,8 +394,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		rem := c.contextBlock.NewFRem(l, r)
 		return rem
@@ -326,8 +404,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
+
 		ogt := c.contextBlock.NewFCmp(enum.FPredOGT, l, r)
 		return ogt
 	case ">=":
@@ -335,8 +414,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		oge := c.contextBlock.NewFCmp(enum.FPredOGE, l, r)
 		return oge
@@ -345,8 +424,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		olt := c.contextBlock.NewFCmp(enum.FPredOLT, l, r)
 		return olt
@@ -355,8 +434,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		ole := c.contextBlock.NewFCmp(enum.FPredOLE, l, r)
 		return ole
@@ -365,8 +444,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		if node.Right.Type() == "BOOL" {
 			return c.contextBlock.NewICmp(enum.IPredEQ, l, r)
@@ -378,8 +457,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		l := c.compilerInfixNode(node.Left)
-		r := c.compilerInfixNode(node.Right)
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
 
 		if node.Right.Type() == "BOOL" {
 			return c.contextBlock.NewICmp(enum.IPredNE, l, r)
@@ -391,7 +470,7 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	}
 }
 
-func (c *Compiler) compilerInfixNode(node ast.Node) value.Value {
+func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
 		return c.lookupIdent(v.Value, node.Position())
@@ -519,7 +598,17 @@ func (c *Compiler) addGlobal() {
 }
 
 func (c *Compiler) compileStruct(def *ast.DefStatement) {
-	//Not implemented, using preparse from type checker
+	switch def.Type() {
+	case "FLOW":
+		c.structPropOrder[def.Name.Value] = def.Value.(*ast.FlowLiteral).Order
+	case "STOCK":
+		c.structPropOrder[def.Name.Value] = def.Value.(*ast.StockLiteral).Order
+	case "GLOBAL":
+		c.compileInstance(def.Value.(*ast.Instance), def.Value.(*ast.Instance).Name)
+	case "COMPONENT":
+		c.structPropOrder[def.Name.Value] = def.Value.(*ast.ComponentLiteral).Order
+		c.compileComponent(def.Value.(*ast.ComponentLiteral), def.Name.Value)
+	}
 }
 
 func (c *Compiler) compileAssert(assert ast.Node) {
@@ -551,59 +640,11 @@ func (c *Compiler) compileAssert(assert ast.Node) {
 	}
 }
 
-func (c *Compiler) getInstances(ex ast.Expression) map[string][]string {
-	vars := make(map[string][]string)
-	switch e := ex.(type) {
-	case *ast.InfixExpression:
-		left := c.getInstances(e.Left)
-		for k, v := range left {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-
-		right := c.getInstances(e.Right)
-		for k, v := range right {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-		return vars
-	case *ast.Identifier:
-		return nil
-	case *ast.ParameterCall:
-		id := e.Value
-		for k, v := range c.instances {
-			if v == id[0] {
-				vars[v] = util.MergeStrSlices(vars[v], []string{k})
-			}
-		}
-		return vars
-
-	case *ast.PrefixExpression:
-		right := c.getInstances(e.Right)
-		for k, v := range right {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-		return vars
-	case *ast.IndexExpression:
-		left := c.getInstances(e.Left)
-		for k, v := range left {
-			vars[k] = util.MergeStrSlices(vars[k], v)
-		}
-		return vars
-	default:
-		return nil
+func (c *Compiler) generateOrder(structName string, pairs map[string]ast.Node) []string {
+	if c.structPropOrder[structName] != nil {
+		return c.structPropOrder[structName]
 	}
-}
-
-func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
-	keys := []string{}
-	for k := range pairs {
-		if k != "___base" {
-			keys = append(keys, k)
-		}
-	}
-	sort.SliceStable(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	return keys
+	panic(fmt.Sprintf("no property order found for struct %s ", structName))
 }
 
 func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
@@ -611,7 +652,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		return
 	}
 	if c.contextFuncName == "__run" {
-		c.currScope = instName
+		c.currScope = []string{instName}
 		c.alloc = false
 	}
 
@@ -623,13 +664,59 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", structName, pos[0], pos[1]))
 	}
 
-	keys := c.generateOrder(c.specStructs[base.Value.Spec][structName])
+	children := c.processStruct(base.Value.Spec, structName, instName, pos)
+	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
+
+	c.instances[instName] = structName
+	c.contextFuncName = parentFunction
+	if c.contextFuncName == "__run" {
+		c.currScope = []string{""}
+		c.alloc = true
+	}
+}
+
+func (c *Compiler) processFunc(id []string, structName string, round int /*pos []int*/) value.Value {
+	spec := id[0]
+	key := id[2]
+	fname := strings.Join(id, "_")
+
+	if round == 0 { //initialize
+		params := c.generateParameters(structName, c.specStructs[spec][structName], id)
+		c.resetParaState(params)
+		f := c.module.NewFunc(fname, irtypes.Void, params...)
+		c.contextFunc = f
+
+		oldScope := c.currScope
+		oldBlock := c.contextBlock
+
+		c.contextFuncName = fname
+		c.currScope = []string{id[1]} // NOT necessarily the same as structName
+		c.contextBlock = f.NewBlock(name.Block())
+
+		val := c.compileValue(c.specStructs[spec][structName][key])
+		c.contextBlock.NewRet(val)
+
+		c.contextBlock = oldBlock
+		c.contextFuncName = "__run"
+		c.currScope = oldScope
+		c.specFunctions[fname] = f
+		c.contextFunc = nil
+		c.resetParaState(params)
+	}
+
+	return c.specFunctions[fname]
+}
+
+func (c *Compiler) processStruct(spec string, structName string, instName string, pos []int) map[string]string {
+	children := make(map[string]string)
+	keys := c.generateOrder(structName, c.specStructs[spec][structName])
 	for _, k := range keys {
 		var isUncertain []float64
 		var isUnknown bool
 
 		id := c.getFullVariableName([]string{instName, k})
-		switch pv := c.specStructs[base.Value.Spec][structName][k].(type) {
+
+		switch pv := c.specStructs[spec][structName][k].(type) {
 		case *ast.Instance:
 			switch len(id) {
 			case 3:
@@ -654,7 +741,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 			if ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
 			}
-			val := c.compileValue(c.specStructs[base.Value.Spec][structName][k])
+			val := c.compileValue(c.specStructs[spec][structName][k])
 			id, s := c.GetSpec(id)
 			s.DefineSpecVar(id, val)
 			s.DefineSpecType(id, val.Type())
@@ -676,14 +763,9 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		if isUncertain != nil {
 			c.Uncertains[fvn] = isUncertain
 		}
-		c.instanceChildren[strings.Join(id, "_")] = structName
+		children[fvn] = structName
 	}
-	c.instances[instName] = structName
-	c.contextFuncName = parentFunction
-	if c.contextFuncName == "__run" {
-		c.currScope = ""
-		c.alloc = true
-	}
+	return children
 }
 
 func (c *Compiler) compileIf(n *ast.IfExpression) {
@@ -789,39 +871,12 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	// define it as a function and call it from run block
 	if c.contextFuncName == "__run" &&
 		c.isFunction(c.specStructs[id[0]][structName][pc.Value[1]]) {
-		//IR Function + Call
-		fname := strings.Join(id, "_")
-
-		if c.runRound == 0 {
-			params := c.generateParameters(c.specStructs[id[0]][structName], id)
-			c.resetParaState(params)
-			f := c.module.NewFunc(fname, irtypes.Void, params...)
-			c.contextFunc = f
-
-			oldScope := c.currScope
-			oldBlock := c.contextBlock
-
-			c.contextFuncName = fname
-			c.currScope = pc.Value[0]
-			c.contextBlock = f.NewBlock(name.Block())
-
-			val := c.compileValue(c.specStructs[id[0]][structName][pc.Value[1]])
-			c.contextBlock.NewRet(val)
-
-			c.contextBlock = oldBlock
-			c.contextFuncName = "__run"
-			c.currScope = oldScope
-			c.specFunctions[fname] = f
-			c.contextFunc = nil
-			c.resetParaState(params)
-		}
-
-		return c.specFunctions[fname]
+		return c.processFunc(id, structName, int(c.runRound))
 	}
 
 	// Otherwise inline the parameter...
-	if c.currScope == "" {
-		c.currScope = pc.Value[0]
+	if c.currScope[0] == "" {
+		c.currScope = []string{pc.Value[0]}
 	}
 	parentFunction := c.contextFuncName
 	c.contextFuncName = pc.Value[0]
@@ -842,8 +897,8 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			c.allocVariable(id, val, pc.Position())
 		}
 	}
-	if c.currScope == pc.Value[0] {
-		c.currScope = ""
+	if c.currScope[0] == pc.Value[0] {
+		c.currScope = []string{""}
 	}
 	c.contextFuncName = parentFunction
 	return val
@@ -886,6 +941,34 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 
 	case *ast.ParameterCall:
 		return c.compileParameterCall(v)
+
+	case *ast.BuiltIn:
+		//Is this the first time we're seeing this builtin?
+		if c.builtIns[v.Function] == nil {
+			var param []*ir.Param
+			for k := range v.Parameters {
+				param = append(param, ir.NewParam(k, irtypes.NewPointer(irtypes.I8)))
+			}
+			oldBlock := c.contextBlock
+			f := c.module.NewFunc(v.Function, irtypes.Void, param...)
+			c.contextBlock = f.NewBlock(name.Block())
+
+			c.contextBlock.NewRet(nil)
+			c.contextBlock = oldBlock
+
+			c.builtIns[v.Function] = f
+		}
+		var params []value.Value
+		for _, v := range v.Parameters {
+			l := uint64(len(v.String()))
+			alloc := c.contextBlock.NewAlloca(irtypes.NewArray(l, irtypes.I8))
+			c.contextBlock.NewStore(constant.NewCharArrayFromString(v.String()), alloc)
+			//load := c.contextBlock.NewLoad(irtypes.I8, alloc)
+			cast := c.contextBlock.NewBitCast(alloc, irtypes.I8Ptr)
+			params = append(params, cast)
+		}
+
+		c.contextBlock.NewCall(c.builtIns[v.Function], params...)
 
 	default:
 		pos := node.Position()
@@ -971,17 +1054,17 @@ func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) b
 	return true
 }
 
-func (c *Compiler) generateParameters(data map[string]ast.Node, id []string) []*ir.Param {
+func (c *Compiler) generateParameters(structName string, data map[string]ast.Node, id []string) []*ir.Param {
 	var p []*ir.Param
-	keys := c.generateOrder(data)
+	keys := c.generateOrder(structName, data)
 	for _, k := range keys {
 		switch n := data[k].(type) {
 		case *ast.Instance:
 			var ip []*ir.Param
 			if n.Complex {
-				ip = c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], append(id, k))
+				ip = c.generateParameters(n.Value.Value, c.specStructs[n.Value.Spec][n.Value.Value], append(id, k))
 			} else {
-				ip = c.generateParameters(c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
+				ip = c.generateParameters(n.Value.Value, c.specStructs[n.Value.Spec][n.Value.Value], []string{id[0], id[1], k})
 			}
 			p = append(p, ip...)
 		default:
@@ -1088,23 +1171,20 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 
 	local := s.GetSpecVar(id)
 	if local != nil {
-		//name = c.getVariableStateName(id)
 		name = c.getVariableName(id)
 		pointer := s.GetSpecVarPointer(name)
 		ty := c.getVariableType(name)
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
-	} else {
-
-		// Might be a spec global constant
-		g := id[len(id)-1]
-		global := s.GetSpecVar([]string{id[0], g})
-		if global == nil {
-			panic(fmt.Sprintf("variable %s not defined line: %d col: %d", strings.Join(id, "_"), pos[0], pos[1]))
-		}
-		name = strings.Join([]string{id[0], g}, "_")
-
 	}
+
+	// Might be a spec global constant
+	g := id[len(id)-1]
+	global := s.GetSpecVar([]string{id[0], g})
+	if global != nil {
+		name = strings.Join([]string{id[0], g}, "_")
+	}
+
 	pointer := c.specGlobals[name]
 	ty := c.getVariableType(name)
 	load := c.contextBlock.NewLoad(ty, pointer)

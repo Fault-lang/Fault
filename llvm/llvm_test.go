@@ -152,21 +152,21 @@ func TestRunBlock(t *testing.T) {
 		store double 10.0, double* %test1_test_buzz_a
 		%test1_test_buzz_b = alloca double
 		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\383be9367ad466c3482a1d5aacdd11ef2 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\38487cfbf67279c764a526213b15d255a !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\36c8807a6f069bb7d51cc92b4c3dbc725 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !c9992c8be1f85a2932d63eba0e893a05 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d00e60656da4edd14ac5050f5cd9c890 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33240cd436a5c85a09944540236db4ad2 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\329996c047463487ecba33b1e25082ffe !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\33ac50f9e8b06ceef11bd5da91ee43fcc !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3669091a688eb9e5a01453bb4aaf35abb !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\31496d8c243d2229e0186bb2919665d37 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3227b3938f885317dea9c644434cb82dd !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\387c9dfef940c096cf145af18149d3600 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\370ad8bfb0509411d97738ac929bc3d01 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !e57d2299cbd9024a113885402ef4e089 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\340b3487db7f69f408810fb4cb8b544eb !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
 	
@@ -260,7 +260,7 @@ func TestIfCond(t *testing.T) {
 		store double 10.0, double* %test1_test_buzz_a
 		%test1_test_buzz_b = alloca double
 		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d13399dec07511570da1e17fb6f98374 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d44e0a3fc2944aa552d9118f291d3106 !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
 	
@@ -286,7 +286,7 @@ func TestIfCond(t *testing.T) {
 	block-10-false:
 		store double 10.0, double* %test1_test_buzz_a
 		br label %block-8-after
-	}	
+	}		
 	`
 
 	llvm, err := prepTest(test)
@@ -337,11 +337,11 @@ func TestUnknowns(t *testing.T) {
 	block-11:
 		%test1_t_u_x = alloca double
 		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
-		call void @test1_t_bar(double* %test1_t_u_x), !ef486bcefdf32416542f0c0e7dafd2a7 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !\36b15db79f1be6a7c6e58e1703ad79489 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !e4b288b91e48b4956fd9ecd3cf0a7950 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !\38a55f57c625b7c5382fc6522c9ede93a !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !\37242f7face5577b201458fee71ac6cd6 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
 	
@@ -441,45 +441,6 @@ func TestListSpecsVars(t *testing.T) {
 		t.Fatalf("List of Specs and Vars doesn't include var test_this_func")
 	}
 
-}
-
-func TestGetInstances(t *testing.T) {
-	structs := make(map[string]types.StockFlow)
-	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{})
-	s := NewCompiledSpec("test")
-	c.currentSpec = s
-	c.currentSpecName = "test"
-	c.specs["test"] = s
-	c.instances["insta1"] = "fake1"
-	c.instances["insta2"] = "fake2"
-	c.instances["insta3"] = "fake1"
-
-	infix := &ast.InfixExpression{
-		Left: &ast.IndexExpression{Left: &ast.ParameterCall{Value: []string{"fake1", "prop1"}}},
-		Right: &ast.InfixExpression{
-			Left:  &ast.IndexExpression{Left: &ast.ParameterCall{Value: []string{"fake1", "prop3"}}},
-			Right: &ast.PrefixExpression{Right: &ast.ParameterCall{Value: []string{"fake2", "prop2"}}}}}
-	results := c.getInstances(infix)
-
-	if len(results["fake1"]) != 2 {
-		t.Fatalf("incorrect results returned. got=%d want=2", len(results["fake1"]))
-	}
-	if results["fake1"][0] != "insta1" && results["fake1"][0] != "insta3" {
-		t.Fatalf("instance not correct. got=%s want=insta1", results["fake1"][0])
-	}
-
-	if results["fake1"][1] != "insta3" && results["fake1"][1] != "insta1" {
-		t.Fatalf("instance not correct. got=%s want=insta3", results["fake1"][1])
-	}
-
-	if len(results["fake2"]) != 1 {
-		t.Fatalf("incorrect results returned. got=%d want=1", len(results["fake2"]))
-	}
-
-	if results["fake2"][0] != "insta2" {
-		t.Fatalf("instance not correct. got=%s want=insta2", results["fake2"][0])
-	}
 }
 
 func TestNegate(t *testing.T) {
@@ -595,6 +556,196 @@ func TestEval(t *testing.T) {
 	}
 }
 
+func TestComponent(t *testing.T) {
+	tests := &ast.DefStatement{
+		Token: ast.Token{
+			Type:     ast.TokenType("COMPONENT"),
+			Literal:  "COMPONENT",
+			Position: []int{0, 0, 0, 0},
+		},
+		Name: &ast.Identifier{
+			Spec:  "test",
+			Value: "foo",
+		},
+		Value: &ast.ComponentLiteral{
+			Order: []string{"initial", "alert", "close"},
+			Pairs: map[ast.Expression]ast.Expression{
+				&ast.Identifier{Spec: "test", Value: "initial"}: &ast.StateLiteral{
+					Body: &ast.BlockStatement{
+						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
+							Condition: &ast.InfixExpression{Left: &ast.Identifier{Spec: "test", Value: "x"},
+								Operator: ">",
+								Right:    &ast.IntegerLiteral{Value: 2}},
+							Consequence: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: map[string]ast.Operand{"toState": &ast.ParameterCall{Value: []string{"this", "alert"}}},
+									Function:   "advance",
+								}}}},
+							Alternative: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: map[string]ast.Operand{},
+									Function:   "stay",
+								}}}},
+						}}},
+					},
+				},
+				&ast.Identifier{Spec: "test", Value: "alert"}: &ast.StateLiteral{
+					Body: &ast.BlockStatement{
+						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
+							Condition: &ast.InfixExpression{Left: &ast.Identifier{Spec: "test", Value: "y"},
+								Operator: "==",
+								Right:    &ast.IntegerLiteral{Value: 5}},
+							Consequence: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: map[string]ast.Operand{"toState": &ast.ParameterCall{Value: []string{"this", "close"}}},
+									Function:   "advance",
+								}}}},
+							Alternative: &ast.BlockStatement{
+								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
+									Parameters: map[string]ast.Operand{},
+									Function:   "stay",
+								}}}},
+						}}},
+					},
+				},
+				&ast.Identifier{Spec: "test", Value: "close"}: &ast.StateLiteral{
+					Body: &ast.BlockStatement{
+						Statements: []ast.Statement{},
+					},
+				},
+			},
+		},
+	}
+
+	compiler := NewCompiler()
+	compiler.currentSpec = NewCompiledSpec("test")
+	compiler.currentSpecName = "test"
+	compiler.specs[compiler.currentSpecName] = compiler.currentSpec
+	id1 := []string{"test", "x"}
+	val1 := constant.NewFloat(irtypes.Double, 7.0)
+	compiler.currentSpec.DefineSpecVar(id1, val1)
+	compiler.allocVariable(id1, val1, []int{0, 0, 0})
+	compiler.currentSpec.DefineSpecType(id1, irtypes.Double)
+	id2 := []string{"test", "y"}
+	val2 := constant.NewFloat(irtypes.Double, 2.0)
+	compiler.currentSpec.DefineSpecVar(id2, val2)
+	compiler.allocVariable(id2, val2, []int{0, 0, 0})
+	compiler.currentSpec.DefineSpecType(id2, irtypes.Double)
+
+	compiler.compileStruct(tests)
+
+	component, ok := compiler.Components["foo"]
+
+	if !ok {
+		t.Fatalf("components not found after compiling")
+	}
+
+	i, ok2 := component["initial"]
+
+	if !ok2 {
+		t.Fatalf("component foo missing state initial")
+	}
+
+	a, ok3 := component["alert"]
+
+	if !ok3 {
+		t.Fatalf("component foo missing state alert")
+	}
+
+	c, ok4 := component["close"]
+
+	if !ok4 {
+		t.Fatalf("component foo missing state close")
+	}
+
+	for _, k := range []string{a, i, c} {
+		if !strings.Contains(compiler.GetIR(), k) {
+			t.Fatalf("block %s missing from IR", k)
+		}
+	}
+
+}
+
+func TestComponentIR(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		x: 8,
+		initial: func{
+			if this.x > 10{
+				stay();
+			}else{
+				advance(this.alarm);
+			}
+		},
+		alarm: func{
+			advance(this.close);
+		},
+	};
+
+	start { 
+		foo: initial,
+	};
+	`
+
+	expecting := `define void @__run() {
+		block-28:
+			%test_foo_x = alloca double
+			store double 8.0, double* %test_foo_x
+			ret void
+		}
+		
+		define void @test_foo_initial(double* %test_foo_x) {
+		block-29:
+			%0 = load double, double* %test_foo_x
+			%1 = fcmp ogt double %0, 10.0
+			br i1 %1, label %block-31-true, label %block-32-false
+		
+		block-30-after:
+			ret void
+		
+		block-31-true:
+			call void @stay()
+			br label %block-30-after
+		
+		block-32-false:
+			%2 = alloca [10 x i8]
+			store [10 x i8] c"this.alarm", [10 x i8]* %2
+			%3 = bitcast [10 x i8]* %2 to i8*
+			call void @advance(i8* %3)
+			br label %block-30-after
+		}
+		
+		define void @stay() {
+		block-33:
+			ret void
+		}
+		
+		define void @advance(i8* %toState) {
+		block-34:
+			ret void
+		}`
+	llvm, err := prepTestSys(test)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+}
+
 // run block
 // init values
 // instances (target/source)
@@ -644,6 +795,29 @@ func prepTest(test string) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	ty := &types.Checker{}
+	err := ty.Check(l.AST)
+	if err != nil {
+		return "", err
+	}
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	err = compiler.Compile(l.AST)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Println(compiler.GetIR())
+	return compiler.GetIR(), err
+}
+
+func prepTestSys(test string) (string, error) {
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(true, false)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
 	if err != nil {

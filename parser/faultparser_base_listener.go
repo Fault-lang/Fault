@@ -21,6 +21,42 @@ func (s *BaseFaultParserListener) EnterEveryRule(ctx antlr.ParserRuleContext) {}
 // ExitEveryRule is called when any rule is exited.
 func (s *BaseFaultParserListener) ExitEveryRule(ctx antlr.ParserRuleContext) {}
 
+// EnterSysSpec is called when production sysSpec is entered.
+func (s *BaseFaultParserListener) EnterSysSpec(ctx *SysSpecContext) {}
+
+// ExitSysSpec is called when production sysSpec is exited.
+func (s *BaseFaultParserListener) ExitSysSpec(ctx *SysSpecContext) {}
+
+// EnterSysClause is called when production sysClause is entered.
+func (s *BaseFaultParserListener) EnterSysClause(ctx *SysClauseContext) {}
+
+// ExitSysClause is called when production sysClause is exited.
+func (s *BaseFaultParserListener) ExitSysClause(ctx *SysClauseContext) {}
+
+// EnterGlobalDecl is called when production globalDecl is entered.
+func (s *BaseFaultParserListener) EnterGlobalDecl(ctx *GlobalDeclContext) {}
+
+// ExitGlobalDecl is called when production globalDecl is exited.
+func (s *BaseFaultParserListener) ExitGlobalDecl(ctx *GlobalDeclContext) {}
+
+// EnterComponentDecl is called when production componentDecl is entered.
+func (s *BaseFaultParserListener) EnterComponentDecl(ctx *ComponentDeclContext) {}
+
+// ExitComponentDecl is called when production componentDecl is exited.
+func (s *BaseFaultParserListener) ExitComponentDecl(ctx *ComponentDeclContext) {}
+
+// EnterStartBlock is called when production startBlock is entered.
+func (s *BaseFaultParserListener) EnterStartBlock(ctx *StartBlockContext) {}
+
+// ExitStartBlock is called when production startBlock is exited.
+func (s *BaseFaultParserListener) ExitStartBlock(ctx *StartBlockContext) {}
+
+// EnterStartPair is called when production startPair is entered.
+func (s *BaseFaultParserListener) EnterStartPair(ctx *StartPairContext) {}
+
+// ExitStartPair is called when production startPair is exited.
+func (s *BaseFaultParserListener) ExitStartPair(ctx *StartPairContext) {}
+
 // EnterSpec is called when production spec is entered.
 func (s *BaseFaultParserListener) EnterSpec(ctx *SpecContext) {}
 
@@ -176,6 +212,12 @@ func (s *BaseFaultParserListener) EnterIncDecStmt(ctx *IncDecStmtContext) {}
 
 // ExitIncDecStmt is called when production incDecStmt is exited.
 func (s *BaseFaultParserListener) ExitIncDecStmt(ctx *IncDecStmtContext) {}
+
+// EnterBuiltins is called when production builtins is entered.
+func (s *BaseFaultParserListener) EnterBuiltins(ctx *BuiltinsContext) {}
+
+// ExitBuiltins is called when production builtins is exited.
+func (s *BaseFaultParserListener) ExitBuiltins(ctx *BuiltinsContext) {}
 
 // EnterAccessHistory is called when production accessHistory is entered.
 func (s *BaseFaultParserListener) EnterAccessHistory(ctx *AccessHistoryContext) {}

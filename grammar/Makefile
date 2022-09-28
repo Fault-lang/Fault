@@ -17,6 +17,10 @@ gui:
 	@command -v antlr >/dev/null 2>&1 || { echo >&2 "I require antlr but it's not installed or not in PATH.  Aborting."; exit 1; }
 	grun Fault spec -gui
 
+gui-system:
+	@command -v antlr >/dev/null 2>&1 || { echo >&2 "I require antlr but it's not installed or not in PATH.  Aborting."; exit 1; }
+	grun Fault sysSpec -gui
+
 fuzz:
 	@command -v grammarinator-process >/dev/null 2>&1 || { echo >&2 "I require grammarinator but it's not installed or not in PATH.  Aborting."; exit 1; }
 	grammarinator-process FaultLexer.g4 FaultParser.g4 -o ../fuzzer --no-actions

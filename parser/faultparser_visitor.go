@@ -8,6 +8,24 @@ import "github.com/antlr/antlr4/runtime/Go/antlr"
 type FaultParserVisitor interface {
 	antlr.ParseTreeVisitor
 
+	// Visit a parse tree produced by FaultParser#sysSpec.
+	VisitSysSpec(ctx *SysSpecContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#sysClause.
+	VisitSysClause(ctx *SysClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#globalDecl.
+	VisitGlobalDecl(ctx *GlobalDeclContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#componentDecl.
+	VisitComponentDecl(ctx *ComponentDeclContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#startBlock.
+	VisitStartBlock(ctx *StartBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#startPair.
+	VisitStartPair(ctx *StartPairContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#spec.
 	VisitSpec(ctx *SpecContext) interface{}
 
@@ -85,6 +103,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#incDecStmt.
 	VisitIncDecStmt(ctx *IncDecStmtContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#builtins.
+	VisitBuiltins(ctx *BuiltinsContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#accessHistory.
 	VisitAccessHistory(ctx *AccessHistoryContext) interface{}

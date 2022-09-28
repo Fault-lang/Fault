@@ -367,3 +367,20 @@ func TestNotInSet(t *testing.T) {
 	}
 
 }
+
+func TestDetectMode(t *testing.T) {
+	t1 := DetectMode("test.fspec")
+	if t1 != "fspec" {
+		t.Fatalf("incorrect value returned from DetectMode got=%s want=%s", t1, "fspec")
+	}
+
+	t2 := DetectMode("test.fsystem")
+	if t2 != "fsystem" {
+		t.Fatalf("incorrect value returned from DetectMode got=%s want=%s", t2, "fsystem")
+	}
+
+	t3 := DetectMode("test.mp4")
+	if t3 != "" {
+		t.Fatalf("incorrect value returned from DetectMode got=%s want=%s", t3, "")
+	}
+}

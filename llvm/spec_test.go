@@ -7,7 +7,6 @@ import (
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
-	"github.com/llir/llvm/ir/types"
 	irtypes "github.com/llir/llvm/ir/types"
 )
 
@@ -33,7 +32,7 @@ func TestSpecState(t *testing.T) {
 		t.Fatalf("spec var this.func has the wrong state label. got=%d want=0", state)
 	}
 
-	val := constant.NewInt(types.I32, 5)
+	val := constant.NewInt(irtypes.I32, 5)
 	s.DefineSpecVar(id, val)
 
 	state2 := s.GetSpecVarState(id)
@@ -52,7 +51,7 @@ func TestSpecPointer(t *testing.T) {
 	s := initSpec(id)
 	fvn := strings.Join(id, "_")
 	b := ir.NewBlock(name.Block())
-	alloc := b.NewAlloca(types.I1)
+	alloc := b.NewAlloca(irtypes.I1)
 	alloc.SetName(fvn)
 	s.vars.Store(id, fvn, alloc)
 
@@ -65,7 +64,7 @@ func TestSpecPointer(t *testing.T) {
 func TestParams(t *testing.T) {
 	id := []string{"test", "this", "func"}
 	s := initSpec(id)
-	param := constant.NewInt(types.I32, 5)
+	param := constant.NewInt(irtypes.I32, 5)
 
 	s.AddParam(id, param)
 	p := s.GetParams(id)
@@ -91,7 +90,7 @@ func TestSpecTypes(t *testing.T) {
 
 func initSpec(id []string) *spec {
 	s := NewCompiledSpec("test")
-	val := constant.NewInt(types.I32, 0)
+	val := constant.NewInt(irtypes.I32, 0)
 	s.DefineSpecVar(id, val)
 	return s
 }

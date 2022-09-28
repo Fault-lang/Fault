@@ -126,6 +126,11 @@ func (c *Checker) pass1(n ast.Node) error {
 		c.Constants[node.Name.Value] = make(map[string]ast.Node)
 		c.trail = c.trail.PushSpec(node.Name.Value)
 		return nil
+	case *ast.SysDeclStatement:
+		c.SpecStructs[node.Name.Value] = StockFlow{}
+		c.Constants[node.Name.Value] = make(map[string]ast.Node)
+		c.trail = c.trail.PushSpec(node.Name.Value)
+		return nil
 	case *ast.ImportStatement:
 		err = c.pass1(node.Tree)
 		_, c.trail = c.trail.PopSpec()
@@ -161,6 +166,16 @@ func (c *Checker) pass1(n ast.Node) error {
 		c.SpecStructs[c.trail.CurrentSpec()][c.scope]["___base"] = node
 		c.scope = ""
 		return err
+	case *ast.ComponentLiteral:
+		node.InferredType = &ast.Type{Type: "COMPONENT",
+			Scope:      0,
+			Parameters: nil}
+		structs := c.SpecStructs[c.trail.CurrentSpec()]
+		nodes := util.Preparse(node.Pairs)
+		c.SpecStructs[c.trail.CurrentSpec()] = structs.Bulk(c.scope, nodes)
+		c.SpecStructs[c.trail.CurrentSpec()][c.scope]["___base"] = node
+		c.scope = ""
+		return err
 	case *ast.AssertionStatement:
 		n, err := c.inferFunction(node.Constraints, make(map[string]ast.Node))
 		valtype := typeable(n)
@@ -183,6 +198,8 @@ func (c *Checker) pass1(n ast.Node) error {
 		}
 		return err
 	case *ast.ForStatement:
+		return err
+	case *ast.StartStatement:
 		return err
 	default:
 		return fmt.Errorf("unimplemented: %T", node)
@@ -250,6 +267,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 	case *ast.StockLiteral:
 		return true
 	case *ast.FlowLiteral:
+		return true
+	case *ast.ComponentLiteral:
 		return true
 	default:
 		return false
@@ -349,6 +368,11 @@ func (c *Checker) infer(exp interface{}, p map[string]ast.Node) (ast.Node, error
 	case *ast.FlowLiteral:
 		if node.InferredType == nil {
 			node.InferredType = &ast.Type{Type: "FLOW", Scope: 0, Parameters: nil}
+		}
+		return node, nil
+	case *ast.ComponentLiteral:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "COMPONENT", Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	default:
@@ -460,6 +484,27 @@ func (c *Checker) inferFunction(f ast.Expression, p map[string]ast.Node) (ast.Ex
 		for i := 0; i < len(body); i++ {
 			node.Body.Statements[i].(*ast.ExpressionStatement).Expression, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression, p)
 		}
+		return node, err
+
+	case *ast.StateLiteral:
+		body := node.Body.Statements
+		if len(body) == 1 && c.isValue(body[0].(*ast.ExpressionStatement).Expression) {
+			typedNode, err := c.infer(body[0].(*ast.ExpressionStatement).Expression, p)
+			tn, ok := typedNode.(ast.Expression)
+			if !ok {
+				pos := typedNode.Position()
+				return nil, fmt.Errorf("node %T not an valid expression line: %d, col: %d", typedNode, pos[0], pos[1])
+			}
+			node.Body.Statements[0].(*ast.ExpressionStatement).Expression = tn
+			return node, err
+		}
+
+		for i := 0; i < len(body); i++ {
+			node.Body.Statements[i].(*ast.ExpressionStatement).Expression, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression, p)
+		}
+		return node, err
+
+	case *ast.BuiltIn:
 		return node, err
 
 	case *ast.Instance:

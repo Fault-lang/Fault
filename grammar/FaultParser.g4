@@ -4,8 +4,39 @@ options {
     tokenVocab=FaultLexer;
 }
 
+/*
+    State charts of the whole system
+*/
+
+sysSpec
+    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt? eos
+    ;
+
+sysClause
+    : 'system' IDENT eos
+    ;
+
+globalDecl
+    : 'global' IDENT '=' operand
+    ;
+
+componentDecl
+    : 'component' IDENT '=' 'states' '{' (structProperties ',')* '}' eos
+    ;
+
+startBlock
+    : 'start' '{' (startPair ',')* '}' eos
+    ;
+
+startPair
+    : IDENT ':' IDENT
+    ;
+/*
+    Individual specs of state changes
+*/
+
 spec
-    : specClause importDecl* declaration* forStmt? eos
+    : specClause declaration* forStmt? eos
     ;
 
 specClause
@@ -100,11 +131,17 @@ simpleStmt
     : expression
     | incDecStmt
     | assignment
+    | builtins
     | emptyStmt
     ;
 
 incDecStmt
     : expression (PLUS_PLUS | MINUS_MINUS)
+    ;
+
+builtins
+    : 'advance' '(' paramCall ')'
+    | 'stay' '(' ')'
     ;
 
 accessHistory
@@ -122,6 +159,7 @@ assumption
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
     | ('nmt' | 'nft') integer
+    | 'then' expression
     ;
 
 invariant
@@ -150,7 +188,7 @@ rounds
     ;
 
 paramCall
-    : IDENT '.' IDENT ('.' IDENT)*
+    : (IDENT|THIS) '.' IDENT ('.' IDENT)*
     ;
 
 runBlock
@@ -159,7 +197,7 @@ runBlock
 
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
-    | IDENT '=' 'new' IDENT ('.' IDENT)? eos      #runInit
+    | IDENT '=' 'new' (paramCall | IDENT) eos      #runInit
     | simpleStmt eos                              #runExpr
     | ifStmt                                      #runExpr
     ;
@@ -210,7 +248,7 @@ operandName
 
 prefix
     :
-    | ('+' | '-' | '!' | '^' | '*' | '&') expression
+    | ('+' | '-' | '!' | '^' | '*' | '&' ) expression
     ;
 
 numeric

@@ -30,7 +30,7 @@ func NewTable() *LookupTable {
 
 func (l *LookupTable) List() []string {
 	var vals []string
-	for k, _ := range l.values {
+	for k := range l.values {
 		vals = append(vals, k)
 	}
 	return vals

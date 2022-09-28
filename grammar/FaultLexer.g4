@@ -30,6 +30,7 @@ RETURN: 'return';
 RUN: 'run';
 SPEC: 'spec';
 STOCK: 'stock';
+THEN: 'then';
 THIS: 'this';
 EVENTUALLY: 'eventually';
 EVENTUALLYALWAYS: 'eventually-always';
@@ -40,6 +41,15 @@ NFT: 'nft';
 NIL: 'nil';
 TRUE: 'true';
 FALSE: 'false';
+
+// State Chart Keywords
+ADVANCE: 'advance';
+COMPONENT: 'component';
+GLOBAL: 'global';
+SYSTEM: 'system';
+START: 'start';
+STATE: 'states';
+STAY: 'stay';
 
 // Types
 

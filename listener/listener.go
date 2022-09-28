@@ -49,6 +49,7 @@ func (l *FaultListener) pop() interface{} {
 
 func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 	var spec = &ast.Spec{}
+	spec.Ext = "fspec"
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
@@ -206,14 +207,18 @@ func (l *FaultListener) EnterStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
-	token := util.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
-
 	right := l.pop()
 	var val ast.Expression
+	var token ast.Token
 	switch right.(type) {
-	case *ast.StockLiteral, *ast.FlowLiteral:
+	case *ast.StockLiteral:
+		token = util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
+		val = right.(ast.Expression)
+	case *ast.FlowLiteral:
+		token = util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
 		val = right.(ast.Expression)
 	default:
+		token = util.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
 		if right == nil {
 			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
 		}
@@ -240,10 +245,12 @@ func (l *FaultListener) ExitStock(c *parser.StockContext) {
 	pairs := c.AllStructProperties()
 	token := util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
+	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 	l.push(
 		&ast.StockLiteral{
 			Token: token,
-			Pairs: l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()}),
+			Order: order,
+			Pairs: p,
 		})
 }
 
@@ -251,10 +258,12 @@ func (l *FaultListener) ExitFlow(c *parser.FlowContext) {
 	pairs := c.AllStructProperties()
 	token := util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
 
+	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 	l.push(
 		&ast.FlowLiteral{
 			Token: token,
-			Pairs: l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()}),
+			Order: order,
+			Pairs: p,
 		},
 	)
 }
@@ -641,6 +650,17 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 
 	ident := &ast.Identifier{Token: token2}
 	switch len(txt) {
+	case 1:
+		pc := l.pop()
+		if r, ok := pc.(*ast.ParameterCall); !ok {
+			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		} else {
+
+			ident.Spec = r.Value[0]
+			ident.Value = txt[0].GetText()
+			right = r.Value[1]
+		}
+
 	case 2:
 		ident.Spec = l.currSpec
 		ident.Value = txt[0].GetText()
@@ -1174,7 +1194,8 @@ func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	return listener.AST
 }
 
-func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expression {
+func (l *FaultListener) getPairs(p int, pos []int) (map[ast.Expression]ast.Expression, []string) {
+	var order []string
 	pairs := make(map[ast.Expression]ast.Expression)
 	for i := 0; i < p; i++ {
 		right := l.pop()
@@ -1200,9 +1221,10 @@ func (l *FaultListener) getPairs(p int, pos []int) map[ast.Expression]ast.Expres
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
 		}
+		order = append([]string{ident.Value}, order...)
 		pairs[ident] = right.(ast.Expression)
 	}
-	return pairs
+	return pairs, order
 }
 
 func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
@@ -1222,4 +1244,144 @@ func pathToIdent(path string) string {
 	s3 := strings.ReplaceAll(s2, "\\", "")
 	s4 := strings.ReplaceAll(s3, `"`, "")
 	return strings.ReplaceAll(s4, "/", "")
+}
+
+//////////////////////////////////////////////
+//  State Charts
+//////////////////////////////////////////////
+
+func (l *FaultListener) ExitSysSpec(c *parser.SysSpecContext) {
+	var spec = &ast.Spec{}
+	spec.Ext = "fsystem"
+	for _, v := range l.stack {
+		spec.Statements = append(spec.Statements, v.(ast.Statement))
+	}
+	l.AST = spec
+}
+
+func (l *FaultListener) EnterSysClause(c *parser.SysClauseContext) {
+	l.currSpec = c.IDENT().GetText()
+}
+
+func (l *FaultListener) ExitSysClause(c *parser.SysClauseContext) {
+	token := util.GenerateToken("SYS_DECL", "SYS_DECL", c.GetStart(), c.GetStop())
+
+	iden_token := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	l.push(
+		&ast.SysDeclStatement{
+			Token: token,
+			Name: &ast.Identifier{
+				Token: iden_token,
+				Value: c.IDENT().GetText(),
+				Spec:  l.currSpec,
+			},
+		},
+	)
+}
+
+func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
+	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
+
+	instance := l.pop()
+
+	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	ident := &ast.Identifier{
+		Token: token2,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	}
+
+	instance.(*ast.Instance).Name = ident.Value
+
+	l.push(&ast.DefStatement{
+		Token: token,
+		Name:  ident,
+		Value: instance.(ast.Expression),
+	})
+
+}
+
+func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
+	pairs := c.AllStructProperties()
+	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
+
+	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+	val :=
+		&ast.ComponentLiteral{
+			Token: token,
+			Order: order,
+			Pairs: p,
+		}
+
+	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	ident := &ast.Identifier{
+		Token: token2,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	}
+
+	l.push(
+		&ast.DefStatement{
+			Token: token,
+			Name:  ident,
+			Value: val,
+		})
+}
+
+// func (l *FaultListener) ExitStateInit(c *parser.StateInitContext) {
+// 	token := util.GenerateToken("STATE", "STATE", c.GetStart(), c.GetStop())
+
+// 	b := l.pop()
+
+// 	f := &ast.StateLiteral{
+// 		Token: token,
+// 		Body:  b.(*ast.BlockStatement),
+// 	}
+
+// 	l.push(&ast.Identifier{
+// 		Token: token,
+// 		Value: c.IDENT().GetText(),
+// 		Spec:  l.currSpec,
+// 	})
+
+// 	l.push(f)
+// }
+
+func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
+	token := util.GenerateToken("BUILTIN", "BUILTIN", c.GetStart(), c.GetStop())
+
+	f := &ast.BuiltIn{
+		Token: token,
+	}
+
+	f.Function = c.GetChild(0).(antlr.TerminalNode).GetText()
+	f.Parameters = make(map[string]ast.Operand)
+
+	if f.Function == "advance" {
+		p := l.pop()
+		f.Parameters["toState"] = p.(ast.Operand)
+	}
+
+	l.push(f)
+}
+
+func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
+	idents := c.AllIDENT()
+	l.push([]string{idents[0].GetText(), idents[1].GetText()})
+
+}
+
+func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
+	token := util.GenerateToken("START", "START", c.GetStart(), c.GetStop())
+	var pairs [][]string
+	for i := 0; i < len(c.AllStartPair()); i++ {
+		p := l.pop()
+		pair := p.([]string)
+		pairs = append(pairs, pair)
+	}
+
+	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
 }

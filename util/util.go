@@ -3,6 +3,7 @@ package util
 import (
 	"fault/ast"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -84,6 +85,13 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 	return start
 }
 
+func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
+}
+
 func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	var results []string
 	skip := false
@@ -102,6 +110,15 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 		}
 	}
 	return results
+}
+
+func InStringSlice(sl []string, sub string) bool {
+	for _, s := range sl {
+		if s == sub {
+			return true
+		}
+	}
+	return false
 }
 
 func CaptureState(id string) (string, bool, bool) {
@@ -210,5 +227,16 @@ func IsCompare(op string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func DetectMode(filename string) string {
+	switch filepath.Ext(filename) {
+	case ".fspec":
+		return "fspec"
+	case ".fsystem":
+		return "fsystem"
+	default:
+		return ""
 	}
 }

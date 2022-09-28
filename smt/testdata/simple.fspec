@@ -5,6 +5,7 @@ def st = stock{
 };
 
 def fl = flow{
+    active: false,
     vault: new st,
     fn: func{
         if vault.value > 4 {
