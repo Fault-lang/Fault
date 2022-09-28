@@ -56,7 +56,10 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (8/05/2022)
+### Current Status (9/28/2022)
+Adding state chart support to the parser and LLVM compiler, plus implementing logic around "this", cleaning up some dead code, plus some minor adjustments here and there.
+
+#### (8/05/2022)
 In order to prepare for state chart organization, added support for Booleans. Also tweaked the syntax to allow values to be overwritten within a flow.
 
 #### (7/24/2022)
