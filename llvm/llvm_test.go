@@ -690,40 +690,40 @@ func TestComponentIR(t *testing.T) {
 	`
 
 	expecting := `define void @__run() {
-		block-29:
+		block-28:
 			%test_foo_x = alloca double
 			store double 8.0, double* %test_foo_x
 			ret void
 		}
 		
 		define void @test_foo_initial(double* %test_foo_x) {
-		block-30:
+		block-29:
 			%0 = load double, double* %test_foo_x
 			%1 = fcmp ogt double %0, 10.0
-			br i1 %1, label %block-32-true, label %block-33-false
+			br i1 %1, label %block-31-true, label %block-32-false
 		
-		block-31-after:
+		block-30-after:
 			ret void
 		
-		block-32-true:
+		block-31-true:
 			call void @stay()
-			br label %block-31-after
+			br label %block-30-after
 		
-		block-33-false:
+		block-32-false:
 			%2 = alloca [10 x i8]
 			store [10 x i8] c"this.alarm", [10 x i8]* %2
 			%3 = bitcast [10 x i8]* %2 to i8*
 			call void @advance(i8* %3)
-			br label %block-31-after
+			br label %block-30-after
 		}
 		
 		define void @stay() {
-		block-34:
+		block-33:
 			ret void
 		}
 		
 		define void @advance(i8* %toState) {
-		block-35:
+		block-34:
 			ret void
 		}`
 	llvm, err := prepTestSys(test)

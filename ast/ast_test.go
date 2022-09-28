@@ -104,7 +104,7 @@ func TestString(t *testing.T) {
 			want = "foo"
 		case *ParameterCall:
 			got = t.String()
-			want = "foobar"
+			want = "foo.bar"
 		case *AssertVar:
 			got = t.String()
 			want = "foo bar"
@@ -197,7 +197,7 @@ func TestTypes(t *testing.T) {
 			want = "INT"
 		case *DefStatement:
 			got = t.Type()
-			want = "INT"
+			want = "test"
 		case *AssertionStatement:
 			got = t.Type()
 			want = "INT"

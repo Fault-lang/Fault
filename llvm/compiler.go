@@ -1057,7 +1057,6 @@ func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) b
 func (c *Compiler) generateParameters(structName string, data map[string]ast.Node, id []string) []*ir.Param {
 	var p []*ir.Param
 	keys := c.generateOrder(structName, data)
-	fmt.Println(keys)
 	for _, k := range keys {
 		switch n := data[k].(type) {
 		case *ast.Instance:

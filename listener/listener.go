@@ -1308,7 +1308,6 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
-	fmt.Println(order)
 	val :=
 		&ast.ComponentLiteral{
 			Token: token,
