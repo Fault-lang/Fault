@@ -2,22 +2,22 @@ system statechart;
 
 import "simple.fspec";
 
-global flow = new simple.fl;
+global fl = new simple.fl;
 
 component drain = states{
     initial: func{
-        if !flow.active {
-            flow.active = true;
+        if !fl.active {
+            fl.active = true;
             advance(this.open);
         }
     },
     open: func{
-        if flow.vault.value < 0 {
+        if fl.vault.value < 0 {
             advance(this.close);
         }
     },
     close: func{
-        flow.active = false;
+        fl.active = false;
     },
 };
 
@@ -27,6 +27,6 @@ start {
 
 for 5 run {
     if !drain.close{
-        flow.fn;
+        fl.fn;
     }
 }

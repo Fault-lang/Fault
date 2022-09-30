@@ -1635,6 +1635,7 @@ func TestSysStart(t *testing.T) {
 }
 
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
+	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
@@ -1642,15 +1643,16 @@ func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	p := parser.NewFaultParser(stream)
 	var listener *FaultListener
 	if flags != nil && flags["skipRun"] {
-		listener = NewListener(true, true)
+		listener = NewListener(path, true, true)
 	} else {
-		listener = NewListener(true, false)
+		listener = NewListener(path, true, false)
 	}
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 	return listener, listener.AST
 }
 
 func prepSysTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
+	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
@@ -1658,9 +1660,9 @@ func prepSysTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec)
 	p := parser.NewFaultParser(stream)
 	var listener *FaultListener
 	if flags != nil && flags["skipRun"] {
-		listener = NewListener(true, true)
+		listener = NewListener(path, true, true)
 	} else {
-		listener = NewListener(true, false)
+		listener = NewListener(path, true, false)
 	}
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.SysSpec())
 	return listener, listener.AST

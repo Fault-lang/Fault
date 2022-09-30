@@ -29,8 +29,9 @@ type FaultListener struct {
 	Unknowns   []string
 }
 
-func NewListener(testing bool, skipRun bool) *FaultListener {
+func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	return &FaultListener{
+		Path:       path,
 		testing:    testing,
 		skipRun:    skipRun,
 		Uncertains: make(map[string][]float64),

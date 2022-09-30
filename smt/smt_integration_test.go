@@ -5,8 +5,11 @@ import (
 	"fault/llvm"
 	"fault/parser"
 	"fault/types"
+	"fault/util"
 	"fmt"
 	"os"
+	gopath "path"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -19,13 +22,13 @@ func TestTestData(t *testing.T) {
 		"testdata/simple.fspec",
 		"testdata/bathtub2.fspec",
 		"testdata/booleans.fspec",
-		//"testdata/unknowns.fspec",
+		"testdata/unknowns.fspec",
 	}
 	smt2s := []string{"testdata/bathtub.smt2",
 		"testdata/simple.smt2",
 		"testdata/bathtub2.smt2",
 		"testdata/booleans.smt2",
-		//"testdata/unknowns.smt2",
+		"testdata/unknowns.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)
@@ -36,13 +39,45 @@ func TestTestData(t *testing.T) {
 		if err != nil {
 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
 		}
-		smt, err := prepTest(string(data))
+		smt, err := prepTest(s, string(data))
 
 		if err != nil {
 			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
 		}
 
 		err = compareResults(s, smt, string(expecting))
+
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
+}
+
+func TestSys(t *testing.T) {
+	specs := [][]string{
+		/*{"testdata/statechart.fsystem", "1"},*/
+	}
+	smt2s := []string{
+		/*"testdata/statechart.smt2",*/
+	}
+	for i, s := range specs {
+		data, err := os.ReadFile(s[0])
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s[0]))
+		}
+		imports, _ := strconv.ParseBool(s[1])
+
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		smt, err := prepTestSys(s[0], string(data), imports)
+
+		if err != nil {
+			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
+		}
+
+		err = compareResults(s[0], smt, string(expecting))
 
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -60,7 +95,7 @@ func TestIndividual(t *testing.T) {
 	if err != nil {
 		panic(fmt.Sprintf("compiled spec %s is not valid", "testdata/unknowns.smt2"))
 	}
-	smt, err := prepTest(string(data))
+	smt, err := prepTest("testdata/unknowns.fspec", string(data))
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec testdata/unknowns.fspec. got=%s", err)
@@ -83,7 +118,7 @@ func TestMultiCond(t *testing.T) {
 	if err != nil {
 		panic(fmt.Sprintf("compiled spec %s is not valid", "testdata/multicond.smt2"))
 	}
-	smt, err := prepTest(string(data))
+	smt, err := prepTest("testdata/multicond.fspec", string(data))
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec testdata/multicond.fspec. got=%s", err)
@@ -136,14 +171,43 @@ func stripAndEscape(str string) string {
 	return output.String()
 }
 
-func prepTest(test string) (string, error) {
+func prepTest(path string, test string) (string, error) {
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(true, false)
+	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	ty := &types.Checker{}
+	err := ty.Check(l.AST)
+	if err != nil {
+		return "", err
+	}
+	compiler := llvm.NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	err = compiler.Compile(l.AST)
+	if err != nil {
+		return "", err
+	}
+	generator := NewGenerator()
+	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.Run(compiler.GetIR())
+	//fmt.Println(generator.SMT())
+	return generator.SMT(), nil
+}
+
+func prepTestSys(filepath string, test string, imports bool) (string, error) {
+	filepath = util.Filepath(filepath)
+	path := gopath.Dir(filepath)
+
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(path, !imports, false) //imports being true means testing is false :)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
 	if err != nil {

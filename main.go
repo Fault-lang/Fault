@@ -36,8 +36,7 @@ func parse(data string, path string, file string, filetype string) (*listener.Fa
 	p.AddErrorListener(&listener.FaultErrorListener{Filename: file})
 
 	// Finally parse the expression
-	lstnr := listener.NewListener(false, false)
-	lstnr.Path = path
+	lstnr := listener.NewListener(path, false, false)
 	switch filetype {
 	case "fspec":
 		antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())

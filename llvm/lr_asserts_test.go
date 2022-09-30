@@ -151,12 +151,13 @@ func compareAsserts(t *testing.T, e ast.Expression, i int) {
 // END AWFUL TEST, NOTHING TO SEE HERE... MOVE ALONG ;)
 
 func prepAssertTest(test string) (*Compiler, error) {
+	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(true, false)
+	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
