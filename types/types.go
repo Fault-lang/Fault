@@ -201,6 +201,8 @@ func (c *Checker) pass1(n ast.Node) error {
 		return err
 	case *ast.StartStatement:
 		return err
+	case *ast.Instance:
+		return err
 	default:
 		return fmt.Errorf("unimplemented: %T", node)
 	}

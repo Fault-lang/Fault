@@ -40,7 +40,7 @@ func TestEventually(t *testing.T) {
 	(assert (or (> test1_t_foo_value_0 0) (> test1_t_foo_value_1 0)(> test1_t_foo_value_2 0)(> test1_t_foo_value_3 0)(> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0)))
 `
 
-	smt, err := prepTest(test)
+	smt, err := prepTest("", test)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -96,7 +96,7 @@ func TestEventuallyAlways(t *testing.T) {
 		))
 `
 
-	smt, err := prepTest(test)
+	smt, err := prepTest("", test)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -152,7 +152,7 @@ func TestEventuallyAlways2(t *testing.T) {
 		))
 `
 
-	smt, err := prepTest(test)
+	smt, err := prepTest("", test)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -200,7 +200,7 @@ func TestTemporal(t *testing.T) {
 	(assert (or (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_1 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_4 0) (<= test1_t_foo_value_5 0))))
 	`
 
-	smt, err := prepTest(test)
+	smt, err := prepTest("", test)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -267,7 +267,7 @@ func TestTemporal2(t *testing.T) {
 	//	panic(fmt.Sprintf("compiled spec %s is not valid", "testdata/temporal2.smt2"))
 	//}
 
-	smt, err := prepTest(test)
+	smt, err := prepTest("", test)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)

@@ -788,12 +788,13 @@ func stripAndEscape(str string) string {
 }
 
 func prepTest(test string) (string, error) {
+	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(true, false)
+	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)
@@ -811,12 +812,13 @@ func prepTest(test string) (string, error) {
 }
 
 func prepTestSys(test string) (string, error) {
+	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(true, false)
+	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	ty := &types.Checker{}
 	err := ty.Check(l.AST)

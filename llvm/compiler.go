@@ -809,6 +809,8 @@ func (c *Compiler) compileIf(n *ast.IfExpression) {
 	// set after block to jump to the after block
 	if len(c.contextCondAfter) > 0 {
 		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
+	} else {
+		afterBlock.NewRet(nil)
 	}
 }
 
