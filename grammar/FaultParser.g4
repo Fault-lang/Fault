@@ -17,7 +17,7 @@ sysClause
     ;
 
 globalDecl
-    : 'global' IDENT '=' operand
+    : 'global' IDENT '=' operand eos
     ;
 
 componentDecl

@@ -55,10 +55,10 @@ func TestTestData(t *testing.T) {
 
 func TestSys(t *testing.T) {
 	specs := [][]string{
-		/*{"testdata/statechart.fsystem", "1"},*/
+		{"testdata/statechart.fsystem", "1"},
 	}
 	smt2s := []string{
-		/*"testdata/statechart.smt2",*/
+		"testdata/statechart.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])
@@ -219,6 +219,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println(compiler.GetIR())
 	generator := NewGenerator()
 	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.Run(compiler.GetIR())

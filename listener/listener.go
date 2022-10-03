@@ -22,6 +22,7 @@ type FaultListener struct {
 	AST        *ast.Spec
 	scope      string
 	currSpec   string
+	specs      []string
 	skipRun    bool
 	Path       string // The location of the main spec
 	testing    bool   // bypass imports when we're running unit tests
@@ -59,6 +60,7 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 
 func (l *FaultListener) EnterSpecClause(c *parser.SpecClauseContext) {
 	l.currSpec = c.IDENT().GetText()
+	l.specs = append(l.specs, l.currSpec)
 }
 
 func (l *FaultListener) ExitSpecClause(c *parser.SpecClauseContext) {
@@ -125,20 +127,20 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 	}
 
 	// If no ident, create one from import path
-	var ident *ast.Identifier
+	var importId string
 	if len(c.GetChildren()) == 2 {
-		ident = &ast.Identifier{
-			Token: token,
-			Value: c.IDENT().GetText(),
-			Spec:  l.currSpec,
-		}
+		importId = c.IDENT().GetText()
 	} else {
-		ident = &ast.Identifier{
-			Token: token,
-			Value: pathToIdent(fpath.String()),
-			Spec:  l.currSpec,
-		}
+		importId = pathToIdent(fpath.String())
 	}
+
+	ident := &ast.Identifier{
+		Token: token,
+		Value: pathToIdent(importId),
+		Spec:  l.currSpec,
+	}
+
+	l.specs = append(l.specs, importId)
 
 	l.push(&ast.ImportStatement{
 		Token: token,
@@ -586,12 +588,18 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 
 	v := c.GetText()
 	param := strings.Split(v, ".")
-
-	l.push(&ast.ParameterCall{
+	pc := &ast.ParameterCall{
 		Token: token,
 		Value: param,
-	},
-	)
+	}
+
+	if util.InStringSlice(l.specs, param[0]) {
+		pc.Spec = param[0]
+	} else {
+		pc.Spec = l.currSpec
+	}
+
+	l.push(pc)
 }
 
 func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {

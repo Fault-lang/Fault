@@ -30,26 +30,6 @@ func (c *Compiler) getVariableName(id []string) string {
 	return strings.Join(id, "_")
 }
 
-func (c *Compiler) getVariableType(name string) irtypes.Type {
-	return c.currentSpec.vars.GetType(name)
-}
-
-func (c *Compiler) getPointerType(name string) irtypes.Type {
-	ty := c.currentSpec.vars.GetType(name)
-	if ty != nil {
-		switch ty {
-		case irtypes.Double:
-			return DoubleP
-		case irtypes.I1:
-			return I1P
-		default:
-			fmt.Printf("problem here %T", ty)
-		}
-	}
-	fmt.Printf("no type found for %s\n", name)
-	return DoubleP
-}
-
 func (c *Compiler) updateVariableStateName(id []string) string {
 	id, s := c.GetSpec(id)
 	if len(id) == 2 { // This is a constant, doesn't change
@@ -62,7 +42,6 @@ func (c *Compiler) updateVariableStateName(id []string) string {
 
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	id, _ = c.GetSpec(id)
-	//name := c.getVariableStateName(id)
 	name := c.getVariableName(id)
 	var alloc *ir.InstAlloca
 	var store *ir.InstStore

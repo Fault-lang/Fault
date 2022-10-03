@@ -82,7 +82,7 @@ func TestSpecTypes(t *testing.T) {
 	fvn := strings.Join(id, "_")
 	s.DefineSpecType(id, irtypes.I32)
 
-	if _, ok := s.GetSpecType(fvn, true); !ok {
+	if ty := s.GetSpecType(fvn); ty == nil {
 		t.Fatal("spec var this.func is missing type")
 	}
 

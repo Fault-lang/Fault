@@ -84,11 +84,7 @@ func (l *LookupTable) ResetState(id []string) {
 }
 
 func (l *LookupTable) GetPointer(name string) *ir.InstAlloca {
-	p := l.pointers.get(name)
-	if p == nil {
-		panic(fmt.Sprintf("no pointer found for variable %s", name))
-	}
-	return p
+	return l.pointers.get(name)
 }
 
 func (l *LookupTable) GetParams(id []string) []value.Value {

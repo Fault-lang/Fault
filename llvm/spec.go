@@ -3,7 +3,6 @@ package llvm
 import (
 	"fault/llvm/variables"
 	"fmt"
-	"unicode"
 
 	"github.com/llir/llvm/ir"
 	irtypes "github.com/llir/llvm/ir/types"
@@ -55,14 +54,22 @@ func (s *spec) DefineSpecType(id []string, ty irtypes.Type) {
 	s.vars.Type(id, ty)
 }
 
-func (s *spec) GetSpecType(name string, inSamePackage bool) (irtypes.Type, bool) {
-	if unicode.IsLower([]rune(name)[0]) && !inSamePackage {
-		panic(fmt.Sprintf("Can't use %s from outside of %s", name, s.name))
-	}
+func (s *spec) GetSpecType(name string) irtypes.Type {
+	return s.vars.GetType(name)
+}
 
+func (s *spec) GetPointerType(name string) irtypes.Type {
 	ty := s.vars.GetType(name)
 	if ty != nil {
-		return ty, true
+		switch ty {
+		case irtypes.Double:
+			return DoubleP
+		case irtypes.I1:
+			return I1P
+		default:
+			fmt.Printf("problem here %T", ty)
+		}
 	}
-	return nil, false
+	fmt.Printf("no type found for %s\n", name)
+	return DoubleP
 }

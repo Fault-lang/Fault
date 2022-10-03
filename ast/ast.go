@@ -425,6 +425,7 @@ func (i *Identifier) Type() string {
 type ParameterCall struct {
 	Token        Token
 	InferredType *Type
+	Spec         string
 	Value        []string
 }
 
