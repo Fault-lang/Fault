@@ -84,6 +84,7 @@ type Checker struct {
 	SpecStructs map[string]StockFlow
 	Constants   map[string]map[string]ast.Node
 	trail       importTrail
+	calledIn    string
 }
 
 func (c *Checker) Check(a *ast.Spec) error {

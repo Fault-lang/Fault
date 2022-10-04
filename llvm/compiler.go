@@ -48,6 +48,7 @@ type Compiler struct {
 
 	currentSpecName string
 	currScope       []string
+	currStruct      string
 
 	specStructs     map[string]types.StockFlow
 	specFunctions   map[string]value.Value
@@ -274,7 +275,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 				id := []string{cname, key.Value}
 				id, s := c.GetSpec(id)
 				if s.GetSpecVar(id) != nil {
-					name := c.getVariableName(id)
+					name := strings.Join(id, "_")
 					pointer := s.GetSpecVarPointer(name)
 					ty := s.GetSpecType(name)
 					c.contextBlock.NewLoad(ty, pointer)
@@ -312,6 +313,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
+		var id []string
+		var s *spec
 		r := c.compileValue(node.Right)
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			var fvn []string
@@ -321,15 +324,14 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			case *ast.ParameterCall:
 				fvn = c.getFullVariableName(n.Value)
 			}
+			id, s = c.GetSpec(fvn)
 
-			if c.isVarSet(fvn) && c.alloc {
-				_, s := c.GetSpec(fvn)
-				fvns := c.getVariableName(fvn)
+			if c.isVarSet(id) && c.alloc {
+				fvns := strings.Join(id, "_")
 				p := s.GetSpecVarPointer(fvns)
 				c.contextBlock.NewStore(r, p)
 				return nil
 			}
-			id, s := c.GetSpec(fvn)
 			s.DefineSpecVar(id, r)
 			s.DefineSpecType(id, r.Type())
 			if c.alloc {
@@ -355,11 +357,12 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		case *ast.Identifier:
 			fvn = c.getFullVariableName([]string{n.Value})
 		case *ast.ParameterCall:
-			fvn = c.getFullVariableName(n.Value)
+			fvn = c.pcVariableName(n)
 		}
-		fvns := c.getVariableName(fvn)
+		id, _ := c.GetSpec(fvn)
+		fvns := strings.Join(id, "_")
 
-		if !c.isVarSet(fvn) {
+		if !c.isVarSet(id) {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
 		}
 
@@ -487,24 +490,25 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	}
 }
 
+func (c *Compiler) pcVariableName(v *ast.ParameterCall) []string {
+	id := []string{c.currentSpecName, c.currStruct}
+
+	if c.currScope[0] != "" {
+		id = append(id, c.currScope...)
+	}
+
+	return append(id, v.Value...)
+}
+
 func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
 		var id []string
-		if v.Spec != c.currentSpecName {
-			id = []string{c.currentSpecName}
+		if c.currStruct != "" {
+			id = c.pcVariableName(v)
 		} else {
-			id = []string{v.Spec}
+			id = c.getFullVariableName(v.Value)
 		}
-
-		//If from within a struct currScope is the name
-		// of the instance of the struct. Otherwise it's
-		// an empty string
-		if c.currScope[0] != "" {
-			id = append(id, c.currScope...)
-		}
-
-		id = append(id, v.Value...)
 		return c.lookupIdent(id, node.Position())
 	default:
 		return c.compileValue(node)
@@ -550,6 +554,9 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 }
 
 func (c *Compiler) compileValue(node ast.Node) value.Value {
+	if node == nil {
+		panic("value received by compileValue is nil")
+	}
 	switch v := node.(type) {
 	case *ast.IntegerLiteral:
 		return constant.NewFloat(irtypes.Double, float64(v.Value))
@@ -699,6 +706,9 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		c.alloc = false
 	}
 
+	oldStruct := c.currStruct
+	c.currStruct = base.Name
+
 	pos := base.Position()
 	structName := []string{base.Value.Spec, base.Value.Value}
 	parentFunction := c.contextFuncName
@@ -707,7 +717,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", structName, pos[0], pos[1]))
 	}
 
-	children := c.processStruct(c.currentSpecName, structName, instName, pos)
+	children := c.processStruct(structName, instName, pos)
 	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 
 	key := strings.Join([]string{c.currentSpecName, instName}, "_")
@@ -717,6 +727,7 @@ func (c *Compiler) compileInstance(base *ast.Instance, instName string) {
 		c.currScope = []string{""}
 		c.alloc = true
 	}
+	c.currStruct = oldStruct
 }
 
 func (c *Compiler) processFunc(id []string, structName []string, round int /*pos []int*/) value.Value {
@@ -736,7 +747,16 @@ func (c *Compiler) processFunc(id []string, structName []string, round int /*pos
 		c.currScope = []string{id[1]} // NOT necessarily the same as structName
 		c.contextBlock = f.NewBlock(name.Block())
 
-		val := c.compileValue(c.specStructs[structName[0]][structName[1]][key])
+		// There's obviously something very wrong here
+		// this is kind of bad patch for right now until
+		// I get through some functions of the compiler
+		var branch ast.Node
+		if c.specStructs[structName[0]][structName[1]][key] != nil {
+			branch = c.specStructs[structName[0]][structName[1]][key]
+		} else {
+			branch = c.specStructs[id[0]][id[1]][key]
+		}
+		val := c.compileValue(branch)
 		c.contextBlock.NewRet(val)
 
 		c.contextBlock = oldBlock
@@ -750,7 +770,8 @@ func (c *Compiler) processFunc(id []string, structName []string, round int /*pos
 	return c.specFunctions[fname]
 }
 
-func (c *Compiler) processStruct(baseSpec string, structName []string, instName string, pos []int) map[string]string {
+func (c *Compiler) processStruct(structName []string, instName string, pos []int) map[string]string {
+	baseSpec := c.currentSpecName
 	children := make(map[string]string)
 	keys := c.generateOrder(structName, c.specStructs[structName[0]][structName[1]])
 	for _, k := range keys {
@@ -796,7 +817,7 @@ func (c *Compiler) processStruct(baseSpec string, structName []string, instName 
 			s.DefineSpecType(id, val.Type())
 			c.allocVariable(id, val, pos)
 			s.vars.ResetState(id)
-			name := c.getVariableName(id)
+			name := strings.Join(id, "_")
 			ty := s.GetPointerType(name)
 			p := ir.NewParam(name, ty)
 			s.AddParam(id, p)
@@ -924,8 +945,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	// If there's no value, there's nothing to store
 	if val != nil || !c.isFunction(c.specStructs[id[0]][structName[1]][pc.Value[1]]) {
 		if s.GetSpecVar(id) != nil {
-			//name := c.getVariableStateName(id)
-			name := c.getVariableName(id)
+			name := strings.Join(id, "_")
 			pointer := s.GetSpecVarPointer(name)
 			ty := s.GetSpecType(name)
 			c.contextBlock.NewLoad(ty, pointer)
@@ -1022,7 +1042,7 @@ func (c *Compiler) GetSpec(id []string) ([]string, *spec) {
 	if c.specs[id[0]] == nil {
 		id = append([]string{c.currentSpecName}, id...)
 	}
-	return id, c.specs[id[0]]
+	return id, c.currentSpec
 }
 
 func (c *Compiler) ListSpecs() []string {
@@ -1095,6 +1115,7 @@ func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) b
 
 func (c *Compiler) generateParameters(structName []string, data map[string]ast.Node, id []string) []*ir.Param {
 	var p []*ir.Param
+	var s *spec
 	keys := c.generateOrder(structName, data)
 	for _, k := range keys {
 		switch n := data[k].(type) {
@@ -1109,8 +1130,8 @@ func (c *Compiler) generateParameters(structName []string, data map[string]ast.N
 		default:
 			if !c.isFunction(n) {
 				pid := append(id, k)
-				name := c.getVariableName(c.getFullVariableName(pid))
-				_, s := c.GetSpec(pid)
+				pid, s = c.GetSpec(pid)
+				name := strings.Join(pid, "_")
 				ty := s.GetPointerType(name)
 				p = append(p, ir.NewParam(name, ty))
 			}
@@ -1139,7 +1160,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		id := strings.Split(e.Value, "_")
 		pos := e.Position()
 		fvn := c.getFullVariableName(id)
-		fvns := c.getVariableName(fvn)
+		id, _ = c.GetSpec(fvn)
+		fvns := strings.Join(id, "_")
 
 		if !c.isVarSetAssert(fvn) {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
@@ -1158,7 +1180,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		id := e.Value
 		pos := e.Position()
 		fvn := c.getFullVariableName(id)
-		fvns := c.getVariableName(fvn)
+		id, _ = c.GetSpec(id)
+		fvns := strings.Join(id, "_")
 
 		if !c.isVarSetAssert(fvn) {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", fvns, pos[0], pos[1]))
@@ -1206,7 +1229,7 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 
 func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 	id, s := c.GetSpec(ident)
-	name := c.getVariableName(id)
+	name := strings.Join(id, "_")
 	pointer := c.specGlobals[name]
 	if pointer != nil {
 		pointer := c.specGlobals[name]
@@ -1217,7 +1240,6 @@ func (c *Compiler) lookupIdent(ident []string, pos []int) *ir.InstLoad {
 
 	local := s.GetSpecVar(id)
 	if local != nil {
-		name = c.getVariableName(id)
 		pointer := s.GetSpecVarPointer(name)
 		ty := s.GetSpecType(name)
 		load := c.contextBlock.NewLoad(ty, pointer)

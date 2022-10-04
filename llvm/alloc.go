@@ -11,12 +11,8 @@ import (
 )
 
 func (c *Compiler) getFullVariableName(id []string) []string {
-	if c.currScope[0] != "" && c.contextFuncName != "__run" &&
-		strings.Join(c.currScope, "_") != c.contextFuncName {
-		if id[0] == "this" {
-			return append(c.currScope, id[1:]...)
-		}
-		return append(c.currScope, id...)
+	if c.currScope[0] != "" && strings.Join(c.currScope, "_") != c.contextFuncName {
+		return c.removeThis(id)
 	} else {
 		if len(id) >= 3 && c.isFunction(c.specStructs[id[0]][id[1]][id[2]]) {
 			return append(id[0:2], id[3:]...) //This variable is being accessed from a function, remove function name
@@ -25,10 +21,17 @@ func (c *Compiler) getFullVariableName(id []string) []string {
 	}
 }
 
-func (c *Compiler) getVariableName(id []string) string {
-	id, _ = c.GetSpec(id)
-	return strings.Join(id, "_")
+func (c *Compiler) removeThis(id []string) []string {
+	if id[0] == "this" {
+		return append(c.currScope, id[1:]...)
+	}
+	return append(c.currScope, id...)
 }
+
+// func (c *Compiler) getVariableName(id []string) string {
+// 	id, _ = c.GetSpec(id)
+// 	return strings.Join(id, "_")
+// }
 
 func (c *Compiler) updateVariableStateName(id []string) string {
 	id, s := c.GetSpec(id)
@@ -42,7 +45,7 @@ func (c *Compiler) updateVariableStateName(id []string) string {
 
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	id, _ = c.GetSpec(id)
-	name := c.getVariableName(id)
+	name := strings.Join(id, "_")
 	var alloc *ir.InstAlloca
 	var store *ir.InstStore
 
