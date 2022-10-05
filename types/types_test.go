@@ -75,7 +75,7 @@ func TestSFGetStruct(t *testing.T) {
 }
 
 func TestImportTrail(t *testing.T) {
-	it := importTrail{}
+	it := ImportTrail{}
 	it = it.PushSpec("test")
 	it = it.PushSpec("this")
 	it = it.PushSpec("trail")

@@ -469,12 +469,57 @@ func (av *AssertVar) Type() string {
 	}
 }
 
+type StructInstance struct {
+	Token        Token
+	InferredType *Type
+	Values       map[string]*StructProperty
+	Spec         string
+	Name         string
+	Parent       []string
+}
+
+func (si *StructInstance) expressionNode()      {}
+func (si *StructInstance) TokenLiteral() string { return si.Token.Literal }
+func (si *StructInstance) Position() []int      { return si.Token.GetPosition() }
+func (si *StructInstance) String() string {
+	var out bytes.Buffer
+	for key, value := range si.Values {
+		out.WriteString(fmt.Sprintf("%s_%s_%s:%s", si.Spec, si.Name, key, value.String()))
+	}
+	return out.String()
+}
+func (si *StructInstance) Type() string {
+	return string(si.Token.Type)
+}
+
+type StructProperty struct {
+	Token        Token
+	InferredType *Type
+	Value        Node
+	Spec         string
+	Name         string
+	Parent       []string
+}
+
+func (sp *StructProperty) expressionNode()      {}
+func (sp *StructProperty) TokenLiteral() string { return sp.Token.Literal }
+func (sp *StructProperty) Position() []int      { return sp.Token.GetPosition() }
+func (sp *StructProperty) String() string {
+	var out bytes.Buffer
+	out.WriteString(sp.Value.String())
+	return out.String()
+}
+func (sp *StructProperty) Type() string {
+	return string(sp.Value.Type())
+}
+
 type Instance struct {
 	Token        Token
 	InferredType *Type
 	Value        *Identifier
 	Name         string
 	Complex      bool //If stock does this stock contain another stock?
+	ComplexScope string
 }
 
 func (i *Instance) expressionNode()      {}
