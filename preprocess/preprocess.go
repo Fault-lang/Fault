@@ -2,7 +2,6 @@ package preprocess
 
 import (
 	"fault/ast"
-	"fault/types"
 	"fault/util"
 	"fmt"
 	"strings"
@@ -11,7 +10,7 @@ import (
 type Processor struct {
 	Specs       map[string]*SpecRecord
 	scope       string
-	trail       types.ImportTrail
+	trail       util.ImportTrail
 	structTypes map[string]map[string]string
 	Processed   ast.Node
 }
@@ -23,13 +22,14 @@ func NewProcesser() *Processor {
 	}
 }
 
-func (p *Processor) Run(n *ast.Spec) ast.Node {
+func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	tree, err := p.walk(n)
 	if err != nil {
 		panic(err)
 	}
-	p.Processed = tree
-	return tree
+	spec := tree.(*ast.Spec)
+	p.Processed = spec
+	return spec
 }
 
 func (p *Processor) walk(n ast.Node) (ast.Node, error) {

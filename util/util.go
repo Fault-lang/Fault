@@ -2,6 +2,7 @@ package util
 
 import (
 	"fault/ast"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -234,4 +235,34 @@ func DetectMode(filename string) string {
 	default:
 		return ""
 	}
+}
+
+type ImportTrail []string
+
+func (i ImportTrail) BaseSpec() string {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	return i[0]
+}
+
+func (i ImportTrail) CurrentSpec() string {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	return i[len(i)-1]
+}
+
+func (i ImportTrail) PushSpec(spec string) []string {
+	i = append(i, spec)
+	return i
+}
+
+func (i ImportTrail) PopSpec() (string, []string) {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	spec := i[len(i)-1]
+	i = i[0 : len(i)-1]
+	return spec, i
 }

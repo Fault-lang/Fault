@@ -56,41 +56,11 @@ func (sf StockFlow) GetStruct(strname string) map[string]ast.Node {
 	panic(fmt.Sprintf("No stock or flow named %s", strname))
 }
 
-type ImportTrail []string
-
-func (i ImportTrail) BaseSpec() string {
-	if len(i) == 0 {
-		panic(fmt.Sprintln("import trail is empty"))
-	}
-	return i[0]
-}
-
-func (i ImportTrail) CurrentSpec() string {
-	if len(i) == 0 {
-		panic(fmt.Sprintln("import trail is empty"))
-	}
-	return i[len(i)-1]
-}
-
-func (i ImportTrail) PushSpec(spec string) []string {
-	i = append(i, spec)
-	return i
-}
-
-func (i ImportTrail) PopSpec() (string, []string) {
-	if len(i) == 0 {
-		panic(fmt.Sprintln("import trail is empty"))
-	}
-	spec := i[len(i)-1]
-	i = i[0 : len(i)-1]
-	return spec, i
-}
-
 type Checker struct {
 	scope       string
 	SpecStructs map[string]StockFlow
 	Constants   map[string]map[string]ast.Node
-	trail       ImportTrail
+	trail       util.ImportTrail
 	calledIn    string
 }
 

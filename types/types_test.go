@@ -4,6 +4,8 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/parser"
+	"fault/preprocess"
+	"fault/util"
 	"testing"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -75,7 +77,7 @@ func TestSFGetStruct(t *testing.T) {
 }
 
 func TestImportTrail(t *testing.T) {
-	it := ImportTrail{}
+	it := util.ImportTrail{}
 	it = it.PushSpec("test")
 	it = it.PushSpec("this")
 	it = it.PushSpec("trail")
@@ -976,8 +978,12 @@ func prepTest(test string) (*Checker, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &Checker{}
-	err := ty.Check(l.AST)
+	err := ty.Check(tree)
 	return ty, err
 }
 
@@ -990,7 +996,11 @@ func prepTestSys(test string) (*Checker, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &Checker{}
-	err := ty.Check(l.AST)
+	err := ty.Check(tree)
 	return ty, err
 }
