@@ -15,11 +15,7 @@ func TestConstants(t *testing.T) {
 	const y = 2+3.1;
 	const z = unknown(a);`
 
-	process, err := prepTest(test)
-
-	if err != nil {
-		t.Fatalf("Type checking failed on valid expression. got=%s", err)
-	}
+	process := prepTest(test)
 
 	consts := process.Specs["test1"]
 
@@ -75,11 +71,7 @@ func TestStructDef(t *testing.T) {
 			};
 	`
 
-	process, err := prepTest(test)
-
-	if err != nil {
-		t.Fatalf("Type checking failed on valid expression. got=%s", err)
-	}
+	process := prepTest(test)
 
 	variables := process.Specs["test1"]
 
@@ -91,6 +83,40 @@ func TestStructDef(t *testing.T) {
 	zoo := variables.FetchFlow("zoo")
 	if len(zoo) != 3 {
 		t.Fatalf("flow zoo returns the wrong number of properties got=%d want=4", len(zoo))
+	}
+
+}
+
+func TestComponent(t *testing.T) {
+	test := `system test;
+
+	component foo = states{
+		x: 8,
+		initial: func{
+			if this.x > 10{
+				stay();
+			}else{
+				advance(this.alarm);
+			}
+		},
+		alarm: func{
+			advance(this.close);
+		},
+	};
+
+	start { 
+		foo: initial,
+	};`
+
+	process := prepSysTest(test)
+	variables := process.Specs["test"]
+	foo := variables.FetchComponent("foo")
+	if foo == nil {
+		t.Fatal("component named foo not found")
+	}
+
+	if len(foo) != 3 {
+		t.Fatalf("component foo returns the wrong number of states got=%d want=3", len(foo))
 	}
 
 }
@@ -117,11 +143,7 @@ func TestInstances(t *testing.T) {
 	};
 	`
 
-	process, err := prepTest(test)
-
-	if err != nil {
-		t.Fatalf("Type checking failed on valid expression. got=%s", err)
-	}
+	process := prepTest(test)
 
 	variables := process.Specs["test1"]
 
@@ -143,9 +165,56 @@ func TestInstances(t *testing.T) {
 		t.Fatalf("flow fl_buzz_foosh_bar returns the wrong number of properties got=%d want=4", len(zoo))
 	}
 
+	o := variables.FetchOrder()
+	if len(o) != 10 {
+		t.Fatalf("wrong number of instances got=%d want=10", len(o))
+	}
+
+	if o[0][0] != "STOCK" {
+		t.Fatalf("instance has the wrong type in order got=%s want=STOCK", o[0][0])
+	}
+
+	if o[8][1] != "fl_buzz_foosh" {
+		t.Fatalf("instance has the wrong name in order got=%s want=fl_buzz_foosh", o[8][1])
+	}
+
 }
 
-func prepTest(test string) (*Processor, error) {
+func TestRunInstances(t *testing.T) {
+	test := `spec test1;
+	def str = stock{
+		foo: 3,
+	};
+
+	def fl = flow{
+		buzz: new str,
+		fizz: func{
+			buzz.foo <- 5;
+		},
+	};
+
+	for 5 run {
+		f =  new fl;
+		f.fizz;
+	}
+	`
+
+	process := prepTest(test)
+
+	variables := process.Specs["test1"]
+
+	fl := variables.FetchFlow("f")
+	if fl == nil {
+		t.Fatal("flow named f not found")
+	}
+
+	if len(fl) != 2 {
+		t.Fatalf("flow f returns the wrong number of properties got=%d want=3", len(fl))
+	}
+
+}
+
+func prepTest(test string) *Processor {
 	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
@@ -155,11 +224,11 @@ func prepTest(test string) (*Processor, error) {
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	pro := NewProcesser()
-	err := pro.Run(l.AST)
-	return pro, err
+	pro.Run(l.AST)
+	return pro
 }
 
-func prepSysTest(test string) (*Processor, error) {
+func prepSysTest(test string) *Processor {
 	path := ""
 	is := antlr.NewInputStream(test)
 	lexer := parser.NewFaultLexer(is)
@@ -169,6 +238,6 @@ func prepSysTest(test string) (*Processor, error) {
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	pro := NewProcesser()
-	err := pro.Run(l.AST)
-	return pro, err
+	pro.Run(l.AST)
+	return pro
 }

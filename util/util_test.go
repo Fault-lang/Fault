@@ -41,7 +41,7 @@ func TestGeneratorToken(t *testing.T) {
 
 func TestPreparse(t *testing.T) {
 	token := ast.Token{Literal: "test", Position: []int{1, 2, 3, 4}}
-	pairs := make(map[ast.Expression]ast.Expression)
+	pairs := make(map[*ast.Identifier]ast.Expression)
 	pairs[&ast.Identifier{Token: token, Value: "foo"}] = &ast.IntegerLiteral{Token: token, Value: 3}
 	pairs[&ast.Identifier{Token: token, Value: "bash"}] = &ast.FunctionLiteral{Token: token,
 		Parameters: []*ast.Identifier{{Token: token, Value: "foo"}},

@@ -53,16 +53,11 @@ func Filepath(filepath string) string {
 	return filepath
 }
 
-func Preparse(pairs map[ast.Expression]ast.Expression) map[string]ast.Node {
+func Preparse(pairs map[*ast.Identifier]ast.Expression) map[string]ast.Node {
 	properties := make(map[string]ast.Node)
 	for k, v := range pairs {
 		id := strings.TrimSpace(k.String())
-		switch tree := v.(type) {
-		case *ast.FunctionLiteral:
-			properties[id] = tree.Body
-		default:
-			properties[id] = tree
-		}
+		properties[id] = v
 	}
 	return properties
 }

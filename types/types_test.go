@@ -327,13 +327,13 @@ func TestTypesInStruct(t *testing.T) {
 		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["con"].(*ast.Instance).InferredType.Type)
 	}
 
-	if zooFlow["rate"].(*ast.BlockStatement).InferredType.Type != "INT" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.BlockStatement).InferredType.Type)
+	if zooFlow["rate"].(*ast.FunctionLiteral).Body.InferredType.Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.FunctionLiteral).Body.InferredType.Type)
 	}
 
-	infix, ok := zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	infix, ok := zooFlow["rate"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
 	if !ok {
-		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 	if infix.Right.(*ast.IntegerLiteral).InferredType.Type != "INT" {
 		t.Fatalf("flow property not typed correctly. got=%s", infix.Right.(*ast.IntegerLiteral).InferredType.Type)
@@ -343,13 +343,13 @@ func TestTypesInStruct(t *testing.T) {
 		t.Fatalf("flow property not typed correctly. got=%s", infix.Left.(*ast.ParameterCall).InferredType.Type)
 	}
 
-	if zooFlow["rate2"].(*ast.BlockStatement).InferredType.Type != "FLOAT" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate2"].(*ast.BlockStatement).InferredType.Type)
+	if zooFlow["rate2"].(*ast.FunctionLiteral).Body.InferredType.Type != "FLOAT" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate2"].(*ast.FunctionLiteral).Body.InferredType.Type)
 	}
 
-	infix2, ok := zooFlow["rate2"].(*ast.BlockStatement).Statements[1].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	infix2, ok := zooFlow["rate2"].(*ast.FunctionLiteral).Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
 	if !ok {
-		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate2"].(*ast.BlockStatement).Statements[1].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate2"].(*ast.FunctionLiteral).Body.Statements[1].(*ast.ExpressionStatement).Expression)
 	}
 	if infix2.Right.(*ast.IntegerLiteral).InferredType.Type != "INT" {
 		t.Fatalf("flow property not typed correctly. got=%s", infix2.Right.(*ast.IntegerLiteral).InferredType.Type)
@@ -359,9 +359,9 @@ func TestTypesInStruct(t *testing.T) {
 		t.Fatalf("flow property not typed correctly. got=%s", infix2.Left.(*ast.Identifier).InferredType.Type)
 	}
 
-	infix3, ok := zooFlow["rate2"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	infix3, ok := zooFlow["rate2"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
 	if !ok {
-		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate2"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("expecting a infix expression. got=%T", zooFlow["rate2"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 	if infix3.Right.(*ast.Identifier).InferredType.Type != "FLOAT" {
 		t.Fatalf("flow property not typed correctly. got=%s", infix3.Right.(*ast.Identifier).InferredType.Type)
@@ -464,17 +464,17 @@ func TestInConditionals(t *testing.T) {
 		t.Fatal("flow zoo not stored in symbol table correctly.")
 	}
 
-	if zooFlow["rate"].(*ast.BlockStatement).InferredType.Type != "INT" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.BlockStatement).InferredType.Type)
+	if zooFlow["rate"].(*ast.FunctionLiteral).Body.InferredType.Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.FunctionLiteral).Body.InferredType.Type)
 	}
 
-	if zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).InferredType.Type != "INT" {
-		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).InferredType.Type)
+	if zooFlow["rate"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).InferredType.Type != "INT" {
+		t.Fatalf("flow property not typed correctly. got=%s", zooFlow["rate"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).InferredType.Type)
 	}
 
-	ife, ok := zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	ife, ok := zooFlow["rate"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("expecting a If expression. got=%T", zooFlow["rate"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("expecting a If expression. got=%T", zooFlow["rate"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	if ife.InferredType.Type != "INT" {
@@ -505,9 +505,9 @@ func TestInConditionals(t *testing.T) {
 		t.Fatalf("if alternative block not typed correctly. got=%s", ife.Elif.Alternative.InferredType.Type)
 	}
 
-	ife2, ok := zooFlow["rate2"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	ife2, ok := zooFlow["rate2"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("expecting a If expression. got=%T", zooFlow["rate2"].(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("expecting a If expression. got=%T", zooFlow["rate2"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	if ife2.InferredType.Type != "INT" {

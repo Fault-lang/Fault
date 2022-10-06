@@ -658,6 +658,7 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
 	ident := &ast.Identifier{Token: token2}
+	fmt.Println(txt)
 	switch len(txt) {
 	case 1:
 		pc := l.pop()
@@ -666,18 +667,18 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 		} else {
 
 			ident.Spec = r.Value[0]
-			ident.Value = txt[0].GetText()
-			right = r.Value[1]
+			ident.Value = r.Value[1]
+			right = txt[0].GetText()
 		}
 
 	case 2:
 		ident.Spec = l.currSpec
-		ident.Value = txt[0].GetText()
-		right = txt[1].GetText()
+		ident.Value = txt[1].GetText()
+		right = txt[0].GetText()
 	case 3:
 		ident.Spec = txt[1].GetText()
-		ident.Value = txt[0].GetText() // Not sure why the parser flips the order
-		right = txt[2].GetText()
+		ident.Value = txt[2].GetText() // Not sure why the parser flips the order
+		right = txt[0].GetText()
 	default:
 		panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
@@ -1203,9 +1204,9 @@ func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	return listener.AST
 }
 
-func (l *FaultListener) getPairs(p int, pos []int) (map[ast.Expression]ast.Expression, []string) {
+func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expression, []string) {
 	var order []string
-	pairs := make(map[ast.Expression]ast.Expression)
+	pairs := make(map[*ast.Identifier]ast.Expression)
 	for i := 0; i < p; i++ {
 		right := l.pop()
 		if right == nil {

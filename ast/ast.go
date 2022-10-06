@@ -472,10 +472,10 @@ func (av *AssertVar) Type() string {
 type StructInstance struct {
 	Token        Token
 	InferredType *Type
-	Values       map[string]*StructProperty
+	Properties       map[string]*StructProperty
 	Spec         string
 	Name         string
-	Parent       []string
+	Parent       string
 }
 
 func (si *StructInstance) expressionNode()      {}
@@ -483,7 +483,7 @@ func (si *StructInstance) TokenLiteral() string { return si.Token.Literal }
 func (si *StructInstance) Position() []int      { return si.Token.GetPosition() }
 func (si *StructInstance) String() string {
 	var out bytes.Buffer
-	for key, value := range si.Values {
+	for key, value := range si.Properties {
 		out.WriteString(fmt.Sprintf("%s_%s_%s:%s", si.Spec, si.Name, key, value.String()))
 	}
 	return out.String()
@@ -498,7 +498,7 @@ type StructProperty struct {
 	Value        Node
 	Spec         string
 	Name         string
-	Parent       []string
+	//Parent       []string
 }
 
 func (sp *StructProperty) expressionNode()      {}
@@ -520,6 +520,7 @@ type Instance struct {
 	Name         string
 	Complex      bool //If stock does this stock contain another stock?
 	ComplexScope string
+	Processed    *StructInstance
 }
 
 func (i *Instance) expressionNode()      {}
@@ -1011,7 +1012,7 @@ type StockLiteral struct {
 	Token        Token
 	InferredType *Type
 	Order        []string
-	Pairs        map[Expression]Expression
+	Pairs        map[*Identifier]Expression
 }
 
 func (sl *StockLiteral) expressionNode()      {}
@@ -1032,12 +1033,20 @@ func (sl *StockLiteral) String() string {
 	return out.String()
 }
 func (sl *StockLiteral) Type() string { return "STOCK" }
+func (sl *StockLiteral) GetPropertyIdent(key string) *Identifier {
+	for k, _ := range sl.Pairs {
+		if k.Value == key {
+			return k
+		}
+	}
+	return nil
+}
 
 type FlowLiteral struct {
 	Token        Token
 	InferredType *Type
 	Order        []string
-	Pairs        map[Expression]Expression
+	Pairs        map[*Identifier]Expression
 }
 
 func (fl *FlowLiteral) expressionNode()      {}
@@ -1058,12 +1067,20 @@ func (fl *FlowLiteral) String() string {
 	return out.String()
 }
 func (fl *FlowLiteral) Type() string { return "FLOW" }
+func (fl *FlowLiteral) GetPropertyIdent(key string) *Identifier {
+	for k, _ := range fl.Pairs {
+		if k.Value == key {
+			return k
+		}
+	}
+	return nil
+}
 
 type ComponentLiteral struct {
 	Token        Token
 	InferredType *Type
 	Order        []string
-	Pairs        map[Expression]Expression
+	Pairs        map[*Identifier]Expression
 }
 
 func (cl *ComponentLiteral) expressionNode()      {}
@@ -1084,3 +1101,11 @@ func (cl *ComponentLiteral) String() string {
 	return out.String()
 }
 func (cl *ComponentLiteral) Type() string { return "COMPONENT" }
+func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
+	for k, _ := range cl.Pairs {
+		if k.Value == key {
+			return k
+		}
+	}
+	return nil
+}

@@ -7,7 +7,7 @@ import (
 
 func InitNodes() []Node {
 	token := Token{Literal: "test", Position: []int{1, 2, 3, 4}}
-	pairs := make(map[Expression]Expression)
+	pairs := make(map[*Identifier]Expression)
 	pairs[&Identifier{Token: token, Value: "foo"}] = &IntegerLiteral{Token: token, Value: 3}
 
 	baseType := &Type{Type: "test"}

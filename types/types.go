@@ -223,6 +223,13 @@ func (c *Checker) pass2(n ast.Node, properties map[string]ast.Node) (ast.Node, e
 		return n, err
 	} else {
 		switch node := n.(type) {
+		case *ast.FunctionLiteral:
+			node2, err := c.pass2(node.Body, properties)
+			if err != nil {
+				return nil, err
+			}
+			node.Body = node2.(*ast.BlockStatement)
+			return node, err
 		case *ast.BlockStatement:
 			var valtype *ast.Type
 			for i := 0; i < len(node.Statements); i++ {
