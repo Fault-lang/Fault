@@ -3,6 +3,7 @@ package llvm
 import (
 	"fault/llvm/variables"
 	"fmt"
+	"strings"
 
 	"github.com/llir/llvm/ir"
 	irtypes "github.com/llir/llvm/ir/types"
@@ -38,7 +39,8 @@ func (s *spec) GetSpecVarState(id []string) int16 {
 	return s.vars.GetState(id)
 }
 
-func (s *spec) GetSpecVarPointer(name string) *ir.InstAlloca {
+func (s *spec) GetSpecVarPointer(id []string) *ir.InstAlloca {
+	name := strings.Join(id, "_")
 	return s.vars.GetPointer(name)
 }
 

@@ -4,6 +4,7 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/parser"
+	"fault/preprocess"
 	"fault/types"
 	"fmt"
 	"io"
@@ -569,7 +570,7 @@ func TestComponent(t *testing.T) {
 		},
 		Value: &ast.ComponentLiteral{
 			Order: []string{"initial", "alert", "close"},
-			Pairs: map[ast.Expression]ast.Expression{
+			Pairs: map[*ast.Identifier]ast.Expression{
 				&ast.Identifier{Spec: "test", Value: "initial"}: &ast.StateLiteral{
 					Body: &ast.BlockStatement{
 						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
@@ -796,13 +797,16 @@ func prepTest(test string) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	err := ty.Check(tree)
 	if err != nil {
 		return "", err
 	}
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
 	err = compiler.Compile(l.AST)
 	if err != nil {
 		return "", err
@@ -820,13 +824,16 @@ func prepTestSys(test string) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	err := ty.Check(tree)
 	if err != nil {
 		return "", err
 	}
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
 	err = compiler.Compile(l.AST)
 	if err != nil {
 		return "", err

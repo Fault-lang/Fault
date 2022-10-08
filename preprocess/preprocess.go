@@ -44,15 +44,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.SpecDeclStatement:
 		p.Specs[node.Name.Value] = NewSpecRecord()
+		p.Specs[node.Name.Value].SpecName = node.Name.Value
 		p.trail = p.trail.PushSpec(node.Name.Value)
 		return node, err
 	case *ast.SysDeclStatement:
 		p.Specs[node.Name.Value] = NewSpecRecord()
+		p.Specs[node.Name.Value].SpecName = node.Name.Value
 		p.trail = p.trail.PushSpec(node.Name.Value)
 		return node, err
 	case *ast.ImportStatement:
 		pro, err = p.walk(node.Tree)
 		node.Tree = pro.(*ast.Spec)
+		_, p.trail = p.trail.PopSpec()
 		return node, err
 	case *ast.ConstantStatement:
 		var spec *SpecRecord
@@ -81,6 +84,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec.AddStock(p.scope, properties)
 		spec.Index("STOCK", p.scope)
 		p.Specs[p.trail.CurrentSpec()] = spec
+		node.ProcessedName = []string{spec.Id(), p.scope}
 
 		for k, v := range properties {
 			pro, err = p.walk(v)
@@ -107,6 +111,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec.AddFlow(p.scope, properties)
 		spec.Index("FLOW", p.scope)
 		p.Specs[p.trail.CurrentSpec()] = spec
+		node.ProcessedName = []string{spec.Id(), p.scope}
 
 		for k, v := range properties {
 			pro, err = p.walk(v)
@@ -133,6 +138,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec.AddComponent(p.scope, properties)
 		spec.Index("COMPONENT", p.scope)
 		p.Specs[p.trail.CurrentSpec()] = spec
+		node.ProcessedName = []string{spec.Id(), p.scope}
 
 		for k, v := range properties {
 			pro, err = p.walk(v)
@@ -222,9 +228,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 					Position: node.Position(),
 				}
 				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
+				property.ProcessedName = []string{spec.Id(), strings.Join([]string{p.scope, id}, "_")}
 				pro.Properties[id] = property
 			}
 			node.Processed = pro
+			node.ProcessedName = []string{spec.Id(), p.scope}
 			p.scope = oldScope
 		case "FLOW":
 			properties = importSpec.FetchFlow(node.Value.Value)
@@ -259,9 +267,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 					Position: node.Position(),
 				}
 				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
+				property.ProcessedName = []string{spec.Id(), strings.Join([]string{p.scope, id}, "_")}
 				pro.Properties[id] = property
 			}
 			node.Processed = pro
+			node.ProcessedName = []string{spec.Id(), p.scope}
 			p.scope = oldScope
 		default:
 			panic(fmt.Sprintf("invalid instance %s", node.Value.Value))

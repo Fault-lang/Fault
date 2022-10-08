@@ -84,6 +84,10 @@ type Operand interface {
 	Expression
 	operandNode()
 }
+type Nameable interface {
+	Expression
+	Id()
+}
 
 type Spec struct {
 	Statements []Statement
@@ -402,10 +406,11 @@ func (ss *StartStatement) Type() string {
 }
 
 type Identifier struct {
-	Token        Token
-	InferredType *Type
-	Spec         string
-	Value        string
+	Token         Token
+	InferredType  *Type
+	Spec          string
+	Value         string
+	ProcessedName []string
 }
 
 func (i *Identifier) operandNode()         {}
@@ -421,12 +426,16 @@ func (i *Identifier) Type() string {
 		return ""
 	}
 }
+func (i *Identifier) Id() []string {
+	return i.ProcessedName
+}
 
 type ParameterCall struct {
-	Token        Token
-	InferredType *Type
-	Spec         string
-	Value        []string
+	Token         Token
+	InferredType  *Type
+	Spec          string
+	Value         []string
+	ProcessedName []string
 }
 
 func (p *ParameterCall) operandNode()         {}
@@ -447,6 +456,9 @@ func (p *ParameterCall) Type() string {
 	} else {
 		return ""
 	}
+}
+func (p *ParameterCall) Id() []string {
+	return p.ProcessedName
 }
 
 type AssertVar struct {
@@ -470,12 +482,13 @@ func (av *AssertVar) Type() string {
 }
 
 type StructInstance struct {
-	Token        Token
-	InferredType *Type
-	Properties       map[string]*StructProperty
-	Spec         string
-	Name         string
-	Parent       string
+	Token         Token
+	InferredType  *Type
+	Properties    map[string]*StructProperty
+	Spec          string
+	Name          string
+	Parent        string
+	ProcessedName []string
 }
 
 func (si *StructInstance) expressionNode()      {}
@@ -491,14 +504,17 @@ func (si *StructInstance) String() string {
 func (si *StructInstance) Type() string {
 	return string(si.Token.Type)
 }
+func (si *StructInstance) Id() []string {
+	return si.ProcessedName
+}
 
 type StructProperty struct {
-	Token        Token
-	InferredType *Type
-	Value        Node
-	Spec         string
-	Name         string
-	//Parent       []string
+	Token         Token
+	InferredType  *Type
+	Value         Node
+	Spec          string
+	Name          string
+	ProcessedName []string
 }
 
 func (sp *StructProperty) expressionNode()      {}
@@ -512,15 +528,19 @@ func (sp *StructProperty) String() string {
 func (sp *StructProperty) Type() string {
 	return string(sp.Value.Type())
 }
+func (sp *StructProperty) Id() []string {
+	return sp.ProcessedName
+}
 
 type Instance struct {
-	Token        Token
-	InferredType *Type
-	Value        *Identifier
-	Name         string
-	Complex      bool //If stock does this stock contain another stock?
-	ComplexScope string
-	Processed    *StructInstance
+	Token         Token
+	InferredType  *Type
+	Value         *Identifier
+	Name          string
+	Complex       bool //If stock does this stock contain another stock?
+	ComplexScope  string
+	Processed     *StructInstance
+	ProcessedName []string
 }
 
 func (i *Instance) expressionNode()      {}
@@ -536,6 +556,9 @@ func (i *Instance) String() string {
 }
 func (i *Instance) Type() string {
 	return i.Value.Type()
+}
+func (i *Instance) Id() []string {
+	return i.ProcessedName
 }
 
 type ExpressionStatement struct {
@@ -563,9 +586,10 @@ func (es *ExpressionStatement) Type() string {
 }
 
 type IntegerLiteral struct {
-	Token        Token
-	InferredType *Type
-	Value        int64
+	Token         Token
+	InferredType  *Type
+	Value         int64
+	ProcessedName []string
 }
 
 func (il *IntegerLiteral) expressionNode()      {}
@@ -580,11 +604,15 @@ func (il *IntegerLiteral) Type() string {
 		return "INT"
 	}
 }
+func (il *IntegerLiteral) Id() []string {
+	return il.ProcessedName
+}
 
 type FloatLiteral struct {
-	Token        Token
-	InferredType *Type
-	Value        float64
+	Token         Token
+	InferredType  *Type
+	Value         float64
+	ProcessedName []string
 }
 
 func (fl *FloatLiteral) expressionNode()      {}
@@ -599,11 +627,15 @@ func (fl *FloatLiteral) Type() string {
 		return "FLOAT"
 	}
 }
+func (fl *FloatLiteral) Id() []string {
+	return fl.ProcessedName
+}
 
 type Natural struct {
-	Token        Token
-	InferredType *Type
-	Value        int64
+	Token         Token
+	InferredType  *Type
+	Value         int64
+	ProcessedName []string
 }
 
 func (n *Natural) expressionNode()      {}
@@ -618,12 +650,16 @@ func (n *Natural) Type() string {
 		return "NATURAL"
 	}
 }
+func (n *Natural) Id() []string {
+	return n.ProcessedName
+}
 
 type Uncertain struct {
-	Token        Token
-	InferredType *Type
-	Mean         float64
-	Sigma        float64
+	Token         Token
+	InferredType  *Type
+	Mean          float64
+	Sigma         float64
+	ProcessedName []string
 }
 
 func (u *Uncertain) expressionNode()      {}
@@ -645,12 +681,16 @@ func (u *Uncertain) Type() string {
 		return "UNCERTAIN"
 	}
 }
+func (u *Uncertain) Id() []string {
+	return u.ProcessedName
+}
 func (u *Uncertain) Position() []int { return u.Token.GetPosition() }
 
 type Unknown struct {
-	Token        Token
-	InferredType *Type
-	Name         *Identifier
+	Token         Token
+	InferredType  *Type
+	Name          *Identifier
+	ProcessedName []string
 }
 
 func (u *Unknown) expressionNode()      {}
@@ -671,6 +711,9 @@ func (u *Unknown) Type() string {
 	} else {
 		return "UNKNOWN"
 	}
+}
+func (u *Unknown) Id() []string {
+	return u.ProcessedName
 }
 func (u *Unknown) Position() []int { return u.Token.GetPosition() }
 
@@ -721,9 +764,10 @@ func (ie *InfixExpression) String() string {
 func (ie *InfixExpression) Type() string { return ie.Right.Type() }
 
 type Boolean struct {
-	Token        Token
-	InferredType *Type
-	Value        bool
+	Token         Token
+	InferredType  *Type
+	Value         bool
+	ProcessedName []string
 }
 
 func (b *Boolean) expressionNode()      {}
@@ -738,11 +782,15 @@ func (b *Boolean) Type() string {
 		return "BOOL"
 	}
 }
+func (b *Boolean) Id() []string {
+	return b.ProcessedName
+}
 
 type This struct {
-	Token        Token
-	InferredType *Type
-	Value        []string
+	Token         Token
+	InferredType  *Type
+	Value         []string
+	ProcessedName []string
 }
 
 func (t *This) expressionNode()      {}
@@ -756,6 +804,9 @@ func (t *This) Type() string {
 	} else {
 		return ""
 	}
+}
+func (t *This) Id() []string {
+	return t.ProcessedName
 }
 
 type Clock struct {
@@ -836,9 +887,10 @@ func (pf *ParallelFunctions) String() string {
 func (pf *ParallelFunctions) Type() string { return "" }
 
 type InitExpression struct {
-	Token        Token
-	InferredType *Type
-	Expression   Expression
+	Token         Token
+	InferredType  *Type
+	Expression    Expression
+	ProcessedName []string
 }
 
 func (ie *InitExpression) expressionNode()      {}
@@ -852,6 +904,7 @@ func (ie *InitExpression) String() string {
 	return out.String()
 }
 func (ie *InitExpression) Type() string { return "" }
+func (ie *InitExpression) Id() []string { return ie.ProcessedName }
 
 type IfExpression struct {
 	Token        Token
@@ -888,9 +941,10 @@ func (ie *IfExpression) String() string {
 func (ie *IfExpression) Type() string { return "" }
 
 type FunctionLiteral struct {
-	Token      Token
-	Parameters []*Identifier
-	Body       *BlockStatement
+	Token         Token
+	Parameters    []*Identifier
+	Body          *BlockStatement
+	ProcessedName []string
 }
 
 func (fl *FunctionLiteral) expressionNode()      {}
@@ -912,11 +966,13 @@ func (fl *FunctionLiteral) String() string {
 	return out.String()
 }
 func (fl *FunctionLiteral) Type() string { return fl.Body.Type() }
+func (fl *FunctionLiteral) Id() []string { return fl.ProcessedName }
 
 type StateLiteral struct {
-	Token      Token
-	Parameters []*Identifier
-	Body       *BlockStatement
+	Token         Token
+	Parameters    []*Identifier
+	Body          *BlockStatement
+	ProcessedName []string
 }
 
 func (sl *StateLiteral) expressionNode()      {}
@@ -938,11 +994,13 @@ func (sl *StateLiteral) String() string {
 	return out.String()
 }
 func (sl *StateLiteral) Type() string { return sl.Body.Type() }
+func (sl *StateLiteral) Id() []string { return sl.ProcessedName }
 
 type BuiltIn struct {
-	Token      Token
-	Parameters map[string]Operand
-	Function   string
+	Token         Token
+	Parameters    map[string]Operand
+	Function      string
+	ProcessedName []string
 }
 
 func (b *BuiltIn) expressionNode()      {}
@@ -963,11 +1021,13 @@ func (b *BuiltIn) String() string {
 	return out.String()
 }
 func (b *BuiltIn) Type() string { return "builtin" }
+func (b *BuiltIn) Id() []string { return b.ProcessedName }
 
 type StringLiteral struct {
-	Token        Token
-	InferredType *Type
-	Value        string
+	Token         Token
+	InferredType  *Type
+	Value         string
+	ProcessedName []string
 }
 
 func (sl *StringLiteral) expressionNode()      {}
@@ -982,12 +1042,16 @@ func (sl *StringLiteral) Type() string {
 		return "STRING"
 	}
 }
+func (sl *StringLiteral) Id() []string {
+	return sl.ProcessedName
+}
 
 type IndexExpression struct {
-	Token        Token
-	InferredType *Type
-	Left         Expression
-	Index        Expression
+	Token         Token
+	InferredType  *Type
+	Left          Expression
+	Index         Expression
+	ProcessedName []string
 }
 
 func (ie *IndexExpression) expressionNode()      {}
@@ -1007,12 +1071,16 @@ func (ie *IndexExpression) String() string {
 func (ie *IndexExpression) Type() string {
 	return ie.Left.Type()
 }
+func (ie *IndexExpression) Id() []string {
+	return ie.ProcessedName
+}
 
 type StockLiteral struct {
-	Token        Token
-	InferredType *Type
-	Order        []string
-	Pairs        map[*Identifier]Expression
+	Token         Token
+	InferredType  *Type
+	Order         []string
+	Pairs         map[*Identifier]Expression
+	ProcessedName []string
 }
 
 func (sl *StockLiteral) expressionNode()      {}
@@ -1033,8 +1101,9 @@ func (sl *StockLiteral) String() string {
 	return out.String()
 }
 func (sl *StockLiteral) Type() string { return "STOCK" }
+func (sl *StockLiteral) Id() []string { return sl.ProcessedName }
 func (sl *StockLiteral) GetPropertyIdent(key string) *Identifier {
-	for k, _ := range sl.Pairs {
+	for k := range sl.Pairs {
 		if k.Value == key {
 			return k
 		}
@@ -1043,10 +1112,11 @@ func (sl *StockLiteral) GetPropertyIdent(key string) *Identifier {
 }
 
 type FlowLiteral struct {
-	Token        Token
-	InferredType *Type
-	Order        []string
-	Pairs        map[*Identifier]Expression
+	Token         Token
+	InferredType  *Type
+	Order         []string
+	Pairs         map[*Identifier]Expression
+	ProcessedName []string
 }
 
 func (fl *FlowLiteral) expressionNode()      {}
@@ -1067,8 +1137,9 @@ func (fl *FlowLiteral) String() string {
 	return out.String()
 }
 func (fl *FlowLiteral) Type() string { return "FLOW" }
+func (fl *FlowLiteral) Id() []string { return fl.ProcessedName }
 func (fl *FlowLiteral) GetPropertyIdent(key string) *Identifier {
-	for k, _ := range fl.Pairs {
+	for k := range fl.Pairs {
 		if k.Value == key {
 			return k
 		}
@@ -1077,10 +1148,11 @@ func (fl *FlowLiteral) GetPropertyIdent(key string) *Identifier {
 }
 
 type ComponentLiteral struct {
-	Token        Token
-	InferredType *Type
-	Order        []string
-	Pairs        map[*Identifier]Expression
+	Token         Token
+	InferredType  *Type
+	Order         []string
+	Pairs         map[*Identifier]Expression
+	ProcessedName []string
 }
 
 func (cl *ComponentLiteral) expressionNode()      {}
@@ -1101,8 +1173,9 @@ func (cl *ComponentLiteral) String() string {
 	return out.String()
 }
 func (cl *ComponentLiteral) Type() string { return "COMPONENT" }
+func (cl *ComponentLiteral) Id() []string { return cl.ProcessedName }
 func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
-	for k, _ := range cl.Pairs {
+	for k := range cl.Pairs {
 		if k.Value == key {
 			return k
 		}

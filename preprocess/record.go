@@ -1,8 +1,12 @@
 package preprocess
 
-import "fault/ast"
+import (
+	"fault/ast"
+	"fmt"
+)
 
 type SpecRecord struct {
+	SpecName   string
 	Stocks     map[string]map[string]ast.Node
 	Flows      map[string]map[string]ast.Node
 	Components map[string]map[string]ast.Node
@@ -20,6 +24,10 @@ func NewSpecRecord() *SpecRecord {
 	}
 }
 
+func (sr *SpecRecord) Id() string {
+	return sr.SpecName
+}
+
 func (sr *SpecRecord) AddStock(name string, v map[string]ast.Node) {
 	sr.Stocks[name] = v
 }
@@ -34,6 +42,30 @@ func (sr *SpecRecord) AddComponent(name string, v map[string]ast.Node) {
 
 func (sr *SpecRecord) AddConstant(k string, v ast.Node) {
 	sr.Constants[k] = v
+}
+
+func (sr *SpecRecord) GetStructType(id []string) string {
+	for _, v := range sr.Order {
+		if v[0] == id[1] {
+			return v[1]
+		}
+	}
+	return "NIL"
+}
+
+func (sr *SpecRecord) Fetch(name string, ty string) map[string]ast.Node {
+	switch ty {
+	case "STOCK":
+		return sr.FetchStock(name)
+	case "FLOW":
+		return sr.FetchFlow(name)
+	case "COMPONENT":
+		return sr.FetchComponent(name)
+	case "CONSTANT":
+		return map[string]ast.Node{name: sr.FetchConstant(name)}
+	default:
+		panic(fmt.Sprintf("Cannot fetch a variable %s of type %s", name, ty))
+	}
 }
 
 func (sr *SpecRecord) FetchStock(name string) map[string]ast.Node {
