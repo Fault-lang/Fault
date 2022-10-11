@@ -13,6 +13,7 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
+	"github.com/llir/llvm/ir/metadata"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -37,13 +38,16 @@ type Compiler struct {
 
 	runRound int16
 
-	currentSpec     string
-	specs           map[string]*spec
-	structPropOrder map[string][]string
+	currentSpec      string
+	specs            map[string]*spec
+	instances        map[string][]string
+	instanceChildren map[string]string
+	structPropOrder  map[string][]string
 
 	contextBlock    *ir.Block
 	contextFunc     *ir.Func
 	contextFuncName string
+	contextMetadata *metadata.Attachment
 
 	// Stack of variables that are in scope
 	alloc             bool
@@ -73,6 +77,8 @@ func NewCompiler() *Compiler {
 		allocatedPointers: make([]map[string]*ir.InstAlloca, 0),
 
 		contextCondAfter: make([]*ir.Block, 0),
+		instances:        make(map[string][]string),
+		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
 
 		runRound:        0,
@@ -186,8 +192,9 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.StartStatement:
 		for _, p := range v.Pairs {
+			branch := c.specStructs[c.currentSpec].FetchComponent(p[0])
 			id := []string{c.currentSpec, p[0], p[1]}
-			c.processFunc(id, []string{id[0], p[0]}, 0)
+			c.processFunc(id, branch)
 			c.ComponentStarts[p[0]] = p[1]
 		}
 
@@ -204,29 +211,33 @@ func (c *Compiler) compileConstant(node *ast.ConstantStatement) {
 	c.globalVariable(id, value, node.Position())
 }
 
-func (c *Compiler) setConst(id []string, val value.Value) {
-	if c.isVarSet(id) {
-		fid := strings.Join(id, "_")
+func (c *Compiler) setConst(rawid []string, val value.Value) {
+	if c.isVarSet(rawid) {
+		fid := strings.Join(rawid, "_")
 		panic(fmt.Sprintf("variable %s is a constant and cannot be reassigned", fid))
 	}
-	c.specs[c.currentSpec].DefineSpecVar(id, val)
-	c.specs[c.currentSpec].DefineSpecType(id, val.Type())
+	c.specs[c.currentSpec].DefineSpecVar(rawid, val)
+	c.specs[c.currentSpec].DefineSpecType(rawid, val.Type())
 }
 
 func (c *Compiler) compileStruct(def *ast.DefStatement) {
-	id := def.Name.ProcessedName
+	id := def.Name.Id()
 	key := strings.Join(id, "_")
 	switch def.Type() {
 	case "FLOW":
+		c.instances[key] = []string{}
 		c.structPropOrder[key] = def.Value.(*ast.FlowLiteral).Order
 	case "STOCK":
+		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.StockLiteral).Order
 	case "GLOBAL":
-		instance, _ := def.Value.(*ast.Instance)
-		c.compileInstance(instance, strings.Join(id, "_"))
+		c.instances[key] = []string{key}
+		//instance, _ := def.Value.(*ast.Instance)
+		//c.compileInstance(instance, strings.Join(id, "_"))
 	case "COMPONENT":
+		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.ComponentLiteral).Order
-		c.compileComponent(def.Value.(*ast.ComponentLiteral), id)
+		c.compileComponent(def.Value.(*ast.ComponentLiteral), key)
 	}
 }
 
@@ -260,7 +271,10 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.FunctionLiteral:
 		return c.compileFunction(v)
 	case *ast.Instance:
-		c.compileInstance(v, v.Name)
+		panic("Yes still have instances LOL")
+		//c.compileInstance(v, v.Name)
+	case *ast.StructInstance:
+		c.compileInstance(v)
 	case *ast.ParameterCall:
 		return c.compileParameterCall(v)
 	case *ast.BlockStatement:
@@ -270,6 +284,31 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 		panic(fmt.Sprintf("unknown value type %T line: %d col: %d", v, pos[0], pos[1]))
 	}
 	return nil
+}
+
+func (c *Compiler) compileInstance(node *ast.StructInstance) {
+	id := node.Id()
+	spec := c.specStructs[id[0]]
+	order := c.structPropOrder[node.Parent]
+	pos := node.Position()
+	children := make(map[string]string)
+	parent := node.Parent
+
+	switch node.Type() {
+	case "STOCK":
+		properties := spec.FetchStock(parent)
+		children = c.processStruct(order, properties, pos)
+
+	case "FLOW":
+		properties := spec.FetchFlow(parent)
+		children = c.processStruct(order, properties, pos)
+
+	default:
+		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", id, pos[0], pos[1]))
+	}
+	key := strings.Join(id, "_")
+	c.instances[key] = append(c.instances[key], node.Parent)
+	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 }
 
 func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
@@ -285,7 +324,8 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 
 		switch v := p.(type) {
 		case *ast.StateLiteral:
-			params := c.generateParameters([]string{key.Spec, cname}, c.specStructs[key.Spec][cname], []string{key.Spec, cname, key.Value})
+			branches := util.Preparse(node.Pairs)
+			params := c.generateParameters([]string{key.Spec, cname}, branches)
 			c.resetParaState(params)
 			f := c.module.NewFunc(key.Value, irtypes.Void, params...)
 			c.contextFunc = f
@@ -300,20 +340,20 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 			c.contextBlock.NewRet(val)
 			c.contextBlock = oldBlock
 			c.contextFuncName = "__run"
-			c.currScope = oldScope
+			//c.currScope = oldScope
 			c.contextFunc = nil
 		case *ast.Instance:
-			c.compileInstance(v, cname)
+			panic("Yes still have instances LOL 2")
 		default:
 			val := c.compileValue(v)
 
 			if val != nil {
-				id := []string{cname, key.Value}
-				id, s := c.GetSpec(id)
+				id := []string{c.currentSpec, cname, key.Value}
+				s := c.specs[id[0]]
 				if s.GetSpecVar(id) != nil {
-					name := strings.Join(id, "_")
-					pointer := s.GetSpecVarPointer(name)
-					ty := s.GetSpecType(name)
+					vname := strings.Join(id, "_")
+					pointer := s.GetSpecVarPointer(id)
+					ty := s.GetSpecType(vname)
 					c.contextBlock.NewLoad(ty, pointer)
 				} else {
 					s.DefineSpecType(id, val.Type())
@@ -323,6 +363,58 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 			}
 		}
 	}
+}
+
+func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
+	id := pc.RawId()
+	spec := c.specStructs[id[0]]
+	ty := spec.GetStructType(id)
+	st := id[len(id)-2] //The struct is the second to last item
+	key := id[len(id)-1]
+
+	var branches map[string]ast.Node
+	switch ty {
+	case "FLOW":
+		branches = spec.FetchFlow(st)
+	case "STOCK":
+		branches = spec.FetchStock(st)
+	default:
+		panic(fmt.Sprintf("struct %s not found", id))
+	}
+
+	if c.contextFuncName == "__run" &&
+		c.isFunction(branches[key]) {
+		return c.processFunc(id, branches)
+	}
+
+	// Otherwise inline the parameter...
+	// if c.currScope[0] == "" {
+	// 	c.currScope = []string{pc.Value[0]}
+	// }
+	parentFunction := c.contextFuncName
+	c.contextFuncName = pc.Value[0]
+
+	val := c.compileValue(branches[key])
+
+	// If there's no value, there's nothing to store
+	if val != nil || !c.isFunction(branches[key]) {
+		s := c.specs[id[0]]
+		if s.GetSpecVar(id) != nil {
+			vname := strings.Join(id, "_")
+			pointer := s.GetSpecVarPointer(id)
+			ty := s.GetSpecType(vname)
+			c.contextBlock.NewLoad(ty, pointer)
+		} else {
+			s.DefineSpecType(id, val.Type())
+			s.DefineSpecVar(id, val)
+			c.allocVariable(id, val, pc.Position())
+		}
+	}
+	// if c.currScope[0] == pc.Value[0] {
+	// 	c.currScope = []string{""}
+	// }
+	c.contextFuncName = parentFunction
+	return val
 }
 
 func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
@@ -344,6 +436,57 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 	return ret
 }
 
+func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
+	if c.contextFuncName != "__run" {
+		pos := node.Position()
+		panic(fmt.Sprintf("cannot use parallel operator outside of the run block. line: %d, col: %d", pos[0], pos[1]))
+	}
+	gname := name.ParallelGroup(node.String())
+	for i := 0; i < len(node.Expressions); i++ {
+		l := c.compileValue(node.Expressions[i])
+		md := &metadata.Attachment{
+			Name: gname,
+			Node: &metadata.DIBasicType{
+				MetadataID: -1,
+				Tag:        enum.DwarfTagStringType,
+			}}
+		switch exp := l.(type) {
+		case *ir.Func:
+			id := node.Expressions[i].(*ast.ParameterCall).Id()
+			s := c.specs[id[0]]
+			params := s.GetParams(id)
+			l_func := c.contextBlock.NewCall(exp, params...)
+			l_func.Metadata = append(l_func.Metadata, md)
+		case *ir.InstFAdd:
+			exp.Metadata = append(exp.Metadata, md)
+		case *ir.InstFSub:
+			exp.Metadata = append(exp.Metadata, md)
+		case *ir.InstFMul:
+			exp.Metadata = append(exp.Metadata, md)
+		case *ir.InstFDiv:
+			exp.Metadata = append(exp.Metadata, md)
+		case *ir.InstFRem:
+			exp.Metadata = append(exp.Metadata, md)
+		case *ir.InstFCmp:
+			exp.Metadata = append(exp.Metadata, md)
+		}
+	}
+	c.contextMetadata = nil
+}
+
+func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
+	body := node.Body.Statements
+	var retValue value.Value
+	for i := 0; i < len(body); i++ {
+		exp := body[i].(*ast.ExpressionStatement).Expression
+		init, ok := exp.(*ast.InitExpression)
+		if ok {
+			return c.compileValue(init.Expression)
+		}
+	}
+	return retValue
+}
+
 func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 	if !c.alloc { //Short circuit this if just initializing
 		return nil
@@ -359,11 +502,7 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 		c.compileIf(v)
 
 	case *ast.Instance:
-		// orign := v.Value.Spec
-		// origv := v.Value.Value
-		// v.Value.Value = orign
-		// v.Name = origv
-		c.compileInstance(v, v.Name)
+		panic("Yes still have instances LOL 3")
 
 	case *ast.IndexExpression:
 
@@ -430,9 +569,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			switch n := node.Left.(type) {
 			case *ast.Identifier:
-				id = n.ProcessedName
+				id = n.RawId()
 			case *ast.ParameterCall:
-				id = n.ProcessedName
+				id = n.RawId()
 			}
 			if c.isVarSet(id) && c.alloc {
 				p := s.GetSpecVarPointer(id)
@@ -461,9 +600,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		pos := n.Position()
 		switch n := node.Left.(type) {
 		case *ast.Identifier:
-			id = n.ProcessedName
+			id = n.RawId()
 		case *ast.ParameterCall:
-			id = n.ProcessedName
+			id = n.RawId()
 		}
 
 		if !c.isVarSet(id) {
@@ -596,11 +735,98 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
-		id := v.ProcessedName
+		id := v.Id()
 		return c.lookupIdent(id, node.Position())
 	default:
 		return c.compileValue(node)
 	}
+}
+
+func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
+	return c.lookupIdent(node.Id(), node.Position())
+}
+
+func (c *Compiler) compileIf(n *ast.IfExpression) {
+	cond := c.compileConditional(n.Condition)
+
+	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
+	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-true")
+	falseBlock := afterBlock
+
+	c.contextCondAfter = append(c.contextCondAfter, afterBlock)
+
+	if n.Alternative != nil {
+		falseBlock = c.contextBlock.Parent.NewBlock(name.Block() + "-false")
+	}
+
+	c.contextBlock.NewCondBr(cond, trueBlock, falseBlock)
+
+	c.contextBlock = trueBlock
+	c.compileBlock(n.Consequence)
+
+	// Jump to after-block if no terminator has been set (such as a return statement)
+	if trueBlock.Term == nil {
+		trueBlock.NewBr(afterBlock)
+	}
+
+	if n.Alternative != nil {
+		c.contextBlock = falseBlock
+		c.compileBlock(n.Alternative)
+
+		// Jump to after-block if no terminator has been set (such as a return statement)
+		if falseBlock.Term == nil {
+			falseBlock.NewBr(afterBlock)
+		}
+	}
+
+	c.contextBlock = afterBlock
+
+	// pop after block stack
+	c.contextCondAfter = c.contextCondAfter[0 : len(c.contextCondAfter)-1]
+
+	// set after block to jump to the after block
+	if len(c.contextCondAfter) > 0 {
+		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
+	} else {
+		afterBlock.NewRet(nil)
+	}
+}
+
+func (c *Compiler) compileConditional(n ast.Node) value.Value {
+	// Reformat the conditional clause to accept
+	// things like if a {} or if !a {} and replace them
+	// with a == true or a == false
+	switch conditional := n.(type) {
+	case *ast.InfixExpression:
+		return c.compileValue(conditional)
+	case *ast.PrefixExpression:
+		return c.compilePrefix(conditional)
+	case *ast.Identifier:
+		right := &ast.Boolean{
+			Token:        conditional.Token,
+			InferredType: conditional.InferredType,
+			Value:        true,
+		}
+		n := &ast.InfixExpression{Token: conditional.Token,
+			InferredType: conditional.InferredType,
+			Left:         conditional,
+			Operator:     "==",
+			Right:        right}
+		return c.compileValue(n)
+	case *ast.ParameterCall:
+		right := &ast.Boolean{
+			Token:        conditional.Token,
+			InferredType: conditional.InferredType,
+			Value:        true,
+		}
+		n := &ast.InfixExpression{Token: conditional.Token,
+			InferredType: conditional.InferredType,
+			Left:         conditional,
+			Operator:     "==",
+			Right:        right}
+		return c.compileValue(n)
+	}
+	return c.compileValue(n)
 }
 
 func (c *Compiler) compileAssert(assert ast.Node) {
@@ -632,36 +858,112 @@ func (c *Compiler) compileAssert(assert ast.Node) {
 	}
 }
 
+func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
+	switch e := ex.(type) {
+	case *ast.InfixExpression:
+
+		e.Left = c.convertAssertVariables(e.Left)
+		e.Right = c.convertAssertVariables(e.Right)
+		return e
+	case *ast.Identifier:
+		id := e.RawId()
+		pos := e.Position()
+		vname := strings.Join(id, "_")
+
+		if !c.isVarSetAssert(id) {
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", vname, pos[0], pos[1]))
+		}
+
+		instas := c.fetchInstances(id)
+		if len(instas) == 0 {
+			instas = []string{vname}
+		}
+		return &ast.AssertVar{
+			Token:        e.Token,
+			InferredType: e.InferredType,
+			Instances:    instas,
+		}
+	case *ast.ParameterCall:
+		id := e.RawId()
+		pos := e.Position()
+		vname := strings.Join(id, "_")
+
+		if !c.isVarSetAssert(id) {
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", vname, pos[0], pos[1]))
+		}
+
+		instas := c.fetchInstances(id)
+		if len(instas) == 0 {
+			instas = []string{vname}
+		}
+		return &ast.AssertVar{
+			Token:        e.Token,
+			InferredType: e.InferredType,
+			Instances:    instas,
+		}
+
+	case *ast.AssertVar:
+		return e
+	case *ast.IntegerLiteral:
+		return e
+	case *ast.FloatLiteral:
+		return e
+	case *ast.Boolean:
+		return e
+	case *ast.StringLiteral:
+		return e
+	case *ast.Natural:
+		return e
+	case *ast.Uncertain:
+		return e
+	case *ast.Unknown:
+		return e
+	case *ast.PrefixExpression:
+		e.Right = c.convertAssertVariables(e.Right)
+		return e
+	case *ast.Nil:
+		return e
+	case *ast.IndexExpression:
+		e.Left = c.convertAssertVariables(e.Left)
+		return e
+	default:
+		pos := e.Position()
+		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+	}
+}
+
+func (c *Compiler) convertRawId(rawid []string) []string {
+	stname := strings.Join(rawid[1:len(rawid)-1], "_")
+	return []string{rawid[0], stname}
+}
+
 func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 	s := c.specs[id[0]]
-	name := strings.Join(id, "_")
+	vname := strings.Join(id, "_")
 
 	local := s.GetSpecVar(id)
 	if local != nil {
 		pointer := s.GetSpecVarPointer(id)
-		ty := s.GetSpecType(name)
+		ty := s.GetSpecType(vname)
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
 	}
 
-	pointer := c.specGlobals[name]
+	pointer := c.specGlobals[vname]
 	if pointer != nil {
-		pointer := c.specGlobals[name]
-		ty := s.GetSpecType(name)
+		pointer := c.specGlobals[vname]
+		ty := s.GetSpecType(vname)
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
 	}
 	return nil
 }
 
-func (c *Compiler) processFunc(id []string, structName []string, round int /*pos []int*/) value.Value {
-	fname := strings.Join(id, "_")
+func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value.Value {
+	fname := strings.Join(rawId, "_")
 
-	if round == 0 { //initialize
-		spec := c.specStructs[id[0]]
-		ty := spec.GetStructType(id)
-		branch := spec.Fetch(id[1], ty)
-		params := c.generateParameters(id, branch)
+	if c.runRound == 0 { //initialize
+		params := c.generateParameters(rawId, branch)
 		c.resetParaState(params)
 		f := c.module.NewFunc(fname, irtypes.Void, params...)
 		c.contextFunc = f
@@ -673,7 +975,7 @@ func (c *Compiler) processFunc(id []string, structName []string, round int /*pos
 		//c.currScope = []string{id[1]} // NOT necessarily the same as structName
 		c.contextBlock = f.NewBlock(name.Block())
 
-		val := c.compileValue(branch[id[2]])
+		val := c.compileValue(branch[rawId[2]])
 		c.contextBlock.NewRet(val)
 
 		c.contextBlock = oldBlock
@@ -687,6 +989,73 @@ func (c *Compiler) processFunc(id []string, structName []string, round int /*pos
 	return c.specFunctions[fname]
 }
 
+func (c *Compiler) processStruct(keys []string, tree map[string]ast.Node, pos []int) map[string]string {
+	var s *spec
+	children := make(map[string]string)
+	for _, k := range keys {
+		var isUncertain []float64
+		var isUnknown bool
+		var id []string
+
+		switch pv := tree[k].(type) {
+		case *ast.Instance:
+			panic("Yes still have instances LOL 4")
+		case *ast.StructInstance:
+			id = pv.Id()
+			s = c.specs[id[0]]
+			c.compileInstance(pv)
+		case *ast.FunctionLiteral:
+			id = pv.Id()
+			s = c.specs[id[0]]
+			c.compileFunction(pv)
+		default:
+			if n, ok := pv.(*ast.Uncertain); ok {
+				isUnknown = true
+				id = n.Id()
+			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
+				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
+				id = n.Id()
+			} else if n, ok := pv.(*ast.IntegerLiteral); ok {
+				id = n.Id()
+			} else if n, ok := pv.(*ast.FloatLiteral); ok {
+				id = n.Id()
+			} else if n, ok := pv.(*ast.Boolean); ok {
+				id = n.Id()
+			} else if n, ok := pv.(*ast.StringLiteral); ok {
+				id = n.Id()
+			} else if n, ok := pv.(*ast.Identifier); ok {
+				id = n.Id()
+			} else if n, ok := pv.(*ast.ParameterCall); ok {
+				id = n.Id()
+			}
+
+			val := c.compileValue(pv)
+
+			s = c.specs[id[0]]
+			s.DefineSpecVar(id, val)
+			s.DefineSpecType(id, val.Type())
+			c.allocVariable(id, val, pos)
+			vname := strings.Join(id, "_")
+			s.vars.ResetState(vname)
+			ty := s.GetPointerType(vname)
+			p := ir.NewParam(vname, ty)
+			s.AddParam(id, p)
+
+		}
+		//Track properties of instances so that we can write
+		// asserts on the struct and honor them for all instances
+		vname := strings.Join(id, "_")
+		if isUnknown {
+			c.Unknowns = append(c.Unknowns, vname)
+		}
+		if isUncertain != nil {
+			c.Uncertains[vname] = isUncertain
+		}
+		children[vname] = id[1]
+	}
+	return children
+}
+
 func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*ir.Param {
 	var p []*ir.Param
 	var s *spec
@@ -696,20 +1065,20 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 		switch n := data[k].(type) {
 		case *ast.Instance:
 			var ip []*ir.Param
-			child := n.ProcessedName
+			child := n.Id()
 			if n.Complex {
 				ip = c.generateParameters(child, sr.Fetch(child[1], n.InferredType.Type))
 			} else {
-				ip = c.generateParameters(n.ProcessedName, sr.Fetch(child[1], n.InferredType.Type))
+				ip = c.generateParameters(n.Id(), sr.Fetch(child[1], n.InferredType.Type))
 			}
 			p = append(p, ip...)
 		default:
 			if n2, ok := n.(*ast.StructProperty); ok {
-				child := n2.ProcessedName
-				name := strings.Join(child, "_")
+				child := n2.Id()
+				vname := strings.Join(child, "_")
 				if n2.Value.Type() != "FUNCTION" {
-					ty := s.GetPointerType(name)
-					p = append(p, ir.NewParam(name, ty))
+					ty := s.GetPointerType(vname)
+					p = append(p, ir.NewParam(vname, ty))
 				}
 			}
 		}
@@ -734,21 +1103,93 @@ func (c *Compiler) resetParaState(p []*ir.Param) {
 	}
 }
 
-func (c *Compiler) isVarSet(id []string) bool {
-	s := c.specStructs[id[0]]
-	if s.FetchStock(id[1]) != nil {
+func (c *Compiler) isFunction(node ast.Node) bool {
+	switch node.(type) {
+	case *ast.FunctionLiteral:
+		return true
+	case *ast.BlockStatement:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Compiler) isVarSet(rawid []string) bool {
+	s := c.specStructs[rawid[0]]
+	if len(rawid) > 2 {
+		return c.isStrVarSet(rawid)
+	}
+	if s.FetchStock(rawid[1]) != nil {
 		return true
 	}
-	if s.FetchFlow(id[1]) != nil {
+	if s.FetchFlow(rawid[1]) != nil {
 		return true
 	}
-	if s.FetchConstant(id[1]) != nil {
+	if s.FetchConstant(rawid[1]) != nil {
 		return true
 	}
-	if s.FetchComponent(id[1]) != nil {
+	if s.FetchComponent(rawid[1]) != nil {
 		return true
 	}
 	return false
+}
+
+func (c *Compiler) isStrVarSet(rawid []string) bool {
+	s := c.specStructs[rawid[0]]
+	id := c.convertRawId(rawid)
+	ty := s.GetStructType(rawid)
+
+	var st map[string]ast.Node
+	switch ty {
+	case "STOCK":
+		st = s.FetchStock(id[1])
+	case "FLOW":
+		st = s.FetchFlow(id[1])
+	case "COMPONENT":
+		st = s.FetchComponent(id[1])
+	default:
+		return false
+	}
+
+	if st[rawid[len(rawid)-1]] != nil {
+		return true
+	}
+	return false
+}
+
+func (c *Compiler) isVarSetAssert(rawid []string) bool {
+	//If this is for an assert the var might reference
+	//a rule on the struct level
+
+	id := c.convertRawId(rawid)
+	if c.isVarSet(rawid) || c.isInstance(id) {
+		return true
+	}
+	return false
+}
+
+func (c *Compiler) isInstance(id []string) bool {
+	for _, v := range c.instances {
+		if v[1] == id[1] {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Compiler) fetchInstances(id []string) []string {
+	// this and convertAssertVariables need a rethink. Seems brittle
+	// with lots of edge cases
+	var insta []string
+	for k, v := range c.instanceChildren {
+		if v == id[1] {
+			id2 := strings.Split(k, "_")
+			if id2[len(id2)-1] == id[len(id)-1] { //Same parameter of a different instance
+				insta = append(insta, k)
+			}
+		}
+	}
+	return insta
 }
 
 func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) bool {

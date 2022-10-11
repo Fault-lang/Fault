@@ -377,12 +377,11 @@ func TestUnknowns(t *testing.T) {
 }
 
 func TestParamReset(t *testing.T) {
-	structs := make(map[string]types.StockFlow)
+	structs := make(map[string]*preprocess.SpecRecord)
 	c := NewCompiler()
 	c.LoadMeta(structs, make(map[string][]float64), []string{})
 	s := NewCompiledSpec("test")
-	c.currentSpec = s
-	c.currentSpecName = "test"
+	c.currentSpec = "test"
 	c.specs["test"] = s
 
 	id := []string{"test", "this", "func"}
@@ -403,45 +402,6 @@ func TestParamReset(t *testing.T) {
 	if s.vars.GetState(id) != 0 {
 		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
 	}
-}
-
-func TestListSpecs(t *testing.T) {
-	structs := make(map[string]types.StockFlow)
-	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{})
-	s := NewCompiledSpec("test")
-	c.currentSpec = s
-	c.currentSpecName = "test"
-	c.specs["test"] = s
-
-	results := c.ListSpecs()
-	if results[1] == "test " {
-		t.Fatal("List of Specs failed to return spec test")
-	}
-
-}
-func TestListSpecsVars(t *testing.T) {
-	structs := make(map[string]types.StockFlow)
-	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{})
-	s := NewCompiledSpec("test")
-	c.currentSpec = s
-	c.currentSpecName = "test"
-	c.specs["test"] = s
-
-	id := []string{"test", "this", "func"}
-	val1 := constant.NewInt(irtypes.I32, 0)
-	s.DefineSpecVar(id, val1)
-
-	results := c.ListSpecsAndVars()
-
-	if results["test"] == nil {
-		t.Fatal("List of Specs and Vars failed to return spec test")
-	}
-	if results["test"][0] != "test_this_func" {
-		t.Fatalf("List of Specs and Vars doesn't include var test_this_func")
-	}
-
 }
 
 func TestNegate(t *testing.T) {
@@ -619,19 +579,19 @@ func TestComponent(t *testing.T) {
 	}
 
 	compiler := NewCompiler()
-	compiler.currentSpec = NewCompiledSpec("test")
-	compiler.currentSpecName = "test"
-	compiler.specs[compiler.currentSpecName] = compiler.currentSpec
+	s := NewCompiledSpec("test")
+	compiler.currentSpec = "test"
+	compiler.specs["test"] = s
 	id1 := []string{"test", "x"}
 	val1 := constant.NewFloat(irtypes.Double, 7.0)
-	compiler.currentSpec.DefineSpecVar(id1, val1)
+	s.DefineSpecVar(id1, val1)
 	compiler.allocVariable(id1, val1, []int{0, 0, 0})
-	compiler.currentSpec.DefineSpecType(id1, irtypes.Double)
+	s.DefineSpecType(id1, irtypes.Double)
 	id2 := []string{"test", "y"}
 	val2 := constant.NewFloat(irtypes.Double, 2.0)
-	compiler.currentSpec.DefineSpecVar(id2, val2)
+	s.DefineSpecVar(id2, val2)
 	compiler.allocVariable(id2, val2, []int{0, 0, 0})
-	compiler.currentSpec.DefineSpecType(id2, irtypes.Double)
+	s.DefineSpecType(id2, irtypes.Double)
 
 	compiler.compileStruct(tests)
 

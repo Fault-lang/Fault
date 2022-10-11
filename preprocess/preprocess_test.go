@@ -80,6 +80,11 @@ func TestStructDef(t *testing.T) {
 		t.Fatalf("stock foo returns the wrong number of properties got=%d want=4", len(foo))
 	}
 
+	fizz := foo["fizz"].(*ast.Identifier).RawId()
+	if len(fizz) != 3 || fizz[0] != "test1" || fizz[1] != "foo" || fizz[2] != "a" {
+		t.Fatalf("identifier not converted to correct context got=%s", fizz)
+	}
+
 	zoo := variables.FetchFlow("zoo")
 	if len(zoo) != 3 {
 		t.Fatalf("flow zoo returns the wrong number of properties got=%d want=4", len(zoo))
@@ -117,6 +122,12 @@ func TestComponent(t *testing.T) {
 
 	if len(foo) != 3 {
 		t.Fatalf("component foo returns the wrong number of states got=%d want=3", len(foo))
+	}
+
+	ifcond := foo["initial"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression).Condition.(*ast.InfixExpression)
+	this := ifcond.Left.(*ast.This).RawId()
+	if len(this) != 3 || this[0] != "test" || this[1] != "foo" || this[2] != "x" {
+		t.Fatalf("this special word not converted to correct context got=%s", this)
 	}
 
 }
@@ -210,6 +221,78 @@ func TestRunInstances(t *testing.T) {
 
 	if len(fl) != 2 {
 		t.Fatalf("flow f returns the wrong number of properties got=%d want=3", len(fl))
+	}
+
+}
+
+func TestIds(t *testing.T) {
+	test := `spec test1;
+	def str = stock{
+		foo: 3,
+	};
+
+	def str2 = stock{
+		bar: new str,
+	};
+
+	def str3 = stock{
+		foosh: new str2,
+	};
+
+	def fl = flow{
+		buzz: new str3,
+		fizz: func{
+			buzz.foosh.bar.foo <- 5;
+		},
+	};
+	`
+
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	str1 := spec[1].(*ast.DefStatement).Name.RawId()
+	if str1[0] != "test1" || str1[1] != "str" {
+		t.Fatalf("struct1 name not correct got=%s", str1)
+	}
+
+	str2 := spec[2].(*ast.DefStatement).Name.RawId()
+	if str2[0] != "test1" || str2[1] != "str2" {
+		t.Fatalf("struct2 name not correct got=%s", str2)
+	}
+
+	str2f := spec[2].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
+	for k, v := range str2f {
+		keyId := k.String()
+		valId := v.(*ast.StructInstance).RawId()
+		if valId[0] != "test1" || valId[1] != "str2" || keyId != valId[2] {
+			t.Fatalf("key id and val id do not match key=%s value=%s", keyId, valId)
+		}
+	}
+
+	str3 := spec[3].(*ast.DefStatement).Name.RawId()
+	if str3[0] != "test1" || str3[1] != "str3" {
+		t.Fatalf("struct3 name not correct got=%s", str3)
+	}
+
+	str4 := spec[4].(*ast.DefStatement).Name.RawId()
+	if str4[0] != "test1" || str4[1] != "fl" {
+		t.Fatalf("struct4 name not correct got=%s", str4)
+	}
+	str4f := spec[4].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
+	for k, v := range str4f {
+		keyId := k.String()
+		if keyId == "buzz" {
+			valId := v.(*ast.StructInstance).RawId()
+			if valId[0] != "test1" || valId[1] != "fl" || keyId != valId[2] {
+				t.Fatalf("field name is not correct value=%s", valId)
+			}
+			props := v.(*ast.StructInstance).Properties
+			propId := props["foosh"].ProcessedName
+			if propId[0] != "test1" || propId[1] != "fl" || propId[2] != "buzz" || propId[3] != "foosh" {
+				t.Fatalf("field name is not correct value=%s", valId)
+			}
+		}
 	}
 
 }

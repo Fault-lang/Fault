@@ -10,23 +10,23 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-func (c *Compiler) getFullVariableName(id []string) []string {
-	if c.currScope[0] != "" && strings.Join(c.currScope, "_") != c.contextFuncName {
-		return c.removeThis(id)
-	} else {
-		if len(id) >= 3 && c.isFunction(c.specStructs[id[0]][id[1]][id[2]]) {
-			return append(id[0:2], id[3:]...) //This variable is being accessed from a function, remove function name
-		}
-		return id
-	}
-}
+// func (c *Compiler) getFullVariableName(id []string) []string {
+// 	if c.currScope[0] != "" && strings.Join(c.currScope, "_") != c.contextFuncName {
+// 		return c.removeThis(id)
+// 	} else {
+// 		if len(id) >= 3 && c.isFunction(c.specStructs[id[0]][id[1]][id[2]]) {
+// 			return append(id[0:2], id[3:]...) //This variable is being accessed from a function, remove function name
+// 		}
+// 		return id
+// 	}
+// }
 
-func (c *Compiler) removeThis(id []string) []string {
-	if id[0] == "this" {
-		return append(c.currScope, id[1:]...)
-	}
-	return append(c.currScope, id...)
-}
+// func (c *Compiler) removeThis(id []string) []string {
+// 	if id[0] == "this" {
+// 		return append(c.currScope, id[1:]...)
+// 	}
+// 	return append(c.currScope, id...)
+//}
 
 // func (c *Compiler) getVariableName(id []string) string {
 // 	id, _ = c.GetSpec(id)
@@ -34,17 +34,16 @@ func (c *Compiler) removeThis(id []string) []string {
 // }
 
 func (c *Compiler) updateVariableStateName(id []string) string {
-	id, s := c.GetSpec(id)
 	if len(id) == 2 { // This is a constant, doesn't change
 		return strings.Join(id, "_")
 	}
+	s := c.specs[id[0]]
 
-	incr := s.GetSpecVarState(id)
+	incr := s.GetSpecVarState(id[1:])
 	return fmt.Sprint(strings.Join(id, "_"), incr+1)
 }
 
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
-	id, _ = c.GetSpec(id)
 	name := strings.Join(id, "_")
 	var alloc *ir.InstAlloca
 	var store *ir.InstStore
@@ -116,7 +115,6 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 }
 
 func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
-	id, _ = c.GetSpec(id)
 	name := c.updateVariableStateName(id)
 
 	switch v := val.(type) {
@@ -154,15 +152,11 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 }
 
 func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloca) {
-	id, s := c.GetSpec(id)
-	s.vars.IncrState(id)
-	s.vars.Store(id, name, alloc)
+	s := c.specs[id[0]]
+	s.vars.IncrState(id[1:])
+	s.vars.Store(id[1:], name, alloc)
 }
 
 func (c *Compiler) storeGlobal(name string, alloc *ir.Global) {
 	c.specGlobals[name] = alloc
-}
-
-func (c *Compiler) fetchGlobal(name string) *ir.Global {
-	return c.specGlobals[name]
 }

@@ -78,8 +78,8 @@ func (l *LookupTable) IncrState(id []string) {
 	l.state[ident] = l.state[ident] + 1
 }
 
-func (l *LookupTable) ResetState(id string) {
-	l.state[id] = 0
+func (l *LookupTable) ResetState(name string) {
+	l.state[name] = 0
 }
 
 func (l *LookupTable) GetPointer(name string) *ir.InstAlloca {

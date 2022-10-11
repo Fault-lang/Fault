@@ -658,7 +658,6 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
 	ident := &ast.Identifier{Token: token2}
-	fmt.Println(txt)
 	switch len(txt) {
 	case 1:
 		pc := l.pop()

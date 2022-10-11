@@ -3,6 +3,8 @@ package preprocess
 import (
 	"fault/ast"
 	"fmt"
+
+	deepcopy "github.com/barkimedes/go-deepcopy"
 )
 
 type SpecRecord struct {
@@ -42,6 +44,24 @@ func (sr *SpecRecord) AddComponent(name string, v map[string]ast.Node) {
 
 func (sr *SpecRecord) AddConstant(k string, v ast.Node) {
 	sr.Constants[k] = v
+}
+
+func (sr *SpecRecord) AddInstance(k string, v map[string]ast.Node, ty string) {
+	// When creating an instance of a struct need to deep copy the data
+	v2, err := deepcopy.Anything(v)
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to clone struct into instance %s", k))
+	}
+
+	switch ty {
+	case "STOCK":
+		sr.AddStock(k, v2.(map[string]ast.Node))
+	case "FLOW":
+		sr.AddFlow(k, v2.(map[string]ast.Node))
+	case "COMPONENT":
+		sr.AddComponent(k, v2.(map[string]ast.Node))
+	}
 }
 
 func (sr *SpecRecord) GetStructType(id []string) string {

@@ -7,6 +7,7 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/parser"
+	"fault/preprocess"
 	"fault/types"
 	"testing"
 
@@ -159,13 +160,16 @@ func prepAssertTest(test string) (*Compiler, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	err := ty.Check(tree)
 	if err != nil {
 		return nil, err
 	}
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
 	err = compiler.Compile(l.AST)
 	if err != nil {
 		return nil, err
