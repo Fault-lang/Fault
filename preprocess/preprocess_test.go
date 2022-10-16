@@ -81,13 +81,18 @@ func TestStructDef(t *testing.T) {
 	}
 
 	fizz := foo["fizz"].(*ast.Identifier).RawId()
-	if len(fizz) != 3 || fizz[0] != "test1" || fizz[1] != "foo" || fizz[2] != "a" {
+	if len(fizz) != 2 || fizz[0] != "test1" || fizz[1] != "a" {
 		t.Fatalf("identifier not converted to correct context got=%s", fizz)
 	}
 
 	zoo := variables.FetchFlow("zoo")
 	if len(zoo) != 3 {
 		t.Fatalf("flow zoo returns the wrong number of properties got=%d want=4", len(zoo))
+	}
+
+	infix := zoo["rate2"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	if infix.Right.(*ast.Identifier).IdString() != "test1_a" {
+		t.Fatalf("variable a has the wrong scope, got=%s", infix.Right.(*ast.Identifier).IdString())
 	}
 
 }
@@ -263,9 +268,9 @@ func TestIds(t *testing.T) {
 
 	str2f := spec[2].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
 	for k, v := range str2f {
-		keyId := k.String()
+		keyId := k.RawId()
 		valId := v.(*ast.StructInstance).RawId()
-		if valId[0] != "test1" || valId[1] != "str2" || keyId != valId[2] {
+		if valId[0] != keyId[0] || valId[1] != keyId[1] || keyId[2] != valId[2] {
 			t.Fatalf("key id and val id do not match key=%s value=%s", keyId, valId)
 		}
 	}
@@ -281,10 +286,10 @@ func TestIds(t *testing.T) {
 	}
 	str4f := spec[4].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for k, v := range str4f {
-		keyId := k.String()
-		if keyId == "buzz" {
+		keyId := k.RawId()
+		if keyId[2] == "buzz" {
 			valId := v.(*ast.StructInstance).RawId()
-			if valId[0] != "test1" || valId[1] != "fl" || keyId != valId[2] {
+			if valId[0] != keyId[0] || valId[1] != keyId[1] || keyId[2] != valId[2] {
 				t.Fatalf("field name is not correct value=%s", valId)
 			}
 			props := v.(*ast.StructInstance).Properties

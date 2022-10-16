@@ -86,7 +86,9 @@ type Operand interface {
 }
 type Nameable interface {
 	Expression
+	SetId([]string)
 	Id() []string
+	IdString() string
 	RawId() []string
 }
 
@@ -427,9 +429,15 @@ func (i *Identifier) Type() string {
 		return ""
 	}
 }
+func (i *Identifier) SetId(id []string) {
+	i.ProcessedName = id
+}
 func (i *Identifier) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{i.ProcessedName[0], strings.Join(i.ProcessedName[1:], "_")}
+}
+func (i *Identifier) IdString() string {
+	return strings.Join(i.ProcessedName, "_")
 }
 func (i *Identifier) RawId() []string {
 	return i.ProcessedName
@@ -462,10 +470,17 @@ func (p *ParameterCall) Type() string {
 		return ""
 	}
 }
+func (p *ParameterCall) SetId(id []string) {
+	p.ProcessedName = id
+}
 func (p *ParameterCall) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{p.ProcessedName[0], strings.Join(p.ProcessedName[1:], "_")}
 }
+func (p *ParameterCall) IdString() string {
+	return strings.Join(p.ProcessedName, "_")
+}
+
 func (p *ParameterCall) RawId() []string {
 	return p.ProcessedName
 }
@@ -493,10 +508,12 @@ func (av *AssertVar) Type() string {
 type StructInstance struct {
 	Token         Token
 	InferredType  *Type
+	Complex       bool
 	Properties    map[string]*StructProperty
 	Spec          string
 	Name          string
-	Parent        string
+	Parent        []string
+	ComplexScope  string
 	ProcessedName []string
 }
 
@@ -511,11 +528,17 @@ func (si *StructInstance) String() string {
 	return out.String()
 }
 func (si *StructInstance) Type() string {
-	return string(si.Token.Type)
+	return string(si.Token.Literal)
 }
 func (si *StructInstance) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{si.ProcessedName[0], strings.Join(si.ProcessedName[1:], "_")}
+}
+func (si *StructInstance) SetId(id []string) {
+	si.ProcessedName = id
+}
+func (si *StructInstance) IdString() string {
+	return strings.Join(si.ProcessedName, "_")
 }
 func (si *StructInstance) RawId() []string {
 	return si.ProcessedName
@@ -538,12 +561,19 @@ func (sp *StructProperty) String() string {
 	out.WriteString(sp.Value.String())
 	return out.String()
 }
+func (sp *StructProperty) SetId(id []string) {
+	sp.ProcessedName = id
+}
 func (sp *StructProperty) Type() string {
 	return string(sp.Value.Type())
 }
 func (sp *StructProperty) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{sp.ProcessedName[0], strings.Join(sp.ProcessedName[1:], "_")}
+}
+
+func (sp *StructProperty) IdString() string {
+	return strings.Join(sp.ProcessedName, "_")
 }
 
 func (sp *StructProperty) RawId() []string {
@@ -573,11 +603,18 @@ func (i *Instance) String() string {
 	return out.String()
 }
 func (i *Instance) Type() string {
-	return i.Value.Type()
+	return i.Token.Literal
+}
+func (i *Instance) SetId(id []string) {
+	i.ProcessedName = id
 }
 func (i *Instance) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{i.ProcessedName[0], strings.Join(i.ProcessedName[1:], "_")}
+}
+
+func (i *Instance) IdString() string {
+	return strings.Join(i.ProcessedName, "_")
 }
 
 func (i *Instance) RawId() []string {
@@ -627,9 +664,15 @@ func (il *IntegerLiteral) Type() string {
 		return "INT"
 	}
 }
+func (il *IntegerLiteral) SetId(id []string) {
+	il.ProcessedName = id
+}
 func (il *IntegerLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{il.ProcessedName[0], strings.Join(il.ProcessedName[1:], "_")}
+}
+func (il *IntegerLiteral) IdString() string {
+	return strings.Join(il.ProcessedName, "_")
 }
 
 func (il *IntegerLiteral) RawId() []string {
@@ -655,9 +698,15 @@ func (fl *FloatLiteral) Type() string {
 		return "FLOAT"
 	}
 }
+func (fl *FloatLiteral) SetId(id []string) {
+	fl.ProcessedName = id
+}
 func (fl *FloatLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{fl.ProcessedName[0], strings.Join(fl.ProcessedName[1:], "_")}
+}
+func (fl *FloatLiteral) IdString() string {
+	return strings.Join(fl.ProcessedName, "_")
 }
 
 func (fl *FloatLiteral) RawId() []string {
@@ -683,9 +732,15 @@ func (n *Natural) Type() string {
 		return "NATURAL"
 	}
 }
+func (n *Natural) SetId(id []string) {
+	n.ProcessedName = id
+}
 func (n *Natural) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{n.ProcessedName[0], strings.Join(n.ProcessedName[1:], "_")}
+}
+func (n *Natural) IdString() string {
+	return strings.Join(n.ProcessedName, "_")
 }
 
 func (n *Natural) RawId() []string {
@@ -722,6 +777,12 @@ func (u *Uncertain) Type() string {
 func (u *Uncertain) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{u.ProcessedName[0], strings.Join(u.ProcessedName[1:], "_")}
+}
+func (u *Uncertain) SetId(id []string) {
+	u.ProcessedName = id
+}
+func (u *Uncertain) IdString() string {
+	return strings.Join(u.ProcessedName, "_")
 }
 
 func (u *Uncertain) RawId() []string {
@@ -760,6 +821,13 @@ func (u *Unknown) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{u.ProcessedName[0], strings.Join(u.ProcessedName[1:], "_")}
 }
+func (u *Unknown) SetId(id []string) {
+	u.ProcessedName = id
+}
+
+func (u *Unknown) IdString() string {
+	return strings.Join(u.ProcessedName, "_")
+}
 
 func (u *Unknown) RawId() []string {
 	return u.ProcessedName
@@ -791,6 +859,12 @@ func (pe *PrefixExpression) String() string {
 func (pe *PrefixExpression) Type() string { return pe.Right.Type() }
 func (pe *PrefixExpression) Id() []string {
 	return []string{pe.ProcessedName[0], strings.Join(pe.ProcessedName[1:], "_")}
+}
+func (pe *PrefixExpression) SetId(id []string) {
+	pe.ProcessedName = id
+}
+func (pe *PrefixExpression) IdString() string {
+	return strings.Join(pe.ProcessedName, "_")
 }
 func (pe *PrefixExpression) RawId() []string { return pe.ProcessedName }
 
@@ -841,6 +915,12 @@ func (b *Boolean) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{b.ProcessedName[0], strings.Join(b.ProcessedName[1:], "_")}
 }
+func (b *Boolean) SetId(id []string) {
+	b.ProcessedName = id
+}
+func (b *Boolean) IdString() string {
+	return strings.Join(b.ProcessedName, "_")
+}
 
 func (b *Boolean) RawId() []string {
 	return b.ProcessedName
@@ -868,6 +948,12 @@ func (t *This) Type() string {
 func (t *This) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{t.ProcessedName[0], strings.Join(t.ProcessedName[1:], "_")}
+}
+func (t *This) SetId(id []string) {
+	t.ProcessedName = id
+}
+func (t *This) IdString() string {
+	return strings.Join(t.ProcessedName, "_")
 }
 
 func (t *This) RawId() []string {
@@ -972,6 +1058,12 @@ func (ie *InitExpression) Type() string { return "" }
 func (ie *InitExpression) Id() []string { // returns []string{spec, rest_of_the_id}
 	return []string{ie.ProcessedName[0], strings.Join(ie.ProcessedName[1:], "_")}
 }
+func (ie *InitExpression) SetId(id []string) {
+	ie.ProcessedName = id
+}
+func (ie *InitExpression) IdString() string {
+	return strings.Join(ie.ProcessedName, "_")
+}
 func (ie *InitExpression) RawId() []string {
 	return ie.ProcessedName
 }
@@ -1040,6 +1132,12 @@ func (fl *FunctionLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{fl.ProcessedName[0], strings.Join(fl.ProcessedName[1:], "_")}
 }
+func (fl *FunctionLiteral) SetId(id []string) {
+	fl.ProcessedName = id
+}
+func (fl *FunctionLiteral) IdString() string {
+	return strings.Join(fl.ProcessedName, "_")
+}
 func (fl *FunctionLiteral) RawId() []string {
 	return fl.ProcessedName
 }
@@ -1074,6 +1172,12 @@ func (sl *StateLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
 }
+func (sl *StateLiteral) SetId(id []string) {
+	sl.ProcessedName = id
+}
+func (sl *StateLiteral) IdString() string {
+	return strings.Join(sl.ProcessedName, "_")
+}
 func (sl *StateLiteral) RawId() []string {
 	return sl.ProcessedName
 }
@@ -1106,6 +1210,12 @@ func (b *BuiltIn) Type() string { return "builtin" }
 func (b *BuiltIn) Id() []string { // returns []string{spec, rest_of_the_id}
 	return []string{b.ProcessedName[0], strings.Join(b.ProcessedName[1:], "_")}
 }
+func (b *BuiltIn) SetId(id []string) {
+	b.ProcessedName = id
+}
+func (b *BuiltIn) IdString() string {
+	return strings.Join(b.ProcessedName, "_")
+}
 func (b *BuiltIn) RawId() []string {
 	return b.ProcessedName
 }
@@ -1132,6 +1242,12 @@ func (sl *StringLiteral) Type() string {
 func (sl *StringLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
+}
+func (sl *StringLiteral) SetId(id []string) {
+	sl.ProcessedName = id
+}
+func (sl *StringLiteral) IdString() string {
+	return strings.Join(sl.ProcessedName, "_")
 }
 func (sl *StringLiteral) RawId() []string {
 	return sl.ProcessedName
@@ -1166,6 +1282,12 @@ func (ie *IndexExpression) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{ie.ProcessedName[0], strings.Join(ie.ProcessedName[1:], "_")}
 }
+func (ie *IndexExpression) SetId(id []string) {
+	ie.ProcessedName = id
+}
+func (ie *IndexExpression) IdString() string {
+	return strings.Join(ie.ProcessedName, "_")
+}
 func (ie *IndexExpression) RawId() []string {
 	return ie.ProcessedName
 }
@@ -1198,6 +1320,12 @@ func (sl *StockLiteral) String() string {
 func (sl *StockLiteral) Type() string { return "STOCK" }
 func (sl *StockLiteral) Id() []string { // returns []string{spec, rest_of_the_id}
 	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
+}
+func (sl *StockLiteral) SetId(id []string) {
+	sl.ProcessedName = id
+}
+func (sl *StockLiteral) IdString() string {
+	return strings.Join(sl.ProcessedName, "_")
 }
 func (sl *StockLiteral) RawId() []string {
 	return sl.ProcessedName
@@ -1241,6 +1369,12 @@ func (fl *FlowLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{fl.ProcessedName[0], strings.Join(fl.ProcessedName[1:], "_")}
 }
+func (fl *FlowLiteral) SetId(id []string) {
+	fl.ProcessedName = id
+}
+func (fl *FlowLiteral) IdString() string {
+	return strings.Join(fl.ProcessedName, "_")
+}
 func (fl *FlowLiteral) RawId() []string {
 	return fl.ProcessedName
 }
@@ -1282,6 +1416,12 @@ func (cl *ComponentLiteral) Type() string { return "COMPONENT" }
 func (cl *ComponentLiteral) Id() []string {
 	// returns []string{spec, rest_of_the_id}
 	return []string{cl.ProcessedName[0], strings.Join(cl.ProcessedName[1:], "_")}
+}
+func (cl *ComponentLiteral) SetId(id []string) {
+	cl.ProcessedName = id
+}
+func (cl *ComponentLiteral) IdString() string {
+	return strings.Join(cl.ProcessedName, "_")
 }
 func (cl *ComponentLiteral) RawId() []string {
 	return cl.ProcessedName

@@ -153,8 +153,8 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 
 func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloca) {
 	s := c.specs[id[0]]
-	s.vars.IncrState(id[1:])
-	s.vars.Store(id[1:], name, alloc)
+	s.vars.IncrState(id)
+	s.vars.Store(id, name, alloc)
 }
 
 func (c *Compiler) storeGlobal(name string, alloc *ir.Global) {

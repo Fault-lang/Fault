@@ -396,7 +396,7 @@ func TestParamReset(t *testing.T) {
 		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
 	}
 
-	p := ir.NewParam(strings.Join(id[1:], "_"), DoubleP)
+	p := ir.NewParam(strings.Join(id, "_"), DoubleP)
 	c.resetParaState([]*ir.Param{p})
 
 	if s.vars.GetState(id) != 0 {
@@ -515,116 +515,6 @@ func TestEval(t *testing.T) {
 			i++
 		}
 	}
-}
-
-func TestComponent(t *testing.T) {
-	tests := &ast.DefStatement{
-		Token: ast.Token{
-			Type:     ast.TokenType("COMPONENT"),
-			Literal:  "COMPONENT",
-			Position: []int{0, 0, 0, 0},
-		},
-		Name: &ast.Identifier{
-			Spec:  "test",
-			Value: "foo",
-		},
-		Value: &ast.ComponentLiteral{
-			Order: []string{"initial", "alert", "close"},
-			Pairs: map[*ast.Identifier]ast.Expression{
-				&ast.Identifier{Spec: "test", Value: "initial"}: &ast.StateLiteral{
-					Body: &ast.BlockStatement{
-						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
-							Condition: &ast.InfixExpression{Left: &ast.Identifier{Spec: "test", Value: "x"},
-								Operator: ">",
-								Right:    &ast.IntegerLiteral{Value: 2}},
-							Consequence: &ast.BlockStatement{
-								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: map[string]ast.Operand{"toState": &ast.ParameterCall{Value: []string{"this", "alert"}}},
-									Function:   "advance",
-								}}}},
-							Alternative: &ast.BlockStatement{
-								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: map[string]ast.Operand{},
-									Function:   "stay",
-								}}}},
-						}}},
-					},
-				},
-				&ast.Identifier{Spec: "test", Value: "alert"}: &ast.StateLiteral{
-					Body: &ast.BlockStatement{
-						Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.IfExpression{
-							Condition: &ast.InfixExpression{Left: &ast.Identifier{Spec: "test", Value: "y"},
-								Operator: "==",
-								Right:    &ast.IntegerLiteral{Value: 5}},
-							Consequence: &ast.BlockStatement{
-								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: map[string]ast.Operand{"toState": &ast.ParameterCall{Value: []string{"this", "close"}}},
-									Function:   "advance",
-								}}}},
-							Alternative: &ast.BlockStatement{
-								Statements: []ast.Statement{&ast.ExpressionStatement{Expression: &ast.BuiltIn{
-									Parameters: map[string]ast.Operand{},
-									Function:   "stay",
-								}}}},
-						}}},
-					},
-				},
-				&ast.Identifier{Spec: "test", Value: "close"}: &ast.StateLiteral{
-					Body: &ast.BlockStatement{
-						Statements: []ast.Statement{},
-					},
-				},
-			},
-		},
-	}
-
-	compiler := NewCompiler()
-	s := NewCompiledSpec("test")
-	compiler.currentSpec = "test"
-	compiler.specs["test"] = s
-	id1 := []string{"test", "x"}
-	val1 := constant.NewFloat(irtypes.Double, 7.0)
-	s.DefineSpecVar(id1, val1)
-	compiler.allocVariable(id1, val1, []int{0, 0, 0})
-	s.DefineSpecType(id1, irtypes.Double)
-	id2 := []string{"test", "y"}
-	val2 := constant.NewFloat(irtypes.Double, 2.0)
-	s.DefineSpecVar(id2, val2)
-	compiler.allocVariable(id2, val2, []int{0, 0, 0})
-	s.DefineSpecType(id2, irtypes.Double)
-
-	compiler.compileStruct(tests)
-
-	component, ok := compiler.Components["foo"]
-
-	if !ok {
-		t.Fatalf("components not found after compiling")
-	}
-
-	i, ok2 := component["initial"]
-
-	if !ok2 {
-		t.Fatalf("component foo missing state initial")
-	}
-
-	a, ok3 := component["alert"]
-
-	if !ok3 {
-		t.Fatalf("component foo missing state alert")
-	}
-
-	c, ok4 := component["close"]
-
-	if !ok4 {
-		t.Fatalf("component foo missing state close")
-	}
-
-	for _, k := range []string{a, i, c} {
-		if !strings.Contains(compiler.GetIR(), k) {
-			t.Fatalf("block %s missing from IR", k)
-		}
-	}
-
 }
 
 func TestComponentIR(t *testing.T) {

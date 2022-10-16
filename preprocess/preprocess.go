@@ -10,20 +10,32 @@ import (
 type Processor struct {
 	Specs       map[string]*SpecRecord
 	scope       string
+	localIdents map[string][]string
 	trail       util.ImportTrail
 	structTypes map[string]map[string]string
 	Processed   ast.Node
+	initialPass bool
+	inFunc      bool
 }
 
 func NewProcesser() *Processor {
 	return &Processor{
 		Specs:       make(map[string]*SpecRecord),
 		structTypes: make(map[string]map[string]string),
+		localIdents: make(map[string][]string),
+		initialPass: true,
+		inFunc:      false,
 	}
 }
 
 func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	tree, err := p.walk(n)
+	if err != nil {
+		panic(err)
+	}
+	p.initialPass = false
+
+	tree, err = p.walk(tree)
 	if err != nil {
 		panic(err)
 	}
@@ -40,38 +52,87 @@ func (p *Processor) buildIdContext(spec string) []string {
 	return append([]string{spec}, scopeParts...)
 }
 
+func (p *Processor) namePairs(pairs map[*ast.Identifier]ast.Expression) (map[*ast.Identifier]ast.Expression, []string) {
+	var keys []string
+	named := make(map[*ast.Identifier]ast.Expression)
+	for k, prs := range pairs {
+		keys = append(keys, k.String())
+		pn := p.buildIdContext(p.trail.CurrentSpec())
+		rawid := append(pn, k.String())
+		fmt.Printf("## %s\n", rawid)
+		prs.(ast.Nameable).SetId(rawid)
+		k.SetId(rawid)
+		named[k] = prs
+	}
+	return named, keys
+}
+
 func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	var err error
 	var pro ast.Node
+
 	switch node := n.(type) {
 	case *ast.Spec:
 		for i, v := range node.Statements {
 			pro, err = p.walk(v)
+			if err != nil {
+				return node, err
+			}
 			node.Statements[i] = pro.(ast.Statement)
 		}
 		return node, err
 	case *ast.SpecDeclStatement:
-		p.Specs[node.Name.Value] = NewSpecRecord()
-		p.Specs[node.Name.Value].SpecName = node.Name.Value
-		p.trail = p.trail.PushSpec(node.Name.Value)
+		if p.initialPass {
+			p.Specs[node.Name.Value] = NewSpecRecord()
+			p.Specs[node.Name.Value].SpecName = node.Name.Value
+			p.trail = p.trail.PushSpec(node.Name.Value)
+		}
 		return node, err
 	case *ast.SysDeclStatement:
-		p.Specs[node.Name.Value] = NewSpecRecord()
-		p.Specs[node.Name.Value].SpecName = node.Name.Value
-		p.trail = p.trail.PushSpec(node.Name.Value)
+		if p.initialPass {
+			p.Specs[node.Name.Value] = NewSpecRecord()
+			p.Specs[node.Name.Value].SpecName = node.Name.Value
+			p.trail = p.trail.PushSpec(node.Name.Value)
+		}
 		return node, err
 	case *ast.ImportStatement:
 		pro, err = p.walk(node.Tree)
+		if err != nil {
+			return node, err
+		}
 		node.Tree = pro.(*ast.Spec)
 		_, p.trail = p.trail.PopSpec()
 		return node, err
 	case *ast.ConstantStatement:
+		if !p.initialPass {
+			return node, err
+		}
+
 		var spec *SpecRecord
 		if p.Specs[p.trail.CurrentSpec()] != nil {
 			spec = p.Specs[p.trail.CurrentSpec()]
 		}
-		spec.AddConstant(node.Name.Value, node.Value)
+
+		// Has this already been defined?
+		if spec.FetchConstant(node.Name.Value) != nil {
+			panic(fmt.Sprintf("variable %s is a constant and cannot be modified", node.Name.Value))
+		}
+
+		pronm, err := p.walk(node.Name)
+		if err != nil {
+			return node, err
+		}
+		node.Name = pronm.(*ast.Identifier)
+		pro, err = p.walk(node.Value)
+		if err != nil {
+			return node, err
+		}
+		node.Value = pro.(ast.Expression)
+
+		spec.AddConstant(node.Name.Value, pro)
+		spec.Index(node.Name.Value, "CONSTANT")
 		p.Specs[p.trail.CurrentSpec()] = spec
+
 		return node, err
 	case *ast.DefStatement:
 		p.scope = strings.TrimSpace(node.Name.String())
@@ -93,26 +154,48 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		p.structTypes[p.trail.CurrentSpec()][p.scope] = "STOCK"
 
+		var properties map[string]ast.Node
 		var spec *SpecRecord
-		properties := util.Preparse(node.Pairs)
+		var idx []string
 		if p.Specs[p.trail.CurrentSpec()] != nil {
 			spec = p.Specs[p.trail.CurrentSpec()]
 		}
-		spec.AddStock(p.scope, properties)
-		spec.Index("STOCK", p.scope)
-		p.Specs[p.trail.CurrentSpec()] = spec
-		pn := p.buildIdContext(spec.Id())
-		node.ProcessedName = pn
+
+		if p.initialPass {
+			node.Pairs, idx = p.namePairs(node.Pairs)
+			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
+			p.localIdents[local] = idx
+
+			properties = util.Preparse(node.Pairs)
+			spec.AddStock(p.scope, properties)
+			spec.Index("STOCK", p.scope)
+			p.Specs[p.trail.CurrentSpec()] = spec
+			pn := p.buildIdContext(spec.Id())
+			node.ProcessedName = pn
+		} else {
+			properties = spec.FetchStock(p.scope)
+		}
 
 		for k, v := range properties {
+			p.inFunc = true
 			pro, err = p.walk(v)
 			if err != nil {
 				return node, err
 			}
-			ident := node.GetPropertyIdent(k)
+			p.inFunc = false
 
-			node.Pairs[ident] = pro.(ast.Expression)
+			ident := node.GetPropertyIdent(k)
+			ident.SetId(pro.(ast.Nameable).RawId())
+
+			pron, err := p.walk(ident)
+			if err != nil {
+				return node, err
+			}
+
+			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
+		properties = util.Preparse(node.Pairs)
+		spec.UpdateStock(p.scope, properties)
 
 		p.scope = ""
 		return node, err
@@ -122,25 +205,48 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		p.structTypes[p.trail.CurrentSpec()][p.scope] = "FLOW"
 
+		var properties map[string]ast.Node
 		var spec *SpecRecord
-		properties := util.Preparse(node.Pairs)
+		var idx []string
 		if p.Specs[p.trail.CurrentSpec()] != nil {
 			spec = p.Specs[p.trail.CurrentSpec()]
 		}
-		spec.AddFlow(p.scope, properties)
-		spec.Index("FLOW", p.scope)
-		p.Specs[p.trail.CurrentSpec()] = spec
-		pn := p.buildIdContext(spec.Id())
-		node.ProcessedName = pn
+
+		if p.initialPass {
+			node.Pairs, idx = p.namePairs(node.Pairs)
+			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
+			p.localIdents[local] = idx
+
+			properties = util.Preparse(node.Pairs)
+			spec.AddFlow(p.scope, properties)
+			spec.Index("FLOW", p.scope)
+			p.Specs[p.trail.CurrentSpec()] = spec
+			pn := p.buildIdContext(spec.Id())
+			node.ProcessedName = pn
+		} else {
+			properties = spec.FetchFlow(p.scope)
+		}
 
 		for k, v := range properties {
+			p.inFunc = true
 			pro, err = p.walk(v)
 			if err != nil {
 				return node, err
 			}
+			p.inFunc = false
+
 			ident := node.GetPropertyIdent(k)
-			node.Pairs[ident] = pro.(ast.Expression)
+			ident.SetId(pro.(ast.Nameable).RawId())
+
+			pron, err := p.walk(ident)
+			if err != nil {
+				return node, err
+			}
+
+			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
+		properties = util.Preparse(node.Pairs)
+		spec.UpdateFlow(p.scope, properties)
 
 		p.scope = ""
 		return node, err
@@ -150,38 +256,91 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		p.structTypes[p.trail.CurrentSpec()][p.scope] = "COMPONENT"
 
+		var properties map[string]ast.Node
 		var spec *SpecRecord
-		properties := util.Preparse(node.Pairs)
+		var idx []string
 		if p.Specs[p.trail.CurrentSpec()] != nil {
 			spec = p.Specs[p.trail.CurrentSpec()]
 		}
-		spec.AddComponent(p.scope, properties)
-		spec.Index("COMPONENT", p.scope)
-		p.Specs[p.trail.CurrentSpec()] = spec
-		node.ProcessedName = p.buildIdContext(spec.Id())
+
+		if p.initialPass {
+			node.Pairs, idx = p.namePairs(node.Pairs)
+			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
+			p.localIdents[local] = idx
+
+			properties = util.Preparse(node.Pairs)
+			spec.AddComponent(p.scope, properties)
+			spec.Index("COMPONENT", p.scope)
+			p.Specs[p.trail.CurrentSpec()] = spec
+			pn := p.buildIdContext(spec.Id())
+			node.ProcessedName = pn
+		} else {
+			properties = spec.FetchComponent(p.scope)
+		}
 
 		for k, v := range properties {
+			p.inFunc = true
 			pro, err = p.walk(v)
 			if err != nil {
 				return node, err
 			}
+			p.inFunc = false
+
 			ident := node.GetPropertyIdent(k)
-			node.Pairs[ident] = pro.(ast.Expression)
+			pron, err := p.walk(ident)
+			if err != nil {
+				return node, err
+			}
+
+			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
+		properties = util.Preparse(node.Pairs)
+		spec.UpdateComponent(p.scope, properties)
 
 		p.scope = ""
 		return node, err
 	case *ast.AssertionStatement:
+		pro, err = p.walk(node.Constraints)
+		if err != nil {
+			return node, err
+		}
+		node.Constraints = pro.(*ast.InvariantClause)
 		return node, err
 	case *ast.AssumptionStatement:
+		pro, err = p.walk(node.Constraints)
+		if err != nil {
+			return node, err
+		}
+		node.Constraints = pro.(*ast.InvariantClause)
 		return node, err
+	case *ast.InvariantClause:
+		l, err := p.walk(node.Left)
+		if err != nil {
+			return node, err
+		}
+
+		r, err := p.walk(node.Right)
+		if err != nil {
+			return node, err
+		}
+
+		node.Left = l.(ast.Expression)
+		node.Right = r.(ast.Expression)
+		return node, err
+
 	case *ast.ExpressionStatement:
 		pro, err = p.walk(node.Expression)
+		if err != nil {
+			return node, err
+		}
 		node.Expression = pro.(ast.Expression)
 		return node, err
-	case *ast.ForStatement: //TODO
+	case *ast.ForStatement:
 		for i, v := range node.Body.Statements {
 			pro, err = p.walk(v)
+			if err != nil {
+				return node, err
+			}
 			node.Body.Statements[i] = pro.(ast.Statement)
 		}
 		return node, err
@@ -195,11 +354,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Body = pro.(*ast.BlockStatement)
 		return node, err
 	case *ast.FunctionLiteral:
+		p.inFunc = true
 		pro, err = p.walk(node.Body)
 		if err != nil {
 			return pro, err
 		}
 		node.Body = pro.(*ast.BlockStatement)
+		p.inFunc = false
 		return node, err
 	case *ast.BlockStatement:
 		var statements []ast.Statement
@@ -234,6 +395,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 
 		node.Right = r.(ast.Expression)
+
 		return node, err
 
 	case *ast.IfExpression:
@@ -274,12 +436,23 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.Instance:
-		var key string
-		importSpec := p.Specs[node.Value.Spec] //Where the struct definition lives
-
 		if p.Specs[p.trail.CurrentSpec()] == nil {
 			p.Specs[p.trail.CurrentSpec()] = NewSpecRecord()
 		}
+
+		if p.initialPass {
+			pro, err = p.walk(node.Value)
+			if err != nil {
+				return node, err
+			}
+			pn := p.buildIdContext(p.trail.CurrentSpec())
+			node.Value = pro.(*ast.Identifier)
+			node.ProcessedName = append(pn, node.Name)
+			return node, err
+		}
+
+		var key string
+		importSpec := p.Specs[node.Value.Spec] //Where the struct definition lives
 
 		spec := p.Specs[p.trail.CurrentSpec()] //Where the instance is being declared
 
@@ -293,7 +466,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		ty := p.structTypes[node.Value.Spec][node.Value.Value]
 		var properties map[string]ast.Node
-		switch p.structTypes[node.Value.Spec][node.Value.Value] {
+		switch ty {
 		case "STOCK":
 			reference := importSpec.FetchStock(node.Value.Value)
 			spec.AddInstance(key, reference, ty)
@@ -306,20 +479,26 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = key
 
 			pro := &ast.StructInstance{Token: node.Token,
-				Spec: p.trail.CurrentSpec(), Name: key,
-				Parent:     node.Value.Value,
-				Properties: make(map[string]*ast.StructProperty)}
+				Spec: p.trail.CurrentSpec(), Name: node.Name,
+				Parent:       []string{node.Value.Spec, node.Value.Value},
+				Properties:   make(map[string]*ast.StructProperty),
+				ComplexScope: node.ComplexScope}
+
+			pro.Token.Literal = "STOCK"
 
 			pn := p.buildIdContext(spec.Id())
-			fmt.Println(p.scope)
 
 			var pro2 ast.Node
 			for id, v := range properties {
 				// Looking for more instances
-				if inst, ok := v.(*ast.Instance); ok {
+				switch inst := v.(type) {
+				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-				} else {
+				case *ast.Instance:
+					inst.ComplexScope = key
+					pro2, err = p.walk(inst)
+				default:
 					pro2, err = p.walk(v)
 				}
 
@@ -336,8 +515,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				property.ProcessedName = append(pn, id)
 				pro.Properties[id] = property
 			}
-			//node.Processed = pro
-			//node.ProcessedName = pn
+			spec.UpdateStock(key, properties)
 			pro.ProcessedName = pn
 			p.scope = oldScope
 			return pro, err
@@ -352,18 +530,25 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			oldScope := p.scope
 			p.scope = key
 			pro := &ast.StructInstance{Token: node.Token,
-				Spec: p.trail.CurrentSpec(), Name: key,
-				Parent:     node.Value.Value,
-				Properties: make(map[string]*ast.StructProperty)}
+				Spec: p.trail.CurrentSpec(), Name: node.Name,
+				Parent:       []string{node.Value.Spec, node.Value.Value},
+				Properties:   make(map[string]*ast.StructProperty),
+				ComplexScope: node.ComplexScope}
+
+			pro.Token.Literal = "FLOW"
 
 			var pro2 ast.Node
 			pn := p.buildIdContext(spec.Id())
 			for id, v := range properties {
 				// Looking for more instances
-				if inst, ok := v.(*ast.Instance); ok {
+				switch inst := v.(type) {
+				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-				} else {
+				case *ast.Instance:
+					inst.ComplexScope = key
+					pro2, err = p.walk(inst)
+				default:
 					pro2, err = p.walk(v)
 				}
 
@@ -380,24 +565,155 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				property.ProcessedName = append(pn, id)
 				pro.Properties[id] = property
 			}
-
-			//node.Processed = pro
-			//node.ProcessedName = pn
+			spec.UpdateFlow(key, properties)
 			pro.ProcessedName = pn
 			p.scope = oldScope
 			return pro, err
 		default:
-			panic(fmt.Sprintf("invalid instance %s", node.Value.Value))
+			panic(fmt.Sprintf("can't find an instance named %s", node.Value.Value))
+		}
+	case *ast.StructInstance:
+		if p.Specs[p.trail.CurrentSpec()] == nil {
+			p.Specs[p.trail.CurrentSpec()] = NewSpecRecord()
 		}
 
+		var key string
+		importSpec := p.Specs[node.Spec] //Where the struct definition lives
+
+		spec := p.Specs[p.trail.CurrentSpec()] //Where the instance is being declared
+
+		if node.ComplexScope != "" {
+			key = strings.Join([]string{node.ComplexScope, node.Name}, "_")
+		} else if p.scope == "" { //For example if it's initialized in the run block
+			key = node.Name
+		} else {
+			key = strings.Join([]string{p.scope, node.Name}, "_")
+		}
+
+		parent := node.Parent
+		pname := strings.Join(parent[1:], "_")
+		ty := p.structTypes[parent[0]][pname]
+		var properties map[string]ast.Node
+		switch ty {
+		case "STOCK":
+			reference := importSpec.FetchStock(pname)
+			spec.AddInstance(key, reference, ty)
+			properties = spec.FetchStock(key)
+
+			spec.Index("STOCK", key)
+			p.Specs[p.trail.CurrentSpec()] = spec
+
+			oldScope := p.scope
+			p.scope = key
+
+			pn := p.buildIdContext(spec.Id())
+
+			var pro2 ast.Node
+			for id, v := range properties {
+				// Looking for more instances
+				switch inst := v.(type) {
+				case *ast.StructInstance:
+					inst.ComplexScope = key
+					pro2, err = p.walk(inst)
+				case *ast.Instance:
+					inst.ComplexScope = key
+					pro2, err = p.walk(inst)
+				default:
+					pro2, err = p.walk(v)
+				}
+
+				if err != nil {
+					return node, err
+				}
+
+				token := ast.Token{
+					Type:     ast.TokenType("STOCK"),
+					Literal:  "STOCK",
+					Position: node.Position(),
+				}
+				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
+				property.ProcessedName = append(pn, id)
+				node.Properties[id] = property
+			}
+			spec.UpdateStock(key, properties)
+			node.ProcessedName = pn
+			p.scope = oldScope
+			return node, err
+		case "FLOW":
+			reference := importSpec.FetchFlow(pname)
+			spec.AddInstance(key, reference, ty)
+			properties = spec.FetchFlow(key)
+
+			spec.Index("FLOW", key)
+			p.Specs[p.trail.CurrentSpec()] = spec
+
+			oldScope := p.scope
+			p.scope = key
+
+			var pro2 ast.Node
+			pn := p.buildIdContext(spec.Id())
+			for id, v := range properties {
+				// Looking for more instances
+				switch inst := v.(type) {
+				case *ast.StructInstance:
+					inst.ComplexScope = key
+					pro2, err = p.walk(inst)
+				case *ast.Instance:
+					inst.ComplexScope = key
+					pro2, err = p.walk(inst)
+				default:
+					pro2, err = p.walk(v)
+				}
+
+				if err != nil {
+					return node, err
+				}
+
+				token := ast.Token{
+					Type:     ast.TokenType("FLOW"),
+					Literal:  "FLOW",
+					Position: node.Position(),
+				}
+				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
+				property.ProcessedName = append(pn, id)
+				node.Properties[id] = property
+			}
+			spec.UpdateFlow(key, properties)
+			node.ProcessedName = pn
+			p.scope = oldScope
+			return node, err
+		default:
+			panic(fmt.Sprintf("can't find an struct instance named %s", node.Parent))
+		}
 	case *ast.Identifier:
+		if !p.initialPass {
+			return node, err
+		}
+
 		spec := p.Specs[node.Spec]
 		rawid := p.buildIdContext(spec.Id())
-		rawid = append(rawid, node.Value)
+
+		if p.inFunc {
+			// If this variable is not defined in the struct properties
+			// (it's scope) then it's a global variable and should be
+			// named that way
+			local := strings.Join(rawid, "_")
+			if util.InStringSlice(p.localIdents[local], node.Value) {
+				rawid = append(rawid, node.Value)
+			} else {
+				rawid = append(rawid[0:1], node.Value) // spec_struct_var -> spec_var
+			}
+		} else {
+			rawid = append(rawid, node.Value)
+		}
+
 		node.ProcessedName = rawid
 		return node, err
 
 	case *ast.ParameterCall:
+		if !p.initialPass {
+			return node, err
+		}
 		if node.Value[0] == "this" {
 			//Convert this
 			p.buildIdContext(p.trail.CurrentSpec())

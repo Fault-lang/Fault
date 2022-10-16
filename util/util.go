@@ -81,6 +81,13 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 	return start
 }
 
+func MergeNodeMaps(m1 map[string]ast.Node, m2 map[string]ast.Node) map[string]ast.Node {
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
+}
+
 func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 	for k, v := range m2 {
 		m1[k] = v
@@ -115,6 +122,14 @@ func InStringSlice(sl []string, sub string) bool {
 		}
 	}
 	return false
+}
+
+func ExtractBranches(b map[string]*ast.StructProperty) map[string]ast.Node{
+	ret := make(map[string]ast.Node)
+	for k, v := range b {
+		ret[k] = v.Value
+	}
+	return ret
 }
 
 func CaptureState(id string) (string, bool, bool) {

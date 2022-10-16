@@ -6,6 +6,7 @@ import (
 	"fault/listener"
 	"fault/llvm"
 	"fault/parser"
+	"fault/preprocess"
 	"fault/smt"
 	"fault/types"
 	"fault/util"
@@ -44,9 +45,12 @@ func parse(data string, path string, file string, filetype string) (*listener.Fa
 		antlr.ParseTreeWalkerDefault.Walk(lstnr, p.SysSpec())
 	}
 
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(lstnr.AST)
+
 	// Infer Types and Build Symbol Table
 	ty := &types.Checker{}
-	err := ty.Check(lstnr.AST)
+	_, err := ty.Check(tree, pre.Specs)
 	if err != nil {
 		log.Fatal(err)
 	}

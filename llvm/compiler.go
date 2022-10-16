@@ -8,6 +8,7 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime/debug"
+	"sort"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -73,6 +74,7 @@ type Compiler struct {
 func NewCompiler() *Compiler {
 	c := &Compiler{
 		module: ir.NewModule(),
+		specs:  make(map[string]*spec),
 
 		allocatedPointers: make([]map[string]*ir.InstAlloca, 0),
 
@@ -85,6 +87,7 @@ func NewCompiler() *Compiler {
 		builtIns:        make(map[string]*ir.Func),
 		specStructs:     make(map[string]*preprocess.SpecRecord),
 		specFunctions:   make(map[string]value.Value),
+		specGlobals:     make(map[string]*ir.Global),
 		Uncertains:      make(map[string][]float64),
 		Components:      make(map[string]map[string]string),
 		ComponentStarts: make(map[string]string),
@@ -212,10 +215,6 @@ func (c *Compiler) compileConstant(node *ast.ConstantStatement) {
 }
 
 func (c *Compiler) setConst(rawid []string, val value.Value) {
-	if c.isVarSet(rawid) {
-		fid := strings.Join(rawid, "_")
-		panic(fmt.Sprintf("variable %s is a constant and cannot be reassigned", fid))
-	}
 	c.specs[c.currentSpec].DefineSpecVar(rawid, val)
 	c.specs[c.currentSpec].DefineSpecType(rawid, val.Type())
 }
@@ -225,7 +224,7 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 	key := strings.Join(id, "_")
 	switch def.Type() {
 	case "FLOW":
-		c.instances[key] = []string{}
+		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.FlowLiteral).Order
 	case "STOCK":
 		c.instances[key] = []string{key}
@@ -308,6 +307,7 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	}
 	key := strings.Join(id, "_")
 	c.instances[key] = append(c.instances[key], node.Parent)
+	c.instances[node.Parent] = append(c.instances[node.Parent], key)
 	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 }
 
@@ -324,6 +324,11 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 
 		switch v := p.(type) {
 		case *ast.StateLiteral:
+			id := []string{key.Spec, cname}
+			parentID := strings.Join(node.Id(), "_")
+			k := strings.Join(id, "_")
+			c.structPropOrder[k] = c.structPropOrder[parentID]
+
 			branches := util.Preparse(node.Pairs)
 			params := c.generateParameters([]string{key.Spec, cname}, branches)
 			c.resetParaState(params)
@@ -573,11 +578,17 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			case *ast.ParameterCall:
 				id = n.RawId()
 			}
+
 			if c.isVarSet(id) && c.alloc {
 				p := s.GetSpecVarPointer(id)
 				c.contextBlock.NewStore(r, p)
 				return nil
 			}
+
+			if c.isConstant(id) {
+				panic(fmt.Sprintf("variable %s is a constant and cannot be modified", id[len(id)-1]))
+			}
+
 			s.DefineSpecVar(id, r)
 			s.DefineSpecType(id, r.Type())
 			if c.alloc {
@@ -607,6 +618,10 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 
 		if !c.isVarSet(id) {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(id, "_"), pos[0], pos[1]))
+		}
+
+		if c.isConstant(id) {
+			panic(fmt.Sprintf("variable %s is a constant and cannot be modified", id[len(id)-1]))
 		}
 
 		pointer := s.GetSpecVarPointer(id)
@@ -1059,7 +1074,13 @@ func (c *Compiler) processStruct(keys []string, tree map[string]ast.Node, pos []
 func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*ir.Param {
 	var p []*ir.Param
 	var s *spec
-	keys := c.fetchOrder(id)
+
+	var keys []string
+	keys = c.fetchOrder(id)
+	if keys != nil { //If no order if found (ie components) fall back to alphabetically
+		keys = c.generateOrder(data)
+	}
+
 	sr := c.specStructs[id[0]]
 	for _, k := range keys {
 		switch n := data[k].(type) {
@@ -1088,10 +1109,20 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 
 func (c *Compiler) fetchOrder(id []string) []string {
 	key := strings.Join(id, "_")
-	if c.structPropOrder[key] != nil {
-		return c.structPropOrder[key]
+	return c.structPropOrder[key]
+}
+
+func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
+	keys := []string{}
+	for k := range pairs {
+		if k != "___base" {
+			keys = append(keys, k)
+		}
 	}
-	panic(fmt.Sprintf("no property order found for struct %s ", key))
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
 }
 
 func (c *Compiler) resetParaState(p []*ir.Param) {
@@ -1112,6 +1143,11 @@ func (c *Compiler) isFunction(node ast.Node) bool {
 	default:
 		return false
 	}
+}
+
+func (c *Compiler) isConstant(rawid []string) bool {
+	spec := c.specStructs[rawid[0]]
+	return spec.FetchConstant(rawid[1]) != nil
 }
 
 func (c *Compiler) isVarSet(rawid []string) bool {
@@ -1160,17 +1196,16 @@ func (c *Compiler) isStrVarSet(rawid []string) bool {
 func (c *Compiler) isVarSetAssert(rawid []string) bool {
 	//If this is for an assert the var might reference
 	//a rule on the struct level
-
-	id := c.convertRawId(rawid)
-	if c.isVarSet(rawid) || c.isInstance(id) {
+	if c.isVarSet(rawid) || c.isInstance(rawid[0:len(rawid)-1]) {
 		return true
 	}
 	return false
 }
 
 func (c *Compiler) isInstance(id []string) bool {
-	for _, v := range c.instances {
-		if v[1] == id[1] {
+	key := strings.Join(id, "_")
+	for k, _ := range c.instances {
+		if k == key {
 			return true
 		}
 	}

@@ -249,6 +249,7 @@ func (l *FaultListener) ExitStock(c *parser.StockContext) {
 	token := util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+
 	l.push(
 		&ast.StockLiteral{
 			Token: token,
@@ -650,8 +651,6 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
-	token := util.GenerateToken("ASSIGN", c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
-
 	txt := c.AllIDENT()
 	var right string
 
@@ -684,7 +683,6 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 
 	l.push(
 		&ast.Instance{
-			Token: token,
 			Value: ident,
 			Name:  right,
 		})
@@ -887,10 +885,7 @@ func (l *FaultListener) ExitOpName(c *parser.OpNameContext) {
 }
 
 func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
-	token := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
-	ident := &ast.Identifier{
-		Token: token,
-	}
+	ident := &ast.Identifier{}
 	id := c.AllIDENT()
 	switch len(id) {
 	case 1:
@@ -904,7 +899,6 @@ func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 	}
 
 	l.push(&ast.Instance{
-		Token: token,
 		Value: ident,
 	},
 	)
