@@ -71,13 +71,12 @@ func (sr *SpecRecord) GetStructType(rawid []string) string {
 		return "CONSTANT"
 	}
 
-	id := strings.Join(rawid[1:], "_")
-
 	for _, v := range sr.Order {
-		if v[1] == id {
+		if v[1] == rawid[1] {
 			return v[0]
 		}
 	}
+
 	return "NIL"
 }
 

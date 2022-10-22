@@ -510,6 +510,7 @@ type StructInstance struct {
 	InferredType  *Type
 	Complex       bool
 	Properties    map[string]*StructProperty
+	Order         []string
 	Spec          string
 	Name          string
 	Parent        []string

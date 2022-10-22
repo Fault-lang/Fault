@@ -4,6 +4,7 @@ import (
 	"fault/listener"
 	"fault/llvm"
 	"fault/parser"
+	"fault/preprocess"
 	"fault/types"
 	"fault/util"
 	"fmt"
@@ -179,14 +180,18 @@ func prepTest(path string, test string) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	tree, err := ty.Check(tree, pre.Specs)
 	if err != nil {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
 	}
@@ -208,14 +213,19 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, !imports, false) //imports being true means testing is false :)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	tree, err := ty.Check(tree, pre.Specs)
+
 	if err != nil {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
 	}

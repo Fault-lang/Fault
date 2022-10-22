@@ -1,7 +1,6 @@
 package llvm
 
 import (
-	"fault/ast"
 	"fault/listener"
 	"fault/parser"
 	"fault/preprocess"
@@ -14,9 +13,6 @@ import (
 	"unicode"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
-	"github.com/llir/llvm/ir"
-	"github.com/llir/llvm/ir/constant"
-	irtypes "github.com/llir/llvm/ir/types"
 )
 
 func TestSimpleConst(t *testing.T) {
@@ -92,7 +88,7 @@ func TestConstExpr(t *testing.T) {
 			store i1 %5, i1* %test1_f
 			ret void
 		}
-		
+
 		`
 
 	llvm, err := prepTest(test)
@@ -146,7 +142,7 @@ func TestRunBlock(t *testing.T) {
 
 	expecting := `@test1_a = global double 0x4002666666666666
 	@test1_b = global double 2.0
-	
+
 	define void @__run() {
 	block-2:
 		%test1_test_buzz_a = alloca double
@@ -170,7 +166,7 @@ func TestRunBlock(t *testing.T) {
 		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\340b3487db7f69f408810fb4cb8b544eb !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
-	
+
 	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
 	block-3:
 		%0 = load double, double* %test1_test_buzz_b
@@ -181,7 +177,7 @@ func TestRunBlock(t *testing.T) {
 		store double %4, double* %test1_test_buzz_b
 		ret void
 	}
-	
+
 	define void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
 	block-4:
 		%0 = load double, double* %test1_test_buzz_b
@@ -192,7 +188,7 @@ func TestRunBlock(t *testing.T) {
 		store double %4, double* %test1_test_buzz_b
 		ret void
 	}
-	
+
 	define void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
 	block-5:
 		%0 = load double, double* %test1_test_buzz_a
@@ -202,7 +198,7 @@ func TestRunBlock(t *testing.T) {
 		%4 = fsub double %0, %3
 		store double %4, double* %test1_test_buzz_a
 		ret void
-	}		
+	}
 `
 	//Should fadd have variable names or the values in those variables?
 
@@ -224,378 +220,378 @@ func TestRunBlock(t *testing.T) {
 	}
 }
 
-func TestIfCond(t *testing.T) {
-	test := `spec test1;
-			const a = 2.3;
-			const b = 2;
+// func TestIfCond(t *testing.T) {
+// 	test := `spec test1;
+// 			const a = 2.3;
+// 			const b = 2;
 
-			def foo = flow{
-				buzz: new bar,
-				fizz: func{
-					if buzz.a > 2{
-						buzz.a -> b;
-					}else{
-						buzz.a = 10;
-					}
-					buzz.b -> 1;
-				},
-			};
+// 			def foo = flow{
+// 				buzz: new bar,
+// 				fizz: func{
+// 					if buzz.a > 2{
+// 						buzz.a -> b;
+// 					}else{
+// 						buzz.a = 10;
+// 					}
+// 					buzz.b -> 1;
+// 				},
+// 			};
 
-			def bar = stock{
-				a: 10,
-				b: 20,
-			};
+// 			def bar = stock{
+// 				a: 10,
+// 				b: 20,
+// 			};
 
-			for 1 run{
-				test = new foo;
-				test.fizz;
-			};
-	`
+// 			for 1 run{
+// 				test = new foo;
+// 				test.fizz;
+// 			};
+// 	`
 
-	expecting := `@test1_a = global double 0x4002666666666666
-	@test1_b = global double 2.0
-	
-	define void @__run() {
-	block-6:
-		%test1_test_buzz_a = alloca double
-		store double 10.0, double* %test1_test_buzz_a
-		%test1_test_buzz_b = alloca double
-		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d44e0a3fc2944aa552d9118f291d3106 !DIBasicType(tag: DW_TAG_string_type)
-		ret void
-	}
-	
-	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
-	block-7:
-		%0 = load double, double* %test1_test_buzz_a
-		%1 = fcmp ogt double %0, 2.0
-		br i1 %1, label %block-9-true, label %block-10-false
-	
-	block-8-after:
-		%2 = load double, double* %test1_test_buzz_b
-		%3 = fsub double %2, 1.0
-		store double %3, double* %test1_test_buzz_b
-		ret void
-	
-	block-9-true:
-		%4 = load double, double* %test1_test_buzz_a
-		%5 = load double, double* @test1_b
-		%6 = fsub double %4, %5
-		store double %6, double* %test1_test_buzz_a
-		br label %block-8-after
-	
-	block-10-false:
-		store double 10.0, double* %test1_test_buzz_a
-		br label %block-8-after
-	}		
-	`
+// 	expecting := `@test1_a = global double 0x4002666666666666
+// 	@test1_b = global double 2.0
 
-	llvm, err := prepTest(test)
+// 	define void @__run() {
+// 	block-6:
+// 		%test1_test_buzz_a = alloca double
+// 		store double 10.0, double* %test1_test_buzz_a
+// 		%test1_test_buzz_b = alloca double
+// 		store double 20.0, double* %test1_test_buzz_b
+// 		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d44e0a3fc2944aa552d9118f291d3106 !DIBasicType(tag: DW_TAG_string_type)
+// 		ret void
+// 	}
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
+// 	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
+// 	block-7:
+// 		%0 = load double, double* %test1_test_buzz_a
+// 		%1 = fcmp ogt double %0, 2.0
+// 		br i1 %1, label %block-9-true, label %block-10-false
 
-	ir, err := validateIR(llvm)
+// 	block-8-after:
+// 		%2 = load double, double* %test1_test_buzz_b
+// 		%3 = fsub double %2, 1.0
+// 		store double %3, double* %test1_test_buzz_b
+// 		ret void
 
-	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
-	}
+// 	block-9-true:
+// 		%4 = load double, double* %test1_test_buzz_a
+// 		%5 = load double, double* @test1_b
+// 		%6 = fsub double %4, %5
+// 		store double %6, double* %test1_test_buzz_a
+// 		br label %block-8-after
 
-	err = compareResults(llvm, expecting, string(ir))
+// 	block-10-false:
+// 		store double 10.0, double* %test1_test_buzz_a
+// 		br label %block-8-after
+// 	}
+// 	`
 
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-}
+// 	llvm, err := prepTest(test)
 
-func TestUnknowns(t *testing.T) {
-	test := `spec test1;
-			 const a;
-			 const b;
-			 
-			 def s = stock{
-				x: unknown(),
-			 };
+// 	if err != nil {
+// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
+// 	}
 
-			 def test = flow{
-			     u: new s,
-				 bar: func{
-					u.x <- a + b;
-				 },
-			 };
+// 	ir, err := validateIR(llvm)
 
-	for 5 run {
-		t = new test;
-		t.bar;
-	};
-	`
+// 	if err != nil {
+// 		t.Fatalf("generated IR is not valid. got=%s", err)
+// 	}
 
-	expecting := `@test1_a = global double 0x3DA3CA8CB153A753
-	@test1_b = global double 0x3DA3CA8CB153A753
-	
-	define void @__run() {
-	block-11:
-		%test1_t_u_x = alloca double
-		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
-		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag: DW_TAG_string_type)
-		ret void
-	}
-	
-	define void @test1_t_bar(double* %test1_t_u_x) {
-	block-12:
-		%0 = load double, double* %test1_t_u_x
-		%1 = load double, double* @test1_a
-		%2 = load double, double* @test1_b
-		%3 = fadd double %1, %2
-		%4 = fadd double %0, %3
-		store double %4, double* %test1_t_u_x
-		ret void
-	}`
+// 	err = compareResults(llvm, expecting, string(ir))
 
-	llvm, err := prepTest(test)
+// 	if err != nil {
+// 		t.Fatalf(err.Error())
+// 	}
+// }
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
+// func TestUnknowns(t *testing.T) {
+// 	test := `spec test1;
+// 			 const a;
+// 			 const b;
 
-	ir, err := validateIR(llvm)
+// 			 def s = stock{
+// 				x: unknown(),
+// 			 };
 
-	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
-	}
+// 			 def test = flow{
+// 			     u: new s,
+// 				 bar: func{
+// 					u.x <- a + b;
+// 				 },
+// 			 };
 
-	err = compareResults(llvm, expecting, string(ir))
+// 	for 5 run {
+// 		t = new test;
+// 		t.bar;
+// 	};
+// 	`
 
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-}
+// 	expecting := `@test1_a = global double 0x3DA3CA8CB153A753
+// 	@test1_b = global double 0x3DA3CA8CB153A753
 
-func TestParamReset(t *testing.T) {
-	structs := make(map[string]*preprocess.SpecRecord)
-	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{})
-	s := NewCompiledSpec("test")
-	c.currentSpec = "test"
-	c.specs["test"] = s
+// 	define void @__run() {
+// 	block-11:
+// 		%test1_t_u_x = alloca double
+// 		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
+// 		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag: DW_TAG_string_type)
+// 		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag: DW_TAG_string_type)
+// 		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag: DW_TAG_string_type)
+// 		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag: DW_TAG_string_type)
+// 		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag: DW_TAG_string_type)
+// 		ret void
+// 	}
 
-	id := []string{"test", "this", "func"}
-	val1 := constant.NewInt(irtypes.I32, 0)
-	s.DefineSpecVar(id, val1)
-	s.AddParam(id, val1)
+// 	define void @test1_t_bar(double* %test1_t_u_x) {
+// 	block-12:
+// 		%0 = load double, double* %test1_t_u_x
+// 		%1 = load double, double* @test1_a
+// 		%2 = load double, double* @test1_b
+// 		%3 = fadd double %1, %2
+// 		%4 = fadd double %0, %3
+// 		store double %4, double* %test1_t_u_x
+// 		ret void
+// 	}`
 
-	val2 := constant.NewInt(irtypes.I32, 5)
-	s.DefineSpecVar(id, val2)
+// 	llvm, err := prepTest(test)
 
-	if s.vars.GetState(id) != 1 {
-		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
-	}
+// 	if err != nil {
+// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
+// 	}
 
-	p := ir.NewParam(strings.Join(id, "_"), DoubleP)
-	c.resetParaState([]*ir.Param{p})
+// 	ir, err := validateIR(llvm)
 
-	if s.vars.GetState(id) != 0 {
-		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
-	}
-}
+// 	if err != nil {
+// 		t.Fatalf("generated IR is not valid. got=%s", err)
+// 	}
 
-func TestNegate(t *testing.T) {
-	test := &ast.InfixExpression{
-		Left: &ast.Boolean{
-			Value: true,
-		},
-		Right: &ast.Boolean{
-			Value: false,
-		},
-		Operator: "==",
-	}
+// 	err = compareResults(llvm, expecting, string(ir))
 
-	n := negate(test)
+// 	if err != nil {
+// 		t.Fatalf(err.Error())
+// 	}
+// }
 
-	if n.(*ast.InfixExpression).Operator != "!=" {
-		t.Fatalf("operator has not been negated got=%s", n.(*ast.InfixExpression).Operator)
-	}
+// func TestParamReset(t *testing.T) {
+// 	structs := make(map[string]*preprocess.SpecRecord)
+// 	c := NewCompiler()
+// 	c.LoadMeta(structs, make(map[string][]float64), []string{})
+// 	s := NewCompiledSpec("test")
+// 	c.currentSpec = "test"
+// 	c.specs["test"] = s
 
-	if n.(*ast.InfixExpression).Left.(*ast.Boolean).Value != false {
-		t.Fatalf("left value of infix not negated got=%s.", n.(*ast.InfixExpression).Left)
-	}
+// 	id := []string{"test", "this", "func"}
+// 	val1 := constant.NewInt(irtypes.I32, 0)
+// 	s.DefineSpecVar(id, val1)
+// 	s.AddParam(id, val1)
 
-	if n.(*ast.InfixExpression).Right.(*ast.Boolean).Value != true {
-		t.Fatalf("right value of infix not negated. got=%s", n.(*ast.InfixExpression).Right)
-	}
+// 	val2 := constant.NewInt(irtypes.I32, 5)
+// 	s.DefineSpecVar(id, val2)
 
-	test2 := &ast.Boolean{Value: true}
+// 	if s.vars.GetState(id) != 1 {
+// 		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
+// 	}
 
-	n2 := negate(test2)
+// 	p := ir.NewParam(strings.Join(id, "_"), DoubleP)
+// 	c.resetParaState([]*ir.Param{p})
 
-	if n2.(*ast.Boolean).Value != false {
-		t.Fatalf("boolean has not been negated got=%s", n2.(*ast.Boolean).String())
-	}
+// 	if s.vars.GetState(id) != 0 {
+// 		t.Fatalf("var state is incorrect for %s. got=%d", id, s.GetSpecVarState(id))
+// 	}
+// }
 
-	test3 := &ast.Boolean{Value: false}
+// func TestNegate(t *testing.T) {
+// 	test := &ast.InfixExpression{
+// 		Left: &ast.Boolean{
+// 			Value: true,
+// 		},
+// 		Right: &ast.Boolean{
+// 			Value: false,
+// 		},
+// 		Operator: "==",
+// 	}
 
-	n3 := negate(test3)
+// 	n := negate(test)
 
-	if n3.(*ast.Boolean).Value != true {
-		t.Fatalf("boolean has not been negated got=%s", n3.(*ast.Boolean).String())
-	}
+// 	if n.(*ast.InfixExpression).Operator != "!=" {
+// 		t.Fatalf("operator has not been negated got=%s", n.(*ast.InfixExpression).Operator)
+// 	}
 
-	test4 := &ast.PrefixExpression{
-		Operator: "!",
-		Right:    &ast.Boolean{Value: false},
-	}
+// 	if n.(*ast.InfixExpression).Left.(*ast.Boolean).Value != false {
+// 		t.Fatalf("left value of infix not negated got=%s.", n.(*ast.InfixExpression).Left)
+// 	}
 
-	n4 := negate(test4)
+// 	if n.(*ast.InfixExpression).Right.(*ast.Boolean).Value != true {
+// 		t.Fatalf("right value of infix not negated. got=%s", n.(*ast.InfixExpression).Right)
+// 	}
 
-	if n4.(*ast.Boolean).Value != true {
-		t.Fatalf("boolean has not been negated got=%s", n4.(*ast.Boolean).String())
-	}
-}
+// 	test2 := &ast.Boolean{Value: true}
 
-func TestEval(t *testing.T) {
-	tests := []*ast.InfixExpression{{
-		Left:  &ast.IntegerLiteral{Value: 2},
-		Right: &ast.IntegerLiteral{Value: 2},
-	},
-		{
-			Left:  &ast.FloatLiteral{Value: 2.5},
-			Right: &ast.IntegerLiteral{Value: 2},
-		},
-		{
-			Left:     &ast.IntegerLiteral{Value: 2},
-			Operator: "+",
-			Right:    &ast.FloatLiteral{Value: 2.5},
-		}}
+// 	n2 := negate(test2)
 
-	operators := []string{"+", "-", "/", "*"}
+// 	if n2.(*ast.Boolean).Value != false {
+// 		t.Fatalf("boolean has not been negated got=%s", n2.(*ast.Boolean).String())
+// 	}
 
-	results := []ast.Node{
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.IntegerLiteral{Value: 0},
-		&ast.FloatLiteral{Value: .5},
-		&ast.FloatLiteral{Value: -.5},
-		&ast.FloatLiteral{Value: 1},
-		&ast.FloatLiteral{Value: 1.25},
-		&ast.FloatLiteral{Value: .8},
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 5},
-		&ast.FloatLiteral{Value: 5},
-	}
+// 	test3 := &ast.Boolean{Value: false}
 
-	i := 0
-	for _, o := range operators {
-		for _, n := range tests {
-			n.Operator = o
-			test := evaluate(n)
-			switch actual := test.(type) {
-			case *ast.IntegerLiteral:
-				expected, ok := results[i].(*ast.IntegerLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			case *ast.FloatLiteral:
-				expected, ok := results[i].(*ast.FloatLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			}
-			i++
-		}
-	}
-}
+// 	n3 := negate(test3)
 
-func TestComponentIR(t *testing.T) {
-	test := `
-	system test;
+// 	if n3.(*ast.Boolean).Value != true {
+// 		t.Fatalf("boolean has not been negated got=%s", n3.(*ast.Boolean).String())
+// 	}
 
-	component foo = states{
-		x: 8,
-		initial: func{
-			if this.x > 10{
-				stay();
-			}else{
-				advance(this.alarm);
-			}
-		},
-		alarm: func{
-			advance(this.close);
-		},
-	};
+// 	test4 := &ast.PrefixExpression{
+// 		Operator: "!",
+// 		Right:    &ast.Boolean{Value: false},
+// 	}
 
-	start { 
-		foo: initial,
-	};
-	`
+// 	n4 := negate(test4)
 
-	expecting := `define void @__run() {
-		block-28:
-			%test_foo_x = alloca double
-			store double 8.0, double* %test_foo_x
-			ret void
-		}
-		
-		define void @test_foo_initial(double* %test_foo_x) {
-		block-29:
-			%0 = load double, double* %test_foo_x
-			%1 = fcmp ogt double %0, 10.0
-			br i1 %1, label %block-31-true, label %block-32-false
-		
-		block-30-after:
-			ret void
-		
-		block-31-true:
-			call void @stay()
-			br label %block-30-after
-		
-		block-32-false:
-			%2 = alloca [10 x i8]
-			store [10 x i8] c"this.alarm", [10 x i8]* %2
-			%3 = bitcast [10 x i8]* %2 to i8*
-			call void @advance(i8* %3)
-			br label %block-30-after
-		}
-		
-		define void @stay() {
-		block-33:
-			ret void
-		}
-		
-		define void @advance(i8* %toState) {
-		block-34:
-			ret void
-		}`
-	llvm, err := prepTestSys(test)
+// 	if n4.(*ast.Boolean).Value != true {
+// 		t.Fatalf("boolean has not been negated got=%s", n4.(*ast.Boolean).String())
+// 	}
+// }
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
+// func TestEval(t *testing.T) {
+// 	tests := []*ast.InfixExpression{{
+// 		Left:  &ast.IntegerLiteral{Value: 2},
+// 		Right: &ast.IntegerLiteral{Value: 2},
+// 	},
+// 		{
+// 			Left:  &ast.FloatLiteral{Value: 2.5},
+// 			Right: &ast.IntegerLiteral{Value: 2},
+// 		},
+// 		{
+// 			Left:     &ast.IntegerLiteral{Value: 2},
+// 			Operator: "+",
+// 			Right:    &ast.FloatLiteral{Value: 2.5},
+// 		}}
 
-	ir, err := validateIR(llvm)
+// 	operators := []string{"+", "-", "/", "*"}
 
-	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
-	}
+// 	results := []ast.Node{
+// 		&ast.IntegerLiteral{Value: 4},
+// 		&ast.FloatLiteral{Value: 4.5},
+// 		&ast.FloatLiteral{Value: 4.5},
+// 		&ast.IntegerLiteral{Value: 0},
+// 		&ast.FloatLiteral{Value: .5},
+// 		&ast.FloatLiteral{Value: -.5},
+// 		&ast.FloatLiteral{Value: 1},
+// 		&ast.FloatLiteral{Value: 1.25},
+// 		&ast.FloatLiteral{Value: .8},
+// 		&ast.IntegerLiteral{Value: 4},
+// 		&ast.FloatLiteral{Value: 5},
+// 		&ast.FloatLiteral{Value: 5},
+// 	}
 
-	err = compareResults(llvm, expecting, string(ir))
+// 	i := 0
+// 	for _, o := range operators {
+// 		for _, n := range tests {
+// 			n.Operator = o
+// 			test := evaluate(n)
+// 			switch actual := test.(type) {
+// 			case *ast.IntegerLiteral:
+// 				expected, ok := results[i].(*ast.IntegerLiteral)
+// 				if !ok {
+// 					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+// 				}
+// 				if expected.Value != actual.Value {
+// 					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+// 				}
+// 			case *ast.FloatLiteral:
+// 				expected, ok := results[i].(*ast.FloatLiteral)
+// 				if !ok {
+// 					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+// 				}
+// 				if expected.Value != actual.Value {
+// 					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+// 				}
+// 			}
+// 			i++
+// 		}
+// 	}
+// }
 
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+// func TestComponentIR(t *testing.T) {
+// 	test := `
+// 	system test;
 
-}
+// 	component foo = states{
+// 		x: 8,
+// 		initial: func{
+// 			if this.x > 10{
+// 				stay();
+// 			}else{
+// 				advance(this.alarm);
+// 			}
+// 		},
+// 		alarm: func{
+// 			advance(this.close);
+// 		},
+// 	};
+
+// 	start {
+// 		foo: initial,
+// 	};
+// 	`
+
+// 	expecting := `define void @__run() {
+// 		block-28:
+// 			%test_foo_x = alloca double
+// 			store double 8.0, double* %test_foo_x
+// 			ret void
+// 		}
+
+// 		define void @test_foo_initial(double* %test_foo_x) {
+// 		block-29:
+// 			%0 = load double, double* %test_foo_x
+// 			%1 = fcmp ogt double %0, 10.0
+// 			br i1 %1, label %block-31-true, label %block-32-false
+
+// 		block-30-after:
+// 			ret void
+
+// 		block-31-true:
+// 			call void @stay()
+// 			br label %block-30-after
+
+// 		block-32-false:
+// 			%2 = alloca [10 x i8]
+// 			store [10 x i8] c"this.alarm", [10 x i8]* %2
+// 			%3 = bitcast [10 x i8]* %2 to i8*
+// 			call void @advance(i8* %3)
+// 			br label %block-30-after
+// 		}
+
+// 		define void @stay() {
+// 		block-33:
+// 			ret void
+// 		}
+
+// 		define void @advance(i8* %toState) {
+// 		block-34:
+// 			ret void
+// 		}`
+// 	llvm, err := prepTestSys(test)
+
+// 	if err != nil {
+// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
+// 	}
+
+// 	ir, err := validateIR(llvm)
+
+// 	if err != nil {
+// 		t.Fatalf("generated IR is not valid. got=%s", err)
+// 	}
+
+// 	err = compareResults(llvm, expecting, string(ir))
+
+// 	if err != nil {
+// 		t.Fatalf(err.Error())
+// 	}
+
+// }
 
 // run block
 // init values
@@ -651,13 +647,14 @@ func prepTest(test string) (string, error) {
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}
-	err := ty.Check(tree)
+	tree, err := ty.Check(tree, pre.Specs)
+
 	if err != nil {
 		return "", err
 	}
 	compiler := NewCompiler()
 	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
 	}
@@ -678,13 +675,13 @@ func prepTestSys(test string) (string, error) {
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}
-	err := ty.Check(tree)
+	tree, err := ty.Check(tree, pre.Specs)
 	if err != nil {
 		return "", err
 	}
 	compiler := NewCompiler()
 	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
 	}

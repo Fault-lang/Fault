@@ -76,6 +76,7 @@ func NewCompiler() *Compiler {
 		module: ir.NewModule(),
 		specs:  make(map[string]*spec),
 
+		alloc:             true,
 		allocatedPointers: make([]map[string]*ir.InstAlloca, 0),
 
 		contextCondAfter: make([]*ir.Block, 0),
@@ -286,29 +287,37 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 }
 
 func (c *Compiler) compileInstance(node *ast.StructInstance) {
+	if c.runRound > 0 { // Initialize things only once
+		return
+	}
+	if c.contextFuncName == "__run" {
+		c.alloc = false
+	}
+	parentFunction := c.contextFuncName
+	c.contextFuncName = node.IdString()
+
 	id := node.Id()
-	spec := c.specStructs[id[0]]
-	order := c.structPropOrder[node.Parent]
+	parent := strings.Join(node.Parent, "_")
 	pos := node.Position()
 	children := make(map[string]string)
-	parent := node.Parent
 
 	switch node.Type() {
 	case "STOCK":
-		properties := spec.FetchStock(parent)
-		children = c.processStruct(order, properties, pos)
-
+		children = c.processStruct(node.Order, node.Properties, pos)
 	case "FLOW":
-		properties := spec.FetchFlow(parent)
-		children = c.processStruct(order, properties, pos)
-
+		children = c.processStruct(node.Order, node.Properties, pos)
 	default:
 		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", id, pos[0], pos[1]))
 	}
 	key := strings.Join(id, "_")
-	c.instances[key] = append(c.instances[key], node.Parent)
-	c.instances[node.Parent] = append(c.instances[node.Parent], key)
+	c.instances[key] = append(c.instances[key], parent)
+	c.instances[parent] = append(c.instances[parent], key)
 	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
+
+	c.contextFuncName = parentFunction
+	if c.contextFuncName == "__run" {
+		c.alloc = true
+	}
 }
 
 func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
@@ -373,8 +382,8 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	id := pc.RawId()
 	spec := c.specStructs[id[0]]
-	ty := spec.GetStructType(id)
-	st := id[len(id)-2] //The struct is the second to last item
+	ty := spec.GetStructType(id[0:2]) //Removing the key
+	st := id[len(id)-2]               //The struct is the second to last item
 	key := id[len(id)-1]
 
 	var branches map[string]ast.Node
@@ -433,9 +442,9 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 		case *ast.ParallelFunctions:
 			c.compileParallel(exp)
 		case ast.Expression:
-			ret = c.compileFunctionBody(exp)
+			ret = c.compileFunction(exp)
 		case *ast.ExpressionStatement:
-			ret = c.compileFunctionBody(exp.Expression)
+			ret = c.compileFunction(exp.Expression)
 		}
 	}
 	return ret
@@ -479,24 +488,34 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 	c.contextMetadata = nil
 }
 
-func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
-	body := node.Body.Statements
-	var retValue value.Value
-	for i := 0; i < len(body); i++ {
-		exp := body[i].(*ast.ExpressionStatement).Expression
-		init, ok := exp.(*ast.InitExpression)
-		if ok {
-			return c.compileValue(init.Expression)
-		}
-	}
-	return retValue
-}
+// func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
+// 	body := node.Body.Statements
+// 	var retValue value.Value
+// 	for i := 0; i < len(body); i++ {
+// 		exp := body[i].(*ast.ExpressionStatement).Expression
+// 		init, ok := exp.(*ast.InitExpression)
+// 		if ok {
+// 			return c.compileValue(init.Expression)
+// 		}
+// 	}
+// 	return retValue
+// }
 
-func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
+func (c *Compiler) compileFunction(node ast.Node) value.Value {
 	if !c.alloc { //Short circuit this if just initializing
 		return nil
 	}
+
 	switch v := node.(type) {
+	case *ast.FunctionLiteral:
+		body := v.Body.Statements
+		var ret value.Value
+		for i := 0; i < len(body); i++ {
+			ret = c.compileFunction(body[i])
+		}
+		return ret
+	case *ast.ExpressionStatement:
+		return c.compileFunction(v.Expression)
 	case *ast.InfixExpression:
 		return c.compileInfix(v)
 
@@ -508,6 +527,9 @@ func (c *Compiler) compileFunctionBody(node ast.Expression) value.Value {
 
 	case *ast.Instance:
 		panic("Yes still have instances LOL 3")
+
+	case *ast.StructInstance:
+		c.compileInstance(v)
 
 	case *ast.IndexExpression:
 
@@ -990,7 +1012,7 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value
 		//c.currScope = []string{id[1]} // NOT necessarily the same as structName
 		c.contextBlock = f.NewBlock(name.Block())
 
-		val := c.compileValue(branch[rawId[2]])
+		val := c.compileValue(branch[rawId[len(rawId)-1]])
 		c.contextBlock.NewRet(val)
 
 		c.contextBlock = oldBlock
@@ -1004,7 +1026,7 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value
 	return c.specFunctions[fname]
 }
 
-func (c *Compiler) processStruct(keys []string, tree map[string]ast.Node, pos []int) map[string]string {
+func (c *Compiler) processStruct(keys []string, tree map[string]*ast.StructProperty, pos []int) map[string]string {
 	var s *spec
 	children := make(map[string]string)
 	for _, k := range keys {
@@ -1012,17 +1034,15 @@ func (c *Compiler) processStruct(keys []string, tree map[string]ast.Node, pos []
 		var isUnknown bool
 		var id []string
 
-		switch pv := tree[k].(type) {
+		switch pv := tree[k].Value.(type) {
 		case *ast.Instance:
 			panic("Yes still have instances LOL 4")
 		case *ast.StructInstance:
-			id = pv.Id()
-			s = c.specs[id[0]]
 			c.compileInstance(pv)
-		case *ast.FunctionLiteral:
 			id = pv.Id()
-			s = c.specs[id[0]]
+		case *ast.FunctionLiteral:
 			c.compileFunction(pv)
+			id = pv.Id()
 		default:
 			if n, ok := pv.(*ast.Uncertain); ok {
 				isUnknown = true
@@ -1045,7 +1065,6 @@ func (c *Compiler) processStruct(keys []string, tree map[string]ast.Node, pos []
 			}
 
 			val := c.compileValue(pv)
-
 			s = c.specs[id[0]]
 			s.DefineSpecVar(id, val)
 			s.DefineSpecType(id, val.Type())
@@ -1240,8 +1259,6 @@ func negate(e ast.Expression) ast.Expression {
 	case *ast.InfixExpression:
 		op, ok := OP_NEGATE[n.Operator]
 		if ok {
-			//pos := n.Position()
-			//panic(fmt.Sprintf("operator %s not valid from an assertion. line: %d, col: %d", n.Operator, pos[0], pos[1]))
 			n.Operator = op
 		}
 		n.Left = negate(n.Left)

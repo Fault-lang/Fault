@@ -59,7 +59,6 @@ func (p *Processor) namePairs(pairs map[*ast.Identifier]ast.Expression) (map[*as
 		keys = append(keys, k.String())
 		pn := p.buildIdContext(p.trail.CurrentSpec())
 		rawid := append(pn, k.String())
-		fmt.Printf("## %s\n", rawid)
 		prs.(ast.Nameable).SetId(rawid)
 		k.SetId(rawid)
 		named[k] = prs
@@ -471,7 +470,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			reference := importSpec.FetchStock(node.Value.Value)
 			spec.AddInstance(key, reference, ty)
 			properties = spec.FetchStock(key)
-
 			spec.Index("STOCK", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
 
@@ -489,7 +487,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pn := p.buildIdContext(spec.Id())
 
 			var pro2 ast.Node
+			properties2 := make(map[string]ast.Node)
+			var order []string
 			for id, v := range properties {
+				name := append(pn, id)
+				order = append(order, id)
 				// Looking for more instances
 				switch inst := v.(type) {
 				case *ast.StructInstance:
@@ -506,17 +508,21 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 					return node, err
 				}
 
+				pro2.(ast.Nameable).SetId(name)
+
 				token := ast.Token{
 					Type:     ast.TokenType("STOCK"),
 					Literal:  "STOCK",
 					Position: node.Position(),
 				}
+				properties2[id] = pro2
 				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
-				property.ProcessedName = append(pn, id)
+				property.ProcessedName = name
 				pro.Properties[id] = property
 			}
-			spec.UpdateStock(key, properties)
+			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
+			pro.Order = order
 			p.scope = oldScope
 			return pro, err
 		case "FLOW":
@@ -538,8 +544,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pro.Token.Literal = "FLOW"
 
 			var pro2 ast.Node
+			properties2 := make(map[string]ast.Node)
 			pn := p.buildIdContext(spec.Id())
+			var order []string
 			for id, v := range properties {
+				order = append(order, id)
+				name := append(pn, id)
 				// Looking for more instances
 				switch inst := v.(type) {
 				case *ast.StructInstance:
@@ -556,17 +566,21 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 					return node, err
 				}
 
+				pro2.(ast.Nameable).SetId(name)
+
 				token := ast.Token{
 					Type:     ast.TokenType("FLOW"),
 					Literal:  "FLOW",
 					Position: node.Position(),
 				}
+				properties2[id] = pro2
 				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
-				property.ProcessedName = append(pn, id)
+				property.ProcessedName = name
 				pro.Properties[id] = property
 			}
-			spec.UpdateFlow(key, properties)
+			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
+			pro.Order = order
 			p.scope = oldScope
 			return pro, err
 		default:
@@ -609,7 +623,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pn := p.buildIdContext(spec.Id())
 
 			var pro2 ast.Node
+			properties2 := make(map[string]ast.Node)
 			for id, v := range properties {
+				name := append(pn, id)
 				// Looking for more instances
 				switch inst := v.(type) {
 				case *ast.StructInstance:
@@ -626,16 +642,19 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 					return node, err
 				}
 
+				pro2.(ast.Nameable).SetId(name)
+
 				token := ast.Token{
 					Type:     ast.TokenType("STOCK"),
 					Literal:  "STOCK",
 					Position: node.Position(),
 				}
+				properties2[id] = pro2
 				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
-				property.ProcessedName = append(pn, id)
+				property.ProcessedName = name
 				node.Properties[id] = property
 			}
-			spec.UpdateStock(key, properties)
+			spec.UpdateStock(key, properties2)
 			node.ProcessedName = pn
 			p.scope = oldScope
 			return node, err
@@ -651,8 +670,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = key
 
 			var pro2 ast.Node
+			properties2 := make(map[string]ast.Node)
 			pn := p.buildIdContext(spec.Id())
 			for id, v := range properties {
+				name := append(pn, id)
 				// Looking for more instances
 				switch inst := v.(type) {
 				case *ast.StructInstance:
@@ -669,16 +690,20 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 					return node, err
 				}
 
+				pro2.(ast.Nameable).SetId(name)
+
 				token := ast.Token{
 					Type:     ast.TokenType("FLOW"),
 					Literal:  "FLOW",
 					Position: node.Position(),
 				}
+				properties2[id] = pro2
 				property := &ast.StructProperty{Token: token, Value: pro2, Spec: p.trail.CurrentSpec(), Name: id}
-				property.ProcessedName = append(pn, id)
+				property.ProcessedName = name
+
 				node.Properties[id] = property
 			}
-			spec.UpdateFlow(key, properties)
+			spec.UpdateFlow(key, properties2)
 			node.ProcessedName = pn
 			p.scope = oldScope
 			return node, err
@@ -711,12 +736,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.ParameterCall:
-		if !p.initialPass {
+		if p.initialPass {
 			return node, err
 		}
 		if node.Value[0] == "this" {
 			//Convert this
-			p.buildIdContext(p.trail.CurrentSpec())
 			rawid := p.buildIdContext(p.trail.CurrentSpec())
 			rawid = append(rawid, node.Value[1:]...)
 			node2 := &ast.This{
@@ -728,8 +752,53 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		spec := p.Specs[node.Spec]
 		rawid := p.buildIdContext(spec.Id())
-		rawid = append(rawid, node.Value...)
+
+		if rawid[len(rawid)-1] == node.Value[0] {
+			//Happens when it's being called from the run block
+			rawid = append(rawid, node.Value[1])
+		} else {
+			rawid = append(rawid, node.Value...)
+		}
+
 		node.ProcessedName = rawid
+
+		// If the call is to a function we need to make
+		// sure the names of variables inside the function
+		// reflect the namespace scope (eg calling from
+		// instances created in the runblock)
+
+		ty := spec.GetStructType(rawid)
+		branch := spec.FetchVar(rawid, ty)
+		if fn, ok := branch.(*ast.FunctionLiteral); ok {
+			fn2, err := p.walk(fn)
+			if err != nil {
+				return node, err
+			}
+			proFn := fn2.(*ast.FunctionLiteral)
+			spec.UpdateVar(rawid, ty, proFn)
+		}
+
+		return node, err
+
+	case *ast.ParallelFunctions:
+		if p.initialPass {
+			return node, err
+		}
+
+		for i, v := range node.Expressions {
+			// Not sure we ever want this to be anything
+			// other than a call actually :/
+			scope := v.(*ast.ParameterCall).Value
+			oldScope := p.scope
+			p.scope = strings.Join(scope[0:len(scope)-1], "_")
+
+			n, err := p.walk(v)
+			if err != nil {
+				return node, err
+			}
+			node.Expressions[i] = n.(ast.Expression)
+			p.scope = oldScope
+		}
 		return node, err
 
 	default:
