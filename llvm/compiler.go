@@ -382,8 +382,8 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	id := pc.RawId()
 	spec := c.specStructs[id[0]]
-	ty := spec.GetStructType(id[0:2]) //Removing the key
-	st := id[len(id)-2]               //The struct is the second to last item
+	ty, _ := spec.GetStructType(id[0:2]) //Removing the key
+	st := id[len(id)-2]                  //The struct is the second to last item
 	key := id[len(id)-1]
 
 	var branches map[string]ast.Node
@@ -1191,17 +1191,17 @@ func (c *Compiler) isVarSet(rawid []string) bool {
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {
 	s := c.specStructs[rawid[0]]
-	id := c.convertRawId(rawid)
-	ty := s.GetStructType(rawid)
+	ty, structId := s.GetStructType(rawid)
+	name := strings.Join(structId[1:], "_")
 
 	var st map[string]ast.Node
 	switch ty {
 	case "STOCK":
-		st = s.FetchStock(id[1])
+		st = s.FetchStock(name)
 	case "FLOW":
-		st = s.FetchFlow(id[1])
+		st = s.FetchFlow(name)
 	case "COMPONENT":
-		st = s.FetchComponent(id[1])
+		st = s.FetchComponent(name)
 	default:
 		return false
 	}

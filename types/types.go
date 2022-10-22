@@ -421,17 +421,15 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 
 	var branches map[string]ast.Node
 	spec := c.SpecStructs[rawid[0]]
-	ty := spec.GetStructType(rawid)
-	if ty == "NIL" {
-		ty = spec.GetStructType(rawid[0 : len(rawid)-1])
-	}
+	ty, structId := spec.GetStructType(rawid)
+	name := strings.Join(structId[1:], "_")
 	switch ty {
 	case "STOCK":
-		branches = spec.FetchStock(rawid[1])
+		branches = spec.FetchStock(name)
 	case "FLOW":
-		branches = spec.FetchFlow(rawid[1])
+		branches = spec.FetchFlow(name)
 	case "CONSTANT":
-		constant := spec.FetchConstant(rawid[1])
+		constant := spec.FetchConstant(name)
 		if constant != nil {
 			return typeable(constant), err
 		}
@@ -442,7 +440,7 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 	}
 
 	for k, v := range branches {
-		if k == strings.Join(rawid[2:], "_") {
+		if k == rawid[len(rawid)-1] {
 			return typeable(v), err
 		}
 	}
@@ -724,7 +722,7 @@ func (c *Checker) lookupCallType(base ast.Node) (*ast.Type, error) {
 	case *ast.ParameterCall:
 		rawid := b.RawId()
 		spec := c.SpecStructs[rawid[0]]
-		ty := spec.GetStructType(rawid[0 : len(rawid)-1])
+		ty, _ := spec.GetStructType(rawid[0 : len(rawid)-1])
 		p := spec.FetchVar(rawid, ty)
 		return c.lookupCallType(p)
 	default:

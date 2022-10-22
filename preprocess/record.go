@@ -66,18 +66,24 @@ func (sr *SpecRecord) AddInstance(name string, v map[string]ast.Node, ty string)
 	}
 }
 
-func (sr *SpecRecord) GetStructType(rawid []string) string {
+func (sr *SpecRecord) GetStructType(rawid []string) (string, []string) {
 	if len(rawid) == 2 && sr.FetchConstant(rawid[1]) != nil {
-		return "CONSTANT"
+		return "CONSTANT", rawid
 	}
 
+	id := strings.Join(rawid[1:], "_")
 	for _, v := range sr.Order {
-		if v[1] == rawid[1] {
-			return v[0]
+		if v[1] == id {
+			return v[0], rawid
 		}
 	}
 
-	return "NIL"
+	rawid2 := rawid[0 : len(rawid)-1]
+	if len(rawid2) > 1 {
+		return sr.GetStructType(rawid2)
+	}
+
+	return "NIL", rawid
 }
 
 func (sr *SpecRecord) Fetch(name string, ty string) map[string]ast.Node {
@@ -159,8 +165,8 @@ func (sr *SpecRecord) FetchVar(rawid []string, ty string) ast.Node {
 
 func (sr *SpecRecord) Update(rawid []string, val map[string]ast.Node) error {
 	var err error
-	name := strings.Join(rawid[1:], "_")
-	ty := sr.GetStructType(rawid)
+	ty, rawid2 := sr.GetStructType(rawid)
+	name := strings.Join(rawid2[1:], "_")
 	switch ty {
 	case "STOCK":
 		sr.UpdateStock(name, val)

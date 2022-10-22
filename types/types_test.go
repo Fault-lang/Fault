@@ -11,71 +11,6 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
 
-// //// TEST STOCKFLOW FUNCTIONS FIRST ////
-// func TestSFAdd(t *testing.T) {
-// 	s := StockFlow{}
-// 	s.Add("test", "bar", &ast.Nil{})
-
-// 	if _, ok := s["test"]; !ok {
-// 		t.Fatal("struct test not added to StockFlow")
-// 	}
-
-// 	if _, ok := s["test"]["bar"]; !ok {
-// 		t.Fatal("parameter bar not added to StockFlow")
-// 	}
-
-// }
-
-// func TestSFBulk(t *testing.T) {
-// 	s := StockFlow{}
-// 	pairs := make(map[string]ast.Node)
-// 	pairs["bar1"] = &ast.Nil{}
-// 	pairs["bar2"] = &ast.Nil{}
-// 	s.Bulk("test", pairs)
-
-// 	if _, ok := s["test"]; !ok {
-// 		t.Fatal("struct test not added to StockFlow")
-// 	}
-
-// 	if _, ok := s["test"]["bar1"]; !ok {
-// 		t.Fatal("parameter bar1 not added to StockFlow")
-// 	}
-
-// 	if _, ok := s["test"]["bar2"]; !ok {
-// 		t.Fatal("parameter bar2 not added to StockFlow")
-// 	}
-
-// }
-
-// func TestSFGet(t *testing.T) {
-// 	s := StockFlow{}
-// 	s.Add("test", "bar", &ast.Nil{})
-// 	n := s.Get("test", "bar")
-
-// 	if n == nil {
-// 		t.Fatal("struct test not added to StockFlow")
-// 	}
-
-// 	if _, ok := n.(*ast.Nil); !ok {
-// 		t.Fatal("StockFlow did not return the correct node")
-// 	}
-// }
-
-// func TestSFGetStruct(t *testing.T) {
-// 	s := StockFlow{}
-// 	s.Add("test", "bar", &ast.Nil{})
-// 	n := s.GetStruct("test")
-
-// 	if n == nil {
-// 		t.Fatal("struct test not added to StockFlow")
-// 	}
-
-// 	if _, ok := n["bar"]; !ok {
-// 		t.Fatal("StockFlow did not return a valid struct")
-// 	}
-
-// }
-
 func TestImportTrail(t *testing.T) {
 	it := util.ImportTrail{}
 	it = it.PushSpec("test")
@@ -934,16 +869,16 @@ func TestTempValues(t *testing.T) {
 func TestComponents(t *testing.T) {
 	test := `system test;
 
-	def foo = component{
+	component foo = states{
 		x: 8,
-		initial: state{
+		initial: func{
 			if this.x > 10{
 				stay();
 			}else{
 				advance(this.alarm);
 			}
 		},
-		alarm: state{
+		alarm: func{
 			advance(this.close);
 		},
 	};

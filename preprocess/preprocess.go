@@ -767,7 +767,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		// reflect the namespace scope (eg calling from
 		// instances created in the runblock)
 
-		ty := spec.GetStructType(rawid)
+		ty, _ := spec.GetStructType(rawid)
 		branch := spec.FetchVar(rawid, ty)
 		if fn, ok := branch.(*ast.FunctionLiteral); ok {
 			fn2, err := p.walk(fn)
