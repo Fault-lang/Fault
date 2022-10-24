@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -124,7 +125,14 @@ func InStringSlice(sl []string, sub string) bool {
 	return false
 }
 
-func ExtractBranches(b map[string]*ast.StructProperty) map[string]ast.Node{
+func StableSortKeys(keys []string) []string {
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+func ExtractBranches(b map[string]*ast.StructProperty) map[string]ast.Node {
 	ret := make(map[string]ast.Node)
 	for k, v := range b {
 		ret[k] = v.Value

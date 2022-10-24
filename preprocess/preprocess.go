@@ -522,7 +522,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
-			pro.Order = order
+			pro.Order = util.StableSortKeys(order)
 			p.scope = oldScope
 			return pro, err
 		case "FLOW":
@@ -580,7 +580,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
-			pro.Order = order
+			pro.Order = util.StableSortKeys(order)
 			p.scope = oldScope
 			return pro, err
 		default:
@@ -731,6 +731,19 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		} else {
 			rawid = append(rawid, node.Value)
 		}
+
+		node.ProcessedName = rawid
+		return node, err
+
+	case *ast.Unknown:
+		if !p.initialPass {
+			return node, err
+		}
+
+		spec := p.Specs[node.Name.Spec]
+		rawid := p.buildIdContext(spec.Id())
+
+		rawid = append(rawid, node.Name.Value)
 
 		node.ProcessedName = rawid
 		return node, err

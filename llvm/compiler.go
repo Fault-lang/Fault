@@ -8,7 +8,6 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime/debug"
-	"sort"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -278,6 +277,8 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 		return c.compileParameterCall(v)
 	case *ast.BlockStatement:
 		return c.compileBlock(v)
+	case *ast.This:
+		return c.compileThis(v)
 	default:
 		pos := v.Position()
 		panic(fmt.Sprintf("unknown value type %T line: %d col: %d", v, pos[0], pos[1]))
@@ -769,6 +770,10 @@ func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
 	return c.lookupIdent(node.Id(), node.Position())
 }
 
+func (c *Compiler) compileThis(node *ast.This) *ir.InstLoad {
+	return c.lookupIdent(node.Id(), node.Position())
+}
+
 func (c *Compiler) compileIf(n *ast.IfExpression) {
 	cond := c.compileConditional(n.Condition)
 
@@ -967,8 +972,6 @@ func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 	}
 
 	pointer := c.specGlobals[vname]
-	fmt.Printf("## %s\n", id)
-	fmt.Printf("### %s\n", pointer)
 	if pointer != nil {
 		pointer := c.specGlobals[vname]
 		ty := s.GetSpecType(vname)
@@ -1036,7 +1039,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			id = pv.Id()
 			funcs = append(funcs, id)
 		default:
-			if n, ok := pv.(*ast.Uncertain); ok {
+			if n, ok := pv.(*ast.Unknown); ok {
 				isUnknown = true
 				id = n.Id()
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
@@ -1148,10 +1151,7 @@ func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 			keys = append(keys, k)
 		}
 	}
-	sort.SliceStable(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	return keys
+	return util.StableSortKeys(keys)
 }
 
 func (c *Compiler) resetParaState(p []*ir.Param) {

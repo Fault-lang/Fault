@@ -295,6 +295,5 @@ functionLit
 
 eos
     : ';'
-    | EOF
     ;
 

@@ -334,6 +334,65 @@ func TestIds(t *testing.T) {
 
 }
 
+func TestUnknowns(t *testing.T) {
+	test := `spec test1;
+	const a;
+	const b;
+
+	def s = stock{
+	   x: unknown(),
+	};
+
+	def test = flow{
+		u: new s,
+		bar: func{
+		   u.x <- a + b;
+		},
+	};
+
+	for 5 run {
+		t = new test;
+		t.bar;
+	};
+	`
+
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	str1 := spec[1].(*ast.ConstantStatement).Name.RawId()
+	if str1[0] != "test1" || str1[1] != "a" {
+		t.Fatalf("constant1 name not correct got=%s", str1)
+	}
+
+	str1a := spec[1].(*ast.ConstantStatement).Value.(*ast.Unknown).RawId()
+	if str1a[0] != "test1" || str1a[1] != "a" {
+		t.Fatalf("unknown1 name not correct got=%s", str1a)
+	}
+
+	str2 := spec[2].(*ast.ConstantStatement).Name.RawId()
+	if str2[0] != "test1" || str2[1] != "b" {
+		t.Fatalf("constant2 name not correct got=%s", str2)
+	}
+
+	str2a := spec[2].(*ast.ConstantStatement).Value.(*ast.Unknown).RawId()
+	if str2a[0] != "test1" || str2a[1] != "b" {
+		t.Fatalf("unknown1 name not correct got=%s", str2a)
+	}
+
+	str3 := spec[3].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
+	for k, v := range str3 {
+		keyId := k.RawId()
+		if keyId[2] == "x" {
+			valId := v.(*ast.Unknown).RawId()
+			if valId[0] != keyId[0] || valId[1] != keyId[1] || keyId[2] != valId[2] {
+				t.Fatalf("field name is not correct value=%s", valId)
+			}
+
+		}
+	}
+}
+
 func prepTest(test string) *Processor {
 	path := ""
 	is := antlr.NewInputStream(test)
