@@ -10,29 +10,6 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-// func (c *Compiler) getFullVariableName(id []string) []string {
-// 	if c.currScope[0] != "" && strings.Join(c.currScope, "_") != c.contextFuncName {
-// 		return c.removeThis(id)
-// 	} else {
-// 		if len(id) >= 3 && c.isFunction(c.specStructs[id[0]][id[1]][id[2]]) {
-// 			return append(id[0:2], id[3:]...) //This variable is being accessed from a function, remove function name
-// 		}
-// 		return id
-// 	}
-// }
-
-// func (c *Compiler) removeThis(id []string) []string {
-// 	if id[0] == "this" {
-// 		return append(c.currScope, id[1:]...)
-// 	}
-// 	return append(c.currScope, id...)
-//}
-
-// func (c *Compiler) getVariableName(id []string) string {
-// 	id, _ = c.GetSpec(id)
-// 	return strings.Join(id, "_")
-// }
-
 func (c *Compiler) updateVariableStateName(id []string) string {
 	if len(id) == 2 { // This is a constant, doesn't change
 		return strings.Join(id, "_")
@@ -98,19 +75,11 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
 	}
 
-	//Add round metadata
-	/*round := &metadata.Attachment{
-		Name: fmt.Sprintf("round-%d", c.runRound),
-		Node: &metadata.DIBasicType{
-			MetadataID: -1,
-			Tag:        enum.DwarfTagStringType,
-		}}
-	store.Metadata = append(store.Metadata, round)*/
-
 	//Other metadata
 	if c.contextMetadata != nil {
 		store.Metadata = append(store.Metadata, c.contextMetadata)
 	}
+
 	c.storeAllocation(name, id, alloc)
 }
 

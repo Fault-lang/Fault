@@ -46,6 +46,10 @@ func (l *LookupTable) AddParam(id []string, p value.Value) {
 	l.params[id[1]] = append(l.params[id[1]], p)
 }
 
+func (l *LookupTable) AddParams(id []string, p []value.Value) {
+	l.params[id[1]] = append(l.params[id[1]], p...)
+}
+
 func (l *LookupTable) Store(id []string, name string, point *ir.InstAlloca) {
 	ident := strings.Join(id, "_")
 	if l.values[ident] != nil {

@@ -76,11 +76,18 @@ constDecl
     ;
 
 constSpec
-    : identList ('=' expressionList)?
+    : identList ('=' constants)?
     ;
 
 identList
     : operandName (',' operandName)*
+    ;
+
+constants
+    : numeric
+    | string_
+    | bool_
+    | solvable
     ;
 
 expressionList

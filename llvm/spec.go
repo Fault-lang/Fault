@@ -52,6 +52,10 @@ func (s *spec) AddParam(id []string, p value.Value) {
 	s.vars.AddParam(id, p)
 }
 
+func (s *spec) AddParams(id []string, p []value.Value) {
+	s.vars.AddParams(id, p)
+}
+
 func (s *spec) DefineSpecType(id []string, ty irtypes.Type) {
 	s.vars.Type(id, ty)
 }

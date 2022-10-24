@@ -216,7 +216,6 @@ func (c *Compiler) compileConstant(node *ast.ConstantStatement) {
 }
 
 func (c *Compiler) setConst(rawid []string, val value.Value) {
-	c.specs[c.currentSpec].DefineSpecVar(rawid, val)
 	c.specs[c.currentSpec].DefineSpecType(rawid, val.Type())
 }
 
@@ -303,13 +302,14 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 
 	switch node.Type() {
 	case "STOCK":
-		children = c.processStruct(node.Order, node.Properties, pos)
+		children = c.processStruct(node)
 	case "FLOW":
-		children = c.processStruct(node.Order, node.Properties, pos)
+		children = c.processStruct(node)
 	default:
 		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", id, pos[0], pos[1]))
 	}
 	key := strings.Join(id, "_")
+	c.structPropOrder[key] = node.Order
 	c.instances[key] = append(c.instances[key], parent)
 	c.instances[parent] = append(c.instances[parent], key)
 	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
@@ -488,19 +488,6 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 	c.contextMetadata = nil
 }
 
-// func (c *Compiler) compileFunction(node *ast.FunctionLiteral) value.Value {
-// 	body := node.Body.Statements
-// 	var retValue value.Value
-// 	for i := 0; i < len(body); i++ {
-// 		exp := body[i].(*ast.ExpressionStatement).Expression
-// 		init, ok := exp.(*ast.InitExpression)
-// 		if ok {
-// 			return c.compileValue(init.Expression)
-// 		}
-// 	}
-// 	return retValue
-// }
-
 func (c *Compiler) compileFunction(node ast.Node) value.Value {
 	if !c.alloc { //Short circuit this if just initializing
 		return nil
@@ -601,6 +588,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 				id = n.RawId()
 			}
 
+			s = c.specs[id[0]]
+
 			if c.isVarSet(id) && c.alloc {
 				p := s.GetSpecVarPointer(id)
 				c.contextBlock.NewStore(r, p)
@@ -631,12 +620,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		}
 
 		pos := n.Position()
-		switch n := node.Left.(type) {
-		case *ast.Identifier:
-			id = n.RawId()
-		case *ast.ParameterCall:
-			id = n.RawId()
-		}
+		id = n.RawId()
+
+		s = c.specs[id[0]]
 
 		if !c.isVarSet(id) {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(id, "_"), pos[0], pos[1]))
@@ -969,15 +955,9 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	}
 }
 
-func (c *Compiler) convertRawId(rawid []string) []string {
-	stname := strings.Join(rawid[1:len(rawid)-1], "_")
-	return []string{rawid[0], stname}
-}
-
 func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 	s := c.specs[id[0]]
 	vname := strings.Join(id, "_")
-
 	local := s.GetSpecVar(id)
 	if local != nil {
 		pointer := s.GetSpecVarPointer(id)
@@ -987,6 +967,8 @@ func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 	}
 
 	pointer := c.specGlobals[vname]
+	fmt.Printf("## %s\n", id)
+	fmt.Printf("### %s\n", pointer)
 	if pointer != nil {
 		pointer := c.specGlobals[vname]
 		ty := s.GetSpecType(vname)
@@ -1001,7 +983,6 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value
 
 	if c.runRound == 0 { //initialize
 		params := c.generateParameters(rawId, branch)
-		c.resetParaState(params)
 		f := c.module.NewFunc(fname, irtypes.Void, params...)
 		c.contextFunc = f
 
@@ -1026,9 +1007,16 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value
 	return c.specFunctions[fname]
 }
 
-func (c *Compiler) processStruct(keys []string, tree map[string]*ast.StructProperty, pos []int) map[string]string {
+func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
+	keys := node.Order
+	tree := node.Properties
+	pos := node.Position()
+	parentId := node.Id()
 	var s *spec
 	children := make(map[string]string)
+	var params []value.Value
+	var funcs [][]string
+
 	for _, k := range keys {
 		var isUncertain []float64
 		var isUnknown bool
@@ -1040,9 +1028,13 @@ func (c *Compiler) processStruct(keys []string, tree map[string]*ast.StructPrope
 		case *ast.StructInstance:
 			c.compileInstance(pv)
 			id = pv.Id()
+			sInner := c.specs[id[0]]
+			pInner := sInner.GetParams(id)
+			params = append(params, pInner...)
 		case *ast.FunctionLiteral:
 			c.compileFunction(pv)
 			id = pv.Id()
+			funcs = append(funcs, id)
 		default:
 			if n, ok := pv.(*ast.Uncertain); ok {
 				isUnknown = true
@@ -1073,7 +1065,8 @@ func (c *Compiler) processStruct(keys []string, tree map[string]*ast.StructPrope
 			s.vars.ResetState(vname)
 			ty := s.GetPointerType(vname)
 			p := ir.NewParam(vname, ty)
-			s.AddParam(id, p)
+			params = append(params, p)
+			s.AddParam(parentId, p)
 
 		}
 		//Track properties of instances so that we can write
@@ -1087,6 +1080,14 @@ func (c *Compiler) processStruct(keys []string, tree map[string]*ast.StructPrope
 		}
 		children[vname] = id[1]
 	}
+
+	//Add the params for all the functions
+	s = c.specs[parentId[0]]
+	for _, f := range funcs {
+		if len(params) > 0 {
+			s.AddParams(f, params)
+		}
+	}
 	return children
 }
 
@@ -1096,31 +1097,40 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 
 	var keys []string
 	keys = c.fetchOrder(id)
-	if keys != nil { //If no order if found (ie components) fall back to alphabetically
+	if len(keys) == 0 { //If no order if found (ie components) fall back to alphabetically
 		keys = c.generateOrder(data)
 	}
 
 	sr := c.specStructs[id[0]]
 	for _, k := range keys {
 		switch n := data[k].(type) {
-		case *ast.Instance:
+		case *ast.StructInstance:
 			var ip []*ir.Param
 			child := n.Id()
 			if n.Complex {
-				ip = c.generateParameters(child, sr.Fetch(child[1], n.InferredType.Type))
+				ip = c.generateParameters(child, sr.Fetch(child[1], n.Type()))
 			} else {
-				ip = c.generateParameters(n.Id(), sr.Fetch(child[1], n.InferredType.Type))
+				ip = c.generateParameters(n.Id(), sr.Fetch(child[1], n.Type()))
 			}
 			p = append(p, ip...)
-		default:
-			if n2, ok := n.(*ast.StructProperty); ok {
-				child := n2.Id()
-				vname := strings.Join(child, "_")
-				if n2.Value.Type() != "FUNCTION" {
-					ty := s.GetPointerType(vname)
-					p = append(p, ir.NewParam(vname, ty))
-				}
+		case *ast.StructProperty:
+			if _, ok := n.Value.(*ast.FunctionLiteral); !ok {
+				rawid := n.Value.(ast.Nameable).RawId()
+				s = c.specs[rawid[0]]
+				vname := strings.Join(rawid, "_")
+				ty := s.GetPointerType(vname)
+				p = append(p, ir.NewParam(vname, ty))
 			}
+		case *ast.FunctionLiteral:
+			// Skip, do nothing
+
+		default:
+			rawid := n.(ast.Nameable).RawId()
+			s = c.specs[rawid[0]]
+			vname := strings.Join(rawid, "_")
+			ty := s.GetPointerType(vname)
+			p = append(p, ir.NewParam(vname, ty))
+
 		}
 	}
 	return p
@@ -1383,10 +1393,6 @@ func (c *Compiler) GetIR() string {
 }
 
 func (c *Compiler) addGlobal() {
-	//global := NewCompiledSpec("__global")
-
-	//c.specs["__global"] = global
-
 	// run block
 	c.contextFunc = c.module.NewFunc("__run", irtypes.Void)
 	mainBlock := c.contextFunc.NewBlock(name.Block())
