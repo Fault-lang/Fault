@@ -1081,7 +1081,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		if isUncertain != nil {
 			c.Uncertains[vname] = isUncertain
 		}
-		children[vname] = id[1]
+		children[vname] = node.Parent[1]
 	}
 
 	//Add the params for all the functions

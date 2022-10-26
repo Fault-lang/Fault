@@ -384,6 +384,8 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 			node.InferredType = &ast.Type{Type: "FLOW", Scope: 0, Parameters: nil}
 		}
 		return node, nil
+	case *ast.IndexExpression:
+		return node, nil
 	case *ast.ComponentLiteral:
 		if node.InferredType == nil {
 			node.InferredType = &ast.Type{Type: "COMPONENT", Scope: 0, Parameters: nil}
@@ -675,6 +677,8 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		node.InferredType = node.Consequence.InferredType // This is probably an incorrect approach. Need to think about it.
 		return node, err
 
+	case *ast.IndexExpression:
+		return node, err
 	case *ast.PrefixExpression:
 		var nr ast.Node
 		if c.isValue(node.Right) {

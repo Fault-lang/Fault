@@ -1,88 +1,88 @@
 package llvm
 
-// // Named xasserts to make go test to run these tests AFTER the main
-// // tests in llvm_test
+// Named xasserts to make go test to run these tests AFTER the main
+// tests in llvm_test
 
-// import (
-// 	"fault/ast"
-// 	"fault/listener"
-// 	"fault/parser"
-// 	"fault/preprocess"
-// 	"fault/types"
-// 	"testing"
+import (
+	"fault/ast"
+	"fault/listener"
+	"fault/parser"
+	"fault/preprocess"
+	"fault/types"
+	"testing"
 
-// 	"github.com/antlr/antlr4/runtime/Go/antlr"
-// )
+	"github.com/antlr/antlr4/runtime/Go/antlr"
+)
 
-// func TestSimpleAssert(t *testing.T) {
-// 	test := `spec test1;
-// 			const hello = false;
-// 			assert hello == true;
-// 	`
+func TestSimpleAssert(t *testing.T) {
+	test := `spec test1;
+			const hello = false;
+			assert hello == true;
+	`
 
-// 	llvm, err := prepAssertTest(test)
+	llvm, err := prepAssertTest(test)
 
-// 	if err != nil {
-// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
-// 	}
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
 
-// 	for _, v := range llvm.Asserts {
+	for _, v := range llvm.Asserts {
 
-// 		c := v.Constraints
-// 		av := c.Left.(*ast.AssertVar)
-// 		if av.Instances[0] != "test1_hello" {
-// 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
-// 		}
+		c := v.Constraints
+		av := c.Left.(*ast.AssertVar)
+		if av.Instances[0] != "test1_hello" {
+			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
+		}
 
-// 		if c.Operator != "!=" {
-// 			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
-// 		}
+		if c.Operator != "!=" {
+			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
+		}
 
-// 		if _, ok := c.Right.(*ast.Boolean); !ok {
-// 			t.Fatalf("assert has wrong operator. got=%s", c.Right)
-// 		}
+		if _, ok := c.Right.(*ast.Boolean); !ok {
+			t.Fatalf("assert has wrong operator. got=%s", c.Right)
+		}
 
-// 	}
-// }
+	}
+}
 
-// func TestAssertWConjunc(t *testing.T) {
-// 	test := `spec test1;
-// 			const hello = false;
-// 			assert hello == true && 5 > 2;
-// 	`
+func TestAssertWConjunc(t *testing.T) {
+	test := `spec test1;
+			const hello = false;
+			assert hello == true && 5 > 2;
+	`
 
-// 	llvm, err := prepAssertTest(test)
+	llvm, err := prepAssertTest(test)
 
-// 	if err != nil {
-// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
-// 	}
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
 
-// 	for _, v := range llvm.Asserts {
+	for _, v := range llvm.Asserts {
 
-// 		c := v.Constraints
-// 		av := c.Left.(*ast.InfixExpression).Left.(*ast.AssertVar)
-// 		if av.Instances[0] != "test1_hello" {
-// 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
-// 		}
+		c := v.Constraints
+		av := c.Left.(*ast.InfixExpression).Left.(*ast.AssertVar)
+		if av.Instances[0] != "test1_hello" {
+			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
+		}
 
-// 		if c.Operator != "||" {
-// 			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
-// 		}
+		if c.Operator != "||" {
+			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
+		}
 
-// 		if c.Left.(*ast.InfixExpression).Operator != "!=" {
-// 			t.Fatalf("assert has wrong operator. got=%s", c.Left.(*ast.InfixExpression).Operator)
-// 		}
+		if c.Left.(*ast.InfixExpression).Operator != "!=" {
+			t.Fatalf("assert has wrong operator. got=%s", c.Left.(*ast.InfixExpression).Operator)
+		}
 
-// 		right := c.Right.(*ast.InfixExpression)
-// 		if right.Operator != "<=" {
-// 			t.Fatalf("assert has wrong operator. got=%s", right.Operator)
-// 		}
+		right := c.Right.(*ast.InfixExpression)
+		if right.Operator != "<=" {
+			t.Fatalf("assert has wrong operator. got=%s", right.Operator)
+		}
 
-// 	}
-// }
+	}
+}
 
-// // THIS TEST IS ~AWFUL~ BUT SOME OF THIS SYNTAX HASN'T ACTUALLY BEEN
-// // IMPLEMENTED. SO WILL INVESTIGATE THE FIX LATER
+// THIS TEST IS ~AWFUL~ BUT SOME OF THIS SYNTAX HASN'T ACTUALLY BEEN
+// IMPLEMENTED. SO WILL INVESTIGATE THE FIX LATER
 // func TestAssertState(t *testing.T) {
 // 	test := `spec test1;
 // 			def fl = flow{
@@ -99,7 +99,7 @@ package llvm
 
 // 			for 2 run{
 // 				x = new fl;
-// 				x.rate; 
+// 				x.rate;
 // 			}
 // 	`
 
@@ -151,29 +151,29 @@ package llvm
 
 // // END AWFUL TEST, NOTHING TO SEE HERE... MOVE ALONG ;)
 
-// func prepAssertTest(test string) (*Compiler, error) {
-// 	path := ""
-// 	is := antlr.NewInputStream(test)
-// 	lexer := parser.NewFaultLexer(is)
-// 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+func prepAssertTest(test string) (*Compiler, error) {
+	path := ""
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
-// 	p := parser.NewFaultParser(stream)
-// 	l := listener.NewListener(path, true, false)
-// 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-// 	pre := preprocess.NewProcesser()
-// 	tree := pre.Run(l.AST)
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(path, true, false)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
 
-// 	ty := &types.Checker{}
-// 	tree, err := ty.Check(tree, pre.Specs)
+	ty := &types.Checker{}
+	tree, err := ty.Check(tree, pre.Specs)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	compiler := NewCompiler()
-// 	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
-// 	err = compiler.Compile(tree)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return compiler, err
-// }
+	if err != nil {
+		return nil, err
+	}
+	compiler := NewCompiler()
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
+	err = compiler.Compile(tree)
+	if err != nil {
+		return nil, err
+	}
+	return compiler, err
+}

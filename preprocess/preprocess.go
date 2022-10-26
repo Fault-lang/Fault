@@ -387,6 +387,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Right = r.(ast.Expression)
 		return node, err
 
+	case *ast.IndexExpression:
+
+		l, err := p.walk(node.Left)
+		if err != nil {
+			return node, err
+		}
+		node.Left = l.(ast.Expression)
+		node.ProcessedName = l.(ast.Nameable).RawId()
+		return node, err
+
 	case *ast.PrefixExpression:
 		r, err := p.walk(node.Right)
 		if err != nil {

@@ -393,6 +393,58 @@ func TestUnknowns(t *testing.T) {
 	}
 }
 
+func TestAsserts(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	def foo = stock{
+		bar: 1,
+		x: 0,
+		y: 5,
+	};
+
+	assert a >= 10;
+	assume foo.bar != 3;
+	assert foo.x > foo.y[1] && foo.y[2] < foo.z; 
+	`
+
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	str1 := spec[3].(*ast.AssertionStatement).Constraints.Left.(ast.Nameable).RawId()
+	if len(str1) != 2 || str1[0] != "test1" || str1[1] != "a" {
+		t.Fatalf("assumption var name 1 not correct got=%s", str1)
+	}
+
+	str1a := spec[4].(*ast.AssumptionStatement).Constraints.Left.(ast.Nameable).RawId()
+	if len(str1a) != 3 || str1a[0] != "test1" || str1a[1] != "foo" || str1a[2] != "bar" {
+		t.Fatalf("assumption var name 2 not correct got=%s", str1a)
+	}
+
+	str3p1 := spec[5].(*ast.AssertionStatement).Constraints.Left.(*ast.InfixExpression)
+	str3p2 := spec[5].(*ast.AssertionStatement).Constraints.Right.(*ast.InfixExpression)
+
+	str3 := str3p1.Left.(ast.Nameable).RawId()
+	if len(str3) != 3 || str3[0] != "test1" || str3[1] != "foo" || str3[2] != "x" {
+		t.Fatalf("assumption var name 3 not correct got=%s", str3)
+	}
+
+	str3a := str3p1.Right.(ast.Nameable).RawId()
+	if len(str3a) != 3 || str3a[0] != "test1" || str3a[1] != "foo" || str3a[2] != "y" {
+		t.Fatalf("assumption var name 4 not correct got=%s", str3a)
+	}
+
+	str4 := str3p2.Left.(ast.Nameable).RawId()
+	if len(str4) != 3 || str4[0] != "test1" || str4[1] != "foo" || str4[2] != "y" {
+		t.Fatalf("assumption var name 5 not correct got=%s", str4)
+	}
+
+	str4a := str3p2.Right.(ast.Nameable).RawId()
+	if len(str4a) != 3 || str4a[0] != "test1" || str4[1] != "foo" || str4a[2] != "z" {
+		t.Fatalf("assumption var name 6 not correct got=%s", str4a)
+	}
+}
+
 func prepTest(test string) *Processor {
 	path := ""
 	is := antlr.NewInputStream(test)
