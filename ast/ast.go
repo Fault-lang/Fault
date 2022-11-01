@@ -935,6 +935,7 @@ type This struct {
 }
 
 func (t *This) expressionNode()      {}
+func (t *This) operandNode()         {}
 func (t *This) TokenLiteral() string { return t.Token.Literal }
 func (t *This) Position() []int      { return t.Token.GetPosition() }
 func (t *This) String() string       { return strings.Join(t.Value, ".") }
@@ -953,6 +954,7 @@ func (t *This) Id() []string {
 func (t *This) SetId(id []string) {
 	t.ProcessedName = id
 }
+
 func (t *This) IdString() string {
 	return strings.Join(t.ProcessedName, "_")
 }
@@ -1187,6 +1189,7 @@ type BuiltIn struct {
 	Token         Token
 	Parameters    map[string]Operand
 	Function      string
+	FromState     string
 	ProcessedName []string
 }
 

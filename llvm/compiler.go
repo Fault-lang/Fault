@@ -195,7 +195,10 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.StartStatement:
 		for _, p := range v.Pairs {
-			branch := c.specStructs[c.currentSpec].FetchComponent(p[0])
+			branch, err := c.specStructs[c.currentSpec].FetchComponent(p[0])
+			if err != nil {
+				panic(err)
+			}
 			id := []string{c.currentSpec, p[0], p[1]}
 			c.processFunc(id, branch)
 			c.ComponentStarts[p[0]] = p[1]
@@ -269,8 +272,7 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.FunctionLiteral:
 		return c.compileFunction(v)
 	case *ast.Instance:
-		panic("Yes still have instances LOL")
-		//c.compileInstance(v, v.Name)
+		
 	case *ast.StructInstance:
 		c.compileInstance(v)
 	case *ast.ParameterCall:
@@ -326,11 +328,9 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 		var pname string
 		scopeName := []string{cname, key.Value}
 
-		//oldScope := c.currScope
 		oldBlock := c.contextBlock
 
 		c.contextFuncName = strings.Join(scopeName, "_")
-		//c.currScope = scopeName
 
 		switch v := p.(type) {
 		case *ast.StateLiteral:
@@ -355,10 +355,9 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 			c.contextBlock.NewRet(val)
 			c.contextBlock = oldBlock
 			c.contextFuncName = "__run"
-			//c.currScope = oldScope
 			c.contextFunc = nil
 		case *ast.Instance:
-			panic("Yes still have instances LOL 2")
+		
 		default:
 			val := c.compileValue(v)
 
@@ -381,6 +380,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 }
 
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
+	var err error
 	id := pc.RawId()
 	spec := c.specStructs[id[0]]
 	ty, _ := spec.GetStructType(id[0:2]) //Removing the key
@@ -390,9 +390,15 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	var branches map[string]ast.Node
 	switch ty {
 	case "FLOW":
-		branches = spec.FetchFlow(st)
+		branches, err = spec.FetchFlow(st)
+		if err != nil {
+			panic(err)
+		}
 	case "STOCK":
-		branches = spec.FetchStock(st)
+		branches, err = spec.FetchStock(st)
+		if err != nil {
+			panic(err)
+		}
 	default:
 		panic(fmt.Sprintf("struct %s not found", id))
 	}
@@ -514,8 +520,7 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 		c.compileIf(v)
 
 	case *ast.Instance:
-		panic("Yes still have instances LOL 3")
-
+	
 	case *ast.StructInstance:
 		c.compileInstance(v)
 
@@ -1027,7 +1032,6 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 
 		switch pv := tree[k].Value.(type) {
 		case *ast.Instance:
-			panic("Yes still have instances LOL 4")
 		case *ast.StructInstance:
 			c.compileInstance(pv)
 			id = pv.Id()
@@ -1110,10 +1114,15 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 		case *ast.StructInstance:
 			var ip []*ir.Param
 			child := n.Id()
+			strInst, err := sr.Fetch(child[1], n.Type())
+			if err != nil {
+				panic(err)
+			}
+
 			if n.Complex {
-				ip = c.generateParameters(child, sr.Fetch(child[1], n.Type()))
+				ip = c.generateParameters(child, strInst)
 			} else {
-				ip = c.generateParameters(n.Id(), sr.Fetch(child[1], n.Type()))
+				ip = c.generateParameters(n.Id(), strInst)
 			}
 			p = append(p, ip...)
 		case *ast.StructProperty:
@@ -1176,30 +1185,46 @@ func (c *Compiler) isFunction(node ast.Node) bool {
 
 func (c *Compiler) isConstant(rawid []string) bool {
 	spec := c.specStructs[rawid[0]]
-	return spec.FetchConstant(rawid[1]) != nil
+	_, err := spec.FetchConstant(rawid[1])
+	if err == nil {
+		return true
+	}
+
+	return false
 }
 
 func (c *Compiler) isVarSet(rawid []string) bool {
+	var err error
 	s := c.specStructs[rawid[0]]
 	if len(rawid) > 2 {
 		return c.isStrVarSet(rawid)
 	}
-	if s.FetchStock(rawid[1]) != nil {
+
+	_, err = s.FetchStock(rawid[1])
+	if err == nil {
 		return true
 	}
-	if s.FetchFlow(rawid[1]) != nil {
+
+	_, err = s.FetchFlow(rawid[1])
+	if err == nil {
 		return true
 	}
-	if s.FetchConstant(rawid[1]) != nil {
+
+	_, err = s.FetchConstant(rawid[1])
+	if err == nil {
 		return true
 	}
-	if s.FetchComponent(rawid[1]) != nil {
+
+	_, err = s.FetchComponent(rawid[1])
+	if err == nil {
 		return true
 	}
+
 	return false
 }
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {
+	var err error
 	s := c.specStructs[rawid[0]]
 	ty, structId := s.GetStructType(rawid)
 	name := strings.Join(structId[1:], "_")
@@ -1207,13 +1232,17 @@ func (c *Compiler) isStrVarSet(rawid []string) bool {
 	var st map[string]ast.Node
 	switch ty {
 	case "STOCK":
-		st = s.FetchStock(name)
+		st, err = s.FetchStock(name)
 	case "FLOW":
-		st = s.FetchFlow(name)
+		st, err = s.FetchFlow(name)
 	case "COMPONENT":
-		st = s.FetchComponent(name)
+		st, err = s.FetchComponent(name)
 	default:
 		return false
+	}
+
+	if err != nil {
+		panic(err)
 	}
 
 	if st[rawid[len(rawid)-1]] != nil {

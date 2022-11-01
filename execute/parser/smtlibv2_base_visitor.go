@@ -1,8 +1,8 @@
-// Code generated from SMTLIBv2.g4 by ANTLR 4.8. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // SMTLIBv2
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 type BaseSMTLIBv2Visitor struct {
 	*antlr.BaseParseTreeVisitor

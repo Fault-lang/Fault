@@ -19,7 +19,20 @@ func TestConstants(t *testing.T) {
 
 	consts := process.Specs["test1"]
 
-	x := consts.FetchConstant("x")
+	all := []string{"x", "y", "z"}
+	for _, v := range consts.Order {
+		for i, a := range all {
+			if a == v[0] {
+				all = append(all[0:i], all[i+1:]...)
+			}
+		}
+	}
+
+	if len(all) != 0 {
+		t.Fatalf("constant %s missing from order", all)
+	}
+
+	x, _ := consts.FetchConstant("x")
 
 	if _, ok := x.(*ast.IntegerLiteral); !ok {
 		t.Fatalf("Constant x does not have the right type. got=%T", x)
@@ -29,7 +42,7 @@ func TestConstants(t *testing.T) {
 		t.Fatalf("Constant x does not have the right value. got=%d", x)
 	}
 
-	y := consts.FetchConstant("y")
+	y, _ := consts.FetchConstant("y")
 	if _, ok := y.(*ast.InfixExpression); !ok {
 		t.Fatalf("Constant y not the right type. got=%T", y)
 	}
@@ -42,7 +55,7 @@ func TestConstants(t *testing.T) {
 		t.Fatalf("left y node does not have the right type. got=%T", y.(*ast.InfixExpression).Left)
 	}
 
-	z := consts.FetchConstant("z")
+	z, _ := consts.FetchConstant("z")
 	if _, ok3 := z.(*ast.Unknown); !ok3 {
 		t.Fatalf("Constant z does not have the right type. got=%T", z)
 	}
@@ -75,7 +88,7 @@ func TestStructDef(t *testing.T) {
 
 	variables := process.Specs["test1"]
 
-	foo := variables.FetchStock("foo")
+	foo, _ := variables.FetchStock("foo")
 	if len(foo) != 4 {
 		t.Fatalf("stock foo returns the wrong number of properties got=%d want=4", len(foo))
 	}
@@ -85,7 +98,7 @@ func TestStructDef(t *testing.T) {
 		t.Fatalf("identifier not converted to correct context got=%s", fizz)
 	}
 
-	zoo := variables.FetchFlow("zoo")
+	zoo, _ := variables.FetchFlow("zoo")
 	if len(zoo) != 3 {
 		t.Fatalf("flow zoo returns the wrong number of properties got=%d want=4", len(zoo))
 	}
@@ -120,7 +133,7 @@ func TestComponent(t *testing.T) {
 
 	process := prepSysTest(test)
 	variables := process.Specs["test"]
-	foo := variables.FetchComponent("foo")
+	foo, _ := variables.FetchComponent("foo")
 	if foo == nil {
 		t.Fatal("component named foo not found")
 	}
@@ -129,10 +142,25 @@ func TestComponent(t *testing.T) {
 		t.Fatalf("component foo returns the wrong number of states got=%d want=3", len(foo))
 	}
 
-	ifcond := foo["initial"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression).Condition.(*ast.InfixExpression)
+	ifblock := foo["initial"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	ifcond := ifblock.Condition.(*ast.InfixExpression)
 	this := ifcond.Left.(*ast.This).RawId()
 	if len(this) != 3 || this[0] != "test" || this[1] != "foo" || this[2] != "x" {
 		t.Fatalf("this special word not converted to correct context got=%s", this)
+	}
+
+	trueblock := ifblock.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
+	if trueblock.IdString() != "test_foo_initial_stay" {
+		t.Fatalf("built in stay not named correctly got=%s", trueblock.IdString())
+	}
+
+	elseblock := ifblock.Alternative.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
+	if elseblock.IdString() != "test_foo_initial_advance" {
+		t.Fatalf("built in advance not named correctly got=%s", elseblock.IdString())
+	}
+
+	if elseblock.Parameters["toState"].(ast.Nameable).IdString() != "test_foo_alarm" {
+		t.Fatalf("built in advance has the wrong input got=%s", elseblock.Parameters["toState"].(ast.Nameable).IdString())
 	}
 
 }
@@ -163,7 +191,7 @@ func TestInstances(t *testing.T) {
 
 	variables := process.Specs["test1"]
 
-	bar := variables.FetchStock("str2_bar")
+	bar, _ := variables.FetchStock("str2_bar")
 	if bar == nil {
 		t.Fatal("stock names str2_bar not found")
 	}
@@ -172,7 +200,7 @@ func TestInstances(t *testing.T) {
 		t.Fatalf("stock str2_bar returns the wrong number of properties got=%d want=4", len(bar))
 	}
 
-	zoo := variables.FetchStock("fl_buzz_foosh_bar")
+	zoo, _ := variables.FetchStock("fl_buzz_foosh_bar")
 	if zoo == nil {
 		t.Fatal("stock named fl_buzz_foosh_bar not found")
 	}
@@ -219,7 +247,7 @@ func TestRunInstances(t *testing.T) {
 
 	variables := process.Specs["test1"]
 
-	fl := variables.FetchFlow("f")
+	fl, _ := variables.FetchFlow("f")
 	if fl == nil {
 		t.Fatal("flow named f not found")
 	}
@@ -442,6 +470,50 @@ func TestAsserts(t *testing.T) {
 	str4a := str3p2.Right.(ast.Nameable).RawId()
 	if len(str4a) != 3 || str4a[0] != "test1" || str4[1] != "foo" || str4a[2] != "z" {
 		t.Fatalf("assumption var name 6 not correct got=%s", str4a)
+	}
+}
+
+func TestInstanceFlatten(t *testing.T) {
+	p := NewProcesser()
+	p.trail = p.trail.PushSpec("test")
+	p.Specs["test"] = NewSpecRecord()
+	p.Specs["test"].SpecName = "test"
+	p.initialPass = false
+
+	stockdata := make(map[string]ast.Node)
+	stockdata["zoo"] = &ast.IntegerLiteral{Value: 2}
+
+	p.Specs["test"].AddStock("foo", stockdata)
+	p.Specs["test"].Index("STOCK", "foo")
+	p.structTypes["test"] = map[string]string{"foo": "STOCK"}
+
+	test := &ast.Instance{Value: &ast.Identifier{Spec: "test", Value: "foo"}, Name: "bar"}
+
+	node, err := p.walk(test)
+	if err != nil {
+		t.Fatalf("test errored: %s", err.Error())
+	}
+
+	n, ok := node.(*ast.StructInstance)
+	if !ok {
+		t.Fatalf("instance not converted to StructInstance got=%T", node)
+	}
+
+	if n.Parent[0] != "test" || n.Parent[1] != "foo" {
+		t.Fatalf("StructInstance has the incorrect parent information got=%s", n.Parent)
+	}
+
+	if n.Properties["zoo"] == nil {
+		t.Fatalf("StructInstance missing it's property")
+	}
+
+	i, ok := n.Properties["zoo"].Value.(*ast.IntegerLiteral)
+	if !ok {
+		t.Fatalf("StructInstanct property is the wrong type got=%T", n.Properties["zoo"].Value)
+	}
+
+	if i.Value != 2 {
+		t.Fatalf("StructInstanct property is the wrong value got=%d", i.Value)
 	}
 }
 

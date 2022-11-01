@@ -44,7 +44,7 @@ func TestAddOK(t *testing.T) {
 	}
 
 	spec := checker.SpecStructs["test1"]
-	x := spec.FetchConstant("x")
+	x, _ := spec.FetchConstant("x")
 
 	if x.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant x does not have an int type. got=%T", x)
@@ -58,7 +58,7 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("left node does not have an int type. got=%T", x.(*ast.InfixExpression).Left)
 	}
 
-	y := spec.FetchConstant("y")
+	y, _ := spec.FetchConstant("y")
 
 	if y.(*ast.InfixExpression).InferredType.Type != "FLOAT" {
 		t.Fatalf("Constant y does not have a float type. got=%T", y)
@@ -72,7 +72,7 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("left y node does not have an int type. got=%T", y.(*ast.InfixExpression).Left)
 	}
 
-	z := spec.FetchConstant("z")
+	z, _ := spec.FetchConstant("z")
 
 	if z.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant z does not have a int type. got=%T", z)
@@ -152,7 +152,7 @@ func TestComplex(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	x := consts.FetchConstant("x")
+	x, _ := consts.FetchConstant("x")
 
 	if x.(*ast.InfixExpression).InferredType.Type != "FLOAT" {
 		t.Fatalf("Constant x does not have an float type. got=%T", x)
@@ -179,18 +179,18 @@ func TestScopes(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	x := consts.FetchConstant("x")
+	x, _ := consts.FetchConstant("x")
 
 	if x.(*ast.FloatLiteral).InferredType.Scope != 10 {
 		t.Fatalf("Constant x has the wrong scope. got=%d", x.(*ast.FloatLiteral).InferredType.Scope)
 	}
 
-	y := consts.FetchConstant("y")
+	y, _ := consts.FetchConstant("y")
 	if y.(*ast.FloatLiteral).InferredType.Scope != 100 {
 		t.Fatalf("Constant y has the wrong scope. got=%d", y.(*ast.FloatLiteral).InferredType.Scope)
 	}
 
-	z := consts.FetchConstant("z")
+	z, _ := consts.FetchConstant("z")
 	if z.(*ast.Uncertain).InferredType.Scope != 0 {
 		t.Fatalf("Constant z has the wrong scope. got=%d", z.(*ast.Uncertain).InferredType.Scope)
 	}
@@ -203,12 +203,12 @@ func TestScopes(t *testing.T) {
 		t.Fatalf("Constant z sigma has the wrong scope. got=%d", z.(*ast.Uncertain).InferredType.Parameters[1].Scope)
 	}
 
-	a := consts.FetchConstant("a")
+	a, _ := consts.FetchConstant("a")
 	if a.(*ast.FloatLiteral).InferredType.Scope != 1000 {
 		t.Fatalf("Constant a has the wrong scope. got=%d", a.(*ast.FloatLiteral).InferredType.Scope)
 	}
 
-	b := consts.FetchConstant("b")
+	b, _ := consts.FetchConstant("b")
 	if b.(*ast.FloatLiteral).InferredType.Scope != 10 {
 		t.Fatalf("Constant b has the wrong scope. got=%d", b.(*ast.FloatLiteral).InferredType.Scope)
 	}
@@ -245,7 +245,7 @@ func TestTypesInStruct(t *testing.T) {
 
 	str := checker.SpecStructs["test1"]
 
-	fooStock := str.FetchStock("foo")
+	fooStock, _ := str.FetchStock("foo")
 	if fooStock == nil {
 		t.Fatal("stock foo not stored in symbol table correctly.")
 	}
@@ -266,7 +266,7 @@ func TestTypesInStruct(t *testing.T) {
 		t.Fatalf("stock property not typed correctly. got=%s", fooStock["fizz2"].(*ast.PrefixExpression).InferredType.Type)
 	}
 
-	zooFlow := str.FetchFlow("zoo")
+	zooFlow, _ := str.FetchFlow("zoo")
 	if zooFlow == nil {
 		t.Fatal("flow zoo not stored in symbol table correctly.")
 	}
@@ -332,7 +332,7 @@ func TestNils(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	x := consts.FetchConstant("x")
+	x, _ := consts.FetchConstant("x")
 
 	if x.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant x does not have an int type. got=%s", x.(*ast.InfixExpression).InferredType.Type)
@@ -346,7 +346,7 @@ func TestNils(t *testing.T) {
 		t.Fatalf("x left node does not have an nil type. got=%s", x.(*ast.InfixExpression).Left.(*ast.Nil).InferredType.Type)
 	}
 
-	y := consts.FetchConstant("y")
+	y, _ := consts.FetchConstant("y")
 	if y.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant y does not have an int type. got=%s", y.(*ast.InfixExpression).InferredType.Type)
 	}
@@ -358,7 +358,7 @@ func TestNils(t *testing.T) {
 	if y.(*ast.InfixExpression).Left.(*ast.IntegerLiteral).InferredType.Type != "INT" {
 		t.Fatalf("y left node does not have an int type. got=%s", y.(*ast.InfixExpression).Left.(*ast.IntegerLiteral).InferredType.Type)
 	}
-	z := consts.FetchConstant("z")
+	z, _ := consts.FetchConstant("z")
 	if z.(*ast.InfixExpression).InferredType.Type != "NIL" {
 		t.Fatalf("Constant z does not have a nil type. got=%s", z.(*ast.InfixExpression).InferredType.Type)
 	}
@@ -409,7 +409,7 @@ func TestInConditionals(t *testing.T) {
 
 	str := checker.SpecStructs["test1"]
 
-	zooFlow := str.FetchFlow("zoo")
+	zooFlow, _ := str.FetchFlow("zoo")
 	if zooFlow == nil {
 		t.Fatal("flow zoo not stored in symbol table correctly.")
 	}
@@ -519,7 +519,7 @@ func TestComplexStruct(t *testing.T) {
 
 	str := checker.SpecStructs["test1"]
 
-	str2 := str.FetchStock("str2")
+	str2, _ := str.FetchStock("str2")
 	inst, ok := str2["bar"].(*ast.StructInstance)
 	if !ok {
 		t.Fatalf("property is not an instance. got=%T", str2["bar"])
@@ -533,7 +533,7 @@ func TestComplexStruct(t *testing.T) {
 	// 	t.Fatalf("instance should be complex")
 	// }
 
-	fl := str.FetchFlow("str3")
+	fl, _ := str.FetchFlow("str3")
 
 	inst2, ok := fl["buzz"].(*ast.StructInstance)
 	if !ok {
@@ -591,7 +591,7 @@ func TestReallyComplexStruct(t *testing.T) {
 
 	str := checker.SpecStructs["test1"]
 
-	str3 := str.FetchStock("str3")
+	str3, _ := str.FetchStock("str3")
 	inst, ok := str3["foosh"].(*ast.StructInstance)
 	if !ok {
 		t.Fatalf("property is not an instance. got=%T", str3["foosh"])
@@ -728,7 +728,7 @@ func TestPrefix(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	a := consts.FetchConstant("a")
+	a, _ := consts.FetchConstant("a")
 
 	if a.(*ast.PrefixExpression).InferredType.Type != "BOOL" {
 		t.Fatalf("Constant a does not have an boolean type. got=%s", a.(*ast.Boolean).InferredType.Type)
@@ -743,7 +743,7 @@ func TestPrefix(t *testing.T) {
 		t.Fatalf("Prefix base does not have a float type. got=%s", float.InferredType.Type)
 	}
 
-	b := consts.FetchConstant("b")
+	b, _ := consts.FetchConstant("b")
 	if b.(*ast.FloatLiteral).InferredType.Type != "FLOAT" {
 		t.Fatalf("Constant a does not have an float type. got=%s", b.(*ast.FloatLiteral).InferredType.Type)
 	}
@@ -761,7 +761,7 @@ func TestNatural(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	a := consts.FetchConstant("a")
+	a, _ := consts.FetchConstant("a")
 
 	if a.(*ast.Natural).InferredType.Type != "NATURAL" {
 		t.Fatalf("Constant a does not have an natural type. got=%s", a.(*ast.Natural).InferredType.Type)
@@ -780,7 +780,7 @@ func TestBoolean(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	a := consts.FetchConstant("a")
+	a, _ := consts.FetchConstant("a")
 
 	if a.(*ast.Boolean).InferredType.Type != "BOOL" {
 		t.Fatalf("Constant a does not have an Boolean type. got=%s", a.(*ast.Boolean).InferredType.Type)
@@ -799,7 +799,7 @@ func TestString(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	a := consts.FetchConstant("a")
+	a, _ := consts.FetchConstant("a")
 
 	if a.(*ast.StringLiteral).InferredType.Type != "STRING" {
 		t.Fatalf("Constant a does not have a string type. got=%s", a.(*ast.StringLiteral).InferredType.Type)
@@ -821,7 +821,7 @@ func TestIntPara(t *testing.T) {
 
 	spec := checker.SpecStructs["test1"]
 
-	val := spec.FetchStock("st")
+	val, _ := spec.FetchStock("st")
 
 	if val["value"].(*ast.IntegerLiteral).InferredType.Type != "INT" {
 		t.Fatalf("Variable a does not have a int type. got=%s", val["value"].(*ast.Boolean).InferredType.Type)
@@ -842,7 +842,7 @@ func TestBooleanPara(t *testing.T) {
 
 	spec := checker.SpecStructs["test1"]
 
-	val := spec.FetchStock("st")
+	val, _ := spec.FetchStock("st")
 
 	if val["value"].(*ast.Boolean).InferredType.Type != "BOOL" {
 		t.Fatalf("Variable a does not have a bool type. got=%s", val["value"].(*ast.Boolean).InferredType.Type)

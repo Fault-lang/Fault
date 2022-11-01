@@ -427,11 +427,11 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 	name := strings.Join(structId[1:], "_")
 	switch ty {
 	case "STOCK":
-		branches = spec.FetchStock(name)
+		branches, err = spec.FetchStock(name)
 	case "FLOW":
-		branches = spec.FetchFlow(name)
+		branches, err = spec.FetchFlow(name)
 	case "CONSTANT":
-		constant := spec.FetchConstant(name)
+		constant, err := spec.FetchConstant(name)
 		if constant != nil {
 			return typeable(constant), err
 		}
@@ -439,6 +439,10 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 		return nil, err
 	default:
 		return nil, fmt.Errorf("unimplemented type %s", ty)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	for k, v := range branches {
@@ -727,7 +731,10 @@ func (c *Checker) lookupCallType(base ast.Node) (*ast.Type, error) {
 		rawid := b.RawId()
 		spec := c.SpecStructs[rawid[0]]
 		ty, _ := spec.GetStructType(rawid[0 : len(rawid)-1])
-		p := spec.FetchVar(rawid, ty)
+		p, err := spec.FetchVar(rawid, ty)
+		if err != nil {
+			return nil, err
+		}
 		return c.lookupCallType(p)
 	default:
 		var n ast.Node

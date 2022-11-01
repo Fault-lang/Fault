@@ -16,6 +16,7 @@ type Processor struct {
 	Processed   ast.Node
 	initialPass bool
 	inFunc      bool
+	inState     string
 }
 
 func NewProcesser() *Processor {
@@ -113,8 +114,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 
 		// Has this already been defined?
-		if spec.FetchConstant(node.Name.Value) != nil {
-			panic(fmt.Sprintf("variable %s is a constant and cannot be modified", node.Name.Value))
+		_, err := spec.FetchConstant(node.Name.Value)
+		if err == nil {
+			return node, fmt.Errorf("variable %s is a constant and cannot be modified", node.Name.Value)
 		}
 
 		pronm, err := p.walk(node.Name)
@@ -172,7 +174,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pn := p.buildIdContext(spec.Id())
 			node.ProcessedName = pn
 		} else {
-			properties = spec.FetchStock(p.scope)
+			properties, err = spec.FetchStock(p.scope)
+			if err != nil {
+				return node, err
+			}
 		}
 
 		for k, v := range properties {
@@ -223,7 +228,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pn := p.buildIdContext(spec.Id())
 			node.ProcessedName = pn
 		} else {
-			properties = spec.FetchFlow(p.scope)
+			properties, err = spec.FetchFlow(p.scope)
+			if err != nil {
+				return node, err
+			}
 		}
 
 		for k, v := range properties {
@@ -274,11 +282,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pn := p.buildIdContext(spec.Id())
 			node.ProcessedName = pn
 		} else {
-			properties = spec.FetchComponent(p.scope)
+			properties, err = spec.FetchComponent(p.scope)
+			if err != nil {
+				return node, err
+			}
 		}
 
 		for k, v := range properties {
 			p.inFunc = true
+			p.inState = k
 			pro, err = p.walk(v)
 			if err != nil {
 				return node, err
@@ -290,7 +302,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			if err != nil {
 				return node, err
 			}
-
+			p.inState = ""
 			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
 		properties = util.Preparse(node.Pairs)
@@ -477,9 +489,17 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		var properties map[string]ast.Node
 		switch ty {
 		case "STOCK":
-			reference := importSpec.FetchStock(node.Value.Value)
+			reference, err := importSpec.FetchStock(node.Value.Value)
+			if err != nil {
+				return node, err
+			}
+
 			spec.AddInstance(key, reference, ty)
-			properties = spec.FetchStock(key)
+			properties, err = spec.FetchStock(key)
+			if err != nil {
+				return node, err
+			}
+
 			spec.Index("STOCK", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
 
@@ -536,9 +556,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = oldScope
 			return pro, err
 		case "FLOW":
-			reference := importSpec.FetchFlow(node.Value.Value)
+			reference, err := importSpec.FetchFlow(node.Value.Value)
+			if err != nil {
+				return node, err
+			}
+
 			spec.AddInstance(key, reference, ty)
-			properties = spec.FetchFlow(key)
+			properties, err = spec.FetchFlow(key)
+			if err != nil {
+				return node, err
+			}
 
 			spec.Index("FLOW", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
@@ -594,7 +621,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = oldScope
 			return pro, err
 		default:
-			panic(fmt.Sprintf("can't find an instance named %s", node.Value.Value))
+			return node, fmt.Errorf("can't find an instance named %s", node.Value.Value)
 		}
 	case *ast.StructInstance:
 		if p.Specs[p.trail.CurrentSpec()] == nil {
@@ -620,9 +647,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		var properties map[string]ast.Node
 		switch ty {
 		case "STOCK":
-			reference := importSpec.FetchStock(pname)
+			reference, err := importSpec.FetchStock(pname)
+			if err != nil {
+				return node, err
+			}
 			spec.AddInstance(key, reference, ty)
-			properties = spec.FetchStock(key)
+			properties, err = spec.FetchStock(key)
+			if err != nil {
+				return node, err
+			}
 
 			spec.Index("STOCK", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
@@ -669,9 +702,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = oldScope
 			return node, err
 		case "FLOW":
-			reference := importSpec.FetchFlow(pname)
+			reference, err := importSpec.FetchFlow(pname)
+			if err != nil {
+				return node, err
+			}
+
 			spec.AddInstance(key, reference, ty)
-			properties = spec.FetchFlow(key)
+			properties, err = spec.FetchFlow(key)
+			if err != nil {
+				return node, err
+			}
 
 			spec.Index("FLOW", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
@@ -718,7 +758,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = oldScope
 			return node, err
 		default:
-			panic(fmt.Sprintf("can't find an struct instance named %s", node.Parent))
+			return node, fmt.Errorf("can't find a struct instance named %s", node.Parent)
 		}
 	case *ast.Identifier:
 		if !p.initialPass {
@@ -791,7 +831,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		// instances created in the runblock)
 
 		ty, _ := spec.GetStructType(rawid)
-		branch := spec.FetchVar(rawid, ty)
+		branch, err := spec.FetchVar(rawid, ty)
+		if err != nil {
+			return node, err
+		}
+
 		if fn, ok := branch.(*ast.FunctionLiteral); ok {
 			fn2, err := p.walk(fn)
 			if err != nil {
@@ -824,6 +868,25 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		return node, err
 
+	case *ast.BuiltIn:
+		if p.initialPass {
+			return node, err
+		}
+
+		if node.Function == "advance" {
+			pro, err := p.walk(node.Parameters["toState"])
+			if err != nil {
+				return node, err
+			}
+			node.Parameters["toState"] = pro.(ast.Operand)
+		}
+
+		spec := p.Specs[p.trail.CurrentSpec()]
+		rawid := p.buildIdContext(spec.Id())
+		rawid = append(rawid, p.inState, node.Function)
+		node.FromState = p.inState
+		node.ProcessedName = rawid
+		return node, err
 	default:
 		return node, err
 	}
