@@ -152,12 +152,12 @@ func TestStockDecl(t *testing.T) {
 	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral).Pairs
 
 	for k, v := range stock {
-		if k.(*ast.Identifier).Value == "value" {
+		if k.Value == "value" {
 			_, ok := v.(*ast.IntegerLiteral)
 			if !ok {
 				t.Fatalf("Property is not an integer. got=%T", v)
 			}
-		} else if k.(*ast.Identifier).Value == "test" {
+		} else if k.Value == "test" {
 			buzz, ok := v.(*ast.Identifier)
 			if !ok {
 				t.Fatalf("Property is not an indentifier. got=%T", v)
@@ -165,7 +165,7 @@ func TestStockDecl(t *testing.T) {
 			if buzz.Value != "buzz" {
 				t.Fatalf("Property is incorrect. got=%s want=buzz", buzz.Value)
 			}
-		} else if k.(*ast.Identifier).Value == "call" {
+		} else if k.Value == "call" {
 			call, ok := v.(*ast.ParameterCall)
 			if !ok {
 				t.Fatalf("Property is not an call. got=%T", v)
@@ -760,10 +760,10 @@ func TestRunBlock(t *testing.T) {
 	if inst.Value.Spec != "test1" {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Value.Spec)
 	}
-	if inst.Value.Value != "d" {
+	if inst.Value.Value != "foo" {
 		t.Fatalf("instance has the wrong value. got=%s", inst.Value.Value)
 	}
-	if inst.Name != "foo" {
+	if inst.Name != "d" {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Name)
 	}
 
@@ -833,10 +833,10 @@ func TestRunInit(t *testing.T) {
 	if inst.Value.Spec != "test2" {
 		t.Fatalf("instance has the wrong spec name. got=%s", inst.Value.Spec)
 	}
-	if inst.Value.Value != "d" {
+	if inst.Value.Value != "foo" {
 		t.Fatalf("instance has the wrong value. got=%s", inst.Value.Value)
 	}
-	if inst.Name != "foo" {
+	if inst.Name != "d" {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Name)
 	}
 
@@ -1387,11 +1387,8 @@ func TestUnknown(t *testing.T) {
 	}
 
 	var pass int
-	for k, v := range fl.Pairs {
-		ident, ok := k.(*ast.Identifier)
-		if !ok {
-			t.Fatalf("Improper key in property pair. got=%T", k)
-		}
+	for ident, v := range fl.Pairs {
+
 		if ident.Value == "foo" {
 			val, ok := v.(*ast.Unknown)
 			if !ok {

@@ -10,60 +10,18 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-func (c *Compiler) getFullVariableName(id []string) []string {
-	if c.currScope[0] != "" && c.contextFuncName != "__run" &&
-		strings.Join(c.currScope, "_") != c.contextFuncName {
-		if id[0] == "this" {
-			return append(c.currScope, id[1:]...)
-		}
-		return append(c.currScope, id...)
-	} else {
-		if len(id) >= 3 && c.isFunction(c.specStructs[id[0]][id[1]][id[2]]) {
-			return append(id[0:2], id[3:]...) //This variable is being accessed from a function, remove function name
-		}
-		return id
-	}
-}
-
-func (c *Compiler) getVariableName(id []string) string {
-	id, _ = c.GetSpec(id)
-	return strings.Join(id, "_")
-}
-
-func (c *Compiler) getVariableType(name string) irtypes.Type {
-	return c.currentSpec.vars.GetType(name)
-}
-
-func (c *Compiler) getPointerType(name string) irtypes.Type {
-	ty := c.currentSpec.vars.GetType(name)
-	if ty != nil {
-		switch ty {
-		case irtypes.Double:
-			return DoubleP
-		case irtypes.I1:
-			return I1P
-		default:
-			fmt.Printf("problem here %T", ty)
-		}
-	}
-	fmt.Printf("no type found for %s\n", name)
-	return DoubleP
-}
-
 func (c *Compiler) updateVariableStateName(id []string) string {
-	id, s := c.GetSpec(id)
 	if len(id) == 2 { // This is a constant, doesn't change
 		return strings.Join(id, "_")
 	}
+	s := c.specs[id[0]]
 
-	incr := s.GetSpecVarState(id)
+	incr := s.GetSpecVarState(id[1:])
 	return fmt.Sprint(strings.Join(id, "_"), incr+1)
 }
 
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
-	id, _ = c.GetSpec(id)
-	//name := c.getVariableStateName(id)
-	name := c.getVariableName(id)
+	name := strings.Join(id, "_")
 	var alloc *ir.InstAlloca
 	var store *ir.InstStore
 
@@ -117,24 +75,15 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
 	}
 
-	//Add round metadata
-	/*round := &metadata.Attachment{
-		Name: fmt.Sprintf("round-%d", c.runRound),
-		Node: &metadata.DIBasicType{
-			MetadataID: -1,
-			Tag:        enum.DwarfTagStringType,
-		}}
-	store.Metadata = append(store.Metadata, round)*/
-
 	//Other metadata
 	if c.contextMetadata != nil {
 		store.Metadata = append(store.Metadata, c.contextMetadata)
 	}
+
 	c.storeAllocation(name, id, alloc)
 }
 
 func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
-	id, _ = c.GetSpec(id)
 	name := c.updateVariableStateName(id)
 
 	switch v := val.(type) {
@@ -172,15 +121,11 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 }
 
 func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloca) {
-	id, s := c.GetSpec(id)
+	s := c.specs[id[0]]
 	s.vars.IncrState(id)
 	s.vars.Store(id, name, alloc)
 }
 
 func (c *Compiler) storeGlobal(name string, alloc *ir.Global) {
 	c.specGlobals[name] = alloc
-}
-
-func (c *Compiler) fetchGlobal(name string) *ir.Global {
-	return c.specGlobals[name]
 }

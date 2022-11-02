@@ -55,7 +55,7 @@ func TestSpecPointer(t *testing.T) {
 	alloc.SetName(fvn)
 	s.vars.Store(id, fvn, alloc)
 
-	pointer := s.GetSpecVarPointer(fvn)
+	pointer := s.GetSpecVarPointer(id)
 	if pointer.LocalName != "test_this_func" {
 		t.Fatal("spec var this.func is missing a pointer")
 	}
@@ -82,8 +82,29 @@ func TestSpecTypes(t *testing.T) {
 	fvn := strings.Join(id, "_")
 	s.DefineSpecType(id, irtypes.I32)
 
-	if _, ok := s.GetSpecType(fvn, true); !ok {
+	if ty := s.GetSpecType(fvn); ty == nil {
 		t.Fatal("spec var this.func is missing type")
+	}
+
+}
+
+func TestPointerTypes(t *testing.T) {
+	id := []string{"test", "this", "func"}
+	s := initSpec(id)
+
+	fvn := strings.Join(id, "_")
+	s.DefineSpecType(id, irtypes.I1)
+
+	if ty := s.GetPointerType(fvn); ty.String() != "i1*" {
+		t.Fatalf("spec var this.func is the wrong type got=%s", ty.String())
+	}
+
+	id2 := []string{"test", "this", "too"}
+	fvn2 := strings.Join(id2, "_")
+	s.DefineSpecType(id2, irtypes.Double)
+
+	if ty := s.GetPointerType(fvn2); ty.String() != "double*" {
+		t.Fatalf("spec var this.too is the wrong type got=%s", ty.String())
 	}
 
 }

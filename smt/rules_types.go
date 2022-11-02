@@ -208,13 +208,12 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 					g.variables.storeLastState(id, n+1)
 				}
 				id = g.variables.advanceSSA(id)
-				//g.trackRounds(id, inst)
 				wid := &wrap{value: id}
 				if g.variables.isBolean(r.y.String()) {
-					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, declareOnly: true}) // Still need to declare the new state
+					//rules = append(rules, &infix{x: wid, ty: "Bool", y: r, declareOnly: true}) // Still need to declare the new state
 					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, op: "="})
 				} else if g.isASolvable(r.x.String()) {
-					rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true})
+					//rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true})
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r, op: "="})
 				} else {
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r})

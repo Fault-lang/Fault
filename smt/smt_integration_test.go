@@ -4,12 +4,12 @@ import (
 	"fault/listener"
 	"fault/llvm"
 	"fault/parser"
+	"fault/preprocess"
 	"fault/types"
 	"fault/util"
 	"fmt"
 	"os"
 	gopath "path"
-	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -53,37 +53,37 @@ func TestTestData(t *testing.T) {
 	}
 }
 
-func TestSys(t *testing.T) {
-	specs := [][]string{
-		/*{"testdata/statechart.fsystem", "1"},*/
-	}
-	smt2s := []string{
-		/*"testdata/statechart.smt2",*/
-	}
-	for i, s := range specs {
-		data, err := os.ReadFile(s[0])
-		if err != nil {
-			panic(fmt.Sprintf("spec %s is not valid", s[0]))
-		}
-		imports, _ := strconv.ParseBool(s[1])
+// func TestSys(t *testing.T) {
+// 	specs := [][]string{
+// 		{"testdata/statechart.fsystem", "1"},
+// 	}
+// 	smt2s := []string{
+// 		"testdata/statechart.smt2",
+// 	}
+// 	for i, s := range specs {
+// 		data, err := os.ReadFile(s[0])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("spec %s is not valid", s[0]))
+// 		}
+// 		imports, _ := strconv.ParseBool(s[1])
 
-		expecting, err := os.ReadFile(smt2s[i])
-		if err != nil {
-			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
-		}
-		smt, err := prepTestSys(s[0], string(data), imports)
+// 		expecting, err := os.ReadFile(smt2s[i])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+// 		}
+// 		smt, err := prepTestSys(s[0], string(data), imports)
 
-		if err != nil {
-			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
-		}
+// 		if err != nil {
+// 			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
+// 		}
 
-		err = compareResults(s[0], smt, string(expecting))
+// 		err = compareResults(s[0], smt, string(expecting))
 
-		if err != nil {
-			t.Fatalf(err.Error())
-		}
-	}
-}
+// 		if err != nil {
+// 			t.Fatalf(err.Error())
+// 		}
+// 	}
+// }
 
 func TestIndividual(t *testing.T) {
 
@@ -179,14 +179,18 @@ func prepTest(path string, test string) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	tree, err := ty.Check(tree, pre.Specs)
 	if err != nil {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
 	}
@@ -208,17 +212,23 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, !imports, false) //imports being true means testing is false :)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
 	ty := &types.Checker{}
-	err := ty.Check(l.AST)
+	tree, err := ty.Check(tree, pre.Specs)
+
 	if err != nil {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
 	}
+	//fmt.Println(compiler.GetIR())
 	generator := NewGenerator()
 	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.Run(compiler.GetIR())
