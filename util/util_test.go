@@ -41,7 +41,7 @@ func TestGeneratorToken(t *testing.T) {
 
 func TestPreparse(t *testing.T) {
 	token := ast.Token{Literal: "test", Position: []int{1, 2, 3, 4}}
-	pairs := make(map[ast.Expression]ast.Expression)
+	pairs := make(map[*ast.Identifier]ast.Expression)
 	pairs[&ast.Identifier{Token: token, Value: "foo"}] = &ast.IntegerLiteral{Token: token, Value: 3}
 	pairs[&ast.Identifier{Token: token, Value: "bash"}] = &ast.FunctionLiteral{Token: token,
 		Parameters: []*ast.Identifier{{Token: token, Value: "foo"}},
@@ -65,13 +65,13 @@ func TestPreparse(t *testing.T) {
 				t.Fatalf("pair value incorrect. want=3 got=%d", ty.Value)
 			}
 		} else if k == "bash" {
-			ty, ok := v.(*ast.BlockStatement)
+			ty, ok := v.(*ast.FunctionLiteral)
 			if !ok {
-				t.Fatalf("pair type incorrect. want=BlockStatement got=%T", v)
+				t.Fatalf("pair type incorrect. want=FunctionLiteral got=%T", v)
 			}
 
-			if ty.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value != 20 {
-				t.Fatalf("pair value incorrect. want=20 got=%d", ty.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value)
+			if ty.Body.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value != 20 {
+				t.Fatalf("pair value incorrect. want=20 got=%d", ty.Body.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value)
 			}
 		} else {
 			t.Fatalf("pair key unrecognized. got=%s", k)

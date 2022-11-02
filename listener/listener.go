@@ -22,6 +22,7 @@ type FaultListener struct {
 	AST        *ast.Spec
 	scope      string
 	currSpec   string
+	specs      []string
 	skipRun    bool
 	Path       string // The location of the main spec
 	testing    bool   // bypass imports when we're running unit tests
@@ -59,6 +60,7 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 
 func (l *FaultListener) EnterSpecClause(c *parser.SpecClauseContext) {
 	l.currSpec = c.IDENT().GetText()
+	l.specs = append(l.specs, l.currSpec)
 }
 
 func (l *FaultListener) ExitSpecClause(c *parser.SpecClauseContext) {
@@ -125,20 +127,20 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 	}
 
 	// If no ident, create one from import path
-	var ident *ast.Identifier
+	var importId string
 	if len(c.GetChildren()) == 2 {
-		ident = &ast.Identifier{
-			Token: token,
-			Value: c.IDENT().GetText(),
-			Spec:  l.currSpec,
-		}
+		importId = c.IDENT().GetText()
 	} else {
-		ident = &ast.Identifier{
-			Token: token,
-			Value: pathToIdent(fpath.String()),
-			Spec:  l.currSpec,
-		}
+		importId = pathToIdent(fpath.String())
 	}
+
+	ident := &ast.Identifier{
+		Token: token,
+		Value: pathToIdent(importId),
+		Spec:  l.currSpec,
+	}
+
+	l.specs = append(l.specs, importId)
 
 	l.push(&ast.ImportStatement{
 		Token: token,
@@ -247,6 +249,7 @@ func (l *FaultListener) ExitStock(c *parser.StockContext) {
 	token := util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+
 	l.push(
 		&ast.StockLiteral{
 			Token: token,
@@ -586,12 +589,18 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 
 	v := c.GetText()
 	param := strings.Split(v, ".")
-
-	l.push(&ast.ParameterCall{
+	pc := &ast.ParameterCall{
 		Token: token,
 		Value: param,
-	},
-	)
+	}
+
+	if util.InStringSlice(l.specs, param[0]) {
+		pc.Spec = param[0]
+	} else {
+		pc.Spec = l.currSpec
+	}
+
+	l.push(pc)
 }
 
 func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
@@ -642,8 +651,6 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
-	token := util.GenerateToken("ASSIGN", c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
-
 	txt := c.AllIDENT()
 	var right string
 
@@ -658,25 +665,24 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 		} else {
 
 			ident.Spec = r.Value[0]
-			ident.Value = txt[0].GetText()
-			right = r.Value[1]
+			ident.Value = r.Value[1]
+			right = txt[0].GetText()
 		}
 
 	case 2:
 		ident.Spec = l.currSpec
-		ident.Value = txt[0].GetText()
-		right = txt[1].GetText()
+		ident.Value = txt[1].GetText()
+		right = txt[0].GetText()
 	case 3:
 		ident.Spec = txt[1].GetText()
-		ident.Value = txt[0].GetText() // Not sure why the parser flips the order
-		right = txt[2].GetText()
+		ident.Value = txt[2].GetText() // Not sure why the parser flips the order
+		right = txt[0].GetText()
 	default:
 		panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
 	l.push(
 		&ast.Instance{
-			Token: token,
 			Value: ident,
 			Name:  right,
 		})
@@ -879,10 +885,7 @@ func (l *FaultListener) ExitOpName(c *parser.OpNameContext) {
 }
 
 func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
-	token := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
-	ident := &ast.Identifier{
-		Token: token,
-	}
+	ident := &ast.Identifier{}
 	id := c.AllIDENT()
 	switch len(id) {
 	case 1:
@@ -896,7 +899,6 @@ func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 	}
 
 	l.push(&ast.Instance{
-		Token: token,
 		Value: ident,
 	},
 	)
@@ -1195,9 +1197,9 @@ func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	return listener.AST
 }
 
-func (l *FaultListener) getPairs(p int, pos []int) (map[ast.Expression]ast.Expression, []string) {
+func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expression, []string) {
 	var order []string
-	pairs := make(map[ast.Expression]ast.Expression)
+	pairs := make(map[*ast.Identifier]ast.Expression)
 	for i := 0; i < p; i++ {
 		right := l.pop()
 		if right == nil {
@@ -1331,25 +1333,6 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 			Value: val,
 		})
 }
-
-// func (l *FaultListener) ExitStateInit(c *parser.StateInitContext) {
-// 	token := util.GenerateToken("STATE", "STATE", c.GetStart(), c.GetStop())
-
-// 	b := l.pop()
-
-// 	f := &ast.StateLiteral{
-// 		Token: token,
-// 		Body:  b.(*ast.BlockStatement),
-// 	}
-
-// 	l.push(&ast.Identifier{
-// 		Token: token,
-// 		Value: c.IDENT().GetText(),
-// 		Spec:  l.currSpec,
-// 	})
-
-// 	l.push(f)
-// }
 
 func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 	token := util.GenerateToken("BUILTIN", "BUILTIN", c.GetStart(), c.GetStop())

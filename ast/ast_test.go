@@ -7,7 +7,7 @@ import (
 
 func InitNodes() []Node {
 	token := Token{Literal: "test", Position: []int{1, 2, 3, 4}}
-	pairs := make(map[Expression]Expression)
+	pairs := make(map[*Identifier]Expression)
 	pairs[&Identifier{Token: token, Value: "foo"}] = &IntegerLiteral{Token: token, Value: 3}
 
 	baseType := &Type{Type: "test"}
@@ -134,7 +134,7 @@ func TestString(t *testing.T) {
 			want = "test"
 		case *This:
 			got = t.String()
-			want = "test"
+			want = "foo.bar"
 		case *Clock:
 			got = t.String()
 			want = "test"
@@ -221,7 +221,7 @@ func TestTypes(t *testing.T) {
 			want = ""
 		case *Instance:
 			got = t.Type()
-			want = ""
+			want = "test"
 		case *IntegerLiteral:
 			got = t.Type()
 			want = "INT"

@@ -17,7 +17,7 @@ sysClause
     ;
 
 globalDecl
-    : 'global' IDENT '=' operand
+    : 'global' IDENT '=' operand eos
     ;
 
 componentDecl
@@ -76,11 +76,18 @@ constDecl
     ;
 
 constSpec
-    : identList ('=' expressionList)?
+    : identList ('=' constants)?
     ;
 
 identList
     : operandName (',' operandName)*
+    ;
+
+constants
+    : numeric
+    | string_
+    | bool_
+    | solvable
     ;
 
 expressionList
@@ -288,6 +295,5 @@ functionLit
 
 eos
     : ';'
-    | EOF
     ;
 

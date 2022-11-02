@@ -4,7 +4,7 @@ import (
 	"fault/execute/parser"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestParseReals(t *testing.T) {

@@ -11,6 +11,7 @@
 # temp files
 fault.Dockerfile
 .vscode
+__debug_bin
 
 # Test binary, built with `go test -c`
 *.test

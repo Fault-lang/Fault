@@ -2,8 +2,10 @@ package util
 
 import (
 	"fault/ast"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -53,16 +55,11 @@ func Filepath(filepath string) string {
 	return filepath
 }
 
-func Preparse(pairs map[ast.Expression]ast.Expression) map[string]ast.Node {
+func Preparse(pairs map[*ast.Identifier]ast.Expression) map[string]ast.Node {
 	properties := make(map[string]ast.Node)
 	for k, v := range pairs {
 		id := strings.TrimSpace(k.String())
-		switch tree := v.(type) {
-		case *ast.FunctionLiteral:
-			properties[id] = tree.Body
-		default:
-			properties[id] = tree
-		}
+		properties[id] = v
 	}
 	return properties
 }
@@ -83,6 +80,13 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 		start = product(start, listOfLists[i])
 	}
 	return start
+}
+
+func MergeNodeMaps(m1 map[string]ast.Node, m2 map[string]ast.Node) map[string]ast.Node {
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
 }
 
 func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
@@ -119,6 +123,21 @@ func InStringSlice(sl []string, sub string) bool {
 		}
 	}
 	return false
+}
+
+func StableSortKeys(keys []string) []string {
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+func ExtractBranches(b map[string]*ast.StructProperty) map[string]ast.Node {
+	ret := make(map[string]ast.Node)
+	for k, v := range b {
+		ret[k] = v.Value
+	}
+	return ret
 }
 
 func CaptureState(id string) (string, bool, bool) {
@@ -239,4 +258,34 @@ func DetectMode(filename string) string {
 	default:
 		return ""
 	}
+}
+
+type ImportTrail []string
+
+func (i ImportTrail) BaseSpec() string {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	return i[0]
+}
+
+func (i ImportTrail) CurrentSpec() string {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	return i[len(i)-1]
+}
+
+func (i ImportTrail) PushSpec(spec string) []string {
+	i = append(i, spec)
+	return i
+}
+
+func (i ImportTrail) PopSpec() (string, []string) {
+	if len(i) == 0 {
+		panic(fmt.Sprintln("import trail is empty"))
+	}
+	spec := i[len(i)-1]
+	i = i[0 : len(i)-1]
+	return spec, i
 }
