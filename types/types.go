@@ -179,6 +179,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			typedNode, err := c.inferFunction(exp)
 			if err != nil {
 				return nil, err
+
 			}
 			node.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
 			valtype = typeable(typedNode)
