@@ -236,35 +236,6 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	return generator.SMT(), nil
 }
 
-func prepTestSys(filepath string, test string, imports bool) (string, error) {
-	filepath = util.Filepath(filepath)
-	path := gopath.Dir(filepath)
-
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, !imports, false) //imports being true means testing is false :)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	ty := &types.Checker{}
-	err := ty.Check(l.AST)
-	if err != nil {
-		return "", err
-	}
-	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
-	err = compiler.Compile(l.AST)
-	if err != nil {
-		return "", err
-	}
-	generator := NewGenerator()
-	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
-	generator.Run(compiler.GetIR())
-	//fmt.Println(generator.SMT())
-	return generator.SMT(), nil
-}
-
 func notStrictlyOrdered(want string, got string) bool {
 	// Fixing cases where lines of SMT end up in slightly
 	// different orders. Only runs when shallow string
