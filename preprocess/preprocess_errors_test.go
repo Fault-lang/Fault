@@ -65,21 +65,21 @@ func TestStructInstanceErr(t *testing.T) {
 	}
 }
 
-// func TestParamCallErr(t *testing.T) {
-// 	p := NewProcesser()
-// 	p.trail = p.trail.PushSpec("test")
-// 	p.Specs["test"] = NewSpecRecord()
-// 	p.Specs["test"].SpecName = "test"
-// 	p.initialPass = false
+func TestParamCallErr(t *testing.T) {
+	p := NewProcesser()
+	p.trail = p.trail.PushSpec("test")
+	p.Specs["test"] = NewSpecRecord()
+	p.Specs["test"].SpecName = "test"
+	p.initialPass = false
 
-// 	test := &ast.ParameterCall{Spec: "test", Value: []string{"foo", "bar"}}
+	test := &ast.ParameterCall{Spec: "test", Value: []string{"foo", "bar"}}
 
-// 	_, err := p.walk(test)
-// 	if err == nil {
-// 		t.Fatal("failed to error on unknown instance")
-// 	}
+	_, err := p.walk(test)
+	if err == nil {
+		t.Fatal("failed to error on unknown instance")
+	}
 
-// 	if err.Error() != "can't find a struct instance named [test bar]" {
-// 		t.Fatalf("error message on unknown instance incorrect got=%s", err.Error())
-// 	}
-// }
+	if err.Error() != "cannot fetch a variable [test foo bar] of type NIL" {
+		t.Fatalf("error message on unknown instance incorrect got=%s", err.Error())
+	}
+}

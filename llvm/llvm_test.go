@@ -462,6 +462,95 @@ func TestEval(t *testing.T) {
 	}
 }
 
+func TestIsVarSet(t *testing.T) {
+	c := NewCompiler()
+	c.specStructs["test"] = preprocess.NewSpecRecord()
+
+	test := []string{"test", "this"}
+	test1 := []string{"test", "this", "func"}
+
+	val := map[string]ast.Node{"func": &ast.Nil{}}
+
+	if c.isVarSet(test) {
+		t.Fatal("isVarSet returned true, should return false")
+	}
+
+	c.specStructs["test"].AddComponent("this", val)
+	if !c.isVarSet(test) {
+		t.Fatal("isVarSet returned false on component, should return true")
+	}
+	c.specStructs["test"].Index("COMPONENT", "this")
+
+	if !c.isVarSet(test1) {
+		t.Fatal("isStrVarSet returned false on a component var, should return true")
+	}
+
+	c.specStructs["test"] = preprocess.NewSpecRecord()
+
+	c.specStructs["test"].AddConstant("this", val["func"])
+	if !c.isVarSet(test) {
+		t.Fatal("isVarSet returned false on constant, should return true")
+	}
+
+	c.specStructs["test"] = preprocess.NewSpecRecord()
+
+	c.specStructs["test"].AddFlow("this", val)
+	if !c.isVarSet(test) {
+		t.Fatal("isVarSet returned false on flow, should return true")
+	}
+	c.specStructs["test"].Index("FLOW", "this")
+
+	if !c.isVarSet(test1) {
+		t.Fatal("isStrVarSet returned false on a flow var, should return true")
+	}
+
+	c.specStructs["test"] = preprocess.NewSpecRecord()
+
+	c.specStructs["test"].AddStock("this", val)
+	if !c.isVarSet(test) {
+		t.Fatal("isVarSet returned false on stock, should return true")
+	}
+
+	c.specStructs["test"].Index("STOCK", "this")
+
+	if !c.isVarSet(test1) {
+		t.Fatal("isStrVarSet returned false on a stock var, should return true")
+	}
+
+}
+
+func TestUncertains(t *testing.T) {
+	c := NewCompiler()
+	c.specs["test"] = NewCompiledSpec("test")
+	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Uncertain{Mean: 2.0, Sigma: .3, ProcessedName: []string{"test", "foo", "bar"}}}}}
+	c.processStruct(test)
+
+	if len(c.Uncertains["test_foo_bar"]) == 0 {
+		t.Fatal("uncertain value not stored")
+	}
+
+	if c.Uncertains["test_foo_bar"][0] != 2.0 || c.Uncertains["test_foo_bar"][1] != .3 {
+		t.Fatalf("uncertain stored value is incorrect, got=%f", c.Uncertains["test_foo_bar"])
+	}
+
+}
+
+func TestUnknowns2(t *testing.T) {
+	c := NewCompiler()
+	c.specs["test"] = NewCompiledSpec("test")
+	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Unknown{Name: &ast.Identifier{Spec: "test", Value: "bar"}, ProcessedName: []string{"test", "foo", "bar"}}}}}
+	c.processStruct(test)
+
+	if len(c.Unknowns) == 0 {
+		t.Fatal("unknown value not stored")
+	}
+
+	if c.Unknowns[0] != "test_foo_bar" {
+		t.Fatalf("unknowns stored value is incorrect, got=%s", c.Unknowns[0])
+	}
+
+}
+
 // func TestComponentIR(t *testing.T) {
 // 	test := `
 // 	system test;

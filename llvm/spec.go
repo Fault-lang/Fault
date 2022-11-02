@@ -73,9 +73,8 @@ func (s *spec) GetPointerType(name string) irtypes.Type {
 		case irtypes.I1:
 			return I1P
 		default:
-			fmt.Printf("problem here %T", ty)
+			panic(fmt.Sprintf("invalid pointer type %T for variable %s", ty, name))
 		}
 	}
-	fmt.Printf("no type found for %s\n", name)
-	return DoubleP
+	return DoubleP //Should reconsider this at some point and err here instead
 }

@@ -26,6 +26,10 @@ func TestSimpleAssert(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
+	if len(llvm.Asserts) != 1 {
+		t.Fatal("asserts failed to compile")
+	}
+
 	for _, v := range llvm.Asserts {
 
 		c := v.Constraints
@@ -35,6 +39,41 @@ func TestSimpleAssert(t *testing.T) {
 		}
 
 		if c.Operator != "!=" {
+			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
+		}
+
+		if _, ok := c.Right.(*ast.Boolean); !ok {
+			t.Fatalf("assert has wrong operator. got=%s", c.Right)
+		}
+
+	}
+}
+
+func TestSimpleAssume(t *testing.T) {
+	test := `spec test1;
+			const hello = false;
+			assume hello == true;
+	`
+
+	llvm, err := prepAssertTest(test)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	if len(llvm.Assumes) != 1 {
+		t.Fatal("asserts failed to compile")
+	}
+
+	for _, v := range llvm.Asserts {
+
+		c := v.Constraints
+		av := c.Left.(*ast.AssertVar)
+		if av.Instances[0] != "test1_hello" {
+			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
+		}
+
+		if c.Operator != "==" {
 			t.Fatalf("assert has wrong comparison. got=%s", c.Operator)
 		}
 

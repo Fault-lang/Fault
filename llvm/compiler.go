@@ -271,8 +271,6 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 		return c.compilePrefix(v)
 	case *ast.FunctionLiteral:
 		return c.compileFunction(v)
-	case *ast.Instance:
-		
 	case *ast.StructInstance:
 		c.compileInstance(v)
 	case *ast.ParameterCall:
@@ -356,8 +354,6 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
 			c.contextBlock = oldBlock
 			c.contextFuncName = "__run"
 			c.contextFunc = nil
-		case *ast.Instance:
-		
 		default:
 			val := c.compileValue(v)
 
@@ -519,8 +515,6 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 	case *ast.IfExpression:
 		c.compileIf(v)
 
-	case *ast.Instance:
-	
 	case *ast.StructInstance:
 		c.compileInstance(v)
 
@@ -1031,7 +1025,6 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		var id []string
 
 		switch pv := tree[k].Value.(type) {
-		case *ast.Instance:
 		case *ast.StructInstance:
 			c.compileInstance(pv)
 			id = pv.Id()
@@ -1048,7 +1041,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 				id = n.Id()
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
-				id = n.Id()
+				id = uncertain.Id()
 			} else if n, ok := pv.(*ast.IntegerLiteral); ok {
 				id = n.Id()
 			} else if n, ok := pv.(*ast.FloatLiteral); ok {
@@ -1186,11 +1179,7 @@ func (c *Compiler) isFunction(node ast.Node) bool {
 func (c *Compiler) isConstant(rawid []string) bool {
 	spec := c.specStructs[rawid[0]]
 	_, err := spec.FetchConstant(rawid[1])
-	if err == nil {
-		return true
-	}
-
-	return false
+	return err == nil
 }
 
 func (c *Compiler) isVarSet(rawid []string) bool {
@@ -1216,11 +1205,7 @@ func (c *Compiler) isVarSet(rawid []string) bool {
 	}
 
 	_, err = s.FetchComponent(rawid[1])
-	if err == nil {
-		return true
-	}
-
-	return false
+	return err == nil
 }
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {

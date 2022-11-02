@@ -348,6 +348,10 @@ func TestIds(t *testing.T) {
 	for k, v := range str4f {
 		keyId := k.RawId()
 		if keyId[2] == "buzz" {
+			if v.(*ast.StructInstance).ComplexScope != "" {
+				t.Fatalf("struct complex scope incorrect got=%s", v.(*ast.StructInstance).ComplexScope)
+			}
+
 			valId := v.(*ast.StructInstance).RawId()
 			if valId[0] != keyId[0] || valId[1] != keyId[1] || keyId[2] != valId[2] {
 				t.Fatalf("field name is not correct value=%s", valId)
@@ -356,6 +360,10 @@ func TestIds(t *testing.T) {
 			propId := props["foosh"].ProcessedName
 			if propId[0] != "test1" || propId[1] != "fl" || propId[2] != "buzz" || propId[3] != "foosh" {
 				t.Fatalf("field name is not correct value=%s", valId)
+			}
+
+			if props["foosh"].Value.(*ast.StructInstance).ComplexScope != "fl_buzz" {
+				t.Fatalf("struct complex scope incorrect got=%s", props["foosh"].Value.(*ast.StructInstance).ComplexScope)
 			}
 		}
 	}

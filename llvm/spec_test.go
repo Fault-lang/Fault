@@ -88,6 +88,27 @@ func TestSpecTypes(t *testing.T) {
 
 }
 
+func TestPointerTypes(t *testing.T) {
+	id := []string{"test", "this", "func"}
+	s := initSpec(id)
+
+	fvn := strings.Join(id, "_")
+	s.DefineSpecType(id, irtypes.I1)
+
+	if ty := s.GetPointerType(fvn); ty.String() != "i1*" {
+		t.Fatalf("spec var this.func is the wrong type got=%s", ty.String())
+	}
+
+	id2 := []string{"test", "this", "too"}
+	fvn2 := strings.Join(id2, "_")
+	s.DefineSpecType(id2, irtypes.Double)
+
+	if ty := s.GetPointerType(fvn2); ty.String() != "double*" {
+		t.Fatalf("spec var this.too is the wrong type got=%s", ty.String())
+	}
+
+}
+
 func initSpec(id []string) *spec {
 	s := NewCompiledSpec("test")
 	val := constant.NewInt(irtypes.I32, 0)
