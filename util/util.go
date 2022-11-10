@@ -125,6 +125,14 @@ func InStringSlice(sl []string, sub string) bool {
 	return false
 }
 
+func Keys(m map[string]ast.Node) []string {
+	var ret []string
+	for k, _ := range m {
+		ret = append(ret, k)
+	}
+	return ret
+}
+
 func StableSortKeys(keys []string) []string {
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i] < keys[j]

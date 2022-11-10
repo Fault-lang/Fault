@@ -53,9 +53,12 @@ func TestStructInstanceErr(t *testing.T) {
 
 	stockdata := make(map[*ast.Identifier]ast.Expression)
 	stockdata[&ast.Identifier{Spec: "test", Value: "foo"}] = &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "bar"}}
-	test := &ast.DefStatement{Name: &ast.Identifier{Spec: "test", Value: "zoo"}, Value: &ast.StockLiteral{Pairs: stockdata}}
+	test := &ast.DefStatement{Name: &ast.Identifier{Spec: "test", Value: "zoo"}, Value: &ast.StockLiteral{Pairs: stockdata, Order: []string{"foo"}}}
+
+	p.walk(test)
 
 	_, err := p.walk(test)
+
 	if err == nil {
 		t.Fatal("failed to error on unknown instance")
 	}

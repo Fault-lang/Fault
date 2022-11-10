@@ -278,6 +278,44 @@ func TestStockConnection(t *testing.T) {
 	}
 }
 
+func TestStructOrder(t *testing.T) {
+	test := `spec test1;
+			 def foo = stock{
+				bar: 2.0,
+				bash: 5,
+				barg: true,
+			 };
+
+			 def zoo = flow{
+				st: new foo
+			 }
+			`
+	_, spec := prepTest(test, nil)
+	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral)
+	if len(stock.Order) != 3 {
+		t.Fatalf("Struct has incorrect number of properties in order. got=%d", len(stock.Order))
+	}
+
+	if stock.Order[0] != "bar" || stock.Order[1] != "bash" || stock.Order[2] != "barg" {
+		t.Fatalf("Struct order is wrong. got=%s", stock.Order)
+	}
+
+	flow := spec.Statements[2].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
+	for _, v := range flow {
+		f, ok := v.(*ast.Instance)
+		if !ok {
+			t.Fatalf("Property is not an instance. got=%T", v)
+		}
+		if len(f.Order) != 3 {
+			t.Fatalf("Instance has incorrect number of properties in order. got=%d", len(f.Order))
+		}
+
+		if f.Order[0] != "bar" || f.Order[1] != "bash" || f.Order[2] != "barg" {
+			t.Fatalf("Instance order is wrong. got=%s", f.Order)
+		}
+	}
+}
+
 func TestStockImport(t *testing.T) {
 	test := `spec test1;
 			 def foo = flow{

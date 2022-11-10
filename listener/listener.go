@@ -18,24 +18,27 @@ import (
 
 type FaultListener struct {
 	*parser.BaseFaultParserListener
-	stack      []interface{}
-	AST        *ast.Spec
-	scope      string
-	currSpec   string
-	specs      []string
-	skipRun    bool
-	Path       string // The location of the main spec
-	testing    bool   // bypass imports when we're running unit tests
-	Uncertains map[string][]float64
-	Unknowns   []string
+	stack                []interface{}
+	AST                  *ast.Spec
+	structscope          string
+	scope                string
+	currSpec             string
+	specs                []string
+	skipRun              bool
+	Path                 string // The location of the main spec
+	testing              bool   // bypass imports when we're running unit tests
+	Uncertains           map[string][]float64
+	Unknowns             []string
+	StructsPropertyOrder map[string][]string
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	return &FaultListener{
-		Path:       path,
-		testing:    testing,
-		skipRun:    skipRun,
-		Uncertains: make(map[string][]float64),
+		Path:                 path,
+		testing:              testing,
+		skipRun:              skipRun,
+		Uncertains:           make(map[string][]float64),
+		StructsPropertyOrder: make(map[string][]string),
 	}
 }
 
@@ -207,32 +210,37 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 
 func (l *FaultListener) EnterStructDecl(c *parser.StructDeclContext) {
 	l.scope = c.GetChild(1).(antlr.TerminalNode).GetText()
+	l.structscope = l.scope
 }
 
 func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
-	right := l.pop()
-	var val ast.Expression
-	var token ast.Token
-	switch right.(type) {
-	case *ast.StockLiteral:
-		token = util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
-		val = right.(ast.Expression)
-	case *ast.FlowLiteral:
-		token = util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
-		val = right.(ast.Expression)
-	default:
-		token = util.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
-		if right == nil {
-			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
-		}
-		panic(fmt.Sprintf("def can only be used to define a valid stock or flow: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
-	}
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
 	ident := &ast.Identifier{
 		Token: token2,
 		Value: c.IDENT().GetText(),
 		Spec:  l.currSpec,
+	}
+
+	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
+
+	right := l.pop()
+	var val ast.Expression
+	var token ast.Token
+	switch r := right.(type) {
+	case *ast.StockLiteral:
+		token = util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
+		l.StructsPropertyOrder[key] = r.Order
+		val = right.(ast.Expression)
+	case *ast.FlowLiteral:
+		token = util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
+		l.StructsPropertyOrder[key] = r.Order
+		val = right.(ast.Expression)
+	default:
+		if right == nil {
+			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), right))
+		}
+		panic(fmt.Sprintf("def can only be used to define a valid stock or flow: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
 	l.push(
@@ -242,6 +250,7 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 			Value: val,
 		})
 	l.scope = ""
+	l.structscope = ""
 }
 
 func (l *FaultListener) ExitStock(c *parser.StockContext) {
@@ -387,6 +396,10 @@ func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
 	},
 	)
 	l.push(val)
+
+	scope := strings.Split(l.scope, ".")
+	l.scope = strings.Join(scope[0:len(scope)-1], ".")
+
 }
 
 func (l *FaultListener) ExitFunctionLit(c *parser.FunctionLitContext) {
@@ -592,6 +605,7 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 	pc := &ast.ParameterCall{
 		Token: token,
 		Value: param,
+		Scope: l.structscope,
 	}
 
 	if util.InStringSlice(l.specs, param[0]) {
@@ -681,10 +695,14 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 		panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
+	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
+	order := l.StructsPropertyOrder[key]
+
 	l.push(
 		&ast.Instance{
 			Value: ident,
 			Name:  right,
+			Order: order,
 		})
 }
 
@@ -898,8 +916,12 @@ func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 		panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", id, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
 
+	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
+	order := l.StructsPropertyOrder[key]
+
 	l.push(&ast.Instance{
 		Value: ident,
+		Order: order,
 	},
 	)
 }
@@ -1192,9 +1214,27 @@ func (l *FaultListener) parseImport(spec string) *ast.Spec {
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	listener := &FaultListener{skipRun: true}
+	listener := NewListener("", false, true)
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
+
+	l.Uncertains, l.Unknowns, l.StructsPropertyOrder = mergeListeners(l, listener)
 	return listener.AST
+}
+
+func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64, []string, map[string][]string) {
+	for k, v := range l2.Uncertains {
+		l1.Uncertains[k] = v
+	}
+
+	for k, v := range l2.Unknowns {
+		l1.Unknowns[k] = v
+
+	}
+
+	for k, v := range l2.StructsPropertyOrder {
+		l1.StructsPropertyOrder[k] = v
+	}
+	return l1.Uncertains, l1.Unknowns, l1.StructsPropertyOrder
 }
 
 func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expression, []string) {
@@ -1296,7 +1336,11 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 		Spec:  l.currSpec,
 	}
 
+	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
+	order := l.StructsPropertyOrder[key]
+
 	instance.(*ast.Instance).Name = ident.Value
+	instance.(*ast.Instance).Order = order
 
 	l.push(&ast.DefStatement{
 		Token: token,

@@ -233,8 +233,8 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		c.structPropOrder[key] = def.Value.(*ast.StockLiteral).Order
 	case "GLOBAL":
 		c.instances[key] = []string{key}
-		//instance, _ := def.Value.(*ast.Instance)
-		//c.compileInstance(instance, strings.Join(id, "_"))
+		instance, _ := def.Value.(*ast.StructInstance)
+		c.compileInstance(instance)
 	case "COMPONENT":
 		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.ComponentLiteral).Order
@@ -321,54 +321,81 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	}
 }
 
-func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
-	for key, p := range node.Pairs {
+func (c *Compiler) compileComponent(node *ast.ComponentLiteral, childId string) {
+	id := node.Id()
+	spec := c.specStructs[id[0]]
+	tree, err := spec.FetchComponent(id[1])
+	if err != nil {
+		panic(err)
+	}
+
+	for _, k := range node.Order {
 		var pname string
-		scopeName := []string{cname, key.Value}
+		p := tree[k]
+		scopeName := []string{childId, k}
 
 		oldBlock := c.contextBlock
 
 		c.contextFuncName = strings.Join(scopeName, "_")
 
 		switch v := p.(type) {
-		case *ast.StateLiteral:
-			id := []string{key.Spec, cname}
+		case *ast.FunctionLiteral:
 			parentID := strings.Join(node.Id(), "_")
-			k := strings.Join(id, "_")
-			c.structPropOrder[k] = c.structPropOrder[parentID]
+			c.structPropOrder[childId] = c.structPropOrder[parentID]
 
 			branches := util.Preparse(node.Pairs)
-			params := c.generateParameters([]string{key.Spec, cname}, branches)
+			params := c.generateParameters(id, branches)
 			c.resetParaState(params)
-			f := c.module.NewFunc(key.Value, irtypes.Void, params...)
+			f := c.module.NewFunc(k, irtypes.Void, params...)
 			c.contextFunc = f
 			pname = name.Block()
 			c.contextBlock = f.NewBlock(pname)
-			if c.Components[cname] != nil {
-				c.Components[cname][key.Value] = pname
+			if c.Components[childId] != nil {
+				c.Components[childId][k] = pname
 			} else {
-				c.Components[cname] = map[string]string{key.Value: pname}
+				c.Components[childId] = map[string]string{k: pname}
 			}
 			val := c.compileBlock(v.Body)
 			c.contextBlock.NewRet(val)
 			c.contextBlock = oldBlock
 			c.contextFuncName = "__run"
 			c.contextFunc = nil
+
+			//But also these functions are treated as booleans too
+			//initialize them as false
+			b := &ast.Boolean{Value: false, ProcessedName: v.ProcessedName}
+			val = c.compileValue(b)
+
+			if val != nil {
+				rawid := b.RawId()
+				s := c.specs[rawid[0]]
+				if s.GetSpecVar(rawid) != nil {
+					vname := strings.Join(rawid, "_")
+					pointer := s.GetSpecVarPointer(rawid)
+					ty := s.GetSpecType(vname)
+					c.contextBlock.NewLoad(ty, pointer)
+				} else {
+					s.DefineSpecType(rawid, val.Type())
+					s.DefineSpecVar(rawid, val)
+					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
+				}
+			}
+
 		default:
 			val := c.compileValue(v)
 
 			if val != nil {
-				id := []string{c.currentSpec, cname, key.Value}
-				s := c.specs[id[0]]
-				if s.GetSpecVar(id) != nil {
-					vname := strings.Join(id, "_")
-					pointer := s.GetSpecVarPointer(id)
+				rawid := v.(ast.Nameable).RawId()
+				s := c.specs[rawid[0]]
+				if s.GetSpecVar(rawid) != nil {
+					vname := strings.Join(rawid, "_")
+					pointer := s.GetSpecVarPointer(rawid)
 					ty := s.GetSpecType(vname)
 					c.contextBlock.NewLoad(ty, pointer)
 				} else {
-					s.DefineSpecType(id, val.Type())
-					s.DefineSpecVar(id, val)
-					c.allocVariable(id, val, []int{0, 0, 0, 0})
+					s.DefineSpecType(rawid, val.Type())
+					s.DefineSpecVar(rawid, val)
+					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
 				}
 			}
 		}
@@ -758,6 +785,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
+		id := v.Id()
+		return c.lookupIdent(id, node.Position())
+	case *ast.This:
 		id := v.Id()
 		return c.lookupIdent(id, node.Position())
 	default:

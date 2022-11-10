@@ -1,6 +1,9 @@
 package preprocess
 
-import "testing"
+import (
+	"fault/ast"
+	"testing"
+)
 
 func TestFetchVarError(t *testing.T) {
 	sr := NewSpecRecord()
@@ -48,6 +51,16 @@ func TestFetchVarError(t *testing.T) {
 	}
 
 	if err.Error() != "cannot fetch a variable [test should fail] of type INVALID" {
+		t.Fatalf("error message did not match got=%s", err.Error())
+	}
+
+	sr.AddStock("should", make(map[string]ast.Node))
+	_, err = sr.FetchVar(test, "STOCK")
+	if err == nil {
+		t.Fatal("test failed to produce an error")
+	}
+
+	if err.Error() != "no property named fail in stock should" {
 		t.Fatalf("error message did not match got=%s", err.Error())
 	}
 }

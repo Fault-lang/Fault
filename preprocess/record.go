@@ -104,7 +104,7 @@ func (sr *SpecRecord) Fetch(name string, ty string) (map[string]ast.Node, error)
 		}
 		return map[string]ast.Node{name: ret}, nil
 	default:
-		return nil, fmt.Errorf("Cannot fetch a variable %s of type %s", name, ty)
+		return nil, fmt.Errorf("cannot fetch a variable %s of type %s", name, ty)
 	}
 }
 
@@ -161,47 +161,58 @@ func (sr *SpecRecord) FetchAll() map[string]ast.Node {
 }
 
 func (sr *SpecRecord) FetchVar(rawid []string, ty string) (ast.Node, error) {
-	var strComplex string
 	var str string
 	var br string
+	var ret ast.Node
 
-	if len(rawid) >= 2 { //Otherwise this is a constant
-		br = rawid[len(rawid)-1]
-		strComplex = strings.Join(rawid[1:len(rawid)-1], "_")
-		str = rawid[1]
+	if len(rawid) == 2 {
+		return sr.FetchConstant(rawid[1])
 	}
+
+	if len(rawid) > 3 {
+		str := strings.Join(rawid[1:len(rawid)-1], "_")
+		return sr.FetchVar([]string{rawid[0], str, rawid[len(rawid)-1]}, ty)
+	}
+
+	str = rawid[1]
+	br = rawid[len(rawid)-1]
 
 	switch ty {
 	case "STOCK":
-		s, err := sr.FetchStock(strComplex)
-		if err == nil {
-			return s[br], nil
+		s, err := sr.FetchStock(str)
+		if err != nil {
+			return nil, err
 		}
 
-		s, err = sr.FetchStock(str)
-		if err == nil {
-			return s[br], nil
+		ret = s[br]
+		if ret != nil {
+			return ret, nil
 		}
-
-		return nil, err
+		return nil, fmt.Errorf("no property named %s in stock %s", br, str)
 	case "FLOW":
-		f, err := sr.FetchFlow(strComplex)
-		if err == nil {
-			return f[br], nil
+		f, err := sr.FetchFlow(str)
+		if err != nil {
+			return nil, err
 		}
 
-		f, err = sr.FetchFlow(str)
-		if err == nil {
-			return f[br], nil
+		ret = f[br]
+		if ret != nil {
+			return ret, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("no property named %s in flow %s", br, str)
 	case "COMPONENT":
 		c, err := sr.FetchComponent(str)
 		if err != nil {
 			return nil, err
 		}
-		return c[br], nil
+		ret = c[br]
+
+		if ret != nil {
+			return ret, nil
+		}
+
+		return nil, fmt.Errorf("no property named %s in component %s", br, str)
 	case "CONSTANT":
 		return sr.FetchConstant(rawid[1])
 	default:

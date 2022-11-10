@@ -551,85 +551,115 @@ func TestUnknowns2(t *testing.T) {
 
 }
 
-// func TestComponentIR(t *testing.T) {
-// 	test := `
-// 	system test;
+func TestComponentIR(t *testing.T) {
+	test := `
+	system test;
 
-// 	component foo = states{
-// 		x: 8,
-// 		initial: func{
-// 			if this.x > 10{
-// 				stay();
-// 			}else{
-// 				advance(this.alarm);
-// 			}
-// 		},
-// 		alarm: func{
-// 			advance(this.close);
-// 		},
-// 	};
+	component foo = states{
+		x: 8,
+		initial: func{
+			if this.x > 10{
+				stay();
+			}else{
+				advance(this.alarm);
+			}
+		},
+		alarm: func{
+			advance(this.close);
+		},
+	};
 
-// 	start {
-// 		foo: initial,
-// 	};
-// 	`
+	start {
+		foo: initial,
+	};
+	`
 
-// 	expecting := `define void @__run() {
-// 		block-28:
-// 			%test_foo_x = alloca double
-// 			store double 8.0, double* %test_foo_x
-// 			ret void
-// 		}
+	expecting := `define void @__run() {
+		block-16:
+			%test_foo_x = alloca double
+			store double 8.0, double* %test_foo_x
+			ret void
+		}
+		
+		define void @initial(double* %test_foo_x) {
+		block-17:
+			%0 = load double, double* %test_foo_x
+			%1 = fcmp ogt double %0, 10.0
+			br i1 %1, label %block-19-true, label %block-20-false
+		
+		block-18-after:
+			ret void
+		
+		block-19-true:
+			call void @stay()
+			br label %block-18-after
+		
+		block-20-false:
+			%2 = alloca [9 x i8]
+			store [9 x i8] c"foo.alarm", [9 x i8]* %2
+			%3 = bitcast [9 x i8]* %2 to i8*
+			call void @advance(i8* %3)
+			br label %block-18-after
+		}
+		
+		define void @stay() {
+		block-21:
+			ret void
+		}
+		
+		define void @advance(i8* %toState) {
+		block-22:
+			ret void
+		}
+		
+		define void @alarm(double* %test_foo_x) {
+		block-23:
+			%0 = alloca [9 x i8]
+			store [9 x i8] c"foo.close", [9 x i8]* %0
+			%1 = bitcast [9 x i8]* %0 to i8*
+			call void @advance(i8* %1)
+			ret void
+		}
+		
+		define void @test_foo_initial(double* %test_foo_x) {
+		block-24:
+			%0 = load double, double* %test_foo_x
+			%1 = fcmp ogt double %0, 10.0
+			br i1 %1, label %block-26-true, label %block-27-false
+		
+		block-25-after:
+			ret void
+		
+		block-26-true:
+			call void @stay()
+			br label %block-25-after
+		
+		block-27-false:
+			%2 = alloca [9 x i8]
+			store [9 x i8] c"foo.alarm", [9 x i8]* %2
+			%3 = bitcast [9 x i8]* %2 to i8*
+			call void @advance(i8* %3)
+			br label %block-25-after
+		}`
+	llvm, err := prepTestSys(test)
 
-// 		define void @test_foo_initial(double* %test_foo_x) {
-// 		block-29:
-// 			%0 = load double, double* %test_foo_x
-// 			%1 = fcmp ogt double %0, 10.0
-// 			br i1 %1, label %block-31-true, label %block-32-false
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
 
-// 		block-30-after:
-// 			ret void
+	ir, err := validateIR(llvm)
 
-// 		block-31-true:
-// 			call void @stay()
-// 			br label %block-30-after
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
 
-// 		block-32-false:
-// 			%2 = alloca [10 x i8]
-// 			store [10 x i8] c"this.alarm", [10 x i8]* %2
-// 			%3 = bitcast [10 x i8]* %2 to i8*
-// 			call void @advance(i8* %3)
-// 			br label %block-30-after
-// 		}
+	err = compareResults(llvm, expecting, string(ir))
 
-// 		define void @stay() {
-// 		block-33:
-// 			ret void
-// 		}
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
-// 		define void @advance(i8* %toState) {
-// 		block-34:
-// 			ret void
-// 		}`
-// 	llvm, err := prepTestSys(test)
-
-// 	if err != nil {
-// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
-// 	}
-
-// 	ir, err := validateIR(llvm)
-
-// 	if err != nil {
-// 		t.Fatalf("generated IR is not valid. got=%s", err)
-// 	}
-
-// 	err = compareResults(llvm, expecting, string(ir))
-
-// 	if err != nil {
-// 		t.Fatalf(err.Error())
-// 	}
-
-// }
+}
 
 // run block
 // init values
@@ -682,6 +712,7 @@ func prepTest(test string) (string, error) {
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}
@@ -710,6 +741,7 @@ func prepTestSys(test string) (string, error) {
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}

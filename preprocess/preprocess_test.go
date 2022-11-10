@@ -436,6 +436,7 @@ func TestAsserts(t *testing.T) {
 		bar: 1,
 		x: 0,
 		y: 5,
+		z: 3,
 	};
 
 	assert a >= 10;
@@ -495,7 +496,7 @@ func TestInstanceFlatten(t *testing.T) {
 	p.Specs["test"].Index("STOCK", "foo")
 	p.structTypes["test"] = map[string]string{"foo": "STOCK"}
 
-	test := &ast.Instance{Value: &ast.Identifier{Spec: "test", Value: "foo"}, Name: "bar"}
+	test := &ast.Instance{Value: &ast.Identifier{Spec: "test", Value: "foo"}, Name: "bar", Order: []string{"zoo"}}
 
 	node, err := p.walk(test)
 	if err != nil {
@@ -534,9 +535,10 @@ func prepTest(test string) *Processor {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-	pro := NewProcesser()
-	pro.Run(l.AST)
-	return pro
+	pre := NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
+	pre.Run(l.AST)
+	return pre
 }
 
 func prepSysTest(test string) *Processor {
@@ -548,7 +550,8 @@ func prepSysTest(test string) *Processor {
 	p := parser.NewFaultParser(stream)
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	pro := NewProcesser()
-	pro.Run(l.AST)
-	return pro
+	pre := NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
+	pre.Run(l.AST)
+	return pre
 }

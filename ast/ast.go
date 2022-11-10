@@ -447,6 +447,7 @@ type ParameterCall struct {
 	Token         Token
 	InferredType  *Type
 	Spec          string
+	Scope         string
 	Value         []string
 	ProcessedName []string
 }
@@ -590,6 +591,7 @@ type Instance struct {
 	ComplexScope  string
 	Processed     *StructInstance
 	ProcessedName []string
+	Order         []string
 }
 
 func (i *Instance) expressionNode()      {}

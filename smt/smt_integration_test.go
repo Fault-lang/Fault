@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	gopath "path"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -53,37 +54,37 @@ func TestTestData(t *testing.T) {
 	}
 }
 
-// func TestSys(t *testing.T) {
-// 	specs := [][]string{
-// 		{"testdata/statechart.fsystem", "1"},
-// 	}
-// 	smt2s := []string{
-// 		"testdata/statechart.smt2",
-// 	}
-// 	for i, s := range specs {
-// 		data, err := os.ReadFile(s[0])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("spec %s is not valid", s[0]))
-// 		}
-// 		imports, _ := strconv.ParseBool(s[1])
+func TestSys(t *testing.T) {
+	specs := [][]string{
+		{"testdata/statechart.fsystem", "1"},
+	}
+	smt2s := []string{
+		"testdata/statechart.smt2",
+	}
+	for i, s := range specs {
+		data, err := os.ReadFile(s[0])
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s[0]))
+		}
+		imports, _ := strconv.ParseBool(s[1])
 
-// 		expecting, err := os.ReadFile(smt2s[i])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
-// 		}
-// 		smt, err := prepTestSys(s[0], string(data), imports)
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		smt, err := prepTestSys(s[0], string(data), imports)
 
-// 		if err != nil {
-// 			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
-// 		}
+		if err != nil {
+			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
+		}
 
-// 		err = compareResults(s[0], smt, string(expecting))
+		err = compareResults(s[0], smt, string(expecting))
 
-// 		if err != nil {
-// 			t.Fatalf(err.Error())
-// 		}
-// 	}
-// }
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
+}
 
 func TestIndividual(t *testing.T) {
 
@@ -181,6 +182,7 @@ func prepTest(path string, test string) (string, error) {
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 
 	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}
@@ -214,6 +216,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 
 	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}

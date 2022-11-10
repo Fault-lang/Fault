@@ -79,6 +79,25 @@ func TestPreparse(t *testing.T) {
 	}
 }
 
+func TestKeys(t *testing.T) {
+	test := make(map[string]ast.Node)
+	test["here"] = &ast.IntegerLiteral{}
+	test["are"] = &ast.IntegerLiteral{}
+	test["your"] = &ast.IntegerLiteral{}
+	test["keys"] = &ast.IntegerLiteral{}
+
+	results := Keys(test)
+
+	if len(results) != 4 {
+		t.Fatalf("incorrect number of keys returned got=%d", len(results))
+	}
+
+	if !InStringSlice(results, "here") || !InStringSlice(results, "are") || !InStringSlice(results, "your") || !InStringSlice(results, "keys") {
+		t.Fatalf("returned keys are incorrect got=%s", results)
+	}
+
+}
+
 func TestFilepath(t *testing.T) {
 	var host string
 	var ok bool
