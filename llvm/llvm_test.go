@@ -578,6 +578,10 @@ func TestComponentIR(t *testing.T) {
 		block-16:
 			%test_foo_x = alloca double
 			store double 8.0, double* %test_foo_x
+			%test_foo_initial = alloca i1
+			store i1 false, i1* %test_foo_initial
+			%test_foo_alarm = alloca i1
+			store i1 false, i1* %test_foo_alarm
 			ret void
 		}
 		

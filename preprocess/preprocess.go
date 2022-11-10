@@ -894,7 +894,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		ty, _ := spec.GetStructType(rawid)
 
-		if ty == "NIL" { // We might be in a function
+		if ty == "NIL" && p.inStruct != "" { // We might be in a function
 			rawid2 := append([]string{rawid[0]}, p.inStruct)
 			rawid = append(rawid2, rawid[1:]...) //In which case we can find the node by inserting the struct name
 			ty, _ = spec.GetStructType(rawid)
