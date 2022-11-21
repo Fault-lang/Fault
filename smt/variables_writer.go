@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fault/llvm"
 	"fmt"
 	"strconv"
 	"strings"
@@ -155,13 +156,13 @@ func (v *variables) lookupType(id string, value value.Value) string {
 		} // ints are probably bools
 	}
 
-	// The preferred method
-	if v.isBolean(val.Ident()) {
-		v.types[id] = "Bool"
-		return "Bool"
-	} else if v.isNumeric(val.Ident()) {
+	if val.Type().Equal(llvm.DoubleP) {
 		v.types[id] = "Real"
 		return "Real"
+	}
+	if val.Type().Equal(llvm.I1P) {
+		v.types[id] = "Bool"
+		return "Bool"
 	}
 
 	panic(fmt.Sprintf("smt generation error, value for %s not found", id))

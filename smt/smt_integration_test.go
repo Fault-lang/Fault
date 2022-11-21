@@ -195,6 +195,7 @@ func prepTest(path string, test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//fmt.Println(compiler.GetIR())
 	generator := NewGenerator()
 	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.Run(compiler.GetIR())

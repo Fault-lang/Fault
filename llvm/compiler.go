@@ -60,6 +60,7 @@ type Compiler struct {
 	specStructs     map[string]*preprocess.SpecRecord
 	specFunctions   map[string]value.Value
 	specGlobals     map[string]*ir.Global
+	sysGlobals      []*ir.Param
 	RawAsserts      []*ast.AssertionStatement
 	RawAssumes      []*ast.AssumptionStatement
 	Asserts         []*ast.AssertionStatement
@@ -139,8 +140,10 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	}
 
 	c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
-	for _, fileNode := range specfile.Statements {
-		c.compile(fileNode)
+	if !isImport { //Don't compile if the spec is being imported
+		for _, fileNode := range specfile.Statements {
+			c.compile(fileNode)
+		}
 	}
 
 	for _, assert := range c.RawAsserts {
@@ -200,7 +203,7 @@ func (c *Compiler) compile(node ast.Node) {
 				panic(err)
 			}
 			id := []string{c.currentSpec, p[0], p[1]}
-			c.processFunc(id, branch)
+			c.processFunc(id, branch, true)
 			c.ComponentStarts[p[0]] = p[1]
 		}
 
@@ -233,12 +236,27 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		c.structPropOrder[key] = def.Value.(*ast.StockLiteral).Order
 	case "GLOBAL":
 		c.instances[key] = []string{key}
+		c.structPropOrder[key] = def.Value.(*ast.StructInstance).Order
 		instance, _ := def.Value.(*ast.StructInstance)
+		context := c.contextFuncName
+		c.contextFuncName = "__run"
 		c.compileInstance(instance)
+		c.contextFuncName = context
+
+		rawid := instance.RawId()
+		s := c.specStructs[rawid[0]]
+		ty, _ := s.GetStructType(rawid)
+		n := strings.Join(rawid[1:], "_")
+		branches, err := s.Fetch(n, ty)
+		if err != nil {
+			panic(err)
+		}
+		params := c.generateParameters(instance.Id(), branches, false)
+		c.sysGlobals = append(c.sysGlobals, params...)
 	case "COMPONENT":
 		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.ComponentLiteral).Order
-		c.compileComponent(def.Value.(*ast.ComponentLiteral), key)
+		c.compileComponent(def.Value.(*ast.ComponentLiteral))
 	}
 }
 
@@ -321,7 +339,7 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	}
 }
 
-func (c *Compiler) compileComponent(node *ast.ComponentLiteral, childId string) {
+func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 	id := node.Id()
 	spec := c.specStructs[id[0]]
 	tree, err := spec.FetchComponent(id[1])
@@ -332,19 +350,20 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral, childId string) 
 	for _, k := range node.Order {
 		var pname string
 		p := tree[k]
-		scopeName := []string{childId, k}
 
 		oldBlock := c.contextBlock
 
-		c.contextFuncName = strings.Join(scopeName, "_")
+		childId := p.(ast.Nameable).IdString()
+		childId = childId + "__state"
+		c.contextFuncName = childId
 
 		switch v := p.(type) {
 		case *ast.FunctionLiteral:
-			parentID := strings.Join(node.Id(), "_")
+			parentID := node.IdString()
 			c.structPropOrder[childId] = c.structPropOrder[parentID]
 
-			branches := util.Preparse(node.Pairs)
-			params := c.generateParameters(id, branches)
+			params := c.generateParameters(id, tree, true)
+			params = c.includeGlobalParams(params)
 			c.resetParaState(params)
 			f := c.module.NewFunc(k, irtypes.Void, params...)
 			c.contextFunc = f
@@ -428,7 +447,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 
 	if c.contextFuncName == "__run" &&
 		c.isFunction(branches[key]) {
-		return c.processFunc(id, branches)
+		return c.processFunc(id, branches, false)
 	}
 
 	// Otherwise inline the parameter...
@@ -1010,11 +1029,17 @@ func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 	return nil
 }
 
-func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value.Value {
+func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, component bool) value.Value {
 	fname := strings.Join(rawId, "_")
+	if component {
+		fname = fname + "__state"
+	}
 
 	if c.runRound == 0 { //initialize
-		params := c.generateParameters(rawId, branch)
+		params := c.generateParameters(rawId, branch, component)
+		if component {
+			params = c.includeGlobalParams(params)
+		}
 		f := c.module.NewFunc(fname, irtypes.Void, params...)
 		c.contextFunc = f
 
@@ -1037,6 +1062,11 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value
 	}
 
 	return c.specFunctions[fname]
+}
+
+func (c *Compiler) includeGlobalParams(params []*ir.Param) []*ir.Param {
+	params = append(params, c.sysGlobals...)
+	return params
 }
 
 func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
@@ -1121,7 +1151,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 	return children
 }
 
-func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*ir.Param {
+func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, component bool) []*ir.Param {
 	var p []*ir.Param
 	var s *spec
 
@@ -1143,9 +1173,9 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 			}
 
 			if n.Complex {
-				ip = c.generateParameters(child, strInst)
+				ip = c.generateParameters(child, strInst, false)
 			} else {
-				ip = c.generateParameters(n.Id(), strInst)
+				ip = c.generateParameters(n.Id(), strInst, false)
 			}
 			p = append(p, ip...)
 		case *ast.StructProperty:
@@ -1157,8 +1187,13 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 				p = append(p, ir.NewParam(vname, ty))
 			}
 		case *ast.FunctionLiteral:
-			// Skip, do nothing
-
+			if component {
+				rawid := n.RawId()
+				s = c.specs[rawid[0]]
+				vname := strings.Join(rawid, "_")
+				ty := s.GetPointerType(vname)
+				p = append(p, ir.NewParam(vname, ty))
+			}
 		default:
 			rawid := n.(ast.Nameable).RawId()
 			s = c.specs[rawid[0]]

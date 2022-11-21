@@ -80,11 +80,11 @@ func TestStoreRule(t *testing.T) {
 		op: ">",
 	}
 
-	test1 := g.storeRule(store, []rule{})
+	test1 := g.storeRule(store)
 	if len(test1) != 1 {
 		t.Fatalf("storeRule did not store new rule. got=%d", len(test1))
 	}
-	test2 := g.storeRule(store2, []rule{})
+	test2 := g.storeRule(store2)
 	if len(test2) != 1 {
 		t.Fatalf("storeRule did not store new rule. got=%d", len(test2))
 	}

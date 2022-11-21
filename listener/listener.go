@@ -641,14 +641,20 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 			case ast.Expression:
 				token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+				n := l.packageCallsAsRunSteps(t)
+
 				s := &ast.ExpressionStatement{
 					Token:      token2,
-					Expression: t,
+					Expression: n.(ast.Expression),
 				}
 				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
 			case *ast.BlockStatement:
+				n := l.packageCallsAsRunSteps(t)
+				t = n.(*ast.BlockStatement)
 				sl.Statements = append(t.Statements, sl.Statements...)
 			case *ast.ExpressionStatement:
+				n := l.packageCallsAsRunSteps(t)
+				t = n.(*ast.ExpressionStatement)
 				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 			default:
 				panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
@@ -1412,4 +1418,59 @@ func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
 	}
 
 	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
+}
+
+func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
+	switch n := node.(type) {
+	case *ast.BlockStatement:
+		st := []ast.Statement{}
+		for _, s := range n.Statements {
+			t := l.packageCallsAsRunSteps(s)
+			st = append(st, t.(ast.Statement))
+		}
+		n.Statements = st
+		return n
+	case *ast.ExpressionStatement:
+		e := l.packageCallsAsRunSteps(n.Expression)
+		switch e.(type) {
+		case ast.Statement:
+			return e
+		default:
+			n.Expression = e.(ast.Expression)
+			return n
+		}
+	case *ast.IfExpression:
+		con := l.packageCallsAsRunSteps(n.Consequence)
+		n.Consequence = con.(*ast.BlockStatement)
+
+		if n.Alternative != nil {
+			alt := l.packageCallsAsRunSteps(n.Alternative)
+			n.Alternative = alt.(*ast.BlockStatement)
+		}
+		if n.Elif != nil {
+			el := l.packageCallsAsRunSteps(n.Elif)
+			n.Elif = el.(*ast.IfExpression)
+		}
+		return n
+	case *ast.ParameterCall:
+		return &ast.ParallelFunctions{
+			Token:        n.Token,
+			InferredType: n.InferredType,
+			Expressions:  []ast.Expression{n},
+		}
+
+	case *ast.InfixExpression:
+		l, okLeft := n.Left.(*ast.ParameterCall)
+		r, okRight := n.Right.(*ast.ParameterCall)
+		if n.Operator == "|" && okLeft && okRight {
+			return &ast.ParallelFunctions{
+				Token:        n.Token,
+				InferredType: n.InferredType,
+				Expressions:  []ast.Expression{l, r},
+			}
+		}
+		return n
+	default:
+		return n
+	}
 }

@@ -96,6 +96,29 @@ func (i *invariant) Tag(k1 string, k2 string) {
 	}
 }
 
+type phi struct {
+	baseVar  string
+	nums     []int16
+	endState string
+	tag      *branch
+}
+
+func (p *phi) ruleNode() {}
+func (p *phi) String() string {
+	var out bytes.Buffer
+	for _, n := range p.nums {
+		r := fmt.Sprintf("%s = %s_%d || ", p.endState, p.baseVar, n)
+		out.WriteString(r)
+	}
+	return out.String()
+}
+func (p *phi) Tag(k1 string, k2 string) {
+	p.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type wrap struct { //wrapper for constant values to be used in infix as rules
 	rule
 	value    string
@@ -186,7 +209,8 @@ func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	g.variables.loads[id] = inst.Src
 }
 
-func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
+func (g *Generator) storeRule(inst *ir.InstStore) []rule {
+	var rules []rule
 	id := g.variables.formatIdent(inst.Dst.Ident())
 	if g.variables.isTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
@@ -197,7 +221,12 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(id)
-			rules = append(rules, g.parseRule(id, g.variables.formatValue(val), ty, ""))
+			v := g.variables.formatValue(val)
+			if !g.variables.isBolean(v) && !g.variables.isNumeric(v) {
+				v = g.variables.formatIdent(v)
+				v = fmt.Sprintf("%s_%d", v, n)
+			}
+			rules = append(rules, g.parseRule(id, v, ty, ""))
 		} else if ref, ok := g.variables.ref[srcId]; ok {
 			switch r := ref.(type) {
 			case *infix:
@@ -243,11 +272,16 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	return rules
 }
 
-func (g *Generator) callRule(inst *ir.InstCall) string {
-	callee := inst.Callee.Ident()
-	meta := inst.Metadata
-	g.parallelMeta(g.parallelGrouping, meta)
-	return callee
+// func (g *Generator) callRule(inst *ir.InstCall) string {
+// 	callee := inst.Callee.Ident()
+// 	meta := inst.Metadata
+// 	g.parallelMeta(g.parallelGrouping, meta)
+// 	return callee
+// }
+
+func (g *Generator) xorRule(inst *ir.InstXor) rule {
+	x := inst.X.Ident()
+	return g.parseRule(x, "", "", "not")
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {

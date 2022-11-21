@@ -146,7 +146,8 @@ func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
-func (g *Generator) runParallel(perm [][]string) {
+func (g *Generator) runParallel(perm [][]string) []rule {
+	var rules []rule
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
 	g.newFork()
@@ -169,11 +170,10 @@ func (g *Generator) runParallel(perm [][]string) {
 		// sort them into fork choices
 		g.buildForkChoice(raw, "")
 		g.variables.loadState(varState)
-		for _, v := range raw {
-			g.rules = append(g.rules, g.writeRule(v))
-		}
+		rules = append(rules, raw...)
 	}
-	g.rules = append(g.rules, g.capParallel()...)
+	rules = append(rules, g.capParallel()...)
+	return rules
 }
 
 func (g *Generator) parallelRules(r [][]rule) []rule {
@@ -184,36 +184,61 @@ func (g *Generator) parallelRules(r [][]rule) []rule {
 	return rules
 }
 
-func (g *Generator) parallelMeta(parallelGroup string, meta ir.Metadata) string {
+func (g *Generator) isSameParallelGroup(meta ir.Metadata) bool {
 	for _, v := range meta {
-		if v.Name != parallelGroup {
-			g.call = g.call + 1
+
+		if v.Name == g.parallelGrouping {
+			return true
 		}
+
+		if g.parallelGrouping == "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (g *Generator) singleParallelStep(callee string) bool {
+	if len(g.localCallstack) == 0 {
+		return false
+	}
+
+	if callee == g.localCallstack[len(g.localCallstack)-1] {
+		return true
+	}
+
+	return false
+}
+
+func (g *Generator) updateParallelGroup(meta ir.Metadata) {
+	for _, v := range meta {
 		if v.Name[0:5] != "round-" {
 			g.parallelGrouping = v.Name
 		}
 	}
-	return g.parallelGrouping
 }
 
-func (g *Generator) capParallel() []string {
+func (g *Generator) capParallel() []rule {
 	// Take all the end variables for the all the branches
 	// and cap them with a phi value
 	// writes OR nodes to end each parallel run
 
 	fork := g.getCurrentFork()
-	var rules []string
+	var rules []rule
 	for k, v := range fork {
 		id := g.variables.advanceSSA(k)
-		g.declareVar(id, g.variables.lookupType(k, nil))
 
 		var nums []int16
 		for _, c := range v {
 			nums = append(nums, c.getEnd())
 		}
 
-		ends := g.formatEnds(k, nums, id)
-		rule := g.writeAssert("or", ends)
+		rule := &phi{
+			baseVar:  k,
+			endState: id,
+			nums:     nums,
+		}
 		rules = append(rules, rule)
 
 		base, i := g.variables.getVarBase(id)
@@ -323,6 +348,9 @@ func (g *Generator) tagRule(ru rule, branch string, block string) rule {
 		r.Tag(branch, block)
 		return r
 	case *vwrap:
+		r.Tag(branch, block)
+		return r
+	case *phi:
 		r.Tag(branch, block)
 		return r
 	default:

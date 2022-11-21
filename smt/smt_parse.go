@@ -1,41 +1,86 @@
 package smt
 
 import (
+	"fault/util"
 	"fmt"
 	"strings"
 
 	"github.com/llir/llvm/ir"
 )
 
+func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
+	var r []rule
+	for _, f := range fns {
+		fname := f.Ident()
+
+		if fname != "@__run" {
+			continue
+		}
+
+		r = g.parseFunction(f)
+	}
+	return r
+}
+
 func (g *Generator) parseFunction(f *ir.Func) []rule {
 	var rules []rule
 	g.currentFunction = f.Ident()
-	for _, block := range f.Blocks {
-		g.currentBlock = block.Ident()
-		if g.skipBlocks[g.currentBlock] == 0 {
-			// For each non-branching instruction of the basic block.
-			r := g.parseInstruct(block)
-			rules = append(rules, r...)
-			r1 := g.parseTerms(block.Term.Succs())
-			switch term := block.Term.(type) {
-			case *ir.TermCondBr:
-				g.inPhiState = true
-				id := term.Cond.Ident()
-				if g.variables.isTemp(id) {
-					if v, ok := g.variables.ref[id]; ok {
-						r1[len(r1)-1].(*ite).cond = g.parseCond(v)
-					}
-				} else if g.variables.isBolean(id) ||
-					g.variables.isNumeric(id) {
-					r1[len(r1)-1].(*ite).cond = &wrap{value: id}
-				}
 
-				g.inPhiState = false
-			}
-			rules = append(rules, r1...)
-		}
+	for _, block := range f.Blocks {
+		r := g.parseBlock(block)
+		rules = append(rules, r...)
 	}
+
 	return rules
+}
+
+func (g *Generator) parseBlock(block *ir.Block) []rule {
+	var rules []rule
+	g.currentBlock = block.Ident()
+	if g.skipBlocks[g.currentBlock] != 0 {
+		return rules
+	}
+
+	// For each non-branching instruction of the basic block.
+	r := g.parseInstruct(block)
+	rules = append(rules, r...)
+
+	var r1 []rule
+	switch term := block.Term.(type) {
+	case *ir.TermCondBr:
+		r1 = g.parseTermCon(term)
+	default:
+		stack := util.Copy(g.localCallstack)
+		g.localCallstack = []string{}
+		r1 = g.generateFromCallstack(stack)
+	}
+	rules = append(rules, r1...)
+	return rules
+}
+
+func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
+
+	r1 := g.parseTerms(term.Succs())
+	g.inPhiState = true
+	id := term.Cond.Ident()
+	if g.variables.isTemp(id) {
+		if v, ok := g.variables.ref[id]; ok {
+			r1 = g.findParseIte(r1, v)
+			//r1 = append(r1, r2...)
+		}
+	} else if g.variables.isBolean(id) ||
+		g.variables.isNumeric(id) {
+		r1 = g.findParseIte(r1, &wrap{value: id})
+		//r1 = append(r1, r2...)
+	}
+	g.inPhiState = false
+
+	stack := util.Copy(g.localCallstack)
+	g.localCallstack = []string{}
+	rtemp := g.generateFromCallstack(stack)
+
+	r1 = append(r1, rtemp...)
+	return r1
 }
 
 func (g *Generator) parseInstruct(block *ir.Block) []rule {
@@ -48,8 +93,7 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstLoad:
 			g.loadsRule(inst)
 		case *ir.InstStore:
-			rules = g.storeRule(inst, rules)
-			g.blocks[g.currentBlock] = rules
+			rules = append(rules, g.storeRule(inst)...)
 		case *ir.InstFAdd:
 			var r rule
 			r = g.parseInfix(inst.Ident(),
@@ -111,8 +155,30 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 
 			rules = append(rules, r)
 		case *ir.InstCall:
-			callee := g.callRule(inst)
-			g.callstack[g.call] = append(g.callstack[g.call], callee)
+			callee := inst.Callee.Ident()
+			meta := inst.Metadata
+			if g.isSameParallelGroup(meta) {
+				g.localCallstack = append(g.localCallstack, callee)
+			} else if g.singleParallelStep(callee) {
+				stack := util.Copy(g.localCallstack)
+				g.localCallstack = []string{}
+				r := g.generateFromCallstack(stack)
+				rules = append(rules, r...)
+
+				r1 := g.generateFromCallstack([]string{callee})
+				rules = append(rules, r1...)
+			} else {
+				stack := util.Copy(g.localCallstack)
+				g.localCallstack = []string{}
+				r := g.generateFromCallstack(stack)
+				rules = append(rules, r...)
+
+				g.localCallstack = append(g.localCallstack, callee)
+			}
+			g.updateParallelGroup(meta)
+		case *ir.InstXor:
+			r := g.xorRule(inst)
+			g.tempRule(inst, r)
 		default:
 			panic(fmt.Sprintf("unrecognized instruction: %T", inst))
 
@@ -261,4 +327,19 @@ func (g *Generator) parseCompareOp(op string) string {
 	default:
 		return op
 	}
+}
+
+func (g *Generator) findParseIte(r []rule, w rule) []rule {
+	for k, v := range r {
+		if ite, ok := v.(*ite); ok {
+			switch w.(type) {
+			case *wrap:
+				ite.cond = w
+			default:
+				ite.cond = g.parseCond(w)
+			}
+			r[k] = ite
+		}
+	}
+	return r
 }

@@ -318,8 +318,17 @@ func (g *Generator) filterOutTempStates(v string, i int16) bool {
 	for _, opt := range g.forks {
 		choices := opt[v]
 		for _, c := range choices {
+			if len(c.Values) == 1{
+				return false
+			}
+			
 			c.Values = c.Values[1:] //First value is not temp
-			t := sort.Search(len(c.Values), func(k int) bool { return c.Values[k] == i })
+			n := len(c.Values)
+			t := sort.Search(n, func(k int) bool { return c.Values[k] == i })
+			if t == n { //If no match in Values slice Search returns n since it cannot be confused with an index
+				return false
+			}
+
 			if c.Values[t] == i {
 				return true
 			}

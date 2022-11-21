@@ -585,7 +585,7 @@ func TestComponentIR(t *testing.T) {
 			ret void
 		}
 		
-		define void @initial(double* %test_foo_x) {
+		define void @initial(double* %test_foo_x, double* %test_foo_initial, double* %test_foo_alarm) {
 		block-17:
 			%0 = load double, double* %test_foo_x
 			%1 = fcmp ogt double %0, 10.0
@@ -616,7 +616,7 @@ func TestComponentIR(t *testing.T) {
 			ret void
 		}
 		
-		define void @alarm(double* %test_foo_x) {
+		define void @alarm(double* %test_foo_x, i1* %test_foo_initial, double* %test_foo_alarm) {
 		block-23:
 			%0 = alloca [9 x i8]
 			store [9 x i8] c"foo.close", [9 x i8]* %0
@@ -625,7 +625,7 @@ func TestComponentIR(t *testing.T) {
 			ret void
 		}
 		
-		define void @test_foo_initial(double* %test_foo_x) {
+		define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
 		block-24:
 			%0 = load double, double* %test_foo_x
 			%1 = fcmp ogt double %0, 10.0

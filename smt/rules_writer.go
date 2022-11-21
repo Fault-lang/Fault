@@ -75,6 +75,10 @@ func (g *Generator) writeRule(ru rule) string {
 		return g.writeAssert("", br)
 	case *wrap:
 		return r.value
+	case *phi:
+		g.declareVar(r.endState, g.variables.lookupType(r.baseVar, nil))
+		ends := g.formatEnds(r.baseVar, r.nums, r.endState)
+		return g.writeAssert("or", ends)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}

@@ -168,6 +168,14 @@ func CaptureState(id string) (string, bool, bool) {
 
 }
 
+func Copy(callstack []string) []string {
+	var ret []string
+	for _, v := range callstack{
+		ret = append(ret, v)
+	}
+	return ret
+}
+
 func product(list1 [][]string, list2 []string) [][]string {
 	var results [][]string
 	for _, l := range list1 {
