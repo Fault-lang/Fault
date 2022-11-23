@@ -114,11 +114,11 @@ func TestParseTerms(t *testing.T) {
 	if len(g.variables.ref) != 1 {
 		t.Fatal("parse terms failed to save a rule.")
 	}
-	if g.variables.ref["%0"].(*infix).x.(*wrap).value != "2.0" {
+	if g.variables.ref["@__run-%0"].(*infix).x.(*wrap).value != "2.0" {
 		t.Fatalf("parse terms produced the wrong x value. got=%s", g.variables.ref["%0"].(*infix).x.(*wrap).value)
 	}
 
-	if g.variables.ref["%0"].(*infix).y.(*wrap).value != "3.0" {
+	if g.variables.ref["@__run-%0"].(*infix).y.(*wrap).value != "3.0" {
 		t.Fatalf("parse terms produced the wrong y value. got=%s", g.variables.ref["%0"].(*infix).y.(*wrap).value)
 	}
 }

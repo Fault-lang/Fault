@@ -206,7 +206,8 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 
 func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	id := inst.Ident()
-	g.variables.loads[id] = inst.Src
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.loads[refname] = inst.Src
 }
 
 func (g *Generator) storeRule(inst *ir.InstStore) []rule {
@@ -214,10 +215,11 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 	id := g.variables.formatIdent(inst.Dst.Ident())
 	if g.variables.isTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
-		if val, ok := g.variables.loads[srcId]; ok {
-			ty := g.variables.lookupType(srcId, val)
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
+		if val, ok := g.variables.loads[refname]; ok {
+			ty := g.variables.lookupType(refname, val)
 			n := g.variables.ssa[id]
-			if !g.inPhiState {
+			if !g.inPhiState.Check() {
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(id)
@@ -227,13 +229,13 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				v = fmt.Sprintf("%s_%d", v, n)
 			}
 			rules = append(rules, g.parseRule(id, v, ty, ""))
-		} else if ref, ok := g.variables.ref[srcId]; ok {
+		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
 			case *infix:
 				r.x = g.tempToIdent(r.x)
 				r.y = g.tempToIdent(r.y)
 				n := g.variables.ssa[id]
-				if !g.inPhiState {
+				if !g.inPhiState.Check() {
 					g.variables.storeLastState(id, n+1)
 				}
 				id = g.variables.advanceSSA(id)
@@ -249,7 +251,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				}
 			default:
 				n := g.variables.ssa[id]
-				if !g.inPhiState {
+				if !g.inPhiState.Check() {
 					g.variables.storeLastState(id, n+1)
 				}
 				ty := g.variables.lookupType(id, nil)
@@ -263,7 +265,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 	} else {
 		ty := g.variables.lookupType(id, inst.Src)
 		n := g.variables.ssa[id]
-		if !g.inPhiState {
+		if !g.inPhiState.Check() {
 			g.variables.storeLastState(id, n+1)
 		}
 		id = g.variables.advanceSSA(id)
@@ -281,6 +283,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 
 func (g *Generator) xorRule(inst *ir.InstXor) rule {
 	x := inst.X.Ident()
+	x = g.variables.convertIdent(g.currentFunction, x)
 	return g.parseRule(x, "", "", "not")
 }
 
@@ -288,6 +291,7 @@ func (g *Generator) tempRule(inst value.Value, r rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()
 	if g.variables.isTemp(id) {
-		g.variables.ref[id] = r
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		g.variables.ref[refname] = r
 	}
 }

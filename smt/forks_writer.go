@@ -12,6 +12,30 @@ import (
 // Key is the base variable name
 type Fork map[string][]*Choice
 
+type PhiState struct {
+	levels int
+}
+
+func NewPhiState() *PhiState {
+	return &PhiState{
+		levels: 0,
+	}
+}
+
+func (p *PhiState) Check() bool {
+	return p.levels > 0
+}
+
+func (p *PhiState) In() {
+	p.levels = p.levels + 1
+}
+
+func (p *PhiState) Out() {
+	if p.levels != 0 {
+		p.levels = p.levels - 1
+	}
+}
+
 func GetForkEndPoints(c []*Choice) []int16 {
 	var ends []int16
 	for _, v := range c {
@@ -38,12 +62,14 @@ func (c *Choice) getEnd() int16 {
 }
 
 func (g *Generator) newFork() {
-	if g.inPhiState { // a fork inside a fork (facepalm)
-		g.parentFork = g.getCurrentFork()
+	if len(g.forks) == 0 {
+		g.forks = append(g.forks, Fork{})
+		return
+	}
+
+	if g.inPhiState.Check() {
 		g.forks = append(g.forks[0:len(g.forks)-1], Fork{})
 	} else {
-		g.parentFork = nil
-		g.inPhiState = true
 		g.forks = append(g.forks, Fork{})
 	}
 }
@@ -157,10 +183,10 @@ func (g *Generator) runParallel(perm [][]string) []rule {
 		varState := g.variables.saveState()
 		for _, c := range calls {
 			g.parallelRunStart = true
-			g.inPhiState = false //Don't behave like we're in Phi inside the function
+			g.inPhiState.Out() //Don't behave like we're in Phi inside the function
 			v := g.functions[c]
 			raw := g.parseFunction(v)
-			g.inPhiState = true
+			g.inPhiState.In()
 			raw = g.tagRules(raw, branch, branchBlock)
 			opts = append(opts, raw)
 		}

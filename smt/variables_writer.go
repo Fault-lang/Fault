@@ -79,9 +79,10 @@ func (g *Generator) isASolvable(id string) bool {
 // 	return ""
 // }
 
-func (g *variables) convertIdent(val string) string {
+func (g *variables) convertIdent(f string, val string) string {
 	if g.isTemp(val) {
-		if v, ok := g.loads[val]; ok {
+		refname := fmt.Sprintf("%s-%s", f, val)
+		if v, ok := g.loads[refname]; ok {
 			id := g.formatIdent(v.Ident())
 			if v, ok := g.ssa[id]; ok {
 				//id = g.formatIdent(id)
@@ -115,7 +116,8 @@ func (g *variables) formatIdent(id string) string {
 
 func (g *Generator) convertInfixVar(x string) string {
 	if g.variables.isTemp(x) {
-		if v, ok := g.variables.loads[x]; ok {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, x)
+		if v, ok := g.variables.loads[refname]; ok {
 			xid := v.Ident()
 			xidNoPercent := g.variables.formatIdent(xid)
 			if g.parallelRunStart {
@@ -239,15 +241,16 @@ func (g *Generator) tempToIdent(ru rule) rule {
 
 func (g *Generator) fetchIdent(id string, r rule) rule {
 	if g.variables.isTemp(id) {
-		if v, ok := g.variables.loads[id]; ok {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		if v, ok := g.variables.loads[refname]; ok {
 			n := g.variables.ssa[id]
-			if !g.inPhiState {
+			if !g.inPhiState.Check() {
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(v.Ident())
 			wid := &wrap{value: id}
 			return wid
-		} else if ref, ok := g.variables.ref[id]; ok {
+		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
 			case *infix:
 				r.x = g.tempToIdent(r.x)

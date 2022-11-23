@@ -24,13 +24,19 @@ func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
 
 func (g *Generator) parseFunction(f *ir.Func) []rule {
 	var rules []rule
+	oldfunc := g.currentFunction
 	g.currentFunction = f.Ident()
 
 	for _, block := range f.Blocks {
-		r := g.parseBlock(block)
-		rules = append(rules, r...)
+		if !g.returnVoid.Check() {
+			r := g.parseBlock(block)
+			rules = append(rules, r...)
+		}
 	}
 
+	g.returnVoid.Out()
+
+	g.currentFunction = oldfunc
 	return rules
 }
 
@@ -49,6 +55,12 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 	switch term := block.Term.(type) {
 	case *ir.TermCondBr:
 		r1 = g.parseTermCon(term)
+	case *ir.TermRet:
+		stack := util.Copy(g.localCallstack)
+		g.localCallstack = []string{}
+		r1 = g.generateFromCallstack(stack)
+		g.returnVoid.In()
+
 	default:
 		stack := util.Copy(g.localCallstack)
 		g.localCallstack = []string{}
@@ -61,10 +73,18 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 
 	r1 := g.parseTerms(term.Succs())
-	g.inPhiState = true
+	g.inPhiState.In()
+
+	// stack := util.Copy(g.localCallstack)
+	// g.localCallstack = []string{}
+	// rtemp := g.generateFromCallstack(stack)
+
+	// r1 = append(r1, rtemp...)
+
 	id := term.Cond.Ident()
 	if g.variables.isTemp(id) {
-		if v, ok := g.variables.ref[id]; ok {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		if v, ok := g.variables.ref[refname]; ok {
 			r1 = g.findParseIte(r1, v)
 			//r1 = append(r1, r2...)
 		}
@@ -73,13 +93,8 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		r1 = g.findParseIte(r1, &wrap{value: id})
 		//r1 = append(r1, r2...)
 	}
-	g.inPhiState = false
+	g.inPhiState.Out()
 
-	stack := util.Copy(g.localCallstack)
-	g.localCallstack = []string{}
-	rtemp := g.generateFromCallstack(stack)
-
-	r1 = append(r1, rtemp...)
 	return r1
 }
 
@@ -131,7 +146,8 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			// Happens in conditionals
 			id := inst.Ident()
 			if g.variables.isTemp(id) {
-				g.variables.ref[id] = r
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.variables.ref[refname] = r
 				return rules
 			}
 
@@ -149,7 +165,8 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 
 			id := inst.Ident()
 			if g.variables.isTemp(id) {
-				g.variables.ref[id] = r
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.variables.ref[refname] = r
 				return rules
 			}
 
@@ -199,30 +216,46 @@ func (g *Generator) parseTerms(terms []*ir.Block) []rule {
 			bname := strings.Split(term.Ident(), "-")
 			switch bname[len(bname)-1] {
 			case "true":
-				g.inPhiState = true
+				g.inPhiState.In()
 				branchBlock := "true"
 				g.skipBlocks[term.Ident()] = 1
 				t = g.parseInstruct(term)
+
+				stack := util.Copy(g.localCallstack)
+				g.localCallstack = []string{}
+				t1 := g.generateFromCallstack(stack)
+				t = append(t, t1...)
+
 				t = g.tagRules(t, branch, branchBlock)
 				rules = append(rules, t...)
-				g.inPhiState = false
+				g.inPhiState.Out()
 			case "false":
-				g.inPhiState = true
+				g.inPhiState.In()
 				branchBlock := "false"
 				g.skipBlocks[term.Ident()] = 1
 				f = g.parseInstruct(term)
+
+				stack := util.Copy(g.localCallstack)
+				g.localCallstack = []string{}
+				f1 := g.generateFromCallstack(stack)
+				f = append(f, f1...)
+
 				f = g.tagRules(f, branch, branchBlock)
 				rules = append(rules, f...)
-				g.inPhiState = false
+				g.inPhiState.Out()
 			case "after":
-				//g.skipBlocks[term.Ident()] = 1
-				a = g.parseInstruct(term)
-				//rules = append(rules, a...)
+				// a = g.parseInstruct(term)
+
+				// stack := util.Copy(g.localCallstack)
+				// g.localCallstack = []string{}
+				// a1 := g.generateFromCallstack(stack)
+				// a = append(a, a1...)
+
 			default:
 				panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
 			}
 		}
-		if t != nil || f != nil {
+		if !g.isBranchClosed(t, f) {
 			g.newFork()
 			g.buildForkChoice(t, "true")
 			g.buildForkChoice(f, "false")
@@ -248,6 +281,13 @@ func (g *Generator) parseTerms(terms []*ir.Block) []rule {
 	return rules
 }
 
+func (g *Generator) isBranchClosed(t []rule, f []rule) bool {
+	if len(t) == 0 && len(f) == 0 {
+		return true
+	}
+	return false
+}
+
 func (g *Generator) parseRule(id string, val string, ty string, op string) rule {
 	wid := &wrap{value: id}
 	wval := &wrap{value: val}
@@ -258,8 +298,9 @@ func (g *Generator) parseInfix(id string, x string, y string, op string) rule {
 	x = g.convertInfixVar(x)
 	y = g.convertInfixVar(y)
 
-	g.variables.ref[id] = g.parseRule(x, y, "", op)
-	return g.variables.ref[id]
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.ref[refname] = g.parseRule(x, y, "", op)
+	return g.variables.ref[refname]
 }
 
 func (g *Generator) parseCond(cond rule) rule {
@@ -336,7 +377,9 @@ func (g *Generator) findParseIte(r []rule, w rule) []rule {
 			case *wrap:
 				ite.cond = w
 			default:
-				ite.cond = g.parseCond(w)
+				if ite.cond == nil {
+					ite.cond = g.parseCond(w)
+				}
 			}
 			r[k] = ite
 		}

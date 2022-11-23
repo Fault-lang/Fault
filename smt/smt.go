@@ -13,6 +13,7 @@ import (
 type Generator struct {
 	currentFunction string
 	currentBlock    string
+	currentFork     *Fork
 	branchId        int
 
 	// Raw input
@@ -34,10 +35,10 @@ type Generator struct {
 	localCallstack []string
 
 	forks            []Fork
-	parentFork       Fork
-	inPhiState       bool //Flag, are we in a conditional or parallel?
+	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping string
-	parallelRunStart bool //Flag, make sure all branches with parallel runs begin from the same point
+	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
+	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
 }
 
 func NewGenerator() *Generator {
@@ -48,6 +49,8 @@ func NewGenerator() *Generator {
 		skipBlocks:      make(map[string]int),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
+		inPhiState:      NewPhiState(),
+		returnVoid:      NewPhiState(),
 	}
 }
 
