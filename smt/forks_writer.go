@@ -26,6 +26,10 @@ func (p *PhiState) Check() bool {
 	return p.levels > 0
 }
 
+func (p *PhiState) Level() int {
+	return p.levels
+}
+
 func (p *PhiState) In() {
 	p.levels = p.levels + 1
 }
@@ -269,7 +273,9 @@ func (g *Generator) capParallel() []rule {
 
 		base, i := g.variables.getVarBase(id)
 		n := int16(i)
-		g.variables.storeLastState(base, n)
+		if g.inPhiState.Level() == 1 {
+			g.variables.storeLastState(base, n)
+		}
 
 	}
 	return rules
@@ -343,7 +349,9 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 				tends = append(tends, g.capRule(k, []int16{start}, id)...)
 			}
 			n := g.variables.ssa[k]
-			g.variables.storeLastState(k, n)
+			if g.inPhiState.Level() == 1 {
+				g.variables.storeLastState(k, n)
+			}
 		}
 	}
 	return tends, fends

@@ -256,6 +256,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) []rule {
 			}
 		}
 		if !g.isBranchClosed(t, f) {
+			g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
 			g.newFork()
 			g.buildForkChoice(t, "true")
 			g.buildForkChoice(f, "false")
@@ -269,6 +270,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) []rule {
 			fEnds = append(fEnds, fSync...)
 
 			rules = append(rules, &ite{cond: nil, t: tEnds, tvars: tvars, f: fEnds, fvars: fvars})
+			g.inPhiState.Out()
 		}
 		rules = append(rules, a...) //Because it's AFTER
 	}
