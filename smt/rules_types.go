@@ -41,7 +41,6 @@ type infix struct {
 	y           rule
 	ty          string
 	op          string
-	declareOnly bool //For solvables which need to be declared but have no starting value
 	tag         *branch
 }
 

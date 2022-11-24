@@ -13,7 +13,6 @@ import (
 type Generator struct {
 	currentFunction string
 	currentBlock    string
-	currentFork     *Fork
 	branchId        int
 
 	// Raw input
