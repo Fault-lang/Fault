@@ -75,23 +75,15 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 	r1 := g.parseTerms(term.Succs())
 	g.inPhiState.In()
 
-	// stack := util.Copy(g.localCallstack)
-	// g.localCallstack = []string{}
-	// rtemp := g.generateFromCallstack(stack)
-
-	// r1 = append(r1, rtemp...)
-
 	id := term.Cond.Ident()
 	if g.variables.isTemp(id) {
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 		if v, ok := g.variables.ref[refname]; ok {
 			r1 = g.findParseIte(r1, v)
-			//r1 = append(r1, r2...)
 		}
 	} else if g.variables.isBolean(id) ||
 		g.variables.isNumeric(id) {
 		r1 = g.findParseIte(r1, &wrap{value: id})
-		//r1 = append(r1, r2...)
 	}
 	g.inPhiState.Out()
 
@@ -148,7 +140,7 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			if g.variables.isTemp(id) {
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 				g.variables.ref[refname] = r
-				return rules
+				continue
 			}
 
 			rules = append(rules, r)
@@ -167,7 +159,7 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			if g.variables.isTemp(id) {
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 				g.variables.ref[refname] = r
-				return rules
+				continue
 			}
 
 			rules = append(rules, r)
@@ -195,6 +187,12 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			g.updateParallelGroup(meta)
 		case *ir.InstXor:
 			r := g.xorRule(inst)
+			g.tempRule(inst, r)
+		case *ir.InstAnd:
+			r := g.andRule(inst)
+			g.tempRule(inst, r)
+		case *ir.InstOr:
+			r := g.orRule(inst)
 			g.tempRule(inst, r)
 		default:
 			panic(fmt.Sprintf("unrecognized instruction: %T", inst))
@@ -319,6 +317,12 @@ func (g *Generator) parseCond(cond rule) rule {
 	default:
 		panic(fmt.Sprintf("Invalid conditional: %s", inst))
 	}
+}
+
+func (g *Generator) parseMultiCond(id string, x rule, y rule, op string) rule {
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.ref[refname] = &infix{x: x, ty: "Bool", y: y, op: op}
+	return g.variables.ref[refname]
 }
 
 func (g *Generator) parseCompare(op string) (string, rule) {

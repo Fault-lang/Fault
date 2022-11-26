@@ -170,6 +170,19 @@ func (v *variables) lookupType(id string, value value.Value) string {
 	panic(fmt.Sprintf("smt generation error, value for %s not found", id))
 }
 
+func (g *variables) lookupCondPart(f string, val string) rule {
+	if g.isTemp(val) {
+		refname := fmt.Sprintf("%s-%s", f, val)
+		if v, ok := g.ref[refname]; ok {
+			return v
+		} else {
+			panic(fmt.Sprintf("variable %s not initialized", val))
+		}
+	} else {
+		panic(fmt.Sprintf("variable %s not valid construction", val))
+	}
+}
+
 func (g *variables) formatValue(val value.Value) string {
 	v := strings.Split(val.String(), " ")
 	return v[1]

@@ -482,6 +482,208 @@ func TestAsserts(t *testing.T) {
 	}
 }
 
+func TestCollapseIf(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	for 1 run {
+			if a == 2{
+				if a != 0{
+					3;
+				}
+			}
+	};
+	`
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+	cond, _ := if1.Condition.(*ast.InfixExpression)
+	cond1, ok := cond.Right.(*ast.InfixExpression)
+	cond2, ok2 := cond.Left.(*ast.InfixExpression)
+
+	if cond.Operator != "&&" || !ok || !ok2 {
+		t.Fatalf("multicond not collapsed got=%s", cond)
+	}
+	if cond1.Right.(*ast.IntegerLiteral).Value != 0 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", cond1)
+	}
+
+	if cond2.Right.(*ast.IntegerLiteral).Value != 2 {
+		t.Fatalf("collapsed multicond wrong left value got=%s", cond2)
+	}
+}
+
+func TestCollapseIfElse(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	for 1 run {
+			if true {
+				3;
+			}else if a != 0{
+				if a == 2{
+					3;
+				}
+			}
+	};
+	`
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+	cond, _ := if1.Elif.Condition.(*ast.InfixExpression)
+	cond1, ok := cond.Right.(*ast.InfixExpression)
+	cond2, ok2 := cond.Left.(*ast.InfixExpression)
+
+	if cond.Operator != "&&" || !ok || !ok2 {
+		t.Fatalf("multicond not collapsed got=%s", cond)
+	}
+	if cond1.Right.(*ast.IntegerLiteral).Value != 2 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", cond1)
+	}
+
+	if cond2.Right.(*ast.IntegerLiteral).Value != 0 {
+		t.Fatalf("collapsed multicond wrong left value got=%s", cond2)
+	}
+}
+
+func TestCollapseElse(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	for 1 run {
+			if true {
+				3;
+			}else{
+				if a == 2{
+					3;
+				}
+			}
+	};
+	`
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+	cond, _ := if1.Elif.Condition.(*ast.InfixExpression)
+
+	if cond.Operator != "==" {
+		t.Fatalf("multicond not collapsed got=%s", cond)
+	}
+	if cond.Right.(*ast.IntegerLiteral).Value != 2 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", cond)
+	}
+}
+
+func TestCondCollapse(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	for 1 run {
+			if a == 2{
+				if a != 0{
+					3;
+				}else if a < 1 {
+					if a >= 2 {
+					true;
+					}
+				}
+			}else if a !=5 {
+				true;
+			}else{
+				if a > 4 {
+					false;
+				}
+			}
+	};
+`
+	process := prepTest(test)
+	tree := process.Processed
+	spec := tree.(*ast.Spec).Statements
+
+	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+	cond, _ := if1.Condition.(*ast.InfixExpression)
+	subcond1, ok := cond.Right.(*ast.InfixExpression)
+	subcond2, ok2 := cond.Left.(*ast.InfixExpression)
+
+	if cond.Operator != "&&" || !ok || !ok2 {
+		t.Fatalf("multicond not collapsed got=%s", cond)
+	}
+	if subcond1.Operator != "!=" && subcond1.Right.(*ast.IntegerLiteral).Value != 0 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", subcond1)
+	}
+
+	if subcond2.Operator != "==" && subcond2.Right.(*ast.IntegerLiteral).Value != 2 {
+		t.Fatalf("collapsed multicond wrong left value got=%s", subcond2)
+	}
+
+	cond2 := if1.Elif.Condition.(*ast.InfixExpression)
+
+	if cond2.Operator != "!=" {
+		t.Fatalf("multicond else if not collapsed got=%s", cond2)
+	}
+	if cond2.Right.(*ast.IntegerLiteral).Value != 5 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", cond2.Right)
+	}
+
+	cond3 := if1.Elif.Elif.Condition.(*ast.InfixExpression)
+	subcond3, ok3 := cond3.Left.(*ast.InfixExpression)
+	tempcond4, _ := cond3.Right.(*ast.InfixExpression)
+	subcond4, ok4 := tempcond4.Left.(*ast.InfixExpression)
+	subcond5, ok5 := tempcond4.Right.(*ast.InfixExpression)
+
+	if cond3.Operator != "&&" || !ok3 || !ok4 || !ok5 {
+		t.Fatalf("multicond else if not collapsed got=%s", cond3)
+	}
+	if subcond3.Operator != "==" && subcond3.Right.(*ast.IntegerLiteral).Value != 2 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", subcond3)
+	}
+
+	if subcond4.Operator != "<" && subcond4.Right.(*ast.IntegerLiteral).Value != 1 {
+		t.Fatalf("collapsed multicond wrong left value got=%s", subcond4)
+	}
+
+	if subcond5.Operator != ">=" && subcond5.Right.(*ast.IntegerLiteral).Value != 2 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", subcond5)
+	}
+
+	cond4 := if1.Elif.Elif.Elif.Condition.(*ast.InfixExpression)
+
+	if cond4.Operator != ">" {
+		t.Fatalf("multicond else if not collapsed got=%s", cond4)
+	}
+	if cond4.Right.(*ast.IntegerLiteral).Value != 4 {
+		t.Fatalf("collapsed multicond wrong right value got=%s", cond4.Right)
+	}
+
+	// if a == 2 && a != 0{
+	// 		3;
+	// }elif a !=5 {
+	// 	true;
+	// 	}elif a == 2 && a < 1 && a >= 2{
+	// 		true;
+	// }elif a > 4 {
+	// 		false;
+	// };
+
+}
+
 func TestInstanceFlatten(t *testing.T) {
 	p := NewProcesser()
 	p.trail = p.trail.PushSpec("test")

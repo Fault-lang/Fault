@@ -80,6 +80,71 @@ func (p *Processor) namePairs(pairs map[*ast.Identifier]ast.Expression) (map[*as
 	return named, keys
 }
 
+func (p *Processor) collapsibleIf(n ast.Node) bool {
+	//Replace nested ifs with if A && B construction
+	// checks that the block has only one statement
+	// and that statement is another conditional
+	switch b := n.(type) {
+	case *ast.BlockStatement:
+		if len(b.Statements) != 1 {
+			return false
+		}
+		line, ok := b.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			return false
+		}
+		if _, ok := line.Expression.(*ast.IfExpression); ok {
+			return true
+		}
+		return false
+	case *ast.IfExpression:
+		if len(b.Consequence.Statements) != 1 {
+			return false
+		}
+
+		line, ok := b.Consequence.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			return false
+		}
+		if _, ok := line.Expression.(*ast.IfExpression); ok {
+			return true
+		}
+		return false
+	}
+	return false
+}
+
+func (p *Processor) collapse(parent *ast.IfExpression, child *ast.IfExpression) *ast.IfExpression {
+	node := &ast.IfExpression{}
+	// Add the condition of parent to child
+	cond := &ast.InfixExpression{Left: parent.Condition, Right: child.Condition, Operator: "&&"}
+	node.Condition = cond
+	node.Consequence = child.Consequence
+
+	// If elif block add condition of parent
+	if child.Elif != nil {
+		el := p.collapse(parent, child.Elif)
+		node.Elif = p.attachElif(parent, el)
+	}
+
+	// If Else, convert to elif block and add condition of parent
+	if child.Alternative != nil {
+		el := &ast.IfExpression{Condition: parent.Condition, Consequence: child.Alternative}
+		node.Elif = p.attachElif(parent, el)
+	}
+	return node
+}
+
+func (p *Processor) attachElif(n *ast.IfExpression, el *ast.IfExpression) *ast.IfExpression {
+	if n.Elif != nil && n.Elif.Condition.String() == el.Condition.String() {
+		return n
+	} else if n.Elif != nil {
+		return p.attachElif(n.Elif, el)
+	}
+	n.Elif = el
+	return n
+}
+
 func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	var err error
 	var pro ast.Node
@@ -465,29 +530,41 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
+		if p.collapsibleIf(conseq) {
+			node = p.collapse(node, conseq.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression))
+		} else {
+			node.Condition = cond.(ast.Expression)
+			node.Consequence = conseq.(*ast.BlockStatement)
+		}
+
+		var elif ast.Node
+		if node.Elif != nil {
+			elif, err = p.walk(node.Elif) // Since Elif is an IfExpression we already check for collapsibility
+			if err != nil {
+				return node, err
+			}
+			node.Elif = elif.(*ast.IfExpression)
+		}
+
 		var alt ast.Node
 		if node.Alternative != nil {
 			alt, err = p.walk(node.Alternative)
 			if err != nil {
 				return node, err
 			}
-		}
 
-		var elif ast.Node
-		if node.Elif != nil {
-			elif, err = p.walk(node.Elif)
-			if err != nil {
-				return node, err
+			if p.collapsibleIf(alt) {
+				el := alt.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+				if node.Elif == nil {
+					node.Elif = el
+					node.Alternative = nil
+				} else {
+					node.Elif = p.attachElif(node.Elif, el)
+					node.Alternative = nil
+				}
+			} else {
+				node.Alternative = alt.(*ast.BlockStatement)
 			}
-		}
-
-		node.Condition = cond.(ast.Expression)
-		node.Consequence = conseq.(*ast.BlockStatement)
-		if node.Alternative != nil {
-			node.Alternative = alt.(*ast.BlockStatement)
-		}
-		if node.Elif != nil {
-			node.Elif = elif.(*ast.IfExpression)
 		}
 		return node, err
 

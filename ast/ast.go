@@ -1088,19 +1088,23 @@ func (ie *IfExpression) Position() []int      { return ie.Token.GetPosition() }
 func (ie *IfExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString("if")
+	out.WriteString("if(")
 	out.WriteString(ie.Condition.String())
-	out.WriteString(" ")
+	out.WriteString("){\n")
 	out.WriteString(ie.Consequence.String())
 
 	if (ie.Elif != &IfExpression{}) && ie.Elif != nil {
-		out.WriteString("else if")
-		out.WriteString(ie.Elif.String())
-	}
-
-	if (ie.Alternative != &BlockStatement{}) && ie.Alternative != nil {
-		out.WriteString("else ")
+		out.WriteString("}else if(")
+		out.WriteString(ie.Elif.Condition.String())
+		out.WriteString("){\n")
+		out.WriteString(ie.Elif.Consequence.String())
+		out.WriteString("\n}\n")
+	} else if (ie.Alternative != &BlockStatement{}) && ie.Alternative != nil {
+		out.WriteString("}else{\n")
 		out.WriteString(ie.Alternative.String())
+		out.WriteString("\n}\n")
+	} else {
+		out.WriteString("\n}\n")
 	}
 
 	return out.String()

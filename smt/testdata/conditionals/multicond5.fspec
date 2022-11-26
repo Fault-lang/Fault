@@ -1,0 +1,26 @@
+spec multicond;
+
+def s = stock{
+    cond: 1,
+    value: 10,
+};
+
+def f = flow{
+    base: new s,
+    change: func{
+        if base.cond > 0 {
+            if base.cond < 4 {
+                base.value <- 20;
+                if base.value > 100 {
+                    base.value = 0;
+                }
+            }
+            base.cond <- 1;
+        }
+    },
+};
+
+for 2 run {
+    t = new f;
+    t.change;
+};

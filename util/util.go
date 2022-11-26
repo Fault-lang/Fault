@@ -127,7 +127,7 @@ func InStringSlice(sl []string, sub string) bool {
 
 func Keys(m map[string]ast.Node) []string {
 	var ret []string
-	for k, _ := range m {
+	for k := range m {
 		ret = append(ret, k)
 	}
 	return ret
@@ -170,7 +170,7 @@ func CaptureState(id string) (string, bool, bool) {
 
 func Copy(callstack []string) []string {
 	var ret []string
-	for _, v := range callstack{
+	for _, v := range callstack {
 		ret = append(ret, v)
 	}
 	return ret

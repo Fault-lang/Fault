@@ -796,6 +796,26 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		} else {
 			return c.contextBlock.NewFCmp(enum.FPredONE, l, r)
 		}
+	case "&&":
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
+
+		return c.contextBlock.NewAnd(l, r)
+
+	case "||":
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
+
+		return c.contextBlock.NewOr(l, r)
+
 	default:
 		panic(fmt.Sprintf("unknown operator %s. line: %d, col: %d", node.Operator, pos[0], pos[1]))
 	}

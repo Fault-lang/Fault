@@ -37,11 +37,11 @@ func (a *assrt) Tag(k1 string, k2 string) {
 
 type infix struct {
 	rule
-	x           rule
-	y           rule
-	ty          string
-	op          string
-	tag         *branch
+	x   rule
+	y   rule
+	ty  string
+	op  string
+	tag *branch
 }
 
 func (i *infix) ruleNode() {}
@@ -284,6 +284,24 @@ func (g *Generator) xorRule(inst *ir.InstXor) rule {
 	x := inst.X.Ident()
 	x = g.variables.convertIdent(g.currentFunction, x)
 	return g.parseRule(x, "", "", "not")
+}
+
+func (g *Generator) andRule(inst *ir.InstAnd) rule {
+	id := inst.Ident()
+	x := inst.X.Ident()
+	y := inst.Y.Ident()
+	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	yRule := g.variables.lookupCondPart(g.currentFunction, y)
+	return g.parseMultiCond(id, xRule, yRule, "and")
+}
+
+func (g *Generator) orRule(inst *ir.InstOr) rule {
+	id := inst.Ident()
+	x := inst.X.Ident()
+	y := inst.Y.Ident()
+	x = g.variables.convertIdent(g.currentFunction, x)
+	y = g.variables.convertIdent(g.currentFunction, y)
+	return g.parseInfix(id, x, y, "or")
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {
