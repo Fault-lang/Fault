@@ -30,7 +30,6 @@ type Generator struct {
 
 	variables      *variables
 	blocks         map[string][]rule
-	skipBlocks     map[string]int
 	localCallstack []string
 
 	forks            []Fork
@@ -45,7 +44,6 @@ func NewGenerator() *Generator {
 		variables:       NewVariables(),
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rule),
-		skipBlocks:      make(map[string]int),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      NewPhiState(),

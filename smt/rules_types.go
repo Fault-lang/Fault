@@ -57,12 +57,10 @@ func (i *infix) Tag(k1 string, k2 string) {
 
 type ite struct {
 	rule
-	cond  rule
-	t     []rule
-	tvars map[string]string
-	f     []rule
-	fvars map[string]string
-	tag   *branch
+	cond rule
+	t    []rule
+	f    []rule
+	tag  *branch
 }
 
 func (it *ite) ruleNode() {}

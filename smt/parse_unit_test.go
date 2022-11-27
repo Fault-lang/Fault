@@ -108,7 +108,7 @@ func TestParseTerms(t *testing.T) {
 	store2 := b.NewStore(val2, alloc2)
 	g.variables.ssa["test_this_var2"] = 0
 
-	terms := ir.NewBlock("test")
+	terms := ir.NewBlock("test-true")
 	terms.NewFCmp(enum.FPredOGT, store.Src, store2.Src)
 	g.parseTerms([]*ir.Block{terms})
 	if len(g.variables.ref) != 1 {
