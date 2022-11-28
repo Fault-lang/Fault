@@ -1090,21 +1090,21 @@ func (ie *IfExpression) String() string {
 
 	out.WriteString("if(")
 	out.WriteString(ie.Condition.String())
-	out.WriteString("){\n")
+	out.WriteString("){")
 	out.WriteString(ie.Consequence.String())
 
 	if (ie.Elif != &IfExpression{}) && ie.Elif != nil {
 		out.WriteString("}else if(")
 		out.WriteString(ie.Elif.Condition.String())
-		out.WriteString("){\n")
+		out.WriteString("){")
 		out.WriteString(ie.Elif.Consequence.String())
-		out.WriteString("\n}\n")
+		out.WriteString("}")
 	} else if (ie.Alternative != &BlockStatement{}) && ie.Alternative != nil {
-		out.WriteString("}else{\n")
+		out.WriteString("}else{")
 		out.WriteString(ie.Alternative.String())
-		out.WriteString("\n}\n")
+		out.WriteString("}")
 	} else {
-		out.WriteString("\n}\n")
+		out.WriteString("}")
 	}
 
 	return out.String()

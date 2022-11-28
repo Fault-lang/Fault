@@ -16,11 +16,13 @@ type Generator struct {
 	branchId        int
 
 	// Raw input
-	Uncertains map[string][]float64
-	Unknowns   []string
-	functions  map[string]*ir.Func
-	rawAsserts []*ast.AssertionStatement
-	rawAssumes []*ast.AssumptionStatement
+	Uncertains      map[string][]float64
+	Unknowns        []string
+	functions       map[string]*ir.Func
+	rawAsserts      []*ast.AssertionStatement
+	rawAssumes      []*ast.AssumptionStatement
+	components      map[string]map[string]string
+	componentStarts map[string]string
 
 	// Generated SMT
 	inits     []string
@@ -46,16 +48,20 @@ func NewGenerator() *Generator {
 		blocks:          make(map[string][]rule),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
+		components:      make(map[string]map[string]string),
+		componentStarts: make(map[string]string),
 		inPhiState:      NewPhiState(),
 		returnVoid:      NewPhiState(),
 	}
 }
 
-func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) {
+func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement, components map[string]map[string]string, starts map[string]string) {
 	g.Uncertains = uncertains
 	g.Unknowns = unknowns
 	g.rawAsserts = asserts
 	g.rawAssumes = assumes
+	g.components = components
+	g.componentStarts = starts
 }
 
 func (g *Generator) Run(llopt string) {
@@ -100,6 +106,9 @@ func (g *Generator) sortFuncs(funcs []*ir.Func) {
 func (g *Generator) newCallgraph(m *ir.Module) {
 	g.constants = g.newConstants(m.Globals)
 	g.sortFuncs(m.Funcs)
+
+	//starts := g.initStarts()
+	//g.inits = append(g.inits, starts...)
 
 	run := g.parseRunBlock(m.Funcs)
 

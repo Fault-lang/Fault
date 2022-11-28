@@ -205,6 +205,14 @@ func (c *Compiler) compile(node ast.Node) {
 			id := []string{c.currentSpec, p[0], p[1]}
 			c.processFunc(id, branch, true)
 			c.ComponentStarts[p[0]] = p[1]
+
+			if c.isVarSet(id) && c.alloc {
+				r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: id})
+				s := c.specs[c.currentSpec]
+				p := s.GetSpecVarPointer(id)
+				c.contextBlock.NewStore(r, p)
+			}
+
 		}
 
 	default:

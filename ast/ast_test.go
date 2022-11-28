@@ -152,7 +152,7 @@ func TestString(t *testing.T) {
 			want = "init test"
 		case *IfExpression:
 			got = t.String()
-			want = "iftest test fuzz = 24;else ififtest else test buzz = 20;"
+			want = "if(test){test fuzz = 24;}else if(test){}"
 		case *FunctionLiteral:
 			got = t.String()
 			want = "test(foo) "

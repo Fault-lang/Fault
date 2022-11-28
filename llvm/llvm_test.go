@@ -582,6 +582,7 @@ func TestComponentIR(t *testing.T) {
 			store i1 false, i1* %test_foo_initial
 			%test_foo_alarm = alloca i1
 			store i1 false, i1* %test_foo_alarm
+			store i1 true, i1* %test_foo_initial
 			ret void
 		}
 		
@@ -759,7 +760,7 @@ func prepTestSys(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println(compiler.GetIR())
+	fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 
