@@ -274,6 +274,8 @@ func (g *Generator) capParallel() []rule {
 		base, i := g.variables.getVarBase(id)
 		n := int16(i)
 		if g.inPhiState.Level() == 1 {
+			g.variables.newPhi(base, n)
+		} else {
 			g.variables.storeLastState(base, n)
 		}
 
@@ -306,7 +308,7 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rule {
 	return e
 }
 
-func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[string]string) {
+func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string]int16) {
 	fork := g.getCurrentFork()
 	var rules []rule
 	for k, v := range fork {
@@ -318,9 +320,10 @@ func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[strin
 		if phi, ok := phis[k]; !ok {
 			id = g.variables.advanceSSA(k)
 			g.declareVar(id, g.variables.lookupType(k, nil))
-			phis[k] = id
+			_, i := g.variables.getVarBase(id)
+			phis[k] = int16(i)
 		} else {
-			id = phi
+			id = fmt.Sprintf("%s_%d", k, phi)
 		}
 
 		for _, c := range v {
@@ -340,7 +343,7 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 	fork := g.getCurrentFork()
 	for k, c := range fork {
 		if len(c) == 1 {
-			start := g.variables.getLastState(k)
+			start := g.variables.getStartState(k)
 			id := g.variables.getSSA(k)
 			switch c[0].Branch {
 			case "true":
@@ -350,6 +353,8 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 			}
 			n := g.variables.ssa[k]
 			if g.inPhiState.Level() == 1 {
+				g.variables.newPhi(k, n)
+			} else {
 				g.variables.storeLastState(k, n)
 			}
 		}

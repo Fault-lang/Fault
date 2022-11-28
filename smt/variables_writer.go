@@ -14,7 +14,7 @@ type variables struct {
 	ssa   map[string]int16
 	ref   map[string]rule
 	loads map[string]value.Value
-	phis  map[string]int16
+	phis  map[string][][]int16
 	types map[string]string
 }
 
@@ -23,7 +23,7 @@ func NewVariables() *variables {
 		ssa:   make(map[string]int16),
 		ref:   make(map[string]rule),
 		loads: make(map[string]value.Value),
-		phis:  make(map[string]int16),
+		phis:  make(map[string][][]int16),
 		types: make(map[string]string),
 	}
 }
@@ -121,7 +121,7 @@ func (g *Generator) convertInfixVar(x string) string {
 			xid := v.Ident()
 			xidNoPercent := g.variables.formatIdent(xid)
 			if g.parallelRunStart {
-				n := g.variables.getLastState(xidNoPercent)
+				n := g.variables.getStartState(xidNoPercent)
 				x = fmt.Sprintf("%s_%d", xidNoPercent, n)
 				g.parallelRunStart = false
 			} else {
@@ -209,30 +209,83 @@ func (g *variables) advanceSSA(id string) string {
 
 // When we have conditionals back to back (but not if elseif else)
 // we need to make sure to track the phi
+func (v *variables) initPhis() {
+	for k, _ := range v.phis {
+		v.newPhi(k, -1)
+	}
+}
+
+func (v *variables) newPhi(id string, init int16) {
+	if _, ok := v.phis[id]; !ok {
+		v.phis[id] = append(v.phis[id], []int16{0})
+		return
+	}
+
+	if init != -1 {
+		v.phis[id] = append(v.phis[id], []int16{init})
+		return
+	}
+
+	init = v.getLastState(id)
+	v.phis[id] = append(v.phis[id], []int16{init})
+}
+
+func (v *variables) popPhis() {
+	for k, _ := range v.phis {
+		v.popPhi(k)
+	}
+}
+
+func (v *variables) popPhi(id string) {
+	if p, ok := v.phis[id]; ok {
+		v.phis[id] = p[0 : len(p)-1]
+	}
+}
+
 func (g *variables) getLastState(id string) int16 {
 	if p, ok := g.phis[id]; ok {
-		return p
+		last := p[len(p)-1]
+		return last[len(last)-1]
+	}
+	return 0
+}
+
+func (g *variables) getStartState(id string) int16 {
+	if p, ok := g.phis[id]; ok {
+		last := p[len(p)-1]
+		return last[0]
 	}
 	return 0
 }
 
 func (v *variables) saveState() map[string]int16 {
 	state := make(map[string]int16)
-	for k, v := range v.phis {
-		state[k] = v
+	for k := range v.phis {
+		f := v.getStartState(k)
+		state[k] = f
 	}
 	return state
 }
 
 func (v *variables) loadState(state map[string]int16) {
-	v.phis = state
+	for k, i := range state {
+		v.newPhi(k, i)
+	}
+}
+
+func (v *variables) appendState(state map[string]int16) {
+	for k, i := range state {
+		v.storeLastState(k, i)
+	}
 }
 
 func (g *variables) storeLastState(id string, n int16) {
-	if _, ok := g.phis[id]; ok {
-		g.phis[id] = n
+	if p, ok := g.phis[id]; ok {
+		last := p[len(p)-1]
+		updated := append(last, n)
+		g.phis[id][len(p)-1] = updated
 	} else {
-		g.phis[id] = 0
+		g.newPhi(id, 0) //Probably a bug but fixing it breaks a bunch of stuff haha
 	}
 }
 
@@ -258,6 +311,8 @@ func (g *Generator) fetchIdent(id string, r rule) rule {
 		if v, ok := g.variables.loads[refname]; ok {
 			n := g.variables.ssa[id]
 			if !g.inPhiState.Check() {
+				g.variables.newPhi(id, n+1)
+			} else {
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(v.Ident())

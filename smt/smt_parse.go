@@ -72,6 +72,7 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 	var rules []rule
 	var cond rule
+	var phis map[string]int16
 
 	g.inPhiState.In()
 	id := term.Cond.Ident()
@@ -86,9 +87,12 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 	}
 	g.inPhiState.Out()
 
+	g.variables.initPhis()
+
 	t, f, a := g.parseTerms(term.Succs())
 
 	if !g.isBranchClosed(t, f) {
+		var tEnds, fEnds []rule
 		rules = append(rules, t...)
 		rules = append(rules, f...)
 
@@ -97,8 +101,8 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		g.buildForkChoice(t, "true")
 		g.buildForkChoice(f, "false")
 
-		tEnds, phis := g.capCond("true", make(map[string]string))
-		fEnds, _ := g.capCond("false", phis)
+		tEnds, phis = g.capCond("true", make(map[string]int16))
+		fEnds, _ = g.capCond("false", phis)
 
 		// Keep variable names in sync across branches
 		tSync, fSync := g.capCondSyncRules()
@@ -108,6 +112,9 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		rules = append(rules, &ite{cond: cond, t: tEnds, f: fEnds})
 		g.inPhiState.Out()
 	}
+
+	g.variables.popPhis()
+	g.variables.appendState(phis)
 
 	if a != nil {
 		after := g.parseAfterBlock(a)

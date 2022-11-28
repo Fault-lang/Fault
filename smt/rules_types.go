@@ -217,6 +217,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 			ty := g.variables.lookupType(refname, val)
 			n := g.variables.ssa[id]
 			if !g.inPhiState.Check() {
+				g.variables.newPhi(id, n+1)
+			}else{
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(id)
@@ -233,6 +235,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				r.y = g.tempToIdent(r.y)
 				n := g.variables.ssa[id]
 				if !g.inPhiState.Check() {
+					g.variables.newPhi(id, n+1)
+				}else{
 					g.variables.storeLastState(id, n+1)
 				}
 				id = g.variables.advanceSSA(id)
@@ -249,8 +253,10 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 			default:
 				n := g.variables.ssa[id]
 				if !g.inPhiState.Check() {
-					g.variables.storeLastState(id, n+1)
-				}
+					g.variables.newPhi(id, n+1)
+					}else{
+						g.variables.storeLastState(id, n+1)
+					}
 				ty := g.variables.lookupType(id, nil)
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
@@ -263,8 +269,10 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		ty := g.variables.lookupType(id, inst.Src)
 		n := g.variables.ssa[id]
 		if !g.inPhiState.Check() {
-			g.variables.storeLastState(id, n+1)
-		}
+			g.variables.newPhi(id, n+1)
+			}else{
+				g.variables.storeLastState(id, n+1)
+			}
 		id = g.variables.advanceSSA(id)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
