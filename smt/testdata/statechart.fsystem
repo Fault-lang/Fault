@@ -25,7 +25,7 @@ start {
     drain: initial,
 };
 
-for 5 run {
+for 2 run {
     if !drain.close{
         fl.fn;
     }

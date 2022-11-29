@@ -78,3 +78,8 @@ func (s *spec) GetPointerType(name string) irtypes.Type {
 	}
 	return DoubleP //Should reconsider this at some point and err here instead
 }
+
+type StateFunc struct {
+	Id   []string
+	Func *ir.Func
+}

@@ -586,11 +586,14 @@ func TestComponentIR(t *testing.T) {
 			ret void
 		}
 		
-		define void @initial(double* %test_foo_x, double* %test_foo_initial, double* %test_foo_alarm) {
+		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, double* %test_foo_alarm) {
 		block-17:
-			%0 = load double, double* %test_foo_x
-			%1 = fcmp ogt double %0, 10.0
-			br i1 %1, label %block-19-true, label %block-20-false
+			%0 = load i1, i1* %test_foo_initial
+			%1 = icmp eq i1 %0, true
+			%2 = load double, double* %test_foo_x
+			%3 = fcmp ogt double %2, 10.0
+			%4 = and i1 %1, %3
+			br i1 %4, label %block-19-true, label %block-18-after
 		
 		block-18-after:
 			ret void
@@ -598,54 +601,35 @@ func TestComponentIR(t *testing.T) {
 		block-19-true:
 			call void @stay()
 			br label %block-18-after
-		
-		block-20-false:
-			%2 = alloca [9 x i8]
-			store [9 x i8] c"foo.alarm", [9 x i8]* %2
-			%3 = bitcast [9 x i8]* %2 to i8*
-			call void @advance(i8* %3)
-			br label %block-18-after
 		}
 		
 		define void @stay() {
-		block-21:
+		block-20:
 			ret void
+		}
+		
+		define void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
+		block-21:
+			%0 = load i1, i1* %test_foo_alarm
+			%1 = icmp eq i1 %0, true
+			br i1 %1, label %block-23-true, label %block-22-after
+		
+		block-22-after:
+			ret void
+		
+		block-23-true:
+			%2 = alloca [14 x i8]
+			store [14 x i8] c"test_foo_close", [14 x i8]* %2
+			%3 = bitcast [14 x i8]* %2 to i8*
+			call void @advance(i8* %3)
+			br label %block-22-after
 		}
 		
 		define void @advance(i8* %toState) {
-		block-22:
-			ret void
-		}
-		
-		define void @alarm(double* %test_foo_x, i1* %test_foo_initial, double* %test_foo_alarm) {
-		block-23:
-			%0 = alloca [9 x i8]
-			store [9 x i8] c"foo.close", [9 x i8]* %0
-			%1 = bitcast [9 x i8]* %0 to i8*
-			call void @advance(i8* %1)
-			ret void
-		}
-		
-		define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
 		block-24:
-			%0 = load double, double* %test_foo_x
-			%1 = fcmp ogt double %0, 10.0
-			br i1 %1, label %block-26-true, label %block-27-false
-		
-		block-25-after:
 			ret void
-		
-		block-26-true:
-			call void @stay()
-			br label %block-25-after
-		
-		block-27-false:
-			%2 = alloca [9 x i8]
-			store [9 x i8] c"foo.alarm", [9 x i8]* %2
-			%3 = bitcast [9 x i8]* %2 to i8*
-			call void @advance(i8* %3)
-			br label %block-25-after
-		}`
+		}
+		`
 	llvm, err := prepTestSys(test)
 
 	if err != nil {
@@ -760,7 +744,7 @@ func prepTestSys(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(compiler.GetIR())
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 

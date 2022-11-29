@@ -144,7 +144,14 @@ func TestComponent(t *testing.T) {
 
 	ifblock := foo["initial"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	ifcond := ifblock.Condition.(*ast.InfixExpression)
-	this := ifcond.Left.(*ast.This).RawId()
+	left := ifcond.Left.(*ast.InfixExpression)
+	state := left.Left.(*ast.This).RawId()
+	if len(state) != 3 || state[0] != "test" || state[1] != "foo" || state[2] != "initial" {
+		t.Fatalf("state conditional wrap incorrect got=%s", state)
+	}
+
+	right := ifcond.Right.(*ast.InfixExpression)
+	this := right.Left.(*ast.This).RawId()
 	if len(this) != 3 || this[0] != "test" || this[1] != "foo" || this[2] != "x" {
 		t.Fatalf("this special word not converted to correct context got=%s", this)
 	}
@@ -154,7 +161,7 @@ func TestComponent(t *testing.T) {
 		t.Fatalf("built in stay not named correctly got=%s", trueblock.IdString())
 	}
 
-	elseblock := ifblock.Alternative.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
+	elseblock := ifblock.Elif.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
 	if elseblock.IdString() != "test_foo_initial_advance" {
 		t.Fatalf("built in advance not named correctly got=%s", elseblock.IdString())
 	}

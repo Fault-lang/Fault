@@ -1276,6 +1276,25 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 	return pairs, order
 }
 
+func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression) map[*ast.Identifier]ast.Expression {
+	//Wrap inner function in conditional so that only
+	// executes if the state is active
+	p := make(map[*ast.Identifier]ast.Expression)
+	for k, v := range pairs {
+		this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}
+		cond := &ast.InfixExpression{Left: this, Operator: "==", Right: &ast.Boolean{Value: true}}
+		switch f := v.(type) {
+		case *ast.FunctionLiteral:
+			con := &ast.IfExpression{Condition: cond, Consequence: f.Body}
+			f.Body = &ast.BlockStatement{Statements: []ast.Statement{&ast.ExpressionStatement{Expression: con}}}
+			p[k] = f
+		default:
+			p[k] = v
+		}
+	}
+	return p
+}
+
 func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
 	switch val := v.(type) {
 	case *ast.FloatLiteral:
@@ -1361,11 +1380,14 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+
+	p2 := l.componentPairs(p)
+
 	val :=
 		&ast.ComponentLiteral{
 			Token: token,
 			Order: order,
-			Pairs: p,
+			Pairs: p2,
 		}
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())

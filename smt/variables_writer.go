@@ -210,7 +210,7 @@ func (g *variables) advanceSSA(id string) string {
 // When we have conditionals back to back (but not if elseif else)
 // we need to make sure to track the phi
 func (v *variables) initPhis() {
-	for k, _ := range v.phis {
+	for k := range v.phis {
 		v.newPhi(k, -1)
 	}
 }
@@ -231,7 +231,7 @@ func (v *variables) newPhi(id string, init int16) {
 }
 
 func (v *variables) popPhis() {
-	for k, _ := range v.phis {
+	for k := range v.phis {
 		v.popPhi(k)
 	}
 }

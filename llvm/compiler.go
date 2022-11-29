@@ -67,7 +67,7 @@ type Compiler struct {
 	Assumes         []*ast.AssumptionStatement
 	Uncertains      map[string][]float64
 	Unknowns        []string
-	Components      map[string]map[string]string
+	Components      map[string]*StateFunc
 	ComponentStarts map[string]string
 }
 
@@ -90,7 +90,7 @@ func NewCompiler() *Compiler {
 		specFunctions:   make(map[string]value.Value),
 		specGlobals:     make(map[string]*ir.Global),
 		Uncertains:      make(map[string][]float64),
-		Components:      make(map[string]map[string]string),
+		Components:      make(map[string]*StateFunc),
 		ComponentStarts: make(map[string]string),
 	}
 	c.addGlobal()
@@ -193,7 +193,9 @@ func (c *Compiler) compile(node ast.Node) {
 		for i := int64(0); i < v.Rounds.Value; i++ {
 			c.compileBlock(v.Body)
 			c.runRound = c.runRound + 1
+			c.stateCheck()
 		}
+
 		c.contextFuncName = ""
 
 	case *ast.StartStatement:
@@ -202,16 +204,22 @@ func (c *Compiler) compile(node ast.Node) {
 			if err != nil {
 				panic(err)
 			}
-			id := []string{c.currentSpec, p[0], p[1]}
-			c.processFunc(id, branch, true)
-			c.ComponentStarts[p[0]] = p[1]
 
-			if c.isVarSet(id) && c.alloc {
-				r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: id})
+			node, ok := branch[p[1]].(*ast.FunctionLiteral)
+			if !ok {
+				panic(fmt.Errorf("component state %s not valid", p))
+			}
+
+			rawid := node.RawId()
+
+			if c.isVarSet(rawid) && c.alloc {
+				r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: rawid})
 				s := c.specs[c.currentSpec]
-				p := s.GetSpecVarPointer(id)
+				p := s.GetSpecVarPointer(rawid)
 				c.contextBlock.NewStore(r, p)
 			}
+
+			c.ComponentStarts[p[0]] = p[1]
 
 		}
 
@@ -367,31 +375,10 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 
 		switch v := p.(type) {
 		case *ast.FunctionLiteral:
-			parentID := node.IdString()
-			c.structPropOrder[childId] = c.structPropOrder[parentID]
-
-			params := c.generateParameters(id, tree, true)
-			params = c.includeGlobalParams(params)
-			c.resetParaState(params)
-			f := c.module.NewFunc(k, irtypes.Void, params...)
-			c.contextFunc = f
-			pname = name.Block()
-			c.contextBlock = f.NewBlock(pname)
-			if c.Components[childId] != nil {
-				c.Components[childId][k] = pname
-			} else {
-				c.Components[childId] = map[string]string{k: pname}
-			}
-			val := c.compileBlock(v.Body)
-			c.contextBlock.NewRet(val)
-			c.contextBlock = oldBlock
-			c.contextFuncName = "__run"
-			c.contextFunc = nil
-
-			//But also these functions are treated as booleans too
-			//initialize them as false
+			//These functions are treated as booleans too
+			//initialize them as false first
 			b := &ast.Boolean{Value: false, ProcessedName: v.ProcessedName}
-			val = c.compileValue(b)
+			val := c.compileValue(b)
 
 			if val != nil {
 				rawid := b.RawId()
@@ -407,6 +394,27 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
 				}
 			}
+
+			parentID := node.IdString()
+			c.structPropOrder[childId] = c.structPropOrder[parentID]
+
+			params := c.generateParameters(id, tree, true)
+			params = c.includeGlobalParams(params)
+			c.resetParaState(params)
+			f := c.module.NewFunc(childId, irtypes.Void, params...)
+			c.contextFunc = f
+			pname = name.Block()
+			c.contextBlock = f.NewBlock(pname)
+			if c.Components[childId] != nil {
+				c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
+			} else {
+				c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
+			}
+			val2 := c.compileBlock(v.Body)
+			c.contextBlock.NewRet(val2)
+			c.contextBlock = oldBlock
+			c.contextFuncName = "__run"
+			c.contextFunc = nil
 
 		default:
 			val := c.compileValue(v)
@@ -595,10 +603,10 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 		}
 		var params []value.Value
 		for _, v := range v.Parameters {
-			l := uint64(len(v.String()))
+			id := v.(ast.Nameable).IdString()
+			l := uint64(len(id))
 			alloc := c.contextBlock.NewAlloca(irtypes.NewArray(l, irtypes.I8))
-			c.contextBlock.NewStore(constant.NewCharArrayFromString(v.String()), alloc)
-			//load := c.contextBlock.NewLoad(irtypes.I8, alloc)
+			c.contextBlock.NewStore(constant.NewCharArrayFromString(id), alloc)
 			cast := c.contextBlock.NewBitCast(alloc, irtypes.I8Ptr)
 			params = append(params, cast)
 		}
@@ -1234,6 +1242,16 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 	return p
 }
 
+func (c *Compiler) stateCheck() {
+	for _, v := range c.Components {
+		id := v.Id
+		s := c.specs[id[0]]
+		params := s.GetParams(id)
+		c.contextBlock.NewCall(v.Func, params...)
+
+	}
+}
+
 func (c *Compiler) fetchOrder(id []string) []string {
 	key := strings.Join(id, "_")
 	return c.structPropOrder[key]
@@ -1340,7 +1358,7 @@ func (c *Compiler) isVarSetAssert(rawid []string) bool {
 
 func (c *Compiler) isInstance(id []string) bool {
 	key := strings.Join(id, "_")
-	for k, _ := range c.instances {
+	for k := range c.instances {
 		if k == key {
 			return true
 		}

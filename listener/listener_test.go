@@ -1603,6 +1603,18 @@ func TestSysSpec(t *testing.T) {
 		t.Fatalf("wrong number of component pairs. got=%d", len(component.Pairs))
 	}
 
+	for k, v := range component.Pairs {
+		if f, ok := v.(*ast.FunctionLiteral); ok {
+			if exp, ok2 := f.Body.Statements[0].(*ast.ExpressionStatement); ok2 {
+				if _, ok3 := exp.Expression.(*ast.IfExpression); !ok3 {
+					t.Fatalf("state %s in component not wrapped with conditional got expression=%s", k, exp.Expression)
+				}
+			} else {
+				t.Fatalf("state %s in component not wrapped with conditional got=%s", k, f.Body.Statements[0])
+			}
+		}
+	}
+
 	_, ok4 := sys.Statements[3].(*ast.ForStatement)
 	if !ok4 {
 		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])

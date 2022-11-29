@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/llir/llvm/ir"
+	irtypes "github.com/llir/llvm/ir/types"
 )
 
 func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
@@ -24,6 +25,11 @@ func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
 
 func (g *Generator) parseFunction(f *ir.Func) []rule {
 	var rules []rule
+
+	if g.isBuiltIn(f.Ident()) {
+		return rules
+	}
+
 	oldfunc := g.currentFunction
 	g.currentFunction = f.Ident()
 
@@ -143,7 +149,13 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstLoad:
 			g.loadsRule(inst)
 		case *ir.InstStore:
-			rules = append(rules, g.storeRule(inst)...)
+			switch inst.Src.Type().(type) {
+			case *irtypes.ArrayType:
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, inst.Dst.Ident())
+				g.variables.loads[refname] = inst.Src
+			default:
+				rules = append(rules, g.storeRule(inst)...)
+			}
 		case *ir.InstFAdd:
 			var r rule
 			r = g.parseInfix(inst.Ident(),
@@ -208,6 +220,9 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			rules = append(rules, r)
 		case *ir.InstCall:
 			callee := inst.Callee.Ident()
+			if g.isBuiltIn(callee) {
+				g.parseBuiltIn(inst)
+			}
 			meta := inst.Metadata
 			if g.isSameParallelGroup(meta) {
 				g.localCallstack = append(g.localCallstack, callee)
@@ -238,6 +253,8 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstOr:
 			r := g.orRule(inst)
 			g.tempRule(inst, r)
+		case *ir.InstBitCast:
+			//Do nothing
 		default:
 			panic(fmt.Sprintf("unrecognized instruction: %T", inst))
 
@@ -286,6 +303,25 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	}
 
 	return t, f, a
+}
+
+func (g *Generator) parseBuiltIn(call *ir.InstCall) rule {
+	p := call.Args
+	bc, ok := p[0].(*ir.InstBitCast)
+	if !ok {
+		panic("improper argument to built in function")
+	}
+	id := bc.From.Ident()
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	state := g.variables.loads[refname]
+	return g.parseRule(state.Ident(), "true", "Bool", "=")
+}
+
+func (g *Generator) isBuiltIn(c string) bool {
+	if c == "@advance" || c == "@stay" {
+		return true
+	}
+	return false
 }
 
 func (g *Generator) isBranchClosed(t []rule, f []rule) bool {

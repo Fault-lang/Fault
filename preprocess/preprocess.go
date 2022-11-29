@@ -520,6 +520,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.IfExpression:
+		pro := &ast.IfExpression{}
 		cond, err := p.walk(node.Condition)
 		if err != nil {
 			return node, err
@@ -531,10 +532,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 
 		if p.collapsibleIf(conseq) {
-			node = p.collapse(node, conseq.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression))
+			pro = p.collapse(node, conseq.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression))
 		} else {
-			node.Condition = cond.(ast.Expression)
-			node.Consequence = conseq.(*ast.BlockStatement)
+			pro.Condition = cond.(ast.Expression)
+			pro.Consequence = conseq.(*ast.BlockStatement)
 		}
 
 		var elif ast.Node
@@ -543,7 +544,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			if err != nil {
 				return node, err
 			}
-			node.Elif = elif.(*ast.IfExpression)
+			pro.Elif = elif.(*ast.IfExpression)
 		}
 
 		var alt ast.Node
@@ -556,17 +557,17 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			if p.collapsibleIf(alt) {
 				el := alt.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 				if node.Elif == nil {
-					node.Elif = el
-					node.Alternative = nil
+					pro.Elif = el
+					pro.Alternative = nil
 				} else {
-					node.Elif = p.attachElif(node.Elif, el)
-					node.Alternative = nil
+					pro.Elif = p.attachElif(node.Elif, el)
+					pro.Alternative = nil
 				}
 			} else {
-				node.Alternative = alt.(*ast.BlockStatement)
+				pro.Alternative = alt.(*ast.BlockStatement)
 			}
 		}
-		return node, err
+		return pro, err
 
 	case *ast.Instance:
 		if p.Specs[p.trail.CurrentSpec()] == nil {

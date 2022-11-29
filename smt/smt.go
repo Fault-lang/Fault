@@ -55,13 +55,11 @@ func NewGenerator() *Generator {
 	}
 }
 
-func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement, components map[string]map[string]string, starts map[string]string) {
+func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) {
 	g.Uncertains = uncertains
 	g.Unknowns = unknowns
 	g.rawAsserts = asserts
 	g.rawAssumes = assumes
-	g.components = components
-	g.componentStarts = starts
 }
 
 func (g *Generator) Run(llopt string) {
