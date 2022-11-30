@@ -148,7 +148,7 @@ func (sd *SpecDeclStatement) String() string {
 	return out.String()
 }
 func (sd *SpecDeclStatement) Type() string {
-	return ""
+	return "SPEC"
 }
 
 type SysDeclStatement struct {
@@ -168,7 +168,7 @@ func (sd *SysDeclStatement) String() string {
 	return out.String()
 }
 func (sd *SysDeclStatement) Type() string {
-	return ""
+	return "SYSTEM"
 }
 
 type ImportStatement struct {
@@ -194,7 +194,7 @@ func (is *ImportStatement) String() string {
 	return out.String()
 }
 func (is *ImportStatement) Type() string {
-	return ""
+	return "IMPORT"
 }
 
 type ConstantStatement struct {
@@ -345,10 +345,15 @@ func (i *Invariant) Position() []int      { return i.Token.GetPosition() }
 func (i *Invariant) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(i.TokenLiteral() + "assert ")
+	out.WriteString(i.TokenLiteral() + " assert ")
 	out.WriteString(i.Variable.String())
-	out.WriteString(i.Conjuction)
-	_, _ = out.WriteString, i.Expression.String
+	if i.Conjuction != "" {
+		out.WriteString(i.Conjuction)
+	}
+	if i.Comparison != "" {
+		out.WriteString(i.Comparison)
+	}
+	out.WriteString(i.Expression.String())
 
 	out.WriteString(";")
 	return out.String()
@@ -405,7 +410,7 @@ func (ss *StartStatement) String() string {
 	return out.String()
 }
 func (ss *StartStatement) Type() string {
-	return ""
+	return "START"
 }
 
 type Identifier struct {
