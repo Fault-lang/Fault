@@ -9,6 +9,9 @@ func InitNodes() []Node {
 	token := Token{Literal: "test", Position: []int{1, 2, 3, 4}}
 	pairs := make(map[*Identifier]Expression)
 	pairs[&Identifier{Token: token, Value: "foo"}] = &IntegerLiteral{Token: token, Value: 3}
+	pairs[&Identifier{Token: token, Value: "bar"}] = &IntegerLiteral{Token: token, Value: 5}
+	pairs[&Identifier{Token: token, Value: "bash"}] = &IntegerLiteral{Token: token, Value: -4}
+	pairOrder := []string{"foo", "bar", "bash"}
 
 	baseType := &Type{Type: "test"}
 	stringType := &Type{Type: "STRING"}
@@ -53,8 +56,9 @@ func InitNodes() []Node {
 		&FunctionLiteral{Token: token, Parameters: []*Identifier{{Token: token, Value: "foo"}}, Body: &BlockStatement{}},
 		&StringLiteral{Token: token, Value: "test"},
 		&IndexExpression{Token: token, Left: &Identifier{Token: token, Value: "foo"}, Index: &IntegerLiteral{Token: token, Value: 3}},
-		&StockLiteral{Token: token, Pairs: pairs},
-		&FlowLiteral{Token: token, Pairs: pairs},
+		&StockLiteral{Token: token, Pairs: pairs, Order: pairOrder},
+		&FlowLiteral{Token: token, Pairs: pairs, Order: pairOrder},
+		&ComponentLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}}}
 }
 
@@ -164,10 +168,13 @@ func TestString(t *testing.T) {
 			want = "(foo[3])"
 		case *StockLiteral:
 			got = t.String()
-			want = "{foo:3}"
+			want = "{foo:3, bar:5, bash:-4}"
 		case *FlowLiteral:
 			got = t.String()
-			want = "{foo:3}"
+			want = "{foo:3, bar:5, bash:-4}"
+		case *ComponentLiteral:
+			got = t.String()
+			want = "{foo:3, bar:5, bash:-4}"
 		case *Unknown:
 			got = t.String()
 			want = "unknown(foo)"
@@ -279,6 +286,9 @@ func TestTypes(t *testing.T) {
 		case *FlowLiteral:
 			got = t.Type()
 			want = "FLOW"
+		case *ComponentLiteral:
+			got = t.Type()
+			want = "COMPONENT"
 		case *Unknown:
 			got = t.Type()
 			want = "UNKNOWN"
