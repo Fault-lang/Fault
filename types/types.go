@@ -475,23 +475,23 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		}
 		return node, err
 
-	case *ast.StateLiteral:
-		body := node.Body.Statements
-		if len(body) == 1 && c.isValue(body[0].(*ast.ExpressionStatement).Expression) {
-			typedNode, err := c.infer(body[0].(*ast.ExpressionStatement).Expression)
-			tn, ok := typedNode.(ast.Expression)
-			if !ok {
-				pos := typedNode.Position()
-				return nil, fmt.Errorf("node %T not an valid expression line: %d, col: %d", typedNode, pos[0], pos[1])
-			}
-			node.Body.Statements[0].(*ast.ExpressionStatement).Expression = tn
-			return node, err
-		}
+	// case *ast.StateLiteral:
+	// 	body := node.Body.Statements
+	// 	if len(body) == 1 && c.isValue(body[0].(*ast.ExpressionStatement).Expression) {
+	// 		typedNode, err := c.infer(body[0].(*ast.ExpressionStatement).Expression)
+	// 		tn, ok := typedNode.(ast.Expression)
+	// 		if !ok {
+	// 			pos := typedNode.Position()
+	// 			return nil, fmt.Errorf("node %T not an valid expression line: %d, col: %d", typedNode, pos[0], pos[1])
+	// 		}
+	// 		node.Body.Statements[0].(*ast.ExpressionStatement).Expression = tn
+	// 		return node, err
+	// 	}
 
-		for i := 0; i < len(body); i++ {
-			node.Body.Statements[i].(*ast.ExpressionStatement).Expression, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression)
-		}
-		return node, err
+	// 	for i := 0; i < len(body); i++ {
+	// 		node.Body.Statements[i].(*ast.ExpressionStatement).Expression, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression)
+	// 	}
+	// 	return node, err
 
 	case *ast.BuiltIn:
 		return node, err

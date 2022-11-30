@@ -447,13 +447,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.StartStatement: //TODO
 		return node, err
-	case *ast.StateLiteral:
-		pro, err = p.walk(node.Body)
-		if err != nil {
-			return pro, err
-		}
-		node.Body = pro.(*ast.BlockStatement)
-		return node, err
+	// case *ast.StateLiteral:
+	// 	pro, err = p.walk(node.Body)
+	// 	if err != nil {
+	// 		return pro, err
+	// 	}
+	// 	node.Body = pro.(*ast.BlockStatement)
+	// 	return node, err
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
 		if p.inStruct == "" {

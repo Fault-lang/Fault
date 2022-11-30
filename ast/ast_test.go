@@ -16,6 +16,8 @@ func InitNodes() []Node {
 	pairOrder := []string{"foo", "bar", "bash"}
 	properties := make(map[string]*StructProperty)
 	properties["foo"] = &StructProperty{Token: token, Spec: "test", Name: "foo", Value: &IntegerLiteral{Token: token, Value: 3}}
+	params := make(map[string]Operand)
+	params["zoo"] = &ParameterCall{Token: token, Value: []string{"foo", "bar"}}
 
 	baseType := &Type{Type: "test"}
 	stringType := &Type{Type: "STRING"}
@@ -66,7 +68,7 @@ func InitNodes() []Node {
 		}, Alternative: &BlockStatement{Token: token,
 			Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "buzz"}, Value: &IntegerLiteral{Token: token, Value: 20}}},
 		}},
-		&FunctionLiteral{Token: token, Parameters: []*Identifier{{Token: token, Value: "foo"}}, Body: &BlockStatement{}},
+		&FunctionLiteral{Token: token, Parameters: []*Identifier{{Token: token, Value: "foo"}}, Body: &BlockStatement{Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "fuzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 24}}}}},
 		&StringLiteral{Token: token, Value: "test"},
 		&IndexExpression{Token: token, Left: &Identifier{Token: token, Value: "foo"}, Index: &IntegerLiteral{Token: token, Value: 3}},
 		&StockLiteral{Token: token, Pairs: pairs, Order: pairOrder},
@@ -74,6 +76,7 @@ func InitNodes() []Node {
 		&ComponentLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}},
 		&StructInstance{Token: token, Properties: properties},
+		&BuiltIn{Token: token, Parameters: params, Function: "advance"},
 	}
 }
 
@@ -114,7 +117,7 @@ func TestString(t *testing.T) {
 			want = "test 3==3;"
 		case *Invariant:
 			got = t.String()
-			want = "testassert 33;"
+			want = "testassert 3;"
 		case *ForStatement:
 			got = t.String()
 			want = "test 5;"
@@ -183,7 +186,7 @@ func TestString(t *testing.T) {
 			}
 		case *FunctionLiteral:
 			got = t.String()
-			want = "test(foo) "
+			want = "test(foo) test fuzz = 24;"
 		case *StringLiteral:
 			got = t.String()
 			want = "test"
@@ -205,6 +208,9 @@ func TestString(t *testing.T) {
 		case *StructInstance:
 			got = t.String()
 			want = "__foo:3"
+		case *BuiltIn:
+			got = t.String()
+			want = "advance(foo.bar)"
 		}
 		if got != want {
 			t.Fatalf("String failed for node type %T. got=%s", n, got)
@@ -322,6 +328,9 @@ func TestTypes(t *testing.T) {
 		case *Unknown:
 			got = t.Type()
 			want = "UNKNOWN"
+		case *BuiltIn:
+			got = t.Type()
+			want = "BUILTIN"
 		}
 		if got != want {
 			t.Fatalf("Type failed for node type %T. got=%s", n, got)
@@ -360,6 +369,29 @@ func TestPropertyIdent(t *testing.T) {
 			v := s.Pairs[id]
 			if i, ok := v.(*IntegerLiteral); !ok || i.Value != 3 {
 				t.Fatal("GetPropertyIdent broken on ComponentLiteral")
+			}
+		}
+	}
+}
+
+func TestOrder(t *testing.T) {
+	nodes := InitNodes()
+	for _, n := range nodes {
+		switch s := n.(type) {
+		case *StockLiteral:
+			keys := s.Order
+			if keys[0] != "foo" || keys[1] != "bar" || keys[2] != "bash" {
+				t.Fatal("order broken on StockLiteral")
+			}
+		case *FlowLiteral:
+			keys := s.Order
+			if keys[0] != "foo" || keys[1] != "bar" || keys[2] != "bash" {
+				t.Fatal("order broken on FlowLiteral")
+			}
+		case *ComponentLiteral:
+			keys := s.Order
+			if keys[0] != "foo" || keys[1] != "bar" || keys[2] != "bash" {
+				t.Fatal("order broken on ComponentLiteral")
 			}
 		}
 	}

@@ -1151,45 +1151,45 @@ func (fl *FunctionLiteral) RawId() []string {
 	return fl.ProcessedName
 }
 
-type StateLiteral struct {
-	Token         Token
-	Parameters    []*Identifier
-	Body          *BlockStatement
-	ProcessedName []string
-}
+// type StateLiteral struct {
+// 	Token         Token
+// 	Parameters    []*Identifier
+// 	Body          *BlockStatement
+// 	ProcessedName []string
+// }
 
-func (sl *StateLiteral) expressionNode()      {}
-func (sl *StateLiteral) TokenLiteral() string { return sl.Token.Literal }
-func (sl *StateLiteral) Position() []int      { return sl.Token.GetPosition() }
-func (sl *StateLiteral) String() string {
-	var out bytes.Buffer
-	params := []string{}
-	for _, p := range sl.Parameters {
-		params = append(params, p.String())
-	}
+// func (sl *StateLiteral) expressionNode()      {}
+// func (sl *StateLiteral) TokenLiteral() string { return sl.Token.Literal }
+// func (sl *StateLiteral) Position() []int      { return sl.Token.GetPosition() }
+// func (sl *StateLiteral) String() string {
+// 	var out bytes.Buffer
+// 	params := []string{}
+// 	for _, p := range sl.Parameters {
+// 		params = append(params, p.String())
+// 	}
 
-	out.WriteString(sl.TokenLiteral())
-	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(") ")
-	out.WriteString(sl.Body.String())
+// 	out.WriteString(sl.TokenLiteral())
+// 	out.WriteString("(")
+// 	out.WriteString(strings.Join(params, ", "))
+// 	out.WriteString(") ")
+// 	out.WriteString(sl.Body.String())
 
-	return out.String()
-}
-func (sl *StateLiteral) Type() string { return sl.Body.Type() }
-func (sl *StateLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
-	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
-}
-func (sl *StateLiteral) SetId(id []string) {
-	sl.ProcessedName = id
-}
-func (sl *StateLiteral) IdString() string {
-	return strings.Join(sl.ProcessedName, "_")
-}
-func (sl *StateLiteral) RawId() []string {
-	return sl.ProcessedName
-}
+// 	return out.String()
+// }
+// func (sl *StateLiteral) Type() string { return sl.Body.Type() }
+// func (sl *StateLiteral) Id() []string {
+// 	// returns []string{spec, rest_of_the_id}
+// 	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
+// }
+// func (sl *StateLiteral) SetId(id []string) {
+// 	sl.ProcessedName = id
+// }
+// func (sl *StateLiteral) IdString() string {
+// 	return strings.Join(sl.ProcessedName, "_")
+// }
+// func (sl *StateLiteral) RawId() []string {
+// 	return sl.ProcessedName
+// }
 
 type BuiltIn struct {
 	Token         Token
@@ -1212,11 +1212,11 @@ func (b *BuiltIn) String() string {
 	out.WriteString(b.Function)
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(") ")
+	out.WriteString(")")
 
 	return out.String()
 }
-func (b *BuiltIn) Type() string { return "builtin" }
+func (b *BuiltIn) Type() string { return "BUILTIN" }
 func (b *BuiltIn) Id() []string { // returns []string{spec, rest_of_the_id}
 	return []string{b.ProcessedName[0], strings.Join(b.ProcessedName[1:], "_")}
 }
@@ -1317,7 +1317,9 @@ func (sl *StockLiteral) String() string {
 	var out bytes.Buffer
 
 	pairs := []string{}
-	for key, value := range sl.Pairs {
+	for _, k := range sl.Order {
+		key := sl.GetPropertyIdent(k)
+		value := sl.Pairs[key]
 		pairs = append(pairs, key.String()+":"+value.String())
 	}
 
@@ -1364,7 +1366,9 @@ func (fl *FlowLiteral) String() string {
 	var out bytes.Buffer
 
 	pairs := []string{}
-	for key, value := range fl.Pairs {
+	for _, k := range fl.Order {
+		key := fl.GetPropertyIdent(k)
+		value := fl.Pairs[key]
 		pairs = append(pairs, key.String()+":"+value.String())
 	}
 
@@ -1412,7 +1416,9 @@ func (cl *ComponentLiteral) String() string {
 	var out bytes.Buffer
 
 	pairs := []string{}
-	for key, value := range cl.Pairs {
+	for _, k := range cl.Order {
+		key := cl.GetPropertyIdent(k)
+		value := cl.Pairs[key]
 		pairs = append(pairs, key.String()+":"+value.String())
 	}
 
