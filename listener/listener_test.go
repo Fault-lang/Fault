@@ -821,6 +821,80 @@ func TestRunBlock(t *testing.T) {
 
 }
 
+func TestRunIfBlock(t *testing.T) {
+	test := `spec test1;
+			 for 5 run{
+				d = new foo;
+				if true {
+					d.fn;
+				}else if false {
+					d.fn2;
+				}else{
+					d.fn3;
+				}
+			 };
+			`
+	_, spec := prepTest(test, nil)
+	if spec == nil {
+		t.Fatalf("prepTest() returned nil")
+	}
+	if len(spec.Statements) != 2 {
+		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
+	}
+	forSt, ok := spec.Statements[1].(*ast.ForStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
+	}
+
+	ifblock, ok := forSt.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("forSt.Body.Statements[1] is not an IfExpression. got=%T", forSt.Body.Statements[1])
+	}
+
+	expr, ok := ifblock.Consequence.Statements[0].(*ast.ParallelFunctions)
+	if !ok {
+		t.Fatalf("if consequence is not packaged as a ParallelFunctions. got=%T", ifblock.Consequence.Statements[0])
+	}
+
+	id, ok := expr.Expressions[0].(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("expr.Expression is not an function call. got=%T", expr.Expressions[0])
+	}
+
+	if id.Value[0] != "d" && id.Value[0] != "fn" {
+		t.Fatalf("Identifier is not d.fn. got=%s", id.Value)
+	}
+
+	expr1, ok := ifblock.Elif.Consequence.Statements[0].(*ast.ParallelFunctions)
+	if !ok {
+		t.Fatalf("if consequence is not packaged as a ParallelFunctions. got=%T", ifblock.Elif.Consequence.Statements[0])
+	}
+
+	id1, ok := expr1.Expressions[0].(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("expr.Expression is not an function call. got=%T", expr1.Expressions[0])
+	}
+
+	if id1.Value[0] != "d" && id1.Value[0] != "fn2" {
+		t.Fatalf("Identifier is not d.fn2. got=%s", id1.Value)
+	}
+
+	expr2, ok := ifblock.Elif.Alternative.Statements[0].(*ast.ParallelFunctions)
+	if !ok {
+		t.Fatalf("if consequence is not packaged as a ParallelFunctions. got=%T", ifblock.Elif.Alternative.Statements[0])
+	}
+
+	id2, ok := expr2.Expressions[0].(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("expr.Expression is not an function call. got=%T", expr2.Expressions[0])
+	}
+
+	if id2.Value[0] != "d" && id2.Value[0] != "fn3" {
+		t.Fatalf("Identifier is not d.fn3. got=%s", id2.Value)
+	}
+
+}
+
 func TestSkipRun(t *testing.T) {
 	test := `spec test1;
 			 const a = 5;
@@ -1376,6 +1450,39 @@ func TestDeclaredType(t *testing.T) {
 	}
 }
 
+func TestInstanceOrder(t *testing.T) {
+	test := `spec test1;
+
+			 def f = stock{
+				test: new foo.bar,
+				test1: 12,
+				test2: -3,
+			 };
+
+			
+			for 1 run {
+				car = new f;
+			}
+			`
+	_, spec := prepTest(test, nil)
+
+	fst, ok4 := spec.Statements[2].(*ast.ForStatement)
+	if !ok4 {
+		t.Fatalf("spec.Statements[2] is not a ForStatement. got=%T", spec.Statements[2])
+	}
+
+	ins, ok5 := fst.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	if !ok5 {
+		t.Fatalf("ForStatement Statement is not an instance. got=%T", fst.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+	order := ins.Order
+	if len(order) != 3 || order[0] != "test" || order[1] != "test1" || order[2] != "test2" {
+		t.Fatalf("instance order not correct. got=%s", order)
+	}
+
+}
+
 func TestUnknown(t *testing.T) {
 	test := `spec test1;
 			 const a = unknown();
@@ -1558,6 +1665,7 @@ func TestUnknown(t *testing.T) {
 	if len(l.Unknowns) != 5 {
 		t.Fatalf("missing an unknown want=5 got=%d", len(l.Unknowns))
 	}
+
 }
 
 func TestSysSpec(t *testing.T) {
@@ -1565,16 +1673,17 @@ func TestSysSpec(t *testing.T) {
 
 			import "foo.fspec";
 
-			component f = states{
-				test: new foo.bar,
+			component c = states{
 				initial: func{
 					advance(this.next);
 				},
+				close: func{
+					advance(this.initial)
+				}
 				next: func{
 					stay();
 				},
 			 };
-
 			
 			for 1 run {
 				car = new f;
@@ -1584,9 +1693,13 @@ func TestSysSpec(t *testing.T) {
 			`
 	_, sys := prepSysTest(test, nil)
 
-	_, ok := sys.Statements[0].(*ast.SysDeclStatement)
+	decl, ok := sys.Statements[0].(*ast.SysDeclStatement)
 	if !ok {
 		t.Fatalf("sys.Statements[0] is not an SysDeclStatement. got=%T", sys.Statements[1])
+	}
+
+	if decl.Name.Value != "test1" {
+		t.Fatalf("system is not named correctly got=%s", decl.Name)
 	}
 
 	_, ok2 := sys.Statements[1].(*ast.ImportStatement)
@@ -1596,7 +1709,7 @@ func TestSysSpec(t *testing.T) {
 
 	component, ok3 := sys.Statements[2].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
 	if !ok3 {
-		t.Fatalf("sys.Statements[2] is not a ComponentLiteral. got=%T", sys.Statements[2])
+		t.Fatalf("sys.Statements[3] is not a ComponentLiteral. got=%T", sys.Statements[2])
 	}
 
 	if len(component.Pairs) != 3 {
@@ -1606,20 +1719,28 @@ func TestSysSpec(t *testing.T) {
 	for k, v := range component.Pairs {
 		if f, ok := v.(*ast.FunctionLiteral); ok {
 			if exp, ok2 := f.Body.Statements[0].(*ast.ExpressionStatement); ok2 {
-				if _, ok3 := exp.Expression.(*ast.IfExpression); !ok3 {
+				if ifblock, ok3 := exp.Expression.(*ast.IfExpression); !ok3 {
 					t.Fatalf("state %s in component not wrapped with conditional got expression=%s", k, exp.Expression)
+				} else {
+					if b, ok4 := ifblock.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn); !ok4 {
+						t.Fatal("missing built in function")
+					} else {
+						if k.Value == "initial" && (b.Function != "advance" || b.Parameters["toState"].(*ast.ParameterCall).String() != "this.next") {
+							t.Fatalf("builtin in state %s formatted incorrectly", k.Value)
+						}
+						if k.Value == "close" && (b.Function != "advance" || b.Parameters["toState"].(*ast.ParameterCall).String() != "this.initial") {
+							t.Fatalf("builtin in state %s formatted incorrectly", k.Value)
+						}
+						if k.Value == "next" && b.Function != "stay" {
+							t.Fatalf("builtin in state %s formatted incorrectly", k.Value)
+						}
+					}
 				}
 			} else {
 				t.Fatalf("state %s in component not wrapped with conditional got=%s", k, f.Body.Statements[0])
 			}
 		}
 	}
-
-	_, ok4 := sys.Statements[3].(*ast.ForStatement)
-	if !ok4 {
-		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])
-	}
-
 }
 
 func TestSysGlobal(t *testing.T) {
