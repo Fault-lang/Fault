@@ -155,7 +155,11 @@ func (v *variables) lookupType(id string, value value.Value) string {
 		case *irtypes.IntType: // LLVM doesn't have a bool type
 			v.types[id] = "Bool" // Just int type with a bitsize 1
 			return "Bool"        // since all Fault numbers are floats,
-		} // ints are probably bools
+		// ints are probably bools
+		case *irtypes.ArrayType:
+			v.types[id] = "Bool"
+			return "Bool"
+		}
 	}
 
 	if val.Type().Equal(llvm.DoubleP) {

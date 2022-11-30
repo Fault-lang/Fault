@@ -983,15 +983,24 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 
 		if fn, ok := branch.(*ast.FunctionLiteral); ok {
-			oldScope := p.scope
-			p.scope = rawid[1]
+			var oldScope string
+			if ty == "COMPONENT" {
+				oldScope = p.scope
+				p.scope = rawid[1]
+				p.inState = rawid[1]
+			}
+
 			fn2, err := p.walk(fn)
 			if err != nil {
 				return node, err
 			}
 			proFn := fn2.(*ast.FunctionLiteral)
 			spec.UpdateVar(rawid, ty, proFn)
-			p.scope =oldScope
+
+			if ty == "COMPONENT" {
+				p.scope = oldScope
+				p.inState = ""
+			}
 		}
 
 		return node, err

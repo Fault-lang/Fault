@@ -105,9 +105,6 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.constants = g.newConstants(m.Globals)
 	g.sortFuncs(m.Funcs)
 
-	//starts := g.initStarts()
-	//g.inits = append(g.inits, starts...)
-
 	run := g.parseRunBlock(m.Funcs)
 
 	g.rules = append(g.rules, g.generateRules(run)...)

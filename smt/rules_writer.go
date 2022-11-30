@@ -85,10 +85,23 @@ func (g *Generator) writeRule(ru rule) string {
 }
 
 func (g *Generator) writeCond(r *infix) string {
-	y := g.unpackRule(r.y)
-	x := g.unpackRule(r.x)
+	y := g.unpackCondRule(r.y)
+	x := g.unpackCondRule(r.x)
 
 	return g.writeInfix(x, y, r.op)
+}
+
+func (g *Generator) unpackCondRule(x rule) string {
+	switch r := x.(type) {
+	case *wrap:
+		return r.value
+	case *infix:
+		x := g.unpackCondRule(r.x)
+		y := g.unpackCondRule(r.y)
+		return g.writeInfix(x, y, r.op)
+	default:
+		panic(fmt.Sprintf("%T is not a valid rule type", r))
+	}
 }
 
 func (g *Generator) unpackRule(x rule) string {
