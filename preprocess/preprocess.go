@@ -54,11 +54,6 @@ func (p *Processor) buildIdContext(spec string) []string {
 	if p.inState != "" {
 		return []string{spec}
 	}
-
-	// if p.inStruct != "" {
-	// 	return []string{spec, p.inStruct}
-	// }
-
 	scopeParts := strings.Split(p.scope, "_")
 	if scopeParts[0] == "" {
 		return []string{spec}
@@ -460,6 +455,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Body = pro.(*ast.BlockStatement)
 		return node, err
 	case *ast.FunctionLiteral:
+		oldStruct := p.inStruct
 		if p.inStruct == "" {
 			rawid := node.RawId()
 			p.inStruct = rawid[1]
@@ -472,6 +468,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		node.Body = pro.(*ast.BlockStatement)
 		p.inFunc = false
+		p.inStruct = oldStruct
 		return node, err
 	case *ast.BlockStatement:
 		var statements []ast.Statement
@@ -986,12 +983,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 
 		if fn, ok := branch.(*ast.FunctionLiteral); ok {
+			oldScope := p.scope
+			p.scope = rawid[1]
 			fn2, err := p.walk(fn)
 			if err != nil {
 				return node, err
 			}
 			proFn := fn2.(*ast.FunctionLiteral)
 			spec.UpdateVar(rawid, ty, proFn)
+			p.scope =oldScope
 		}
 
 		return node, err
