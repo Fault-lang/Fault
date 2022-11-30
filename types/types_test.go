@@ -5,31 +5,10 @@ import (
 	"fault/listener"
 	"fault/parser"
 	"fault/preprocess"
-	"fault/util"
 	"testing"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
-
-func TestImportTrail(t *testing.T) {
-	it := util.ImportTrail{}
-	it = it.PushSpec("test")
-	it = it.PushSpec("this")
-	it = it.PushSpec("trail")
-
-	if len(it) != 3 {
-		t.Fatal("specs not added to trail correctly")
-	}
-
-	i, it2 := it.PopSpec()
-	if i != "trail" {
-		t.Fatalf("trail entry incorrect. got=%s, want=trail", i)
-	}
-
-	if len(it2) != 2 {
-		t.Fatal("specs not popped off trail correctly")
-	}
-}
 
 func TestAddOK(t *testing.T) {
 	test := `spec test1;
