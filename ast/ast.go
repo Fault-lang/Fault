@@ -1417,7 +1417,7 @@ func (cl *ComponentLiteral) String() string {
 	}
 
 	out.WriteString("{")
-	_, _, _ = out.WriteString, strings.Join, pairs
+	out.WriteString(strings.Join(pairs, ", "))
 	out.WriteString("}")
 
 	return out.String()
