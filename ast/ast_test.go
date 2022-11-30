@@ -7,11 +7,15 @@ import (
 
 func InitNodes() []Node {
 	token := Token{Literal: "test", Position: []int{1, 2, 3, 4}}
+	tokenAlt1 := Token{Literal: "test2", Position: []int{1, 2, 3, 4}}
+	tokenAlt2 := Token{Literal: "test3", Position: []int{1, 2, 3, 4}}
 	pairs := make(map[*Identifier]Expression)
 	pairs[&Identifier{Token: token, Value: "foo"}] = &IntegerLiteral{Token: token, Value: 3}
 	pairs[&Identifier{Token: token, Value: "bar"}] = &IntegerLiteral{Token: token, Value: 5}
 	pairs[&Identifier{Token: token, Value: "bash"}] = &IntegerLiteral{Token: token, Value: -4}
 	pairOrder := []string{"foo", "bar", "bash"}
+	properties := make(map[string]*StructProperty)
+	properties["foo"] = &StructProperty{Token: token, Spec: "test", Name: "foo", Value: &IntegerLiteral{Token: token, Value: 3}}
 
 	baseType := &Type{Type: "test"}
 	stringType := &Type{Type: "STRING"}
@@ -29,6 +33,7 @@ func InitNodes() []Node {
 		&AssumptionStatement{Token: token, Constraints: &InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}}},
 		&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Comparison: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		&ForStatement{Token: token, Rounds: &IntegerLiteral{Token: token, Value: 5}, Body: &BlockStatement{}},
+		&ExpressionStatement{Token: token, Expression: &PrefixExpression{Token: token, Operator: "!", Right: &IntegerLiteral{Token: token, Value: 3}}},
 		&Identifier{InferredType: baseType, Token: token, Value: "foo"},
 		&ParameterCall{Token: token, Value: []string{"foo", "bar"}},
 		&AssertVar{Token: token, Spec: "test", Instances: []string{"foo", "bar"}},
@@ -50,22 +55,32 @@ func InitNodes() []Node {
 			Token:      token,
 			Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "fuzz"}, Value: &IntegerLiteral{Token: token, Value: 24}}},
 		},
-			Alternative: &BlockStatement{Token: token,
-				Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "buzz"}, Value: &IntegerLiteral{Token: token, Value: 20}}},
-			}, Elif: &IfExpression{Token: token, Condition: &Boolean{Token: token, Value: false}, Consequence: &BlockStatement{}}},
+			Elif: &IfExpression{Token: token, Condition: &Boolean{Token: token, Value: false}, Consequence: &BlockStatement{}}},
+		&IfExpression{Token: tokenAlt1, Condition: &Boolean{Token: token, Value: true}, Consequence: &BlockStatement{
+			Token:      token,
+			Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "fuzz"}, Value: &IntegerLiteral{Token: token, Value: 24}}},
+		}},
+		&IfExpression{Token: tokenAlt2, Condition: &Boolean{Token: token, Value: true}, Consequence: &BlockStatement{
+			Token:      token,
+			Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "fuzz"}, Value: &IntegerLiteral{Token: token, Value: 24}}},
+		}, Alternative: &BlockStatement{Token: token,
+			Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "buzz"}, Value: &IntegerLiteral{Token: token, Value: 20}}},
+		}},
 		&FunctionLiteral{Token: token, Parameters: []*Identifier{{Token: token, Value: "foo"}}, Body: &BlockStatement{}},
 		&StringLiteral{Token: token, Value: "test"},
 		&IndexExpression{Token: token, Left: &Identifier{Token: token, Value: "foo"}, Index: &IntegerLiteral{Token: token, Value: 3}},
 		&StockLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&FlowLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&ComponentLiteral{Token: token, Pairs: pairs, Order: pairOrder},
-		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}}}
+		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}},
+		&StructInstance{Token: token, Properties: properties},
+	}
 }
 
 func TestTokenLiteral(t *testing.T) {
 	nodes := InitNodes()
 	for _, n := range nodes {
-		if n.TokenLiteral() != "test" {
+		if n.TokenLiteral() != "test" && n.TokenLiteral() != "test2" && n.TokenLiteral() != "test3" {
 			t.Fatalf("TokenLiteral failed for node type %T. got=%s", n, n.TokenLiteral())
 		}
 	}
@@ -148,6 +163,9 @@ func TestString(t *testing.T) {
 		case *BlockStatement:
 			got = t.String()
 			want = ""
+		case *ExpressionStatement:
+			got = t.String()
+			want = "(!3)"
 		case *ParallelFunctions:
 			got = t.String()
 			want = "testtest"
@@ -156,7 +174,13 @@ func TestString(t *testing.T) {
 			want = "init test"
 		case *IfExpression:
 			got = t.String()
-			want = "if(test){test fuzz = 24;}else if(test){}"
+			if t.TokenLiteral() == "test2" {
+				want = "if(test){test fuzz = 24;}"
+			} else if t.TokenLiteral() == "test3" {
+				want = "if(test){test fuzz = 24;}else{test buzz = 20;}"
+			} else {
+				want = "if(test){test fuzz = 24;}else if(test){}"
+			}
 		case *FunctionLiteral:
 			got = t.String()
 			want = "test(foo) "
@@ -178,6 +202,9 @@ func TestString(t *testing.T) {
 		case *Unknown:
 			got = t.String()
 			want = "unknown(foo)"
+		case *StructInstance:
+			got = t.String()
+			want = "__foo:3"
 		}
 		if got != want {
 			t.Fatalf("String failed for node type %T. got=%s", n, got)
@@ -262,6 +289,9 @@ func TestTypes(t *testing.T) {
 		case *BlockStatement:
 			got = t.Type()
 			want = ""
+		case *ExpressionStatement:
+			got = t.Type()
+			want = "INT"
 		case *ParallelFunctions:
 			got = t.Type()
 			want = ""
@@ -305,6 +335,32 @@ func TestPosition(t *testing.T) {
 		pos := n.Position()
 		if pos[0] != 1 || pos[1] != 2 || pos[2] != 3 || pos[3] != 4 {
 			t.Fatalf("Position failed for node type %T. got=%s", n, fmt.Sprint(n.Position()))
+		}
+	}
+}
+
+func TestPropertyIdent(t *testing.T) {
+	nodes := InitNodes()
+	for _, n := range nodes {
+		switch s := n.(type) {
+		case *StockLiteral:
+			id := s.GetPropertyIdent("foo")
+			v := s.Pairs[id]
+			if i, ok := v.(*IntegerLiteral); !ok || i.Value != 3 {
+				t.Fatal("GetPropertyIdent broken on StockLiteral")
+			}
+		case *FlowLiteral:
+			id := s.GetPropertyIdent("foo")
+			v := s.Pairs[id]
+			if i, ok := v.(*IntegerLiteral); !ok || i.Value != 3 {
+				t.Fatal("GetPropertyIdent broken on FlowLiteral")
+			}
+		case *ComponentLiteral:
+			id := s.GetPropertyIdent("foo")
+			v := s.Pairs[id]
+			if i, ok := v.(*IntegerLiteral); !ok || i.Value != 3 {
+				t.Fatal("GetPropertyIdent broken on ComponentLiteral")
+			}
 		}
 	}
 }

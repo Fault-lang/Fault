@@ -348,7 +348,7 @@ func (i *Invariant) String() string {
 	out.WriteString(i.TokenLiteral() + "assert ")
 	out.WriteString(i.Variable.String())
 	out.WriteString(i.Conjuction)
-	out.WriteString(i.Expression.String())
+	_, _ = out.WriteString, i.Expression.String
 
 	out.WriteString(";")
 	return out.String()

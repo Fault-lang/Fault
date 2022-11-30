@@ -54,7 +54,7 @@ func (t *Tracer) walk(n ast.Node) {
 	case *ast.StartStatement:
 		for _, v := range node.Pairs {
 			id := strings.Join(v, "_")
-			if _, ok := t.graph[id]; !ok && !t.seenBefore(id) {
+			if _, ok := t.graph[id]; !ok {
 				t.undefined = append(t.undefined, id)
 			} else {
 				t.graph[id] = true
@@ -81,7 +81,7 @@ func (t *Tracer) walk(n ast.Node) {
 	case *ast.BuiltIn:
 		for _, v := range node.Parameters {
 			id := v.(ast.Nameable).Id()
-			if _, ok := t.graph[id[1]]; !ok && !t.seenBefore(id[1]) {
+			if _, ok := t.graph[id[1]]; !ok {
 				t.undefined = append(t.undefined, id[1])
 			} else {
 				t.graph[id[1]] = true
@@ -112,7 +112,7 @@ func (t *Tracer) removeUndefined(id string) {
 
 func (t *Tracer) check() (bool, []string) {
 	for k, v := range t.graph {
-		if !v && !t.seenBefore(k) {
+		if !v {
 			t.undefined = append(t.undefined, k)
 		}
 	}

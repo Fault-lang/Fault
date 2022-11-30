@@ -185,6 +185,40 @@ func TestMultiCorrect(t *testing.T) {
 	}
 }
 
+func TestMultiPath(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		initial: func{
+			advance(bar.alarm);
+		},
+	};
+
+	component bar = states{
+		initial: func{
+			advance(this.alarm);
+		},
+		alarm: func{
+			advance(this.close);
+		},
+		close: func{
+			stay();
+		},
+	};
+
+	start {
+		foo: initial,
+		bar: initial,
+	};
+	`
+	check, missing := prepTestSys(test)
+
+	if !check || len(missing) > 0 {
+		t.Fatalf("reachability check failed on valid spec got=%s", missing)
+	}
+}
+
 func prepTestSys(test string) (bool, []string) {
 	path := ""
 	is := antlr.NewInputStream(test)
