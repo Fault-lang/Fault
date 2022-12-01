@@ -56,19 +56,19 @@ type Compiler struct {
 	// Where a condition should jump when done
 	contextCondAfter []*ir.Block
 
-	builtIns        map[string]*ir.Func
-	specStructs     map[string]*preprocess.SpecRecord
-	specFunctions   map[string]value.Value
-	specGlobals     map[string]*ir.Global
-	sysGlobals      []*ir.Param
-	RawAsserts      []*ast.AssertionStatement
-	RawAssumes      []*ast.AssumptionStatement
-	Asserts         []*ast.AssertionStatement
-	Assumes         []*ast.AssumptionStatement
-	Uncertains      map[string][]float64
-	Unknowns        []string
-	Components      map[string]*StateFunc
-	ComponentStarts map[string]string
+	builtIns       map[string]*ir.Func
+	specStructs    map[string]*preprocess.SpecRecord
+	specFunctions  map[string]value.Value
+	specGlobals    map[string]*ir.Global
+	sysGlobals     []*ir.Param
+	RawAsserts     []*ast.AssertionStatement
+	RawAssumes     []*ast.AssumptionStatement
+	Asserts        []*ast.AssertionStatement
+	Assumes        []*ast.AssumptionStatement
+	Uncertains     map[string][]float64
+	Unknowns       []string
+	Components     map[string]*StateFunc
+	ComponentOrder []string
 }
 
 func NewCompiler() *Compiler {
@@ -84,14 +84,13 @@ func NewCompiler() *Compiler {
 		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
 
-		runRound:        0,
-		builtIns:        make(map[string]*ir.Func),
-		specStructs:     make(map[string]*preprocess.SpecRecord),
-		specFunctions:   make(map[string]value.Value),
-		specGlobals:     make(map[string]*ir.Global),
-		Uncertains:      make(map[string][]float64),
-		Components:      make(map[string]*StateFunc),
-		ComponentStarts: make(map[string]string),
+		runRound:      0,
+		builtIns:      make(map[string]*ir.Func),
+		specStructs:   make(map[string]*preprocess.SpecRecord),
+		specFunctions: make(map[string]value.Value),
+		specGlobals:   make(map[string]*ir.Global),
+		Uncertains:    make(map[string][]float64),
+		Components:    make(map[string]*StateFunc),
 	}
 	c.addGlobal()
 	return c
@@ -218,8 +217,6 @@ func (c *Compiler) compile(node ast.Node) {
 				p := s.GetSpecVarPointer(rawid)
 				c.contextBlock.NewStore(r, p)
 			}
-
-			c.ComponentStarts[p[0]] = p[1]
 
 		}
 
@@ -405,11 +402,8 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			c.contextFunc = f
 			pname = name.Block()
 			c.contextBlock = f.NewBlock(pname)
-			if c.Components[childId] != nil {
-				c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
-			} else {
-				c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
-			}
+			c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
+			c.ComponentOrder = append(c.ComponentOrder, childId)
 			val2 := c.compileBlock(v.Body)
 			c.contextBlock.NewRet(val2)
 			c.contextBlock = oldBlock
@@ -465,11 +459,6 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 		c.isFunction(branches[key]) {
 		return c.processFunc(id, branches, false)
 	}
-
-	// Otherwise inline the parameter...
-	// if c.currScope[0] == "" {
-	// 	c.currScope = []string{pc.Value[0]}
-	// }
 	parentFunction := c.contextFuncName
 	c.contextFuncName = pc.Value[0]
 
@@ -489,9 +478,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			c.allocVariable(id, val, pc.Position())
 		}
 	}
-	// if c.currScope[0] == pc.Value[0] {
-	// 	c.currScope = []string{""}
-	// }
+
 	c.contextFuncName = parentFunction
 	return val
 }
@@ -1079,11 +1066,9 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		f := c.module.NewFunc(fname, irtypes.Void, params...)
 		c.contextFunc = f
 
-		//oldScope := c.currScope
 		oldBlock := c.contextBlock
 
 		c.contextFuncName = fname
-		//c.currScope = []string{id[1]} // NOT necessarily the same as structName
 		c.contextBlock = f.NewBlock(name.Block())
 
 		val := c.compileValue(branch[rawId[len(rawId)-1]])
@@ -1091,7 +1076,6 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 
 		c.contextBlock = oldBlock
 		c.contextFuncName = "__run"
-		//c.currScope = oldScope
 		c.specFunctions[fname] = f
 		c.contextFunc = nil
 		c.resetParaState(params)
@@ -1243,12 +1227,12 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 }
 
 func (c *Compiler) stateCheck() {
-	for _, v := range c.Components {
+	for _, k := range c.ComponentOrder {
+		v := c.Components[k]
 		id := v.Id
 		s := c.specs[id[0]]
 		params := s.GetParams(id)
 		c.contextBlock.NewCall(v.Func, params...)
-
 	}
 }
 

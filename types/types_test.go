@@ -86,8 +86,7 @@ func TestStructTypeError(t *testing.T) {
 			};
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "stock is the store of values, stock test1_fizz should be a flow"
 
 	if err.Error() != actual {
@@ -110,8 +109,7 @@ func TestInstanceError(t *testing.T) {
 			};
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "can't find node [test1 fizz buzz] line:9, col:5"
 
 	if err.Error() != actual {
@@ -508,10 +506,6 @@ func TestComplexStruct(t *testing.T) {
 		t.Fatalf("instance has wrong type. got=%s", inst.Type())
 	}
 
-	// if !inst.Complex {
-	// 	t.Fatalf("instance should be complex")
-	// }
-
 	fl, _ := str.FetchFlow("str3")
 
 	inst2, ok := fl["buzz"].(*ast.StructInstance)
@@ -580,10 +574,6 @@ func TestReallyComplexStruct(t *testing.T) {
 		t.Fatalf("instance has wrong type. got=%s", inst.Type())
 	}
 
-	// if !inst.Complex {
-	// 	t.Fatalf("instance should be complex")
-	// }
-
 }
 
 func TestInvalidAssert(t *testing.T) {
@@ -593,8 +583,7 @@ func TestInvalidAssert(t *testing.T) {
 			assert a + 5;
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
 	if err == nil || err.Error() != actual {
@@ -610,8 +599,7 @@ func TestInvalidAssert2(t *testing.T) {
 			assert 5 + a;
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
 	if err == nil || err.Error() != actual {
@@ -627,8 +615,7 @@ func TestInvalidAssert3(t *testing.T) {
 			assert true + a;
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "invalid expression: got=BOOL + FLOAT"
 
 	if err == nil || err.Error() != actual {
@@ -656,8 +643,7 @@ func TestInvalidInfix(t *testing.T) {
 			const a = 2 + "world";
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "type mismatch: got=INT,STRING"
 
 	if err == nil || err.Error() != actual {
@@ -671,8 +657,7 @@ func TestInvalidInfix2(t *testing.T) {
 			const a = "hello" + 4;
 	`
 	_, err := prepTest(test)
-	//sym := checker.SymbolTypes
-
+	
 	actual := "type mismatch: got=STRING,INT"
 
 	if err == nil || err.Error() != actual {

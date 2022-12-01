@@ -445,15 +445,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.Body.Statements[i] = pro.(ast.Statement)
 		}
 		return node, err
-	case *ast.StartStatement: //TODO
+	case *ast.StartStatement:
 		return node, err
-	// case *ast.StateLiteral:
-	// 	pro, err = p.walk(node.Body)
-	// 	if err != nil {
-	// 		return pro, err
-	// 	}
-	// 	node.Body = pro.(*ast.BlockStatement)
-	// 	return node, err
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
 		if p.inStruct == "" {
@@ -598,8 +591,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			key = strings.Join([]string{p.scope, node.Name}, "_")
 		}
 
-		// oldStruct := p.inStruct
-		// p.inStruct = node.Name
 		oldScope := p.scope
 		p.scope = key
 
@@ -674,7 +665,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
 			p.scope = oldScope
-			//p.inStruct = oldStruct
 			return pro, err
 		case "FLOW":
 			reference, err := importSpec.FetchFlow(node.Value.Value)
@@ -743,7 +733,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
 			p.scope = oldScope
-			//p.inStruct = oldStruct
 			return pro, err
 		default:
 			return node, fmt.Errorf("can't find an instance named %s", node.Value.Value)
@@ -755,8 +744,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		order := node.Order
 
-		// oldStruct := p.inStruct
-		// p.inStruct = node.Name
 		var key string
 		importSpec := p.Specs[node.Spec] //Where the struct definition lives
 
@@ -831,7 +818,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.ProcessedName = pn
 			p.scope = oldScope
 
-			//p.inStruct = oldStruct
 			return node, err
 		case "FLOW":
 			reference, err := importSpec.FetchFlow(pname)
@@ -890,7 +876,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.ProcessedName = pn
 			p.scope = oldScope
 
-			//p.inStruct = oldStruct
 			return node, err
 		default:
 			return node, fmt.Errorf("can't find a struct instance named %s", node.Parent)

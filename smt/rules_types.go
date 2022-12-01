@@ -242,10 +242,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
 				if g.variables.isBolean(r.y.String()) {
-					//rules = append(rules, &infix{x: wid, ty: "Bool", y: r, declareOnly: true}) // Still need to declare the new state
 					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, op: "="})
 				} else if g.isASolvable(r.x.String()) {
-					//rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true})
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r, op: "="})
 				} else {
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
@@ -278,13 +276,6 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 	}
 	return rules
 }
-
-// func (g *Generator) callRule(inst *ir.InstCall) string {
-// 	callee := inst.Callee.Ident()
-// 	meta := inst.Metadata
-// 	g.parallelMeta(g.parallelGrouping, meta)
-// 	return callee
-// }
 
 func (g *Generator) xorRule(inst *ir.InstXor) rule {
 	x := inst.X.Ident()

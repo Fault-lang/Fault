@@ -71,21 +71,12 @@ func (g *Generator) isASolvable(id string) bool {
 	return false
 }
 
-// func (g *Generator) getType(val value.Value) string {
-// 	switch val.Type().(type) {
-// 	case *irtypes.FloatType:
-// 		return "Real"
-// 	}
-// 	return ""
-// }
-
 func (g *variables) convertIdent(f string, val string) string {
 	if g.isTemp(val) {
 		refname := fmt.Sprintf("%s-%s", f, val)
 		if v, ok := g.loads[refname]; ok {
 			id := g.formatIdent(v.Ident())
 			if v, ok := g.ssa[id]; ok {
-				//id = g.formatIdent(id)
 				return fmt.Sprint(id, "_", v)
 			} else {
 				panic(fmt.Sprintf("variable %s not initialized", id))

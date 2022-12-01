@@ -21,9 +21,7 @@ type Generator struct {
 	functions       map[string]*ir.Func
 	rawAsserts      []*ast.AssertionStatement
 	rawAssumes      []*ast.AssumptionStatement
-	components      map[string]map[string]string
-	componentStarts map[string]string
-
+	
 	// Generated SMT
 	inits     []string
 	constants []string
@@ -48,8 +46,6 @@ func NewGenerator() *Generator {
 		blocks:          make(map[string][]rule),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
-		components:      make(map[string]map[string]string),
-		componentStarts: make(map[string]string),
 		inPhiState:      NewPhiState(),
 		returnVoid:      NewPhiState(),
 	}

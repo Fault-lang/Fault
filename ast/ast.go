@@ -438,7 +438,6 @@ func (i *Identifier) SetId(id []string) {
 	i.ProcessedName = id
 }
 func (i *Identifier) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{i.ProcessedName[0], strings.Join(i.ProcessedName[1:], "_")}
 }
 func (i *Identifier) IdString() string {
@@ -480,7 +479,6 @@ func (p *ParameterCall) SetId(id []string) {
 	p.ProcessedName = id
 }
 func (p *ParameterCall) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{p.ProcessedName[0], strings.Join(p.ProcessedName[1:], "_")}
 }
 func (p *ParameterCall) IdString() string {
@@ -538,7 +536,6 @@ func (si *StructInstance) Type() string {
 	return string(si.Token.Literal)
 }
 func (si *StructInstance) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{si.ProcessedName[0], strings.Join(si.ProcessedName[1:], "_")}
 }
 func (si *StructInstance) SetId(id []string) {
@@ -575,7 +572,6 @@ func (sp *StructProperty) Type() string {
 	return string(sp.Value.Type())
 }
 func (sp *StructProperty) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{sp.ProcessedName[0], strings.Join(sp.ProcessedName[1:], "_")}
 }
 
@@ -617,7 +613,6 @@ func (i *Instance) SetId(id []string) {
 	i.ProcessedName = id
 }
 func (i *Instance) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{i.ProcessedName[0], strings.Join(i.ProcessedName[1:], "_")}
 }
 
@@ -676,7 +671,6 @@ func (il *IntegerLiteral) SetId(id []string) {
 	il.ProcessedName = id
 }
 func (il *IntegerLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{il.ProcessedName[0], strings.Join(il.ProcessedName[1:], "_")}
 }
 func (il *IntegerLiteral) IdString() string {
@@ -710,7 +704,6 @@ func (fl *FloatLiteral) SetId(id []string) {
 	fl.ProcessedName = id
 }
 func (fl *FloatLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{fl.ProcessedName[0], strings.Join(fl.ProcessedName[1:], "_")}
 }
 func (fl *FloatLiteral) IdString() string {
@@ -744,7 +737,6 @@ func (n *Natural) SetId(id []string) {
 	n.ProcessedName = id
 }
 func (n *Natural) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{n.ProcessedName[0], strings.Join(n.ProcessedName[1:], "_")}
 }
 func (n *Natural) IdString() string {
@@ -783,7 +775,6 @@ func (u *Uncertain) Type() string {
 	}
 }
 func (u *Uncertain) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{u.ProcessedName[0], strings.Join(u.ProcessedName[1:], "_")}
 }
 func (u *Uncertain) SetId(id []string) {
@@ -826,7 +817,6 @@ func (u *Unknown) Type() string {
 	}
 }
 func (u *Unknown) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{u.ProcessedName[0], strings.Join(u.ProcessedName[1:], "_")}
 }
 func (u *Unknown) SetId(id []string) {
@@ -920,7 +910,6 @@ func (b *Boolean) Type() string {
 	}
 }
 func (b *Boolean) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{b.ProcessedName[0], strings.Join(b.ProcessedName[1:], "_")}
 }
 func (b *Boolean) SetId(id []string) {
@@ -955,7 +944,6 @@ func (t *This) Type() string {
 	}
 }
 func (t *This) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{t.ProcessedName[0], strings.Join(t.ProcessedName[1:], "_")}
 }
 func (t *This) SetId(id []string) {
@@ -1143,7 +1131,6 @@ func (fl *FunctionLiteral) String() string {
 }
 func (fl *FunctionLiteral) Type() string { return fl.Body.Type() }
 func (fl *FunctionLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{fl.ProcessedName[0], strings.Join(fl.ProcessedName[1:], "_")}
 }
 func (fl *FunctionLiteral) SetId(id []string) {
@@ -1155,46 +1142,6 @@ func (fl *FunctionLiteral) IdString() string {
 func (fl *FunctionLiteral) RawId() []string {
 	return fl.ProcessedName
 }
-
-// type StateLiteral struct {
-// 	Token         Token
-// 	Parameters    []*Identifier
-// 	Body          *BlockStatement
-// 	ProcessedName []string
-// }
-
-// func (sl *StateLiteral) expressionNode()      {}
-// func (sl *StateLiteral) TokenLiteral() string { return sl.Token.Literal }
-// func (sl *StateLiteral) Position() []int      { return sl.Token.GetPosition() }
-// func (sl *StateLiteral) String() string {
-// 	var out bytes.Buffer
-// 	params := []string{}
-// 	for _, p := range sl.Parameters {
-// 		params = append(params, p.String())
-// 	}
-
-// 	out.WriteString(sl.TokenLiteral())
-// 	out.WriteString("(")
-// 	out.WriteString(strings.Join(params, ", "))
-// 	out.WriteString(") ")
-// 	out.WriteString(sl.Body.String())
-
-// 	return out.String()
-// }
-// func (sl *StateLiteral) Type() string { return sl.Body.Type() }
-// func (sl *StateLiteral) Id() []string {
-// 	// returns []string{spec, rest_of_the_id}
-// 	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
-// }
-// func (sl *StateLiteral) SetId(id []string) {
-// 	sl.ProcessedName = id
-// }
-// func (sl *StateLiteral) IdString() string {
-// 	return strings.Join(sl.ProcessedName, "_")
-// }
-// func (sl *StateLiteral) RawId() []string {
-// 	return sl.ProcessedName
-// }
 
 type BuiltIn struct {
 	Token         Token
@@ -1255,7 +1202,6 @@ func (sl *StringLiteral) Type() string {
 	}
 }
 func (sl *StringLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{sl.ProcessedName[0], strings.Join(sl.ProcessedName[1:], "_")}
 }
 func (sl *StringLiteral) SetId(id []string) {
@@ -1294,7 +1240,6 @@ func (ie *IndexExpression) Type() string {
 	return ie.Left.Type()
 }
 func (ie *IndexExpression) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{ie.ProcessedName[0], strings.Join(ie.ProcessedName[1:], "_")}
 }
 func (ie *IndexExpression) SetId(id []string) {
@@ -1385,7 +1330,6 @@ func (fl *FlowLiteral) String() string {
 }
 func (fl *FlowLiteral) Type() string { return "FLOW" }
 func (fl *FlowLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{fl.ProcessedName[0], strings.Join(fl.ProcessedName[1:], "_")}
 }
 func (fl *FlowLiteral) SetId(id []string) {
@@ -1435,7 +1379,6 @@ func (cl *ComponentLiteral) String() string {
 }
 func (cl *ComponentLiteral) Type() string { return "COMPONENT" }
 func (cl *ComponentLiteral) Id() []string {
-	// returns []string{spec, rest_of_the_id}
 	return []string{cl.ProcessedName[0], strings.Join(cl.ProcessedName[1:], "_")}
 }
 func (cl *ComponentLiteral) SetId(id []string) {
