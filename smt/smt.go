@@ -11,44 +11,43 @@ import (
 )
 
 type Generator struct {
-	// Raw input
-	Uncertains map[string][]float64
-	Unknowns   []string
-	functions  map[string]*ir.Func
-	rawAsserts []*ast.AssertionStatement
-	rawAssumes []*ast.AssumptionStatement
+	currentFunction string
+	currentBlock    string
+	branchId        int
 
+	// Raw input
+	Uncertains      map[string][]float64
+	Unknowns        []string
+	functions       map[string]*ir.Func
+	rawAsserts      []*ast.AssertionStatement
+	rawAssumes      []*ast.AssumptionStatement
+	
 	// Generated SMT
 	inits     []string
 	constants []string
 	rules     []string
 	asserts   []string
 
-	variables        *variables
-	forks            []Fork
-	call             int
-	callstack        map[int][]string
-	parallelGrouping string
-	inPhiState       bool //Flag, are we in a conditional or parallel?
-	parallelRunStart bool //Flag, make sure all branches with parallel runs begin from the same point
-	parentFork       Fork
+	variables      *variables
+	blocks         map[string][]rule
+	localCallstack []string
 
-	blocks          map[string][]rule
-	skipBlocks      map[string]int
-	branchId        int
-	currentFunction string
-	currentBlock    string
+	forks            []Fork
+	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
+	parallelGrouping string
+	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
+	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
 }
 
 func NewGenerator() *Generator {
 	return &Generator{
 		variables:       NewVariables(),
-		callstack:       make(map[int][]string),
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rule),
-		skipBlocks:      make(map[string]int),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
+		inPhiState:      NewPhiState(),
+		returnVoid:      NewPhiState(),
 	}
 }
 
@@ -84,10 +83,9 @@ func (g *Generator) newConstants(globals []*ir.Global) []string {
 	return r
 }
 
-func (g *Generator) sortFuncs(funcs []*ir.Func) []string {
+func (g *Generator) sortFuncs(funcs []*ir.Func) {
 	//Iterate through all the function blocks and store them by
 	// function call name.
-	r := []string{}
 	for _, f := range funcs {
 		// Get function name.
 		fname := f.Ident()
@@ -96,36 +94,16 @@ func (g *Generator) sortFuncs(funcs []*ir.Func) []string {
 			g.functions[f.Ident()] = f
 			continue
 		}
-		// code that is in the run block we can generate
-		// rules right now.
-		run := g.parseFunction(f)
-		r = append(r, g.generateRules(run)...)
 	}
-	return r
 }
 
 func (g *Generator) newCallgraph(m *ir.Module) {
 	g.constants = g.newConstants(m.Globals)
-	g.rules = g.sortFuncs(m.Funcs)
+	g.sortFuncs(m.Funcs)
 
-	// Unroll the run block
-	for i := 1; i <= len(g.callstack); i++ {
-		var raw []rule
-		if len(g.callstack[i]) > 1 {
-			//Generate parallel runs
+	run := g.parseRunBlock(m.Funcs)
 
-			perm := g.parallelPermutations(g.callstack[i])
-			g.runParallel(perm)
-		} else {
-			fname := g.callstack[i][0]
-			v := g.functions[fname]
-			raw = g.parseFunction(v)
-
-			for _, v := range raw {
-				g.rules = append(g.rules, g.writeRule(v))
-			}
-		}
-	}
+	g.rules = append(g.rules, g.generateRules(run)...)
 
 	for _, v := range g.rawAsserts {
 		a1, a2, op := g.parseAssert(v)
@@ -149,6 +127,23 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		} else {
 			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
 		}
+	}
+}
+
+func (g *Generator) generateFromCallstack(callstack []string) []rule {
+	if len(callstack) == 0 {
+		return []rule{}
+	}
+
+	if len(callstack) > 1 {
+		//Generate parallel runs
+
+		perm := g.parallelPermutations(callstack)
+		return g.runParallel(perm)
+	} else {
+		fname := callstack[0]
+		v := g.functions[fname]
+		return g.parseFunction(v)
 	}
 }
 

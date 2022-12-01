@@ -262,7 +262,7 @@ func TestSpecRecordFetching(t *testing.T) {
 
 	all := sr.FetchAll()
 	i := 0
-	for k, _ := range all {
+	for k := range all {
 		if k == "bar" || k == "bar1" || k == "bar2" || k == "bar3" || k == "bar4" || k == "foo" || k == "foo1" {
 			i = i + 1
 		}

@@ -12,6 +12,34 @@ import (
 // Key is the base variable name
 type Fork map[string][]*Choice
 
+type PhiState struct {
+	levels int
+}
+
+func NewPhiState() *PhiState {
+	return &PhiState{
+		levels: 0,
+	}
+}
+
+func (p *PhiState) Check() bool {
+	return p.levels > 0
+}
+
+func (p *PhiState) Level() int {
+	return p.levels
+}
+
+func (p *PhiState) In() {
+	p.levels = p.levels + 1
+}
+
+func (p *PhiState) Out() {
+	if p.levels != 0 {
+		p.levels = p.levels - 1
+	}
+}
+
 func GetForkEndPoints(c []*Choice) []int16 {
 	var ends []int16
 	for _, v := range c {
@@ -38,12 +66,14 @@ func (c *Choice) getEnd() int16 {
 }
 
 func (g *Generator) newFork() {
-	if g.inPhiState { // a fork inside a fork (facepalm)
-		g.parentFork = g.getCurrentFork()
+	if len(g.forks) == 0 {
+		g.forks = append(g.forks, Fork{})
+		return
+	}
+
+	if g.inPhiState.Check() {
 		g.forks = append(g.forks[0:len(g.forks)-1], Fork{})
 	} else {
-		g.parentFork = nil
-		g.inPhiState = true
 		g.forks = append(g.forks, Fork{})
 	}
 }
@@ -146,7 +176,8 @@ func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
-func (g *Generator) runParallel(perm [][]string) {
+func (g *Generator) runParallel(perm [][]string) []rule {
+	var rules []rule
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
 	g.newFork()
@@ -156,10 +187,10 @@ func (g *Generator) runParallel(perm [][]string) {
 		varState := g.variables.saveState()
 		for _, c := range calls {
 			g.parallelRunStart = true
-			g.inPhiState = false //Don't behave like we're in Phi inside the function
+			g.inPhiState.Out() //Don't behave like we're in Phi inside the function
 			v := g.functions[c]
 			raw := g.parseFunction(v)
-			g.inPhiState = true
+			g.inPhiState.In()
 			raw = g.tagRules(raw, branch, branchBlock)
 			opts = append(opts, raw)
 		}
@@ -169,11 +200,10 @@ func (g *Generator) runParallel(perm [][]string) {
 		// sort them into fork choices
 		g.buildForkChoice(raw, "")
 		g.variables.loadState(varState)
-		for _, v := range raw {
-			g.rules = append(g.rules, g.writeRule(v))
-		}
+		rules = append(rules, raw...)
 	}
-	g.rules = append(g.rules, g.capParallel()...)
+	rules = append(rules, g.capParallel()...)
+	return rules
 }
 
 func (g *Generator) parallelRules(r [][]rule) []rule {
@@ -184,41 +214,70 @@ func (g *Generator) parallelRules(r [][]rule) []rule {
 	return rules
 }
 
-func (g *Generator) parallelMeta(parallelGroup string, meta ir.Metadata) string {
+func (g *Generator) isSameParallelGroup(meta ir.Metadata) bool {
 	for _, v := range meta {
-		if v.Name != parallelGroup {
-			g.call = g.call + 1
+
+		if v.Name == g.parallelGrouping {
+			return true
 		}
+
+		if g.parallelGrouping == "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (g *Generator) singleParallelStep(callee string) bool {
+	if len(g.localCallstack) == 0 {
+		return false
+	}
+
+	if callee == g.localCallstack[len(g.localCallstack)-1] {
+		return true
+	}
+
+	return false
+}
+
+func (g *Generator) updateParallelGroup(meta ir.Metadata) {
+	for _, v := range meta {
 		if v.Name[0:5] != "round-" {
 			g.parallelGrouping = v.Name
 		}
 	}
-	return g.parallelGrouping
 }
 
-func (g *Generator) capParallel() []string {
+func (g *Generator) capParallel() []rule {
 	// Take all the end variables for the all the branches
 	// and cap them with a phi value
 	// writes OR nodes to end each parallel run
 
 	fork := g.getCurrentFork()
-	var rules []string
+	var rules []rule
 	for k, v := range fork {
 		id := g.variables.advanceSSA(k)
-		g.declareVar(id, g.variables.lookupType(k, nil))
 
 		var nums []int16
 		for _, c := range v {
 			nums = append(nums, c.getEnd())
 		}
 
-		ends := g.formatEnds(k, nums, id)
-		rule := g.writeAssert("or", ends)
+		rule := &phi{
+			baseVar:  k,
+			endState: id,
+			nums:     nums,
+		}
 		rules = append(rules, rule)
 
 		base, i := g.variables.getVarBase(id)
 		n := int16(i)
-		g.variables.storeLastState(base, n)
+		if g.inPhiState.Level() == 1 {
+			g.variables.newPhi(base, n)
+		} else {
+			g.variables.storeLastState(base, n)
+		}
 
 	}
 	return rules
@@ -249,7 +308,7 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rule {
 	return e
 }
 
-func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[string]string) {
+func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string]int16) {
 	fork := g.getCurrentFork()
 	var rules []rule
 	for k, v := range fork {
@@ -261,9 +320,10 @@ func (g *Generator) capCond(b string, phis map[string]string) ([]rule, map[strin
 		if phi, ok := phis[k]; !ok {
 			id = g.variables.advanceSSA(k)
 			g.declareVar(id, g.variables.lookupType(k, nil))
-			phis[k] = id
+			_, i := g.variables.getVarBase(id)
+			phis[k] = int16(i)
 		} else {
-			id = phi
+			id = fmt.Sprintf("%s_%d", k, phi)
 		}
 
 		for _, c := range v {
@@ -283,7 +343,7 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 	fork := g.getCurrentFork()
 	for k, c := range fork {
 		if len(c) == 1 {
-			start := g.variables.getLastState(k)
+			start := g.variables.getStartState(k)
 			id := g.variables.getSSA(k)
 			switch c[0].Branch {
 			case "true":
@@ -292,7 +352,11 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 				tends = append(tends, g.capRule(k, []int16{start}, id)...)
 			}
 			n := g.variables.ssa[k]
-			g.variables.storeLastState(k, n)
+			if g.inPhiState.Level() == 1 {
+				g.variables.newPhi(k, n)
+			} else {
+				g.variables.storeLastState(k, n)
+			}
 		}
 	}
 	return tends, fends
@@ -323,6 +387,9 @@ func (g *Generator) tagRule(ru rule, branch string, block string) rule {
 		r.Tag(branch, block)
 		return r
 	case *vwrap:
+		r.Tag(branch, block)
+		return r
+	case *phi:
 		r.Tag(branch, block)
 		return r
 	default:

@@ -1,41 +1,142 @@
 package smt
 
 import (
+	"fault/util"
 	"fmt"
 	"strings"
 
 	"github.com/llir/llvm/ir"
+	irtypes "github.com/llir/llvm/ir/types"
 )
+
+func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
+	var r []rule
+	for _, f := range fns {
+		fname := f.Ident()
+
+		if fname != "@__run" {
+			continue
+		}
+
+		r = g.parseFunction(f)
+	}
+	return r
+}
 
 func (g *Generator) parseFunction(f *ir.Func) []rule {
 	var rules []rule
-	g.currentFunction = f.Ident()
-	for _, block := range f.Blocks {
-		g.currentBlock = block.Ident()
-		if g.skipBlocks[g.currentBlock] == 0 {
-			// For each non-branching instruction of the basic block.
-			r := g.parseInstruct(block)
-			rules = append(rules, r...)
-			r1 := g.parseTerms(block.Term.Succs())
-			switch term := block.Term.(type) {
-			case *ir.TermCondBr:
-				g.inPhiState = true
-				id := term.Cond.Ident()
-				if g.variables.isTemp(id) {
-					if v, ok := g.variables.ref[id]; ok {
-						r1[len(r1)-1].(*ite).cond = g.parseCond(v)
-					}
-				} else if g.variables.isBolean(id) ||
-					g.variables.isNumeric(id) {
-					r1[len(r1)-1].(*ite).cond = &wrap{value: id}
-				}
 
-				g.inPhiState = false
-			}
-			rules = append(rules, r1...)
+	if g.isBuiltIn(f.Ident()) {
+		return rules
+	}
+
+	oldfunc := g.currentFunction
+	g.currentFunction = f.Ident()
+
+	for _, block := range f.Blocks {
+		if !g.returnVoid.Check() {
+			r := g.parseBlock(block)
+			rules = append(rules, r...)
 		}
 	}
+
+	g.returnVoid.Out()
+
+	g.currentFunction = oldfunc
 	return rules
+}
+
+func (g *Generator) parseBlock(block *ir.Block) []rule {
+	var rules []rule
+	oldBlock := g.currentBlock
+	g.currentBlock = block.Ident()
+
+	// For each non-branching instruction of the basic block.
+	r := g.parseInstruct(block)
+	rules = append(rules, r...)
+
+	var r1 []rule
+	switch term := block.Term.(type) {
+	case *ir.TermCondBr:
+		r1 = g.parseTermCon(term)
+	case *ir.TermRet:
+		stack := util.Copy(g.localCallstack)
+		g.localCallstack = []string{}
+		r1 = g.generateFromCallstack(stack)
+		g.returnVoid.In()
+	default:
+		stack := util.Copy(g.localCallstack)
+		g.localCallstack = []string{}
+		r1 = g.generateFromCallstack(stack)
+	}
+	rules = append(rules, r1...)
+
+	g.currentBlock = oldBlock
+	return rules
+}
+
+func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
+	var rules []rule
+	var cond rule
+	var phis map[string]int16
+
+	g.inPhiState.In()
+	id := term.Cond.Ident()
+	if g.variables.isTemp(id) {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		if v, ok := g.variables.ref[refname]; ok {
+			cond = v
+		}
+	} else if g.variables.isBolean(id) ||
+		g.variables.isNumeric(id) {
+		cond = &wrap{value: id}
+	}
+	g.inPhiState.Out()
+
+	g.variables.initPhis()
+
+	t, f, a := g.parseTerms(term.Succs())
+
+	if !g.isBranchClosed(t, f) {
+		var tEnds, fEnds []rule
+		rules = append(rules, t...)
+		rules = append(rules, f...)
+
+		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
+		g.newFork()
+		g.buildForkChoice(t, "true")
+		g.buildForkChoice(f, "false")
+
+		tEnds, phis = g.capCond("true", make(map[string]int16))
+		fEnds, _ = g.capCond("false", phis)
+
+		// Keep variable names in sync across branches
+		tSync, fSync := g.capCondSyncRules()
+		tEnds = append(tEnds, tSync...)
+		fEnds = append(fEnds, fSync...)
+
+		rules = append(rules, &ite{cond: cond, t: tEnds, f: fEnds})
+		g.inPhiState.Out()
+	}
+
+	g.variables.popPhis()
+	g.variables.appendState(phis)
+
+	if a != nil {
+		after := g.parseAfterBlock(a)
+		rules = append(rules, after...)
+	}
+
+	return rules
+}
+
+func (g *Generator) parseAfterBlock(term *ir.Block) []rule {
+	a := g.parseBlock(term)
+	stack := util.Copy(g.localCallstack)
+	g.localCallstack = []string{}
+	a1 := g.generateFromCallstack(stack)
+	a = append(a, a1...)
+	return a
 }
 
 func (g *Generator) parseInstruct(block *ir.Block) []rule {
@@ -48,8 +149,13 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstLoad:
 			g.loadsRule(inst)
 		case *ir.InstStore:
-			rules = g.storeRule(inst, rules)
-			g.blocks[g.currentBlock] = rules
+			switch inst.Src.Type().(type) {
+			case *irtypes.ArrayType:
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, inst.Dst.Ident())
+				g.variables.loads[refname] = inst.Src
+			default:
+				rules = append(rules, g.storeRule(inst)...)
+			}
 		case *ir.InstFAdd:
 			var r rule
 			r = g.parseInfix(inst.Ident(),
@@ -87,8 +193,9 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			// Happens in conditionals
 			id := inst.Ident()
 			if g.variables.isTemp(id) {
-				g.variables.ref[id] = r
-				return rules
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.variables.ref[refname] = r
+				continue
 			}
 
 			rules = append(rules, r)
@@ -105,14 +212,49 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 
 			id := inst.Ident()
 			if g.variables.isTemp(id) {
-				g.variables.ref[id] = r
-				return rules
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.variables.ref[refname] = r
+				continue
 			}
 
 			rules = append(rules, r)
 		case *ir.InstCall:
-			callee := g.callRule(inst)
-			g.callstack[g.call] = append(g.callstack[g.call], callee)
+			callee := inst.Callee.Ident()
+			if g.isBuiltIn(callee) {
+				g.parseBuiltIn(inst)
+			}
+			meta := inst.Metadata
+			if g.isSameParallelGroup(meta) {
+				g.localCallstack = append(g.localCallstack, callee)
+			} else if g.singleParallelStep(callee) {
+				stack := util.Copy(g.localCallstack)
+				g.localCallstack = []string{}
+				r := g.generateFromCallstack(stack)
+				rules = append(rules, r...)
+
+				r1 := g.generateFromCallstack([]string{callee})
+				rules = append(rules, r1...)
+			} else {
+				stack := util.Copy(g.localCallstack)
+				g.localCallstack = []string{}
+				r := g.generateFromCallstack(stack)
+				rules = append(rules, r...)
+
+				g.localCallstack = append(g.localCallstack, callee)
+			}
+			g.updateParallelGroup(meta)
+			g.returnVoid.Out()
+		case *ir.InstXor:
+			r := g.xorRule(inst)
+			g.tempRule(inst, r)
+		case *ir.InstAnd:
+			r := g.andRule(inst)
+			g.tempRule(inst, r)
+		case *ir.InstOr:
+			r := g.orRule(inst)
+			g.tempRule(inst, r)
+		case *ir.InstBitCast:
+			//Do nothing
 		default:
 			panic(fmt.Sprintf("unrecognized instruction: %T", inst))
 
@@ -121,65 +263,72 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 	return rules
 }
 
-func (g *Generator) parseTerms(terms []*ir.Block) []rule {
-	var rules []rule
-	//Conditionals are considered terminals
-	if len(terms) > 1 { //more than one terminal == branch
-		var t, f, a []rule
-		var tvars, fvars map[string]string
-		g.branchId = g.branchId + 1
-		branch := fmt.Sprint("branch_", g.branchId)
-		for _, term := range terms {
-			bname := strings.Split(term.Ident(), "-")
-			switch bname[len(bname)-1] {
-			case "true":
-				g.inPhiState = true
-				branchBlock := "true"
-				g.skipBlocks[term.Ident()] = 1
-				t = g.parseInstruct(term)
-				t = g.tagRules(t, branch, branchBlock)
-				rules = append(rules, t...)
-				g.inPhiState = false
-			case "false":
-				g.inPhiState = true
-				branchBlock := "false"
-				g.skipBlocks[term.Ident()] = 1
-				f = g.parseInstruct(term)
-				f = g.tagRules(f, branch, branchBlock)
-				rules = append(rules, f...)
-				g.inPhiState = false
-			case "after":
-				//g.skipBlocks[term.Ident()] = 1
-				a = g.parseInstruct(term)
-				//rules = append(rules, a...)
-			default:
-				panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
-			}
+func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
+	var t, f []rule
+	var a *ir.Block
+	g.branchId = g.branchId + 1
+	branch := fmt.Sprint("branch_", g.branchId)
+	for _, term := range terms {
+		bname := strings.Split(term.Ident(), "-")
+		switch bname[len(bname)-1] {
+		case "true":
+			g.inPhiState.In()
+			branchBlock := "true"
+			t = g.parseBlock(term)
+
+			stack := util.Copy(g.localCallstack)
+			g.localCallstack = []string{}
+			t1 := g.generateFromCallstack(stack)
+			t = append(t, t1...)
+
+			t = g.tagRules(t, branch, branchBlock)
+			g.inPhiState.Out()
+		case "false":
+			g.inPhiState.In()
+			branchBlock := "false"
+			f = g.parseBlock(term)
+
+			stack := util.Copy(g.localCallstack)
+			g.localCallstack = []string{}
+			f1 := g.generateFromCallstack(stack)
+			f = append(f, f1...)
+
+			f = g.tagRules(f, branch, branchBlock)
+			g.inPhiState.Out()
+		case "after":
+			a = term
+		default:
+			panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
 		}
-		if t != nil || f != nil {
-			g.newFork()
-			g.buildForkChoice(t, "true")
-			g.buildForkChoice(f, "false")
-
-			tEnds, phis := g.capCond("true", make(map[string]string))
-			fEnds, _ := g.capCond("false", phis)
-
-			// Keep variable names in sync across branches
-			tSync, fSync := g.capCondSyncRules()
-			tEnds = append(tEnds, tSync...)
-			fEnds = append(fEnds, fSync...)
-
-			rules = append(rules, &ite{cond: nil, t: tEnds, tvars: tvars, f: fEnds, fvars: fvars})
-		}
-		rules = append(rules, a...) //Because it's AFTER
 	}
-	if len(terms) == 1 { // Jump to that block
-		var r []rule
-		g.skipBlocks[terms[0].Ident()] = 1
-		r = g.parseInstruct(terms[0])
-		rules = append(rules, r...)
+
+	return t, f, a
+}
+
+func (g *Generator) parseBuiltIn(call *ir.InstCall) rule {
+	p := call.Args
+	bc, ok := p[0].(*ir.InstBitCast)
+	if !ok {
+		panic("improper argument to built in function")
 	}
-	return rules
+	id := bc.From.Ident()
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	state := g.variables.loads[refname]
+	return g.parseRule(state.Ident(), "true", "Bool", "=")
+}
+
+func (g *Generator) isBuiltIn(c string) bool {
+	if c == "@advance" || c == "@stay" {
+		return true
+	}
+	return false
+}
+
+func (g *Generator) isBranchClosed(t []rule, f []rule) bool {
+	if len(t) == 0 && len(f) == 0 {
+		return true
+	}
+	return false
 }
 
 func (g *Generator) parseRule(id string, val string, ty string, op string) rule {
@@ -192,8 +341,9 @@ func (g *Generator) parseInfix(id string, x string, y string, op string) rule {
 	x = g.convertInfixVar(x)
 	y = g.convertInfixVar(y)
 
-	g.variables.ref[id] = g.parseRule(x, y, "", op)
-	return g.variables.ref[id]
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.ref[refname] = g.parseRule(x, y, "", op)
+	return g.variables.ref[refname]
 }
 
 func (g *Generator) parseCond(cond rule) rule {
@@ -210,6 +360,12 @@ func (g *Generator) parseCond(cond rule) rule {
 	default:
 		panic(fmt.Sprintf("Invalid conditional: %s", inst))
 	}
+}
+
+func (g *Generator) parseMultiCond(id string, x rule, y rule, op string) rule {
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.ref[refname] = &infix{x: x, ty: "Bool", y: y, op: op}
+	return g.variables.ref[refname]
 }
 
 func (g *Generator) parseCompare(op string) (string, rule) {

@@ -15,15 +15,15 @@ func TestConvertIdent(t *testing.T) {
 	alloc.SetName("test_this_var")
 	val := constant.NewInt(irtypes.I32, 0)
 	store := b.NewStore(val, alloc)
-	g.variables.loads["%1"] = store.Dst
+	g.variables.loads["@__run-%1"] = store.Dst
 	g.variables.ssa["test_this_var"] = 0
 
-	if g.variables.convertIdent("%test_this_var") != "test_this_var_0" {
-		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("%test_this_var"))
+	if g.variables.convertIdent("@__run", "%test_this_var") != "test_this_var_0" {
+		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("@__run", "%test_this_var"))
 	}
 
-	if g.variables.convertIdent("%1") != "test_this_var_0" {
-		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("%1"))
+	if g.variables.convertIdent("@__run", "%1") != "test_this_var_0" {
+		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("@__run", "%1"))
 	}
 
 }

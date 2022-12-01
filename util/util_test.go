@@ -79,6 +79,25 @@ func TestPreparse(t *testing.T) {
 	}
 }
 
+func TestKeys(t *testing.T) {
+	test := make(map[string]ast.Node)
+	test["here"] = &ast.IntegerLiteral{}
+	test["are"] = &ast.IntegerLiteral{}
+	test["your"] = &ast.IntegerLiteral{}
+	test["keys"] = &ast.IntegerLiteral{}
+
+	results := Keys(test)
+
+	if len(results) != 4 {
+		t.Fatalf("incorrect number of keys returned got=%d", len(results))
+	}
+
+	if !InStringSlice(results, "here") || !InStringSlice(results, "are") || !InStringSlice(results, "your") || !InStringSlice(results, "keys") {
+		t.Fatalf("returned keys are incorrect got=%s", results)
+	}
+
+}
+
 func TestFilepath(t *testing.T) {
 	var host string
 	var ok bool
@@ -129,6 +148,12 @@ func TestFilepath(t *testing.T) {
 		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath7a)
 	}
 
+	filepath8 := "/host/test.spec"
+	filepath8a := Filepath(filepath8)
+	if filepath8a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath8a)
+	}
+
 	os.Setenv("FAULT_HOST", host)
 }
 
@@ -175,6 +200,46 @@ func TestCartesianMulti(t *testing.T) {
 
 	if r[3][0] != "a" || r[3][1] != "2" || r[3][2] != "4" {
 		t.Fatalf("cartesian product not correct. got=%s", r)
+	}
+
+}
+
+func TestMergeNodeMaps(t *testing.T) {
+	m1 := make(map[string]ast.Node)
+	m1["foo"] = &ast.IntegerLiteral{Value: 5}
+	m1["bar"] = &ast.IntegerLiteral{Value: 15}
+
+	m2 := make(map[string]ast.Node)
+	m2["test"] = &ast.IntegerLiteral{Value: 2}
+
+	m3 := MergeNodeMaps(m1, m2)
+
+	if len(m3) != 3 {
+		t.Fatalf("merged map has the wrong length got=%d", len(m3))
+	}
+
+	if m3["test"].(*ast.IntegerLiteral).Value != 2 || m3["foo"].(*ast.IntegerLiteral).Value != 5 {
+		t.Fatalf("node map not merged correctly")
+	}
+
+}
+
+func TestMergeStringMaps(t *testing.T) {
+	m1 := make(map[string]string)
+	m1["foo"] = "this"
+	m1["bar"] = "is"
+
+	m2 := make(map[string]string)
+	m2["test"] = "test"
+
+	m3 := MergeStringMaps(m1, m2)
+
+	if len(m3) != 3 {
+		t.Fatalf("merged string map has the wrong length got=%d", len(m3))
+	}
+
+	if m3["test"] != "test" || m3["foo"] != "this" {
+		t.Fatalf("string map not merged correctly")
 	}
 
 }
@@ -322,6 +387,65 @@ func TestCombinationsN1(t *testing.T) {
 
 }
 
+func TestStableSortKeys(t *testing.T) {
+	test := []string{"this", "is", "a", "test", "ok?"}
+	result := StableSortKeys(test)
+	if len(result) != 5 || result[0] != "a" || result[1] != "is" || result[2] != "ok?" || result[3] != "test" || result[4] != "this" {
+		t.Fatalf("StableSortKey returned the wrong result")
+	}
+}
+
+func TestExtractBranches(t *testing.T) {
+	test := make(map[string]*ast.StructProperty)
+	test["foo"] = &ast.StructProperty{Value: &ast.IntegerLiteral{Value: 5}}
+	test["bar"] = &ast.StructProperty{Value: &ast.IntegerLiteral{Value: 2}}
+
+	r := ExtractBranches(test)
+
+	if r["foo"].(*ast.IntegerLiteral).Value != 5 || r["bar"].(*ast.IntegerLiteral).Value != 2 {
+		t.Fatal("ExtractBranches returned the wrong result")
+	}
+}
+
+func TestCaptureState(t *testing.T) {
+	test1 := "this_is_a_test"
+
+	r1, a1, c1 := CaptureState(test1)
+	if r1 != "" || !a1 || c1 {
+		t.Fatal("first test of CaptureState is incorrect")
+	}
+
+	test2 := "this_is_a_3"
+
+	r2, a2, c2 := CaptureState(test2)
+	if r2 != "3" || a2 || c2 {
+		t.Fatal("second test of CaptureState is incorrect")
+	}
+
+	test3 := "this_is"
+
+	r3, a3, c3 := CaptureState(test3)
+	if r3 != "" || a3 || !c3 {
+		t.Fatal("third test of CaptureState is incorrect")
+	}
+}
+
+func TestCopy(t *testing.T) {
+	test := []string{"here", "it", "is", "folks"}
+	r := Copy(test)
+	if len(test) != len(r) {
+		t.Fatal("copy dropped a value")
+	}
+}
+
+func TestMaxInt16(t *testing.T) {
+	test := []int16{2, 6, 8, 4, 10, 8, 3}
+	r := MaxInt16(test)
+	if r != 10 {
+		t.Fatal("MaxInt16 returned an incorrect value")
+	}
+}
+
 func TestNotInSet(t *testing.T) {
 	inputC := [][]string{{"a", "b"}, {"c", "d"}, {"h", "i"}, {"r", "s"}}
 	iOn1 := [][]string{
@@ -382,5 +506,38 @@ func TestDetectMode(t *testing.T) {
 	t3 := DetectMode("test.mp4")
 	if t3 != "" {
 		t.Fatalf("incorrect value returned from DetectMode got=%s want=%s", t3, "")
+	}
+}
+
+func TestIsCompare(t *testing.T) {
+	if IsCompare("hihi") {
+		t.Fatal("first test of IsCompare has failed")
+	}
+
+	test := []string{">", "<", "==", "!=", "<=", ">=", "&&", "||", "!"}
+	for i, c := range test {
+		if !IsCompare(c) {
+			t.Fatalf("test %d of %d IsCompare tests has failed", i, len(test))
+		}
+	}
+}
+
+func TestImportTrail(t *testing.T) {
+	it := ImportTrail{}
+	it = it.PushSpec("test")
+	it = it.PushSpec("this")
+	it = it.PushSpec("trail")
+
+	if len(it) != 3 {
+		t.Fatal("specs not added to trail correctly")
+	}
+
+	i, it2 := it.PopSpec()
+	if i != "trail" {
+		t.Fatalf("trail entry incorrect. got=%s, want=trail", i)
+	}
+
+	if len(it2) != 2 {
+		t.Fatal("specs not popped off trail correctly")
 	}
 }

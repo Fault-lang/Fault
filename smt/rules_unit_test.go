@@ -15,9 +15,9 @@ func TestFetchIdent(t *testing.T) {
 	alloc.SetName("test_this_var")
 	val := constant.NewInt(irtypes.I32, 0)
 	store := b.NewStore(val, alloc)
-	g.variables.loads["%1"] = store.Dst
+	g.variables.loads["@__run-%1"] = store.Dst
 	g.variables.ssa["test_this_var"] = 0
-	g.variables.ref["%2"] = &infix{
+	g.variables.ref["@__run-%2"] = &infix{
 		x: &wrap{
 			value: "x",
 			all:   true,
@@ -47,7 +47,7 @@ func TestFetchIdent(t *testing.T) {
 		t.Fatalf("fetchIdent returned the wrong result. got=%s", test2.String())
 	}
 
-	test3 := g.tempToIdent(g.variables.ref["%2"])
+	test3 := g.tempToIdent(g.variables.ref["@__run-%2"])
 
 	if test3.(*infix).x.String() != "x" || test3.(*infix).y.String() != "y" {
 		t.Fatalf("tempToIdent returned the wrong result. got=%s", test3.String())
@@ -66,9 +66,9 @@ func TestStoreRule(t *testing.T) {
 	alloc2.SetName("test_this_var2")
 	store2 := b.NewStore(val, alloc2)
 
-	g.variables.loads["%1"] = store.Dst
+	g.variables.loads["@__run-%1"] = store.Dst
 	g.variables.ssa["test_this_var"] = 0
-	g.variables.ref["%2"] = &infix{
+	g.variables.ref["@__run-%2"] = &infix{
 		x: &wrap{
 			value: "x",
 			all:   true,
@@ -80,11 +80,11 @@ func TestStoreRule(t *testing.T) {
 		op: ">",
 	}
 
-	test1 := g.storeRule(store, []rule{})
+	test1 := g.storeRule(store)
 	if len(test1) != 1 {
 		t.Fatalf("storeRule did not store new rule. got=%d", len(test1))
 	}
-	test2 := g.storeRule(store2, []rule{})
+	test2 := g.storeRule(store2)
 	if len(test2) != 1 {
 		t.Fatalf("storeRule did not store new rule. got=%d", len(test2))
 	}

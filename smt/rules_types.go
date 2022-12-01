@@ -37,12 +37,11 @@ func (a *assrt) Tag(k1 string, k2 string) {
 
 type infix struct {
 	rule
-	x           rule
-	y           rule
-	ty          string
-	op          string
-	declareOnly bool //For solvables which need to be declared but have no starting value
-	tag         *branch
+	x   rule
+	y   rule
+	ty  string
+	op  string
+	tag *branch
 }
 
 func (i *infix) ruleNode() {}
@@ -58,12 +57,10 @@ func (i *infix) Tag(k1 string, k2 string) {
 
 type ite struct {
 	rule
-	cond  rule
-	t     []rule
-	tvars map[string]string
-	f     []rule
-	fvars map[string]string
-	tag   *branch
+	cond rule
+	t    []rule
+	f    []rule
+	tag  *branch
 }
 
 func (it *ite) ruleNode() {}
@@ -91,6 +88,29 @@ func (i *invariant) String() string {
 }
 func (i *invariant) Tag(k1 string, k2 string) {
 	i.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type phi struct {
+	baseVar  string
+	nums     []int16
+	endState string
+	tag      *branch
+}
+
+func (p *phi) ruleNode() {}
+func (p *phi) String() string {
+	var out bytes.Buffer
+	for _, n := range p.nums {
+		r := fmt.Sprintf("%s = %s_%d || ", p.endState, p.baseVar, n)
+		out.WriteString(r)
+	}
+	return out.String()
+}
+func (p *phi) Tag(k1 string, k2 string) {
+	p.tag = &branch{
 		branch: k1,
 		block:  k2,
 	}
@@ -183,46 +203,58 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 
 func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	id := inst.Ident()
-	g.variables.loads[id] = inst.Src
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.loads[refname] = inst.Src
 }
 
-func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
+func (g *Generator) storeRule(inst *ir.InstStore) []rule {
+	var rules []rule
 	id := g.variables.formatIdent(inst.Dst.Ident())
 	if g.variables.isTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
-		if val, ok := g.variables.loads[srcId]; ok {
-			ty := g.variables.lookupType(srcId, val)
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
+		if val, ok := g.variables.loads[refname]; ok {
+			ty := g.variables.lookupType(refname, val)
 			n := g.variables.ssa[id]
-			if !g.inPhiState {
+			if !g.inPhiState.Check() {
+				g.variables.newPhi(id, n+1)
+			}else{
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(id)
-			rules = append(rules, g.parseRule(id, g.variables.formatValue(val), ty, ""))
-		} else if ref, ok := g.variables.ref[srcId]; ok {
+			v := g.variables.formatValue(val)
+			if !g.variables.isBolean(v) && !g.variables.isNumeric(v) {
+				v = g.variables.formatIdent(v)
+				v = fmt.Sprintf("%s_%d", v, n)
+			}
+			rules = append(rules, g.parseRule(id, v, ty, ""))
+		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
 			case *infix:
 				r.x = g.tempToIdent(r.x)
 				r.y = g.tempToIdent(r.y)
 				n := g.variables.ssa[id]
-				if !g.inPhiState {
+				if !g.inPhiState.Check() {
+					g.variables.newPhi(id, n+1)
+				}else{
 					g.variables.storeLastState(id, n+1)
 				}
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
 				if g.variables.isBolean(r.y.String()) {
-					//rules = append(rules, &infix{x: wid, ty: "Bool", y: r, declareOnly: true}) // Still need to declare the new state
 					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, op: "="})
 				} else if g.isASolvable(r.x.String()) {
-					//rules = append(rules, &infix{x: wid, ty: "Real", y: r, declareOnly: true})
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r, op: "="})
 				} else {
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
 				}
 			default:
 				n := g.variables.ssa[id]
-				if !g.inPhiState {
-					g.variables.storeLastState(id, n+1)
-				}
+				if !g.inPhiState.Check() {
+					g.variables.newPhi(id, n+1)
+					}else{
+						g.variables.storeLastState(id, n+1)
+					}
 				ty := g.variables.lookupType(id, nil)
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
@@ -234,26 +266,46 @@ func (g *Generator) storeRule(inst *ir.InstStore, rules []rule) []rule {
 	} else {
 		ty := g.variables.lookupType(id, inst.Src)
 		n := g.variables.ssa[id]
-		if !g.inPhiState {
-			g.variables.storeLastState(id, n+1)
-		}
+		if !g.inPhiState.Check() {
+			g.variables.newPhi(id, n+1)
+			}else{
+				g.variables.storeLastState(id, n+1)
+			}
 		id = g.variables.advanceSSA(id)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
 	return rules
 }
 
-func (g *Generator) callRule(inst *ir.InstCall) string {
-	callee := inst.Callee.Ident()
-	meta := inst.Metadata
-	g.parallelMeta(g.parallelGrouping, meta)
-	return callee
+func (g *Generator) xorRule(inst *ir.InstXor) rule {
+	x := inst.X.Ident()
+	x = g.variables.convertIdent(g.currentFunction, x)
+	return g.parseRule(x, "", "", "not")
+}
+
+func (g *Generator) andRule(inst *ir.InstAnd) rule {
+	id := inst.Ident()
+	x := inst.X.Ident()
+	y := inst.Y.Ident()
+	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	yRule := g.variables.lookupCondPart(g.currentFunction, y)
+	return g.parseMultiCond(id, xRule, yRule, "and")
+}
+
+func (g *Generator) orRule(inst *ir.InstOr) rule {
+	id := inst.Ident()
+	x := inst.X.Ident()
+	y := inst.Y.Ident()
+	x = g.variables.convertIdent(g.currentFunction, x)
+	y = g.variables.convertIdent(g.currentFunction, y)
+	return g.parseInfix(id, x, y, "or")
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()
 	if g.variables.isTemp(id) {
-		g.variables.ref[id] = r
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		g.variables.ref[refname] = r
 	}
 }

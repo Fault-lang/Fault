@@ -50,7 +50,9 @@ func Filepath(filepath string) string {
 			filepath = strings.Join([]string{pathstr, filepath[idx+2:]}, "")
 		}
 
-		filepath = strings.Join([]string{host, filepath}, "/")
+		if len(filepath) < len(host) || host != filepath[0:len(host)] {
+			return strings.Join([]string{host, filepath}, "/")
+		}
 	}
 	return filepath
 }
@@ -125,6 +127,14 @@ func InStringSlice(sl []string, sub string) bool {
 	return false
 }
 
+func Keys(m map[string]ast.Node) []string {
+	var ret []string
+	for k := range m {
+		ret = append(ret, k)
+	}
+	return ret
+}
+
 func StableSortKeys(keys []string) []string {
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
@@ -158,6 +168,14 @@ func CaptureState(id string) (string, bool, bool) {
 		return raw[len(raw)-1], false, false
 	}
 
+}
+
+func Copy(callstack []string) []string {
+	var ret []string
+	for _, v := range callstack {
+		ret = append(ret, v)
+	}
+	return ret
 }
 
 func product(list1 [][]string, list2 []string) [][]string {

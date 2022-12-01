@@ -8,24 +8,29 @@ import (
 )
 
 type Processor struct {
-	Specs       map[string]*SpecRecord
-	scope       string
-	localIdents map[string][]string
-	trail       util.ImportTrail
-	structTypes map[string]map[string]string
-	Processed   ast.Node
-	initialPass bool
-	inFunc      bool
-	inState     string
+	Specs                map[string]*SpecRecord
+	scope                string
+	localIdents          map[string][]string
+	trail                util.ImportTrail
+	structTypes          map[string]map[string]string
+	Processed            ast.Node
+	initialPass          bool
+	inFunc               bool
+	inStruct             string
+	inState              string
+	inGlobal             bool
+	StructsPropertyOrder map[string][]string
 }
 
 func NewProcesser() *Processor {
 	return &Processor{
-		Specs:       make(map[string]*SpecRecord),
-		structTypes: make(map[string]map[string]string),
-		localIdents: make(map[string][]string),
-		initialPass: true,
-		inFunc:      false,
+		Specs:                make(map[string]*SpecRecord),
+		structTypes:          make(map[string]map[string]string),
+		localIdents:          make(map[string][]string),
+		initialPass:          true,
+		inFunc:               false,
+		inGlobal:             false,
+		StructsPropertyOrder: make(map[string][]string),
 	}
 }
 
@@ -46,6 +51,9 @@ func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 }
 
 func (p *Processor) buildIdContext(spec string) []string {
+	if p.inState != "" {
+		return []string{spec}
+	}
 	scopeParts := strings.Split(p.scope, "_")
 	if scopeParts[0] == "" {
 		return []string{spec}
@@ -67,6 +75,71 @@ func (p *Processor) namePairs(pairs map[*ast.Identifier]ast.Expression) (map[*as
 	return named, keys
 }
 
+func (p *Processor) collapsibleIf(n ast.Node) bool {
+	//Replace nested ifs with if A && B construction
+	// checks that the block has only one statement
+	// and that statement is another conditional
+	switch b := n.(type) {
+	case *ast.BlockStatement:
+		if len(b.Statements) != 1 {
+			return false
+		}
+		line, ok := b.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			return false
+		}
+		if _, ok := line.Expression.(*ast.IfExpression); ok {
+			return true
+		}
+		return false
+	case *ast.IfExpression:
+		if len(b.Consequence.Statements) != 1 {
+			return false
+		}
+
+		line, ok := b.Consequence.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			return false
+		}
+		if _, ok := line.Expression.(*ast.IfExpression); ok {
+			return true
+		}
+		return false
+	}
+	return false
+}
+
+func (p *Processor) collapse(parent *ast.IfExpression, child *ast.IfExpression) *ast.IfExpression {
+	node := &ast.IfExpression{}
+	// Add the condition of parent to child
+	cond := &ast.InfixExpression{Left: parent.Condition, Right: child.Condition, Operator: "&&"}
+	node.Condition = cond
+	node.Consequence = child.Consequence
+
+	// If elif block add condition of parent
+	if child.Elif != nil {
+		el := p.collapse(parent, child.Elif)
+		node.Elif = p.attachElif(parent, el)
+	}
+
+	// If Else, convert to elif block and add condition of parent
+	if child.Alternative != nil {
+		el := &ast.IfExpression{Condition: parent.Condition, Consequence: child.Alternative}
+		node.Elif = p.attachElif(parent, el)
+	}
+	return node
+}
+
+func (p *Processor) attachElif(n *ast.IfExpression, el *ast.IfExpression) *ast.IfExpression {
+	if n.Elif != nil && n.Elif.Condition.String() == el.Condition.String() {
+		return n
+	} else if n.Elif != nil {
+		return p.attachElif(n.Elif, el)
+	}
+	n.Elif = el
+	return n
+}
+
 func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	var err error
 	var pro ast.Node
@@ -85,6 +158,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if p.initialPass {
 			p.Specs[node.Name.Value] = NewSpecRecord()
 			p.Specs[node.Name.Value].SpecName = node.Name.Value
+			p.trail = p.trail.PushSpec(node.Name.Value)
+		} else {
 			p.trail = p.trail.PushSpec(node.Name.Value)
 		}
 		return node, err
@@ -136,7 +211,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		return node, err
 	case *ast.DefStatement:
-		p.scope = strings.TrimSpace(node.Name.String())
+		if node.TokenLiteral() != "GLOBAL" {
+			p.scope = strings.TrimSpace(node.Name.String())
+		} else {
+			p.inGlobal = true
+		}
+
 		pro, err = p.walk(node.Value)
 		if err != nil {
 			return node, err
@@ -148,6 +228,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		node.Name = namepro.(*ast.Identifier)
 		node.Value = pro.(ast.Expression)
+
+		if node.TokenLiteral() == "GLOBAL" {
+			p.inGlobal = false
+		} else {
+			p.scope = ""
+		}
+
 		return node, err
 	case *ast.StockLiteral:
 		if p.structTypes[p.trail.CurrentSpec()] == nil {
@@ -180,7 +267,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 		}
 
-		for k, v := range properties {
+		for _, k := range node.Order {
+			v := properties[k]
 			p.inFunc = true
 			pro, err = p.walk(v)
 			if err != nil {
@@ -234,7 +322,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 		}
 
-		for k, v := range properties {
+		for _, k := range node.Order {
+			v := properties[k]
 			p.inFunc = true
 			pro, err = p.walk(v)
 			if err != nil {
@@ -288,7 +377,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 		}
 
-		for k, v := range properties {
+		for _, k := range node.Order {
+			v := properties[k]
 			p.inFunc = true
 			p.inState = k
 			pro, err = p.walk(v)
@@ -355,16 +445,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.Body.Statements[i] = pro.(ast.Statement)
 		}
 		return node, err
-	case *ast.StartStatement: //TODO
-		return node, err
-	case *ast.StateLiteral:
-		pro, err = p.walk(node.Body)
-		if err != nil {
-			return pro, err
-		}
-		node.Body = pro.(*ast.BlockStatement)
+	case *ast.StartStatement:
 		return node, err
 	case *ast.FunctionLiteral:
+		oldStruct := p.inStruct
+		if p.inStruct == "" {
+			rawid := node.RawId()
+			p.inStruct = rawid[1]
+		}
+
 		p.inFunc = true
 		pro, err = p.walk(node.Body)
 		if err != nil {
@@ -372,6 +461,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		node.Body = pro.(*ast.BlockStatement)
 		p.inFunc = false
+		p.inStruct = oldStruct
 		return node, err
 	case *ast.BlockStatement:
 		var statements []ast.Statement
@@ -420,6 +510,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.IfExpression:
+		pro := &ast.IfExpression{}
 		cond, err := p.walk(node.Condition)
 		if err != nil {
 			return node, err
@@ -430,31 +521,43 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
+		if p.collapsibleIf(conseq) {
+			pro = p.collapse(node, conseq.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression))
+		} else {
+			pro.Condition = cond.(ast.Expression)
+			pro.Consequence = conseq.(*ast.BlockStatement)
+		}
+
+		var elif ast.Node
+		if node.Elif != nil {
+			elif, err = p.walk(node.Elif) // Since Elif is an IfExpression we already check for collapsibility
+			if err != nil {
+				return node, err
+			}
+			pro.Elif = elif.(*ast.IfExpression)
+		}
+
 		var alt ast.Node
 		if node.Alternative != nil {
 			alt, err = p.walk(node.Alternative)
 			if err != nil {
 				return node, err
 			}
-		}
 
-		var elif ast.Node
-		if node.Elif != nil {
-			elif, err = p.walk(node.Elif)
-			if err != nil {
-				return node, err
+			if p.collapsibleIf(alt) {
+				el := alt.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+				if node.Elif == nil {
+					pro.Elif = el
+					pro.Alternative = nil
+				} else {
+					pro.Elif = p.attachElif(node.Elif, el)
+					pro.Alternative = nil
+				}
+			} else {
+				pro.Alternative = alt.(*ast.BlockStatement)
 			}
 		}
-
-		node.Condition = cond.(ast.Expression)
-		node.Consequence = conseq.(*ast.BlockStatement)
-		if node.Alternative != nil {
-			node.Alternative = alt.(*ast.BlockStatement)
-		}
-		if node.Elif != nil {
-			node.Elif = elif.(*ast.IfExpression)
-		}
-		return node, err
+		return pro, err
 
 	case *ast.Instance:
 		if p.Specs[p.trail.CurrentSpec()] == nil {
@@ -469,8 +572,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			pn := p.buildIdContext(p.trail.CurrentSpec())
 			node.Value = pro.(*ast.Identifier)
 			node.ProcessedName = append(pn, node.Name)
+
 			return node, err
 		}
+
+		order := node.Order
 
 		var key string
 		importSpec := p.Specs[node.Value.Spec] //Where the struct definition lives
@@ -484,6 +590,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		} else {
 			key = strings.Join([]string{p.scope, node.Name}, "_")
 		}
+
+		oldScope := p.scope
+		p.scope = key
 
 		ty := p.structTypes[node.Value.Spec][node.Value.Value]
 		var properties map[string]ast.Node
@@ -503,14 +612,17 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.Index("STOCK", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
 
-			oldScope := p.scope
-			p.scope = key
+			if len(order) == 0 { //Sometimes happens if Instance node is referenced before struct is def
+				strkey := strings.Join([]string{node.Value.Spec, node.Value.Value}, "_")
+				order = p.StructsPropertyOrder[strkey]
+			}
 
 			pro := &ast.StructInstance{Token: node.Token,
 				Spec: p.trail.CurrentSpec(), Name: node.Name,
 				Parent:       []string{node.Value.Spec, node.Value.Value},
 				Properties:   make(map[string]*ast.StructProperty),
-				ComplexScope: node.ComplexScope}
+				ComplexScope: node.ComplexScope,
+				Order:        order}
 
 			pro.Token.Literal = "STOCK"
 
@@ -518,10 +630,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			var pro2 ast.Node
 			properties2 := make(map[string]ast.Node)
-			var order []string
-			for id, v := range properties {
+
+			for _, id := range order {
+				v := properties[id]
 				name := append(pn, id)
-				order = append(order, id)
 				// Looking for more instances
 				switch inst := v.(type) {
 				case *ast.StructInstance:
@@ -552,7 +664,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
-			pro.Order = util.StableSortKeys(order)
 			p.scope = oldScope
 			return pro, err
 		case "FLOW":
@@ -570,22 +681,26 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.Index("FLOW", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
 
-			oldScope := p.scope
-			p.scope = key
+			if len(order) == 0 {
+				strkey := strings.Join([]string{node.Value.Spec, node.Value.Value}, "_")
+				order = p.StructsPropertyOrder[strkey]
+			}
+
 			pro := &ast.StructInstance{Token: node.Token,
 				Spec: p.trail.CurrentSpec(), Name: node.Name,
 				Parent:       []string{node.Value.Spec, node.Value.Value},
 				Properties:   make(map[string]*ast.StructProperty),
-				ComplexScope: node.ComplexScope}
+				ComplexScope: node.ComplexScope,
+				Order:        order}
 
 			pro.Token.Literal = "FLOW"
 
 			var pro2 ast.Node
 			properties2 := make(map[string]ast.Node)
 			pn := p.buildIdContext(spec.Id())
-			var order []string
-			for id, v := range properties {
-				order = append(order, id)
+
+			for _, id := range order {
+				v := properties[id]
 				name := append(pn, id)
 				// Looking for more instances
 				switch inst := v.(type) {
@@ -617,7 +732,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
-			pro.Order = util.StableSortKeys(order)
 			p.scope = oldScope
 			return pro, err
 		default:
@@ -627,6 +741,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if p.Specs[p.trail.CurrentSpec()] == nil {
 			p.Specs[p.trail.CurrentSpec()] = NewSpecRecord()
 		}
+
+		order := node.Order
 
 		var key string
 		importSpec := p.Specs[node.Spec] //Where the struct definition lives
@@ -667,7 +783,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			var pro2 ast.Node
 			properties2 := make(map[string]ast.Node)
-			for id, v := range properties {
+			for _, id := range order {
+				v := properties[id]
 				name := append(pn, id)
 				// Looking for more instances
 				switch inst := v.(type) {
@@ -700,6 +817,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.UpdateStock(key, properties2)
 			node.ProcessedName = pn
 			p.scope = oldScope
+
 			return node, err
 		case "FLOW":
 			reference, err := importSpec.FetchFlow(pname)
@@ -722,7 +840,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			var pro2 ast.Node
 			properties2 := make(map[string]ast.Node)
 			pn := p.buildIdContext(spec.Id())
-			for id, v := range properties {
+			for _, id := range order {
+				v := properties[id]
 				name := append(pn, id)
 				// Looking for more instances
 				switch inst := v.(type) {
@@ -756,6 +875,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.UpdateFlow(key, properties2)
 			node.ProcessedName = pn
 			p.scope = oldScope
+
 			return node, err
 		default:
 			return node, fmt.Errorf("can't find a struct instance named %s", node.Parent)
@@ -804,17 +924,19 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		if node.Value[0] == "this" {
 			//Convert this
-			rawid := p.buildIdContext(p.trail.CurrentSpec())
-			rawid = append(rawid, node.Value[1:]...)
+			rawid := append([]string{p.trail.CurrentSpec(), p.scope}, node.Value[1:]...)
 			node2 := &ast.This{
 				Token:         node.Token,
-				Value:         append([]string{rawid[len(rawid)-1]}, node.Value[1:]...),
+				Value:         rawid[len(rawid)-2:],
 				ProcessedName: rawid,
 			}
 			return node2, err
 		}
-		spec := p.Specs[node.Spec]
-		rawid := p.buildIdContext(spec.Id())
+
+		var rawid []string
+		var spec *SpecRecord
+		spec = p.Specs[p.trail.CurrentSpec()]
+		rawid = p.buildIdContext(p.trail.CurrentSpec())
 
 		if rawid[len(rawid)-1] == node.Value[0] {
 			//Happens when it's being called from the run block
@@ -831,18 +953,39 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		// instances created in the runblock)
 
 		ty, _ := spec.GetStructType(rawid)
+
+		if ty == "NIL" && p.inStruct != "" { // We might be in a function
+			rawid2 := append([]string{rawid[0]}, p.inStruct)
+			rawid = append(rawid2, rawid[1:]...) //In which case we can find the node by inserting the struct name
+			ty, _ = spec.GetStructType(rawid)
+
+			node.ProcessedName = rawid
+		}
+
 		branch, err := spec.FetchVar(rawid, ty)
 		if err != nil {
 			return node, err
 		}
 
 		if fn, ok := branch.(*ast.FunctionLiteral); ok {
+			var oldScope string
+			if ty == "COMPONENT" {
+				oldScope = p.scope
+				p.scope = rawid[1]
+				p.inState = rawid[1]
+			}
+
 			fn2, err := p.walk(fn)
 			if err != nil {
 				return node, err
 			}
 			proFn := fn2.(*ast.FunctionLiteral)
 			spec.UpdateVar(rawid, ty, proFn)
+
+			if ty == "COMPONENT" {
+				p.scope = oldScope
+				p.inState = ""
+			}
 		}
 
 		return node, err
@@ -882,8 +1025,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 
 		spec := p.Specs[p.trail.CurrentSpec()]
-		rawid := p.buildIdContext(spec.Id())
-		rawid = append(rawid, p.inState, node.Function)
+		rawid := []string{spec.Id()}
+		rawid = append(rawid, p.scope, p.inState, node.Function)
 		node.FromState = p.inState
 		node.ProcessedName = rawid
 		return node, err

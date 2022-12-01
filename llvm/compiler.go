@@ -56,18 +56,19 @@ type Compiler struct {
 	// Where a condition should jump when done
 	contextCondAfter []*ir.Block
 
-	builtIns        map[string]*ir.Func
-	specStructs     map[string]*preprocess.SpecRecord
-	specFunctions   map[string]value.Value
-	specGlobals     map[string]*ir.Global
-	RawAsserts      []*ast.AssertionStatement
-	RawAssumes      []*ast.AssumptionStatement
-	Asserts         []*ast.AssertionStatement
-	Assumes         []*ast.AssumptionStatement
-	Uncertains      map[string][]float64
-	Unknowns        []string
-	Components      map[string]map[string]string
-	ComponentStarts map[string]string
+	builtIns       map[string]*ir.Func
+	specStructs    map[string]*preprocess.SpecRecord
+	specFunctions  map[string]value.Value
+	specGlobals    map[string]*ir.Global
+	sysGlobals     []*ir.Param
+	RawAsserts     []*ast.AssertionStatement
+	RawAssumes     []*ast.AssumptionStatement
+	Asserts        []*ast.AssertionStatement
+	Assumes        []*ast.AssumptionStatement
+	Uncertains     map[string][]float64
+	Unknowns       []string
+	Components     map[string]*StateFunc
+	ComponentOrder []string
 }
 
 func NewCompiler() *Compiler {
@@ -83,14 +84,13 @@ func NewCompiler() *Compiler {
 		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
 
-		runRound:        0,
-		builtIns:        make(map[string]*ir.Func),
-		specStructs:     make(map[string]*preprocess.SpecRecord),
-		specFunctions:   make(map[string]value.Value),
-		specGlobals:     make(map[string]*ir.Global),
-		Uncertains:      make(map[string][]float64),
-		Components:      make(map[string]map[string]string),
-		ComponentStarts: make(map[string]string),
+		runRound:      0,
+		builtIns:      make(map[string]*ir.Func),
+		specStructs:   make(map[string]*preprocess.SpecRecord),
+		specFunctions: make(map[string]value.Value),
+		specGlobals:   make(map[string]*ir.Global),
+		Uncertains:    make(map[string][]float64),
+		Components:    make(map[string]*StateFunc),
 	}
 	c.addGlobal()
 	return c
@@ -139,8 +139,10 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	}
 
 	c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
-	for _, fileNode := range specfile.Statements {
-		c.compile(fileNode)
+	if !isImport { //Don't compile if the spec is being imported
+		for _, fileNode := range specfile.Statements {
+			c.compile(fileNode)
+		}
 	}
 
 	for _, assert := range c.RawAsserts {
@@ -190,7 +192,9 @@ func (c *Compiler) compile(node ast.Node) {
 		for i := int64(0); i < v.Rounds.Value; i++ {
 			c.compileBlock(v.Body)
 			c.runRound = c.runRound + 1
+			c.stateCheck()
 		}
+
 		c.contextFuncName = ""
 
 	case *ast.StartStatement:
@@ -199,9 +203,21 @@ func (c *Compiler) compile(node ast.Node) {
 			if err != nil {
 				panic(err)
 			}
-			id := []string{c.currentSpec, p[0], p[1]}
-			c.processFunc(id, branch)
-			c.ComponentStarts[p[0]] = p[1]
+
+			node, ok := branch[p[1]].(*ast.FunctionLiteral)
+			if !ok {
+				panic(fmt.Errorf("component state %s not valid", p))
+			}
+
+			rawid := node.RawId()
+
+			if c.isVarSet(rawid) && c.alloc {
+				r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: rawid})
+				s := c.specs[c.currentSpec]
+				p := s.GetSpecVarPointer(rawid)
+				c.contextBlock.NewStore(r, p)
+			}
+
 		}
 
 	default:
@@ -233,12 +249,27 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		c.structPropOrder[key] = def.Value.(*ast.StockLiteral).Order
 	case "GLOBAL":
 		c.instances[key] = []string{key}
-		//instance, _ := def.Value.(*ast.Instance)
-		//c.compileInstance(instance, strings.Join(id, "_"))
+		c.structPropOrder[key] = def.Value.(*ast.StructInstance).Order
+		instance, _ := def.Value.(*ast.StructInstance)
+		context := c.contextFuncName
+		c.contextFuncName = "__run"
+		c.compileInstance(instance)
+		c.contextFuncName = context
+
+		rawid := instance.RawId()
+		s := c.specStructs[rawid[0]]
+		ty, _ := s.GetStructType(rawid)
+		n := strings.Join(rawid[1:], "_")
+		branches, err := s.Fetch(n, ty)
+		if err != nil {
+			panic(err)
+		}
+		params := c.generateParameters(instance.Id(), branches, false)
+		c.sysGlobals = append(c.sysGlobals, params...)
 	case "COMPONENT":
 		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.ComponentLiteral).Order
-		c.compileComponent(def.Value.(*ast.ComponentLiteral), key)
+		c.compileComponent(def.Value.(*ast.ComponentLiteral))
 	}
 }
 
@@ -321,54 +352,79 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	}
 }
 
-func (c *Compiler) compileComponent(node *ast.ComponentLiteral, cname string) {
-	for key, p := range node.Pairs {
+func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
+	id := node.Id()
+	spec := c.specStructs[id[0]]
+	tree, err := spec.FetchComponent(id[1])
+	if err != nil {
+		panic(err)
+	}
+
+	for _, k := range node.Order {
 		var pname string
-		scopeName := []string{cname, key.Value}
+		p := tree[k]
 
 		oldBlock := c.contextBlock
 
-		c.contextFuncName = strings.Join(scopeName, "_")
+		childId := p.(ast.Nameable).IdString()
+		childId = childId + "__state"
+		c.contextFuncName = childId
 
 		switch v := p.(type) {
-		case *ast.StateLiteral:
-			id := []string{key.Spec, cname}
-			parentID := strings.Join(node.Id(), "_")
-			k := strings.Join(id, "_")
-			c.structPropOrder[k] = c.structPropOrder[parentID]
+		case *ast.FunctionLiteral:
+			//These functions are treated as booleans too
+			//initialize them as false first
+			b := &ast.Boolean{Value: false, ProcessedName: v.ProcessedName}
+			val := c.compileValue(b)
 
-			branches := util.Preparse(node.Pairs)
-			params := c.generateParameters([]string{key.Spec, cname}, branches)
+			if val != nil {
+				rawid := b.RawId()
+				s := c.specs[rawid[0]]
+				if s.GetSpecVar(rawid) != nil {
+					vname := strings.Join(rawid, "_")
+					pointer := s.GetSpecVarPointer(rawid)
+					ty := s.GetSpecType(vname)
+					c.contextBlock.NewLoad(ty, pointer)
+				} else {
+					s.DefineSpecType(rawid, val.Type())
+					s.DefineSpecVar(rawid, val)
+					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
+				}
+			}
+
+			parentID := node.IdString()
+			c.structPropOrder[childId] = c.structPropOrder[parentID]
+
+			params := c.generateParameters(id, tree, true)
+			params = c.includeGlobalParams(params)
 			c.resetParaState(params)
-			f := c.module.NewFunc(key.Value, irtypes.Void, params...)
+			f := c.module.NewFunc(childId, irtypes.Void, params...)
 			c.contextFunc = f
 			pname = name.Block()
 			c.contextBlock = f.NewBlock(pname)
-			if c.Components[cname] != nil {
-				c.Components[cname][key.Value] = pname
-			} else {
-				c.Components[cname] = map[string]string{key.Value: pname}
-			}
-			val := c.compileBlock(v.Body)
-			c.contextBlock.NewRet(val)
+			c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
+			c.ComponentOrder = append(c.ComponentOrder, childId)
+			val2 := c.compileBlock(v.Body)
+			c.contextBlock.NewRet(val2)
 			c.contextBlock = oldBlock
 			c.contextFuncName = "__run"
 			c.contextFunc = nil
+
 		default:
 			val := c.compileValue(v)
 
 			if val != nil {
-				id := []string{c.currentSpec, cname, key.Value}
-				s := c.specs[id[0]]
-				if s.GetSpecVar(id) != nil {
-					vname := strings.Join(id, "_")
-					pointer := s.GetSpecVarPointer(id)
+				rawid := v.(ast.Nameable).RawId()
+				s := c.specs[rawid[0]]
+				if s.GetSpecVar(rawid) != nil {
+					vname := strings.Join(rawid, "_")
+					pointer := s.GetSpecVarPointer(rawid)
 					ty := s.GetSpecType(vname)
 					c.contextBlock.NewLoad(ty, pointer)
 				} else {
-					s.DefineSpecType(id, val.Type())
-					s.DefineSpecVar(id, val)
-					c.allocVariable(id, val, []int{0, 0, 0, 0})
+					s.DefineSpecType(rawid, val.Type())
+					s.DefineSpecVar(rawid, val)
+					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
 				}
 			}
 		}
@@ -401,13 +457,8 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 
 	if c.contextFuncName == "__run" &&
 		c.isFunction(branches[key]) {
-		return c.processFunc(id, branches)
+		return c.processFunc(id, branches, false)
 	}
-
-	// Otherwise inline the parameter...
-	// if c.currScope[0] == "" {
-	// 	c.currScope = []string{pc.Value[0]}
-	// }
 	parentFunction := c.contextFuncName
 	c.contextFuncName = pc.Value[0]
 
@@ -427,9 +478,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 			c.allocVariable(id, val, pc.Position())
 		}
 	}
-	// if c.currScope[0] == pc.Value[0] {
-	// 	c.currScope = []string{""}
-	// }
+
 	c.contextFuncName = parentFunction
 	return val
 }
@@ -541,10 +590,10 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 		}
 		var params []value.Value
 		for _, v := range v.Parameters {
-			l := uint64(len(v.String()))
+			id := v.(ast.Nameable).IdString()
+			l := uint64(len(id))
 			alloc := c.contextBlock.NewAlloca(irtypes.NewArray(l, irtypes.I8))
-			c.contextBlock.NewStore(constant.NewCharArrayFromString(v.String()), alloc)
-			//load := c.contextBlock.NewLoad(irtypes.I8, alloc)
+			c.contextBlock.NewStore(constant.NewCharArrayFromString(id), alloc)
 			cast := c.contextBlock.NewBitCast(alloc, irtypes.I8Ptr)
 			params = append(params, cast)
 		}
@@ -750,6 +799,26 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		} else {
 			return c.contextBlock.NewFCmp(enum.FPredONE, l, r)
 		}
+	case "&&":
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
+
+		return c.contextBlock.NewAnd(l, r)
+
+	case "||":
+		if !c.validOperator(node, true) {
+			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
+		}
+
+		l := c.compileInfixNode(node.Left)
+		r := c.compileInfixNode(node.Right)
+
+		return c.contextBlock.NewOr(l, r)
+
 	default:
 		panic(fmt.Sprintf("unknown operator %s. line: %d, col: %d", node.Operator, pos[0], pos[1]))
 	}
@@ -758,6 +827,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
+		id := v.Id()
+		return c.lookupIdent(id, node.Position())
+	case *ast.This:
 		id := v.Id()
 		return c.lookupIdent(id, node.Position())
 	default:
@@ -980,19 +1052,23 @@ func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 	return nil
 }
 
-func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value.Value {
+func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, component bool) value.Value {
 	fname := strings.Join(rawId, "_")
+	if component {
+		fname = fname + "__state"
+	}
 
 	if c.runRound == 0 { //initialize
-		params := c.generateParameters(rawId, branch)
+		params := c.generateParameters(rawId, branch, component)
+		if component {
+			params = c.includeGlobalParams(params)
+		}
 		f := c.module.NewFunc(fname, irtypes.Void, params...)
 		c.contextFunc = f
 
-		//oldScope := c.currScope
 		oldBlock := c.contextBlock
 
 		c.contextFuncName = fname
-		//c.currScope = []string{id[1]} // NOT necessarily the same as structName
 		c.contextBlock = f.NewBlock(name.Block())
 
 		val := c.compileValue(branch[rawId[len(rawId)-1]])
@@ -1000,13 +1076,17 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node) value
 
 		c.contextBlock = oldBlock
 		c.contextFuncName = "__run"
-		//c.currScope = oldScope
 		c.specFunctions[fname] = f
 		c.contextFunc = nil
 		c.resetParaState(params)
 	}
 
 	return c.specFunctions[fname]
+}
+
+func (c *Compiler) includeGlobalParams(params []*ir.Param) []*ir.Param {
+	params = append(params, c.sysGlobals...)
+	return params
 }
 
 func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
@@ -1091,7 +1171,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 	return children
 }
 
-func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*ir.Param {
+func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, component bool) []*ir.Param {
 	var p []*ir.Param
 	var s *spec
 
@@ -1113,9 +1193,9 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 			}
 
 			if n.Complex {
-				ip = c.generateParameters(child, strInst)
+				ip = c.generateParameters(child, strInst, false)
 			} else {
-				ip = c.generateParameters(n.Id(), strInst)
+				ip = c.generateParameters(n.Id(), strInst, false)
 			}
 			p = append(p, ip...)
 		case *ast.StructProperty:
@@ -1127,8 +1207,13 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 				p = append(p, ir.NewParam(vname, ty))
 			}
 		case *ast.FunctionLiteral:
-			// Skip, do nothing
-
+			if component {
+				rawid := n.RawId()
+				s = c.specs[rawid[0]]
+				vname := strings.Join(rawid, "_")
+				ty := s.GetPointerType(vname)
+				p = append(p, ir.NewParam(vname, ty))
+			}
 		default:
 			rawid := n.(ast.Nameable).RawId()
 			s = c.specs[rawid[0]]
@@ -1139,6 +1224,16 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node) []*
 		}
 	}
 	return p
+}
+
+func (c *Compiler) stateCheck() {
+	for _, k := range c.ComponentOrder {
+		v := c.Components[k]
+		id := v.Id
+		s := c.specs[id[0]]
+		params := s.GetParams(id)
+		c.contextBlock.NewCall(v.Func, params...)
+	}
 }
 
 func (c *Compiler) fetchOrder(id []string) []string {
@@ -1247,7 +1342,7 @@ func (c *Compiler) isVarSetAssert(rawid []string) bool {
 
 func (c *Compiler) isInstance(id []string) bool {
 	key := strings.Join(id, "_")
-	for k, _ := range c.instances {
+	for k := range c.instances {
 		if k == key {
 			return true
 		}

@@ -551,85 +551,104 @@ func TestUnknowns2(t *testing.T) {
 
 }
 
-// func TestComponentIR(t *testing.T) {
-// 	test := `
-// 	system test;
+func TestComponentIR(t *testing.T) {
+	test := `
+	system test;
 
-// 	component foo = states{
-// 		x: 8,
-// 		initial: func{
-// 			if this.x > 10{
-// 				stay();
-// 			}else{
-// 				advance(this.alarm);
-// 			}
-// 		},
-// 		alarm: func{
-// 			advance(this.close);
-// 		},
-// 	};
+	component foo = states{
+		x: 8,
+		initial: func{
+			if this.x > 10{
+				stay();
+			}else{
+				advance(this.alarm);
+			}
+		},
+		alarm: func{
+			advance(this.close);
+		},
+	};
 
-// 	start {
-// 		foo: initial,
-// 	};
-// 	`
+	start {
+		foo: initial,
+	};
+	`
 
-// 	expecting := `define void @__run() {
-// 		block-28:
-// 			%test_foo_x = alloca double
-// 			store double 8.0, double* %test_foo_x
-// 			ret void
-// 		}
+	expecting := `define void @__run() {
+		block-16:
+			%test_foo_x = alloca double
+			store double 8.0, double* %test_foo_x
+			%test_foo_initial = alloca i1
+			store i1 false, i1* %test_foo_initial
+			%test_foo_alarm = alloca i1
+			store i1 false, i1* %test_foo_alarm
+			store i1 true, i1* %test_foo_initial
+			ret void
+		}
+		
+		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, double* %test_foo_alarm) {
+		block-17:
+			%0 = load i1, i1* %test_foo_initial
+			%1 = icmp eq i1 %0, true
+			%2 = load double, double* %test_foo_x
+			%3 = fcmp ogt double %2, 10.0
+			%4 = and i1 %1, %3
+			br i1 %4, label %block-19-true, label %block-18-after
+		
+		block-18-after:
+			ret void
+		
+		block-19-true:
+			call void @stay()
+			br label %block-18-after
+		}
+		
+		define void @stay() {
+		block-20:
+			ret void
+		}
+		
+		define void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
+		block-21:
+			%0 = load i1, i1* %test_foo_alarm
+			%1 = icmp eq i1 %0, true
+			br i1 %1, label %block-23-true, label %block-22-after
+		
+		block-22-after:
+			ret void
+		
+		block-23-true:
+			%2 = alloca [14 x i8]
+			store [14 x i8] c"test_foo_close", [14 x i8]* %2
+			%3 = bitcast [14 x i8]* %2 to i8*
+			call void @advance(i8* %3)
+			br label %block-22-after
+		}
+		
+		define void @advance(i8* %toState) {
+		block-24:
+			ret void
+		}
+		`
+	llvm, err := prepTestSys(test)
 
-// 		define void @test_foo_initial(double* %test_foo_x) {
-// 		block-29:
-// 			%0 = load double, double* %test_foo_x
-// 			%1 = fcmp ogt double %0, 10.0
-// 			br i1 %1, label %block-31-true, label %block-32-false
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
 
-// 		block-30-after:
-// 			ret void
+	ir, err := validateIR(llvm)
 
-// 		block-31-true:
-// 			call void @stay()
-// 			br label %block-30-after
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
 
-// 		block-32-false:
-// 			%2 = alloca [10 x i8]
-// 			store [10 x i8] c"this.alarm", [10 x i8]* %2
-// 			%3 = bitcast [10 x i8]* %2 to i8*
-// 			call void @advance(i8* %3)
-// 			br label %block-30-after
-// 		}
+	err = compareResults(llvm, expecting, string(ir))
 
-// 		define void @stay() {
-// 		block-33:
-// 			ret void
-// 		}
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
-// 		define void @advance(i8* %toState) {
-// 		block-34:
-// 			ret void
-// 		}`
-// 	llvm, err := prepTestSys(test)
-
-// 	if err != nil {
-// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
-// 	}
-
-// 	ir, err := validateIR(llvm)
-
-// 	if err != nil {
-// 		t.Fatalf("generated IR is not valid. got=%s", err)
-// 	}
-
-// 	err = compareResults(llvm, expecting, string(ir))
-
-// 	if err != nil {
-// 		t.Fatalf(err.Error())
-// 	}
-
-// }
+}
 
 // run block
 // init values
@@ -682,6 +701,7 @@ func prepTest(test string) (string, error) {
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}
@@ -710,6 +730,7 @@ func prepTestSys(test string) (string, error) {
 	l := listener.NewListener(path, true, false)
 	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
 	ty := &types.Checker{}
