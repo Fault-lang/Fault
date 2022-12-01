@@ -56,7 +56,10 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (11/2/2022)
+### Current Status (11/30/2022)
+Trying to finish up state charts exposed some problems with conditionals that needed to be addressed, plus some bugs and funny edge cases. But state charts are now done, including a reachability analysis verifying that the system is appropriately specified that I think will be opt-in for now.
+
+#### (11/2/2022)
 While working on adding state chart support I finally hit the limit on what the half-assed namespace implementation I started with could support. So I ended up spending the entire month of October writing a preprocesser that annotated the AST with the proper ids for each nameable node, then integrating it into a compiler. It took a long time but the code in the LLVM compilation stage is so much cleaner and neater now. Along the way found some previously unknown bugs and added some more tests to bone up mutation scores (will need more of this later)
 
 #### (9/28/2022)

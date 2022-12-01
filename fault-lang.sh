@@ -9,13 +9,16 @@ Help()
    echo "Fault: a language and model checker for dynamic systems"
    echo "###########################################################"
    echo
-   echo "-f [filepath]    spec file."
-   echo "-h               print this help guide."
-   echo "-m [mode]        stop compiler at certain milestones: ast,"
-   echo "                 ir, smt, or check (default: check)"
+   echo "-f [filepath]     spec file."
+   echo "-h                print this help guide."
+   echo "-m [mode]         stop compiler at certain milestones: ast,"
+   echo "                   ir, smt, or check (default: check)"
    echo
-   echo "-i [input]       format of the input file (default: fspec)"
-   echo "-V               print software version and exit."
+   echo "-c [completeness] check that the system spec is complete"
+   echo "                   (default: false)"
+   echo 
+   echo "-i [input]        format of the input file (default: fspec)"
+   echo "-V                print software version and exit."
    echo
 }
 
@@ -53,6 +56,7 @@ do
         f) file=${OPTARG};;
         m) mode=${OPTARG};;
         i) input=${OPTARG};;
+        c) reach=${OPTARG};;
         h) Help
            exit;;
         V) Version
@@ -66,5 +70,5 @@ then
 else
     filepath="${path}/${file}"
 
-    docker run -v $home:/host:ro fault-lang/fault-z3 -mode=$mode -filepath=$filepath -input=$input
+    docker run -v $home:/host:ro fault-lang/fault-z3 -mode=$mode -filepath=$filepath -input=$input -complete=$reach
 fi

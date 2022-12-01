@@ -7,6 +7,7 @@ import (
 	"fault/llvm"
 	"fault/parser"
 	"fault/preprocess"
+	"fault/reachability"
 	"fault/smt"
 	"fault/types"
 	"fault/util"
@@ -21,7 +22,7 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string, filetype string) (*listener.FaultListener, *types.Checker) {
+func parse(data string, path string, file string, filetype string, reach bool) (*listener.FaultListener, *types.Checker) {
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
@@ -47,12 +48,18 @@ func parse(data string, path string, file string, filetype string) (*listener.Fa
 
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(lstnr.AST)
+	lstnr.AST = tree
 
 	// Infer Types and Build Symbol Table
 	ty := &types.Checker{}
 	_, err := ty.Check(tree, pre.Specs)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if reach {
+		r := reachability.NewTracer()
+		r.Scan(tree)
 	}
 	return lstnr, ty
 }
@@ -93,7 +100,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string)
 	return ex, data
 }
 
-func run(filepath string, mode string, input string) {
+func run(filepath string, mode string, input string, reach bool) {
 	filetype := util.DetectMode(filepath)
 	if filetype == "" {
 		log.Fatal("file provided is not a .fspec or .fsystem file")
@@ -112,7 +119,7 @@ func run(filepath string, mode string, input string) {
 
 	switch input {
 	case "fspec":
-		lstnr, ty := parse(d, path, filepath, filetype)
+		lstnr, ty := parse(d, path, filepath, filetype, reach)
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -164,10 +171,11 @@ func main() {
 	var mode string
 	var input string
 	var filepath string
+	var reach bool
 	modeCommand := flag.String("mode", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
 	inputCommand := flag.String("input", "fspec", "format of the input file (default: fspec)")
 	fpCommand := flag.String("filepath", "", "path to file to compile")
-	//helpCommand := flag.Bool("help", false, "path to file to compile")
+	reachCommand := flag.String("complete", "false", "make sure the transitions to all defined states are specified in the model")
 
 	flag.Parse()
 
@@ -207,5 +215,24 @@ func main() {
 		}
 	}
 
-	run(filepath, mode, input)
+	if *reachCommand == "" {
+		reach = false
+	} else {
+		r := strings.ToLower(*reachCommand)
+		switch r {
+		case "true":
+			reach = true
+		case "false":
+			reach = false
+		case "t":
+			reach = true
+		case "f":
+			reach = false
+		default:
+			fmt.Printf("%s is not a valid option for completeness please use true or false", r)
+			os.Exit(1)
+		}
+	}
+
+	run(filepath, mode, input, reach)
 }

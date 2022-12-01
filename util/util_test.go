@@ -148,6 +148,12 @@ func TestFilepath(t *testing.T) {
 		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath7a)
 	}
 
+	filepath8 := "/host/test.spec"
+	filepath8a := Filepath(filepath8)
+	if filepath8a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath8a)
+	}
+
 	os.Setenv("FAULT_HOST", host)
 }
 

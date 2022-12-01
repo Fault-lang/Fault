@@ -118,7 +118,6 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 	if !l.testing {
 		//Remove quotes
 		trimmedFP := fpath.Value[1 : len(fpath.Value)-1]
-
 		//Does file exist?
 		fp := gopath.Join(l.Path, trimmedFP)
 		fp = util.Filepath(fp)

@@ -50,7 +50,9 @@ func Filepath(filepath string) string {
 			filepath = strings.Join([]string{pathstr, filepath[idx+2:]}, "")
 		}
 
-		filepath = strings.Join([]string{host, filepath}, "/")
+		if len(filepath) < len(host) || host != filepath[0:len(host)] {
+			return strings.Join([]string{host, filepath}, "/")
+		}
 	}
 	return filepath
 }
