@@ -1360,7 +1360,15 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 		Spec:  l.currSpec,
 	}
 
-	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
+	var importSpec string
+	var importStruct string
+	switch parent := instance.(type) {
+	case *ast.Instance:
+		importSpec = parent.Value.Spec
+		importStruct = parent.Value.Value
+	}
+
+	key := strings.Join([]string{importSpec, importStruct}, "_")
 	order := l.StructsPropertyOrder[key]
 
 	instance.(*ast.Instance).Name = ident.Value
