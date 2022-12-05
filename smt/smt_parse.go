@@ -221,7 +221,9 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstCall:
 			callee := inst.Callee.Ident()
 			if g.isBuiltIn(callee) {
-				g.parseBuiltIn(inst)
+				r := g.parseBuiltIn(inst)
+				rules = append(rules, r...)
+				continue
 			}
 			meta := inst.Metadata
 			if g.isSameParallelGroup(meta) {
@@ -305,7 +307,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	return t, f, a
 }
 
-func (g *Generator) parseBuiltIn(call *ir.InstCall) rule {
+func (g *Generator) parseBuiltIn(call *ir.InstCall) []rule {
 	p := call.Args
 	bc, ok := p[0].(*ir.InstBitCast)
 	if !ok {
@@ -314,7 +316,19 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall) rule {
 	id := bc.From.Ident()
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 	state := g.variables.loads[refname]
-	return g.parseRule(state.Ident(), "true", "Bool", "=")
+	newState := state.Ident()
+	newState = newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
+	newState = g.variables.advanceSSA(newState)
+	r1 := g.parseRule(newState, "true", "Bool", "=")
+
+	if g.currentFunction[len(g.currentFunction)-7:] != "__state" {
+		panic("calling advance from outside the state chart")
+	}
+
+	currentState := g.currentFunction[1 : len(g.currentFunction)-7]
+	currentState = g.variables.advanceSSA(currentState)
+	r2 := g.parseRule(currentState, "false", "Bool", "=")
+	return []rule{r1, r2}
 }
 
 func (g *Generator) isBuiltIn(c string) bool {
