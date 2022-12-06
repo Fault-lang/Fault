@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.9.3. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 // FaultParserListener is a complete listener for a parse tree produced by FaultParser.
 type FaultParserListener interface {
@@ -56,6 +56,12 @@ type FaultParserListener interface {
 	// EnterIdentList is called when entering the identList production.
 	EnterIdentList(c *IdentListContext)
 
+	// EnterConstants is called when entering the constants production.
+	EnterConstants(c *ConstantsContext)
+
+	// EnterNil is called when entering the nil production.
+	EnterNil(c *NilContext)
+
 	// EnterExpressionList is called when entering the expressionList production.
 	EnterExpressionList(c *ExpressionListContext)
 
@@ -106,6 +112,9 @@ type FaultParserListener interface {
 
 	// EnterBuiltins is called when entering the builtins production.
 	EnterBuiltins(c *BuiltinsContext)
+
+	// EnterBuiltinInfix is called when entering the builtinInfix production.
+	EnterBuiltinInfix(c *BuiltinInfixContext)
 
 	// EnterAccessHistory is called when entering the accessHistory production.
 	EnterAccessHistory(c *AccessHistoryContext)
@@ -266,6 +275,12 @@ type FaultParserListener interface {
 	// ExitIdentList is called when exiting the identList production.
 	ExitIdentList(c *IdentListContext)
 
+	// ExitConstants is called when exiting the constants production.
+	ExitConstants(c *ConstantsContext)
+
+	// ExitNil is called when exiting the nil production.
+	ExitNil(c *NilContext)
+
 	// ExitExpressionList is called when exiting the expressionList production.
 	ExitExpressionList(c *ExpressionListContext)
 
@@ -316,6 +331,9 @@ type FaultParserListener interface {
 
 	// ExitBuiltins is called when exiting the builtins production.
 	ExitBuiltins(c *BuiltinsContext)
+
+	// ExitBuiltinInfix is called when exiting the builtinInfix production.
+	ExitBuiltinInfix(c *BuiltinInfixContext)
 
 	// ExitAccessHistory is called when exiting the accessHistory production.
 	ExitAccessHistory(c *AccessHistoryContext)

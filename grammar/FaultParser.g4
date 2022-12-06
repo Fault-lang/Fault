@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt? eos
+    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt? EOF
     ;
 
 sysClause
@@ -36,7 +36,7 @@ startPair
 */
 
 spec
-    : specClause declaration* forStmt? eos
+    : specClause declaration* forStmt? EOF
     ;
 
 specClause
@@ -88,7 +88,13 @@ constants
     | string_
     | bool_
     | solvable
+    | nil
     ;
+
+nil
+: NIL
+;
+
 
 expressionList
     : expression (',' expression)*
@@ -138,6 +144,7 @@ simpleStmt
     : expression
     | incDecStmt
     | assignment
+    | builtinInfix
     | builtins
     | emptyStmt
     ;
@@ -149,6 +156,11 @@ incDecStmt
 builtins
     : 'advance' '(' paramCall ')'
     | 'stay' '(' ')'
+    ;
+
+builtinInfix
+    : builtinInfix ('||' | '&&') builtinInfix
+    | builtins ('||' | '&&') builtins
     ;
 
 accessHistory
@@ -236,7 +248,7 @@ expression
     ;
 
 operand
-    : NIL
+    : nil
     | numeric
     | string_
     | bool_

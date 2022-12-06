@@ -7,14 +7,19 @@ import (
 	"fault/preprocess"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestAddOK(t *testing.T) {
 	test := `spec test1;
-			const x = 2+2;
-			const y = 2+3.1;
-			const z = x + unknown(a);
+			def test = stock{
+				x: func{2+2;},
+				y: func{2+3.1;},
+				z: func{
+					b = 1+2;
+					b + unknown(a);
+				},
+			};
 	`
 	checker, err := prepTest(test)
 
@@ -23,7 +28,8 @@ func TestAddOK(t *testing.T) {
 	}
 
 	spec := checker.SpecStructs["test1"]
-	x, _ := spec.FetchConstant("x")
+	testv, _ := spec.FetchStock("test")
+	x := testv["x"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if x.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant x does not have an int type. got=%T", x)
@@ -37,7 +43,7 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("left node does not have an int type. got=%T", x.(*ast.InfixExpression).Left)
 	}
 
-	y, _ := spec.FetchConstant("y")
+	y := testv["y"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if y.(*ast.InfixExpression).InferredType.Type != "FLOAT" {
 		t.Fatalf("Constant y does not have a float type. got=%T", y)
@@ -51,7 +57,7 @@ func TestAddOK(t *testing.T) {
 		t.Fatalf("left y node does not have an int type. got=%T", y.(*ast.InfixExpression).Left)
 	}
 
-	z, _ := spec.FetchConstant("z")
+	z := testv["z"].(*ast.FunctionLiteral).Body.Statements[1].(*ast.ExpressionStatement).Expression
 
 	if z.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant z does not have a int type. got=%T", z)
@@ -64,7 +70,9 @@ func TestAddOK(t *testing.T) {
 
 func TestTypeError(t *testing.T) {
 	test := `spec test1;
-			const x = 2+"2";
+			def test = stock {
+				x: func{2+"2";},
+			};
 	`
 	_, err := prepTest(test)
 	if err == nil {
@@ -86,7 +94,7 @@ func TestStructTypeError(t *testing.T) {
 			};
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "stock is the store of values, stock test1_fizz should be a flow"
 
 	if err.Error() != actual {
@@ -109,7 +117,7 @@ func TestInstanceError(t *testing.T) {
 			};
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "can't find node [test1 fizz buzz] line:9, col:5"
 
 	if err.Error() != actual {
@@ -120,7 +128,9 @@ func TestInstanceError(t *testing.T) {
 
 func TestComplex(t *testing.T) {
 	test := `spec test1;
-			const x = (2.1*8)+2.3/(5-2);
+			def test = stock{
+				x: func{(2.1*8)+2.3/(5-2);}
+			}
 	`
 	checker, err := prepTest(test)
 
@@ -129,7 +139,8 @@ func TestComplex(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	x, _ := consts.FetchConstant("x")
+	testv, _ := consts.FetchStock("test")
+	x := testv["x"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if x.(*ast.InfixExpression).InferredType.Type != "FLOAT" {
 		t.Fatalf("Constant x does not have an float type. got=%T", x)
@@ -299,9 +310,11 @@ func TestTypesInStruct(t *testing.T) {
 
 func TestNils(t *testing.T) {
 	test := `spec test1;
-			const x = nil + 3;
-			const y = 4 + nil;
-			const z = nil + nil;`
+			def test = stock{
+			x:func{nil + 3;},
+			y:func{4 + nil;},
+			z:func{nil + nil;},
+			};`
 	checker, err := prepTest(test)
 
 	if err != nil {
@@ -309,7 +322,8 @@ func TestNils(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	x, _ := consts.FetchConstant("x")
+	testv, _ := consts.FetchStock("test")
+	x := testv["x"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if x.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant x does not have an int type. got=%s", x.(*ast.InfixExpression).InferredType.Type)
@@ -323,7 +337,7 @@ func TestNils(t *testing.T) {
 		t.Fatalf("x left node does not have an nil type. got=%s", x.(*ast.InfixExpression).Left.(*ast.Nil).InferredType.Type)
 	}
 
-	y, _ := consts.FetchConstant("y")
+	y := testv["y"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 	if y.(*ast.InfixExpression).InferredType.Type != "INT" {
 		t.Fatalf("Constant y does not have an int type. got=%s", y.(*ast.InfixExpression).InferredType.Type)
 	}
@@ -335,7 +349,7 @@ func TestNils(t *testing.T) {
 	if y.(*ast.InfixExpression).Left.(*ast.IntegerLiteral).InferredType.Type != "INT" {
 		t.Fatalf("y left node does not have an int type. got=%s", y.(*ast.InfixExpression).Left.(*ast.IntegerLiteral).InferredType.Type)
 	}
-	z, _ := consts.FetchConstant("z")
+	z := testv["z"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 	if z.(*ast.InfixExpression).InferredType.Type != "NIL" {
 		t.Fatalf("Constant z does not have a nil type. got=%s", z.(*ast.InfixExpression).InferredType.Type)
 	}
@@ -583,7 +597,7 @@ func TestInvalidAssert(t *testing.T) {
 			assert a + 5;
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
 	if err == nil || err.Error() != actual {
@@ -599,7 +613,7 @@ func TestInvalidAssert2(t *testing.T) {
 			assert 5 + a;
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
 	if err == nil || err.Error() != actual {
@@ -615,7 +629,7 @@ func TestInvalidAssert3(t *testing.T) {
 			assert true + a;
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "invalid expression: got=BOOL + FLOAT"
 
 	if err == nil || err.Error() != actual {
@@ -640,10 +654,12 @@ func TestValidAssert(t *testing.T) {
 
 func TestInvalidInfix(t *testing.T) {
 	test := `spec test1;
-			const a = 2 + "world";
+			def test= stock{
+				a: func{ 2 + "world";},
+			};
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "type mismatch: got=INT,STRING"
 
 	if err == nil || err.Error() != actual {
@@ -654,11 +670,32 @@ func TestInvalidInfix(t *testing.T) {
 
 func TestInvalidInfix2(t *testing.T) {
 	test := `spec test1;
-			const a = "hello" + 4;
+			def test = stock{
+				a: func{"hello" + 4;},
+			};
 	`
 	_, err := prepTest(test)
-	
+
 	actual := "type mismatch: got=STRING,INT"
+
+	if err == nil || err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+
+}
+
+func TestRedeclareError(t *testing.T) {
+	test := `spec test1;
+			def test = stock{
+				a: true,
+				b: func{
+					a = 2.3;
+				},
+			};
+	`
+	_, err := prepTest(test)
+
+	actual := "cannot redeclare variable a is type BOOL got FLOAT"
 
 	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
@@ -682,8 +719,11 @@ func TestValidCompoundAssert(t *testing.T) {
 
 func TestPrefix(t *testing.T) {
 	test := `spec test1;
-			const a = !2.3;
 			const b = -2.3;
+
+			def test = stock{
+				a: func{!2.3;},
+			};
 	`
 	checker, err := prepTest(test)
 
@@ -692,7 +732,8 @@ func TestPrefix(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	a, _ := consts.FetchConstant("a")
+	testv, _ := consts.FetchStock("test")
+	a := testv["a"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if a.(*ast.PrefixExpression).InferredType.Type != "BOOL" {
 		t.Fatalf("Constant a does not have an boolean type. got=%s", a.(*ast.Boolean).InferredType.Type)
@@ -873,8 +914,8 @@ func prepTest(test string) (*Checker, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := &Checker{}
-	_, err := ty.Check(tree, pre.Specs)
+	ty := NewTypeChecker(pre.Specs)
+	_, err := ty.Check(tree)
 	return ty, err
 }
 
@@ -891,7 +932,7 @@ func prepTestSys(test string) (*Checker, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := &Checker{}
-	_, err := ty.Check(tree, pre.Specs)
+	ty := NewTypeChecker(pre.Specs)
+	_, err := ty.Check(tree)
 	return ty, err
 }

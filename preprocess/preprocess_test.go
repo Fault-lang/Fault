@@ -6,13 +6,13 @@ import (
 	"fault/parser"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestConstants(t *testing.T) {
 	test := `spec test1;
 	const x = 2;
-	const y = 2+3.1;
+	const y = 3.1;
 	const z = unknown(a);`
 
 	process := prepTest(test)
@@ -43,16 +43,8 @@ func TestConstants(t *testing.T) {
 	}
 
 	y, _ := consts.FetchConstant("y")
-	if _, ok := y.(*ast.InfixExpression); !ok {
-		t.Fatalf("Constant y not the right type. got=%T", y)
-	}
-
-	if _, ok1 := y.(*ast.InfixExpression).Right.(*ast.FloatLiteral); !ok1 {
-		t.Fatalf("right y node does not have the right type. got=%T", y.(*ast.InfixExpression).Right)
-	}
-
-	if _, ok2 := y.(*ast.InfixExpression).Left.(*ast.IntegerLiteral); !ok2 {
-		t.Fatalf("left y node does not have the right type. got=%T", y.(*ast.InfixExpression).Left)
+	if _, ok1 := y.(*ast.FloatLiteral); !ok1 {
+		t.Fatalf("right y node does not have the right type. got=%T", y)
 	}
 
 	z, _ := consts.FetchConstant("z")

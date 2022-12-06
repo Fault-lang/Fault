@@ -5,7 +5,7 @@ import (
 	"fault/parser"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSpecDecl(t *testing.T) {
@@ -90,39 +90,6 @@ func TestConstMultiDecl(t *testing.T) {
 	}
 	if spec.Statements[2].(*ast.ConstantStatement).Name.Value != "y" {
 		t.Fatalf("Constant identifier is not y. got=%s", spec.Statements[2].(*ast.ConstantStatement).Name.Value)
-	}
-}
-
-func TestConstMultiWExpressDecl(t *testing.T) {
-	test := `spec test1;
-			 const x = 1;
-	         const y = 2 * (x + 1);;
-			`
-	_, spec := prepTest(test, nil)
-
-	if spec == nil {
-		t.Fatalf("prepTest() returned nil")
-	}
-	if len(spec.Statements) != 3 {
-		t.Fatalf("spec.Statements does not contain 3 statements. got=%d", len(spec.Statements))
-	}
-	if spec.Statements[1].TokenLiteral() != "CONST_DECL" {
-		t.Fatalf("spec.Statement[1] is not CONST_DECL. got=%s", spec.Statements[1].TokenLiteral())
-	}
-	if spec.Statements[1].(*ast.ConstantStatement).Name.Value != "x" {
-		t.Fatalf("Constant identifier is not x. got=%s", spec.Statements[1].(*ast.ConstantStatement).Name.Value)
-	}
-
-	if spec.Statements[2].TokenLiteral() != "CONST_DECL" {
-		t.Fatalf("spec.Statement[2] is not CONST_DECL. got=%s", spec.Statements[2].TokenLiteral())
-	}
-	if spec.Statements[2].(*ast.ConstantStatement).Name.Value != "y" {
-		t.Fatalf("Constant identifier is not y. got=%s", spec.Statements[2].(*ast.ConstantStatement).Name.Value)
-	}
-
-	_, ok := spec.Statements[2].(*ast.ConstantStatement).Value.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("Constant value is not an infix expression. got=%T", spec.Statements[2].(*ast.ConstantStatement).Value)
 	}
 }
 
@@ -1304,17 +1271,19 @@ func TestNil(t *testing.T) {
 
 func TestAccessHistory(t *testing.T) {
 	test := `spec test1;
-			 const a = b[1][2];
+			 for 1 run {
+				b[1][2];
+			 }
 			`
 	_, spec := prepTest(test, nil)
-	con, ok := spec.Statements[1].(*ast.ConstantStatement)
+	con, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
+		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
 	}
 
-	idx1, ok := con.Value.(*ast.IndexExpression)
+	idx1, ok := con.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IndexExpression)
 	if !ok {
-		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Value)
+		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	idx2, ok := idx1.Left.(*ast.IndexExpression)
@@ -1329,17 +1298,19 @@ func TestAccessHistory(t *testing.T) {
 
 func TestAccessHistory2(t *testing.T) {
 	test := `spec test1;
-			 const a = b[a[2]];
+			for 1 run {
+				b[a[2]];
+			}
 			`
 	_, spec := prepTest(test, nil)
-	con, ok := spec.Statements[1].(*ast.ConstantStatement)
+	con, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
+		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
 	}
 
-	idx1, ok := con.Value.(*ast.IndexExpression)
+	idx1, ok := con.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IndexExpression)
 	if !ok {
-		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Value)
+		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	if idx1.Left.(*ast.Identifier).Value != "b" {

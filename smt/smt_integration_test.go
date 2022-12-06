@@ -15,7 +15,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestTestData(t *testing.T) {
@@ -200,8 +200,8 @@ func prepTest(path string, test string) (string, error) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := &types.Checker{}
-	tree, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	tree, err := ty.Check(tree)
 	if err != nil {
 		return "", err
 	}
@@ -235,8 +235,8 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := &types.Checker{}
-	tree, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	tree, err := ty.Check(tree)
 
 	if err != nil {
 		return "", err

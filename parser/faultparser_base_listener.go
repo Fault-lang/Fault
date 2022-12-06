@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.9.3. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 // BaseFaultParserListener is a complete listener for a parse tree produced by FaultParser.
 type BaseFaultParserListener struct{}
@@ -117,6 +117,18 @@ func (s *BaseFaultParserListener) EnterIdentList(ctx *IdentListContext) {}
 // ExitIdentList is called when production identList is exited.
 func (s *BaseFaultParserListener) ExitIdentList(ctx *IdentListContext) {}
 
+// EnterConstants is called when production constants is entered.
+func (s *BaseFaultParserListener) EnterConstants(ctx *ConstantsContext) {}
+
+// ExitConstants is called when production constants is exited.
+func (s *BaseFaultParserListener) ExitConstants(ctx *ConstantsContext) {}
+
+// EnterNil is called when production nil is entered.
+func (s *BaseFaultParserListener) EnterNil(ctx *NilContext) {}
+
+// ExitNil is called when production nil is exited.
+func (s *BaseFaultParserListener) ExitNil(ctx *NilContext) {}
+
 // EnterExpressionList is called when production expressionList is entered.
 func (s *BaseFaultParserListener) EnterExpressionList(ctx *ExpressionListContext) {}
 
@@ -218,6 +230,12 @@ func (s *BaseFaultParserListener) EnterBuiltins(ctx *BuiltinsContext) {}
 
 // ExitBuiltins is called when production builtins is exited.
 func (s *BaseFaultParserListener) ExitBuiltins(ctx *BuiltinsContext) {}
+
+// EnterBuiltinInfix is called when production builtinInfix is entered.
+func (s *BaseFaultParserListener) EnterBuiltinInfix(ctx *BuiltinInfixContext) {}
+
+// ExitBuiltinInfix is called when production builtinInfix is exited.
+func (s *BaseFaultParserListener) ExitBuiltinInfix(ctx *BuiltinInfixContext) {}
 
 // EnterAccessHistory is called when production accessHistory is entered.
 func (s *BaseFaultParserListener) EnterAccessHistory(ctx *AccessHistoryContext) {}

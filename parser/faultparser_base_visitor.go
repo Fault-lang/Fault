@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.9.3. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 type BaseFaultParserVisitor struct {
 	*antlr.BaseParseTreeVisitor
@@ -72,6 +72,14 @@ func (v *BaseFaultParserVisitor) VisitIdentList(ctx *IdentListContext) interface
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitConstants(ctx *ConstantsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitNil(ctx *NilContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitExpressionList(ctx *ExpressionListContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -137,6 +145,10 @@ func (v *BaseFaultParserVisitor) VisitIncDecStmt(ctx *IncDecStmtContext) interfa
 }
 
 func (v *BaseFaultParserVisitor) VisitBuiltins(ctx *BuiltinsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

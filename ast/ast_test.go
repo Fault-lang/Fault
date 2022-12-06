@@ -331,7 +331,7 @@ func TestTypes(t *testing.T) {
 			want = ""
 		case *FunctionLiteral:
 			got = t.Type()
-			want = ""
+			want = "INT"
 		case *StringLiteral:
 			got = t.Type()
 			want = "STRING"

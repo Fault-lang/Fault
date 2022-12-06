@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 type FaultListener struct {
@@ -950,15 +950,12 @@ func (l *FaultListener) ExitOpClock(c *parser.OpClockContext) {
 	)
 }
 
-func (l *FaultListener) ExitOperand(c *parser.OperandContext) {
-	if c.GetText() == "nil" {
-		token := util.GenerateToken("NIL", "NIL", c.GetStart(), c.GetStop())
+func (l *FaultListener) ExitNil(c *parser.NilContext) {
+	token := util.GenerateToken("NIL", "NIL", c.GetStart(), c.GetStop())
 
-		l.push(&ast.Nil{
-			Token: token,
-		})
-
-	}
+	l.push(&ast.Nil{
+		Token: token,
+	})
 }
 
 func (l *FaultListener) ExitRounds(c *parser.RoundsContext) {

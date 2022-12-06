@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.9.3. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 // A complete Visitor for a parse tree produced by FaultParser.
 type FaultParserVisitor interface {
@@ -56,6 +56,12 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#identList.
 	VisitIdentList(ctx *IdentListContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#constants.
+	VisitConstants(ctx *ConstantsContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#nil.
+	VisitNil(ctx *NilContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#expressionList.
 	VisitExpressionList(ctx *ExpressionListContext) interface{}
 
@@ -106,6 +112,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#builtins.
 	VisitBuiltins(ctx *BuiltinsContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#builtinInfix.
+	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#accessHistory.
 	VisitAccessHistory(ctx *AccessHistoryContext) interface{}

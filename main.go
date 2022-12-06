@@ -18,7 +18,7 @@ import (
 	gopath "path"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	_ "github.com/olekukonko/tablewriter"
 )
 
@@ -51,8 +51,8 @@ func parse(data string, path string, file string, filetype string, reach bool) (
 	lstnr.AST = tree
 
 	// Infer Types and Build Symbol Table
-	ty := &types.Checker{}
-	_, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	_, err := ty.Check(tree)
 	if err != nil {
 		log.Fatal(err)
 	}
