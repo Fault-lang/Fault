@@ -111,7 +111,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		fEnds, _ = g.capCond("false", phis)
 
 		// Keep variable names in sync across branches
-		tSync, fSync := g.capCondSyncRules()
+		tSync, fSync := g.capCondSyncRules("true", "false")
 		tEnds = append(tEnds, tSync...)
 		fEnds = append(fEnds, fSync...)
 
@@ -221,8 +221,16 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstCall:
 			callee := inst.Callee.Ident()
 			if g.isBuiltIn(callee) {
-				r := g.parseBuiltIn(inst)
-				rules = append(rules, r...)
+				meta := inst.Metadata // Is this in a "b || b" construction?
+				if len(meta) > 0 {
+					id := inst.Ident()
+					refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+					inst.Metadata = nil // don't need this anymore
+					g.variables.loads[refname] = inst
+				} else {
+					r := g.parseBuiltIn(inst, false)
+					rules = append(rules, r...)
+				}
 				continue
 			}
 			meta := inst.Metadata
@@ -253,8 +261,15 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			r := g.andRule(inst)
 			g.tempRule(inst, r)
 		case *ir.InstOr:
-			r := g.orRule(inst)
-			g.tempRule(inst, r)
+			if g.variables.isTemp(inst.X.Ident()) || g.variables.isTemp(inst.Y.Ident()) {
+				g.inPhiState.In()
+				r := g.builtInChoiceRule(inst.X.Ident(), inst.Y.Ident())
+				rules = append(rules, r)
+				g.inPhiState.Out()
+			} else {
+				r := g.orRule(inst)
+				g.tempRule(inst, r)
+			}
 		case *ir.InstBitCast:
 			//Do nothing
 		default:
@@ -307,18 +322,32 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	return t, f, a
 }
 
-func (g *Generator) parseBuiltIn(call *ir.InstCall) []rule {
+func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	p := call.Args
+	if len(p) == 0 {
+		return []rule{}
+	}
+
 	bc, ok := p[0].(*ir.InstBitCast)
 	if !ok {
 		panic("improper argument to built in function")
 	}
+
 	id := bc.From.Ident()
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 	state := g.variables.loads[refname]
 	newState := state.Ident()
 	newState = newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
+	n := g.variables.ssa[newState]
+	if !g.inPhiState.Check() {
+		g.variables.newPhi(newState, n+1)
+	} else {
+		g.variables.storeLastState(newState, n+1)
+	}
 	newState = g.variables.advanceSSA(newState)
+	if complex {
+		g.declareVar(newState, "Bool")
+	}
 	r1 := g.parseRule(newState, "true", "Bool", "=")
 
 	if g.currentFunction[len(g.currentFunction)-7:] != "__state" {
@@ -326,7 +355,17 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall) []rule {
 	}
 
 	currentState := g.currentFunction[1 : len(g.currentFunction)-7]
+	n2 := g.variables.ssa[currentState]
+	if !g.inPhiState.Check() {
+		g.variables.newPhi(currentState, n2+1)
+	} else {
+		g.variables.storeLastState(currentState, n2+1)
+	}
+
 	currentState = g.variables.advanceSSA(currentState)
+	if complex {
+		g.declareVar(currentState, "Bool")
+	}
 	r2 := g.parseRule(currentState, "false", "Bool", "=")
 	return []rule{r1, r2}
 }

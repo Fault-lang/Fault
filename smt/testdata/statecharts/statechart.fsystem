@@ -1,6 +1,6 @@
 system statechart;
 
-import "simple.fspec";
+import "../simple.fspec";
 
 global fl = new simple.fl;
 

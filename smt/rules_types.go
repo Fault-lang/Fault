@@ -14,6 +14,27 @@ type rule interface {
 	String() string
 }
 
+type ands struct {
+	rule
+	x   []rule
+	tag *branch
+}
+
+func (a *ands) ruleNode() {}
+func (a *ands) String() string {
+	var out bytes.Buffer
+	for _, r := range a.x {
+		out.WriteString(r.String())
+	}
+	return out.String()
+}
+func (a *ands) Tag(k1 string, k2 string) {
+	a.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type assrt struct {
 	rule
 	variable       *wrap
@@ -218,7 +239,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 			n := g.variables.ssa[id]
 			if !g.inPhiState.Check() {
 				g.variables.newPhi(id, n+1)
-			}else{
+			} else {
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(id)
@@ -236,7 +257,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				n := g.variables.ssa[id]
 				if !g.inPhiState.Check() {
 					g.variables.newPhi(id, n+1)
-				}else{
+				} else {
 					g.variables.storeLastState(id, n+1)
 				}
 				id = g.variables.advanceSSA(id)
@@ -252,9 +273,9 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				n := g.variables.ssa[id]
 				if !g.inPhiState.Check() {
 					g.variables.newPhi(id, n+1)
-					}else{
-						g.variables.storeLastState(id, n+1)
-					}
+				} else {
+					g.variables.storeLastState(id, n+1)
+				}
 				ty := g.variables.lookupType(id, nil)
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
@@ -268,9 +289,9 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		n := g.variables.ssa[id]
 		if !g.inPhiState.Check() {
 			g.variables.newPhi(id, n+1)
-			}else{
-				g.variables.storeLastState(id, n+1)
-			}
+		} else {
+			g.variables.storeLastState(id, n+1)
+		}
 		id = g.variables.advanceSSA(id)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
@@ -293,12 +314,49 @@ func (g *Generator) andRule(inst *ir.InstAnd) rule {
 }
 
 func (g *Generator) orRule(inst *ir.InstOr) rule {
-	id := inst.Ident()
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
+	id := inst.Ident()
 	x = g.variables.convertIdent(g.currentFunction, x)
 	y = g.variables.convertIdent(g.currentFunction, y)
 	return g.parseInfix(id, x, y, "or")
+}
+
+func (g *Generator) builtInChoiceRule(x string, y string) rule {
+	refnamex := fmt.Sprintf("%s-%s", g.currentFunction, x)
+	vx := g.variables.loads[refnamex]
+	xinst := g.parseBuiltIn(vx.(*ir.InstCall), true)
+
+	refnamey := fmt.Sprintf("%s-%s", g.currentFunction, y)
+	vy := g.variables.loads[refnamey]
+	yinst := g.parseBuiltIn(vy.(*ir.InstCall), true)
+
+	g.newFork()
+	g.buildForkChoice(xinst, "xbranch")
+	g.buildForkChoice(yinst, "ybranch")
+	yEnds, phis := g.capCond("ybranch", make(map[string]int16))
+	xEnds, _ := g.capCond("xbranch", phis)
+
+	xSync, ySync := g.capCondSyncRules("xbranch", "ybranch")
+	xEnds = append(xEnds, xSync...)
+	yEnds = append(yEnds, ySync...)
+
+	xinst = append(xinst, xEnds...)
+	yinst = append(yinst, yEnds...)
+
+	xrule := &ands{
+		x: xinst,
+	}
+	yrule := &ands{
+		x: yinst,
+	}
+
+	return &infix{
+		x:  xrule,
+		y:  yrule,
+		ty: "Bool",
+		op: "or",
+	}
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {

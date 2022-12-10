@@ -583,10 +583,12 @@ func TestComponentIR(t *testing.T) {
 			%test_foo_alarm = alloca i1
 			store i1 false, i1* %test_foo_alarm
 			store i1 true, i1* %test_foo_initial
+			call void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm)
+			call void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm)
 			ret void
 		}
 		
-		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, double* %test_foo_alarm) {
+		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
 		block-17:
 			%0 = load i1, i1* %test_foo_initial
 			%1 = icmp eq i1 %0, true
@@ -599,13 +601,13 @@ func TestComponentIR(t *testing.T) {
 			ret void
 		
 		block-19-true:
-			call void @stay()
+			%5 = call i1 @stay()
 			br label %block-18-after
 		}
 		
-		define void @stay() {
+		define i1 @stay() {
 		block-20:
-			ret void
+			ret i1 true
 		}
 		
 		define void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
@@ -621,15 +623,15 @@ func TestComponentIR(t *testing.T) {
 			%2 = alloca [14 x i8]
 			store [14 x i8] c"test_foo_close", [14 x i8]* %2
 			%3 = bitcast [14 x i8]* %2 to i8*
-			call void @advance(i8* %3)
+			%4 = call i1 @advance(i8* %3)
 			br label %block-22-after
 		}
 		
-		define void @advance(i8* %toState) {
+		define i1 @advance(i8* %toState) {
 		block-24:
-			ret void
-		}
-		`
+			ret i1 true
+		}`
+
 	llvm, err := prepTestSys(test)
 
 	if err != nil {

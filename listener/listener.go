@@ -1277,10 +1277,18 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 	// executes if the state is active
 	p := make(map[*ast.Identifier]ast.Expression)
 	for k, v := range pairs {
-		this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}
-		cond := &ast.InfixExpression{Left: this, Operator: "==", Right: &ast.Boolean{Value: true}}
 		switch f := v.(type) {
 		case *ast.FunctionLiteral:
+			// If the only thing inside is a stay();
+			// move on.
+			bi, ok := f.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
+			if len(f.Body.Statements) == 1 && ok && l.builtInType(bi) == "stay" {
+				p[k] = v
+				continue
+			}
+
+			this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}
+			cond := &ast.InfixExpression{Left: this, Operator: "==", Right: &ast.Boolean{Value: true}}
 			con := &ast.IfExpression{Condition: cond, Consequence: f.Body}
 			f.Body = &ast.BlockStatement{Statements: []ast.Statement{&ast.ExpressionStatement{Expression: con}}}
 			p[k] = f
@@ -1363,13 +1371,11 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 	case *ast.Instance:
 		importSpec = parent.Value.Spec
 		importStruct = parent.Value.Value
+		parent.Name = ident.Value
+		key := strings.Join([]string{importSpec, importStruct}, "_")
+		order := l.StructsPropertyOrder[key]
+		parent.Order = order
 	}
-
-	key := strings.Join([]string{importSpec, importStruct}, "_")
-	order := l.StructsPropertyOrder[key]
-
-	instance.(*ast.Instance).Name = ident.Value
-	instance.(*ast.Instance).Order = order
 
 	l.push(&ast.DefStatement{
 		Token: token,
@@ -1426,6 +1432,21 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 	}
 
 	l.push(f)
+}
+
+func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
+	token := util.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
+
+	rght := l.pop()
+	lft := l.pop()
+
+	e := &ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Right:    rght.(ast.Expression),
+	}
+	l.push(e)
 }
 
 func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
@@ -1499,4 +1520,8 @@ func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 	default:
 		return n
 	}
+}
+
+func (l *FaultListener) builtInType(b *ast.BuiltIn) string {
+	return b.Function
 }

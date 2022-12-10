@@ -16,12 +16,12 @@ type Generator struct {
 	branchId        int
 
 	// Raw input
-	Uncertains      map[string][]float64
-	Unknowns        []string
-	functions       map[string]*ir.Func
-	rawAsserts      []*ast.AssertionStatement
-	rawAssumes      []*ast.AssumptionStatement
-	
+	Uncertains map[string][]float64
+	Unknowns   []string
+	functions  map[string]*ir.Func
+	rawAsserts []*ast.AssertionStatement
+	rawAssumes []*ast.AssumptionStatement
+
 	// Generated SMT
 	inits     []string
 	constants []string
@@ -59,7 +59,7 @@ func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string,
 }
 
 func (g *Generator) Run(llopt string) {
-	m, err := asm.ParseString("", llopt) //"" because ParseString has an
+	m, err := asm.ParseString("", llopt) //"/" because ParseString has a path variable
 	if err != nil {
 		panic(err)
 	}

@@ -254,8 +254,8 @@ func TestStructOrder(t *testing.T) {
 			 };
 
 			 def zoo = flow{
-				st: new foo
-			 }
+				st: new foo,
+			 };
 			`
 	_, spec := prepTest(test, nil)
 	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral)
@@ -1649,8 +1649,8 @@ func TestSysSpec(t *testing.T) {
 					advance(this.next);
 				},
 				close: func{
-					advance(this.initial)
-				}
+					advance(this.initial);
+				},
 				next: func{
 					stay();
 				},
@@ -1691,7 +1691,9 @@ func TestSysSpec(t *testing.T) {
 		if f, ok := v.(*ast.FunctionLiteral); ok {
 			if exp, ok2 := f.Body.Statements[0].(*ast.ExpressionStatement); ok2 {
 				if ifblock, ok3 := exp.Expression.(*ast.IfExpression); !ok3 {
-					t.Fatalf("state %s in component not wrapped with conditional got expression=%s", k, exp.Expression)
+					if _, ok4 := exp.Expression.(*ast.BuiltIn); !ok4 {
+						t.Fatalf("state %s in component not wrapped with conditional got expression=%s", k, exp.Expression)
+					}
 				} else {
 					if b, ok4 := ifblock.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn); !ok4 {
 						t.Fatal("missing built in function")
@@ -1746,13 +1748,21 @@ func TestSysStart(t *testing.T) {
 	test := `system test1;
 
 			component test = states{
-				idle: func{},
-				active: func{},
+				idle: func{
+					stay();
+				},
+				active: func{
+					stay();
+				},
 			};
 
 			component test2 = states{
-				idle: func{},
-				active: func{},
+				idle: func{
+					stay();
+				},
+				active: func{
+					stay();
+				},
 			};
 
 			start {

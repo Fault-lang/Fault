@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt? EOF
+    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt?
     ;
 
 sysClause
@@ -36,7 +36,7 @@ startPair
 */
 
 spec
-    : specClause declaration* forStmt? EOF
+    : specClause declaration* forStmt?
     ;
 
 specClause
@@ -72,7 +72,7 @@ comparison
     ;
 
 constDecl
-    : 'const' ((constSpec eos) | '(' (constSpec eos)* ')')
+    : 'const' ((constSpec eos) | '(' constSpec* ')' eos)
     ;
 
 constSpec
@@ -199,7 +199,7 @@ ifStmt
     ;
 
 forStmt
-    : 'for' rounds 'run' runBlock eos
+    : 'for' rounds 'run' runBlock eos?
     ;
 
 rounds

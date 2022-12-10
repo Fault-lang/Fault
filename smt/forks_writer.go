@@ -99,9 +99,6 @@ func (g *Generator) buildForkChoice(rules []rule, b string) {
 
 	seenVar := make(map[string]bool)
 	for _, s := range stateChanges {
-		if g.variables.isBolean(s) || g.variables.isNumeric(s) {
-			continue
-		}
 		base, i := g.variables.getVarBase(s)
 		n := int16(i)
 		// Have we seen this variable in a previous branch of
@@ -147,8 +144,13 @@ func (g *Generator) allStateChangesInRule(ru rule) []string {
 			wg = append(wg, ch...)
 		}
 	case *wrap:
-		if !g.variables.isNumeric(r.value) { // Wraps might be static values
+		if !g.variables.isNumeric(r.value) && !g.variables.isBolean(r.value) { // Wraps might be static values
 			return []string{r.value}
+		}
+	case *ands:
+		for _, w := range r.x {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
 		}
 	}
 	return wg
@@ -335,7 +337,7 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string
 	return rules, phis
 }
 
-func (g *Generator) capCondSyncRules() ([]rule, []rule) {
+func (g *Generator) capCondSyncRules(b1 string, b2 string) ([]rule, []rule) {
 	// For cases where variables changed in one branch are not
 	// present in the other, add a rule
 	var tends []rule
@@ -346,9 +348,9 @@ func (g *Generator) capCondSyncRules() ([]rule, []rule) {
 			start := g.variables.getStartState(k)
 			id := g.variables.getSSA(k)
 			switch c[0].Branch {
-			case "true":
+			case b1:
 				fends = append(fends, g.capRule(k, []int16{start}, id)...)
-			case "false":
+			case b2:
 				tends = append(tends, g.capRule(k, []int16{start}, id)...)
 			}
 			n := g.variables.ssa[k]
@@ -392,6 +394,10 @@ func (g *Generator) tagRule(ru rule, branch string, block string) rule {
 	case *phi:
 		r.Tag(branch, block)
 		return r
+	case *ands:
+		r.x = g.tagRules(r.x, branch, block)
+		r.Tag(branch, block)
+		return r
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", ru))
 	}
@@ -401,7 +407,7 @@ func (g *Generator) formatEnds(k string, nums []int16, id string) string {
 	var e []string
 	for _, v := range nums {
 		v := fmt.Sprint(k, "_", strconv.Itoa(int(v)))
-		r := g.writeInfix(id, v, "=")
+		r := g.writeAssertlessRule("=", id, v)
 		e = append(e, r)
 	}
 	return strings.Join(e, " ")

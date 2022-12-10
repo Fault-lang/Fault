@@ -5,8 +5,12 @@ import (
 	"strings"
 )
 
-func (g *Generator) writeInfix(x string, y string, op string) string {
-	return fmt.Sprintf("(%s %s %s)", op, x, y)
+func (g *Generator) writeAssertlessRule(op string, x string, y string) string {
+	if y != "" {
+		return fmt.Sprintf("(%s %s %s)", op, x, y)
+	} else {
+		return fmt.Sprintf("(%s %s)", op, x)
+	}
 }
 
 func (g *Generator) writeBranch(ty string, cond string, t string, f string) string {
@@ -17,6 +21,7 @@ func (g *Generator) declareVar(id string, t string) {
 	def := fmt.Sprintf("(declare-fun %s () %s)", id, t)
 	g.inits = append(g.inits, def)
 }
+
 func (g *Generator) writeAssert(op string, stmt string) string {
 	if op == "" {
 		return fmt.Sprintf("(assert %s)", stmt)
@@ -42,8 +47,13 @@ func (g *Generator) writeRule(ru rule) string {
 			return ""
 		}
 
+		if r.op == "or" {
+			stmt := fmt.Sprintf("%s%s", x, y)
+			return g.writeAssert("or", stmt)
+		}
+
 		if r.op != "" && r.op != "=" {
-			return g.writeInfix(x, y, r.op)
+			return g.writeAssertlessRule(r.op, x, y)
 		}
 
 		return g.writeInitRule(x, r.ty, y)
@@ -60,13 +70,15 @@ func (g *Generator) writeRule(ru rule) string {
 		}
 
 		if len(tEnds) > 1 {
-			tRule = fmt.Sprintf("(and %s)", strings.Join(tEnds, " "))
+			stmt := strings.Join(tEnds, " ")
+			tRule = g.writeAssertlessRule("and", stmt, "")
 		} else if len(tEnds) == 1 {
 			tRule = tEnds[0]
 		}
 
 		if len(fEnds) > 1 {
-			fRule = fmt.Sprintf("(and %s)", strings.Join(fEnds, " "))
+			stmt := strings.Join(fEnds, " ")
+			fRule = g.writeAssertlessRule("and", stmt, "")
 		} else if len(fEnds) == 1 {
 			fRule = fEnds[0]
 		}
@@ -79,6 +91,19 @@ func (g *Generator) writeRule(ru rule) string {
 		g.declareVar(r.endState, g.variables.lookupType(r.baseVar, nil))
 		ends := g.formatEnds(r.baseVar, r.nums, r.endState)
 		return g.writeAssert("or", ends)
+	case *ands:
+		var ands string
+		for _, x := range r.x {
+			var s string
+			switch x := x.(type) {
+			case *infix:
+				s = g.writeBranchRule(x)
+			default:
+				s = g.writeRule(x)
+			}
+			ands = fmt.Sprintf("%s%s", ands, s)
+		}
+		return g.writeAssertlessRule("and", ands, "")
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
@@ -88,7 +113,7 @@ func (g *Generator) writeCond(r *infix) string {
 	y := g.unpackCondRule(r.y)
 	x := g.unpackCondRule(r.x)
 
-	return g.writeInfix(x, y, r.op)
+	return g.writeAssertlessRule(r.op, x, y)
 }
 
 func (g *Generator) unpackCondRule(x rule) string {
@@ -98,7 +123,7 @@ func (g *Generator) unpackCondRule(x rule) string {
 	case *infix:
 		x := g.unpackCondRule(r.x)
 		y := g.unpackCondRule(r.y)
-		return g.writeInfix(x, y, r.op)
+		return g.writeAssertlessRule(r.op, x, y)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
@@ -109,6 +134,8 @@ func (g *Generator) unpackRule(x rule) string {
 	case *wrap:
 		return r.value
 	case *infix:
+		return g.writeRule(r)
+	case *ands:
 		return g.writeRule(r)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
