@@ -389,6 +389,20 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) rule {
 	return r
 }
 
+func (g *Generator) andStateRule(andK string, andV []value.Value) []rule {
+	g.inPhiState.In()
+
+	var ands []rule
+	for _, b := range andV {
+		a := g.parseBuiltIn(b.(*ir.InstCall), true)
+		ands = append(ands, a...)
+	}
+	delete(g.storedAnds, andK)
+
+	g.inPhiState.Out()
+	return ands
+}
+
 func (g *Generator) tempRule(inst value.Value, r rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()

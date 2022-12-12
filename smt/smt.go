@@ -35,6 +35,7 @@ type Generator struct {
 
 	forks            []Fork
 	storedChoice     map[string][]value.Value
+	storedAnds       map[string][]value.Value
 	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping string
 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
@@ -47,6 +48,7 @@ func NewGenerator() *Generator {
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rule),
 		storedChoice:    make(map[string][]value.Value),
+		storedAnds:      make(map[string][]value.Value),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      NewPhiState(),
