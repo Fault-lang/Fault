@@ -7,6 +7,7 @@ import (
 
 	"github.com/llir/llvm/ir"
 	irtypes "github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/value"
 )
 
 func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
@@ -54,6 +55,11 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 	// For each non-branching instruction of the basic block.
 	r := g.parseInstruct(block)
 	rules = append(rules, r...)
+
+	for k, v := range g.storedChoice {
+		r0 := g.orStateRule(k, v)
+		rules = append(rules, r0)
+	}
 
 	var r1 []rule
 	switch term := block.Term.(type) {
@@ -112,8 +118,8 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 
 		// Keep variable names in sync across branches
 		syncs := g.capCondSyncRules([]string{"true", "false"})
-		tEnds = append(tEnds, syncs["false"]...)
-		fEnds = append(fEnds, syncs["true"]...)
+		tEnds = append(tEnds, syncs["true"]...)
+		fEnds = append(fEnds, syncs["false"]...)
 
 		rules = append(rules, &ite{cond: cond, t: tEnds, f: fEnds})
 		g.inPhiState.Out()
@@ -262,16 +268,17 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			g.tempRule(inst, r)
 		case *ir.InstOr:
 			if g.variables.isTemp(inst.X.Ident()) || g.variables.isTemp(inst.Y.Ident()) {
-				r, rmIdx := g.orStateRule(inst)
-				rules = g.removeRules(rules, rmIdx)
+				// r, rmIdx := g.orStateRule(inst)
+				// rules = g.removeRules(rules, rmIdx)
 
-				g.tempRule(inst, r)
-				rules = append(rules, r)
-				idx := len(rules) - 1
-
+				// g.tempRule(inst, r)
+				// rules = append(rules, r)
+				// idx := len(rules) - 1
+				orAd := g.parseOr(inst)
 				id := inst.Ident()
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-				g.storedChoice[refname] = idx
+				g.variables.loads[refname] = inst
+				g.storedChoice[refname] = orAd
 
 			} else {
 				r := g.orRule(inst)
@@ -327,6 +334,27 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	}
 
 	return t, f, a
+}
+
+func (g *Generator) parseOr(branch value.Value) []value.Value {
+	var ret []value.Value
+	switch branch := branch.(type) {
+	case *ir.InstCall:
+		return append(ret, branch)
+	case *ir.InstOr:
+		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
+		vx := g.variables.loads[refnamex]
+		ret = append(ret, g.parseOr(vx)...)
+		delete(g.storedChoice, refnamex)
+
+		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		vy := g.variables.loads[refnamey]
+		ret = append(ret, g.parseOr(vy)...)
+		delete(g.storedChoice, refnamey)
+
+		return ret
+	}
+	return ret
 }
 
 func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {

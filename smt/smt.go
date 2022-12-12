@@ -8,6 +8,7 @@ import (
 
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/value"
 )
 
 type Generator struct {
@@ -33,7 +34,7 @@ type Generator struct {
 	localCallstack []string
 
 	forks             []Fork
-	storedChoice      map[string]int //Index of the last builtIn choice
+	storedChoice      map[string][]value.Value
 	choiceConsolidate bool
 	inPhiState        *PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping  string
@@ -46,7 +47,7 @@ func NewGenerator() *Generator {
 		variables:       NewVariables(),
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rule),
-		storedChoice:    make(map[string]int),
+		storedChoice:    make(map[string][]value.Value),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      NewPhiState(),

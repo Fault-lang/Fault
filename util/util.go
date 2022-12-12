@@ -278,6 +278,19 @@ func DetectMode(filename string) string {
 	}
 }
 
+func Intersection(s1 []string, s2 []string) []string {
+	var s3 []string
+	for _, s := range s1 {
+		s3 = append(s3, s)
+		for _, z := range s2 {
+			if s == z {
+				s3 = s3[0 : len(s3)-1]
+			}
+		}
+	}
+	return s3
+}
+
 type ImportTrail []string
 
 func (i ImportTrail) BaseSpec() string {

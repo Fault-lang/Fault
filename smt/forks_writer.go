@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fault/util"
 	"fmt"
 	"sort"
 	"strconv"
@@ -362,7 +363,13 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rule {
 				}
 			}
 		}
-		ends[b] = e
+		for _, notB := range util.Intersection(branches, []string{b}) {
+			if _, ok := ends[notB]; !ok {
+				ends[notB] = e
+			} else {
+				ends[notB] = append(ends[notB], e...)
+			}
+		}
 	}
 	return ends
 }
