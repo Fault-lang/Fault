@@ -541,3 +541,20 @@ func TestImportTrail(t *testing.T) {
 		t.Fatal("specs not popped off trail correctly")
 	}
 }
+
+func TestIntersection(t *testing.T) {
+	t1 := Intersection([]string{"a", "b", "c"}, []string{"b"}, true)
+	if t1[0] != "a" || t1[1] != "c" {
+		t.Fatalf("intersection delivered an incorrect result got=%s", t1)
+	}
+
+	t2 := Intersection([]string{"a", "b"}, []string{"b", "c"}, true)
+	if t2[0] != "a" || t2[1] != "c" {
+		t.Fatalf("intersection delivered an incorrect result got=%s", t2)
+	}
+
+	t3 := Intersection([]string{"b"}, []string{"a", "b", "c"}, true)
+	if t3[0] != "a" || t3[1] != "c" {
+		t.Fatalf("intersection delivered an incorrect result got=%s", t3)
+	}
+}

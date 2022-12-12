@@ -268,12 +268,6 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			g.tempRule(inst, r)
 		case *ir.InstOr:
 			if g.variables.isTemp(inst.X.Ident()) || g.variables.isTemp(inst.Y.Ident()) {
-				// r, rmIdx := g.orStateRule(inst)
-				// rules = g.removeRules(rules, rmIdx)
-
-				// g.tempRule(inst, r)
-				// rules = append(rules, r)
-				// idx := len(rules) - 1
 				orAd := g.parseOr(inst)
 				id := inst.Ident()
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)

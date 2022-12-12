@@ -363,7 +363,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rule {
 				}
 			}
 		}
-		for _, notB := range util.Intersection(branches, []string{b}) {
+		for _, notB := range util.Intersection(branches, []string{b}, true) {
 			if _, ok := ends[notB]; !ok {
 				ends[notB] = e
 			} else {

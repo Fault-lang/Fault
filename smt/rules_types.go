@@ -389,56 +389,6 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) rule {
 	return r
 }
 
-// func (g *Generator) builtInChoiceRule(branch *ir.InstCall, bname string) map[string][]rule {
-// 	branches := make(map[string][]rule)
-// 	if ch, ok := g.variables.ref[bname]; ok {
-// 		branches[bname] = []rule{ch}
-// 		return branches
-// 	}
-
-// 	r := g.parseBuiltIn(branch, true)
-// 	branches[bname] = append(branches[bname], r...)
-// 	return branches
-// }
-
-// func (g *Generator) consolidateBranches(branches map[string][]rule) (map[string][]rule, []int) {
-// 	var idx []int
-// 	filtered := make(map[string][]rule)
-
-// 	for k, v := range branches {
-// 		if i, ok := g.storedChoice[k]; ok {
-// 			idx = append(idx, i)
-// 			//branch names don't matter as long as they're unique
-// 			for j, b := range v[0].(*choices).x {
-// 				id := fmt.Sprintf("%s-%d", k, j)
-// 				filtered[id] = b.x
-// 			}
-// 			delete(g.storedChoice, k)
-// 		} else {
-// 			filtered[k] = v
-// 		}
-
-// 	}
-// 	return filtered, idx
-// }
-
-// func (g *Generator) removeRules(rules []rule, idx []int) []rule {
-// 	for _, i := range idx {
-// 		if i == 0 {
-// 			rules = rules[1:]
-// 			continue
-// 		}
-
-// 		if i == len(rules)-1 {
-// 			rules = rules[0 : len(rules)-1]
-// 			continue
-// 		}
-
-// 		rules = append(rules[0:i], rules[i+1:]...)
-// 	}
-// 	return rules
-// }
-
 func (g *Generator) tempRule(inst value.Value, r rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()

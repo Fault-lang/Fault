@@ -278,7 +278,7 @@ func DetectMode(filename string) string {
 	}
 }
 
-func Intersection(s1 []string, s2 []string) []string {
+func Intersection(s1 []string, s2 []string, init bool) []string {
 	var s3 []string
 	for _, s := range s1 {
 		s3 = append(s3, s)
@@ -287,6 +287,10 @@ func Intersection(s1 []string, s2 []string) []string {
 				s3 = s3[0 : len(s3)-1]
 			}
 		}
+	}
+	if init {
+		s4 := Intersection(s2, s1, false)
+		s3 = append(s3, s4...)
 	}
 	return s3
 }
