@@ -56,6 +56,31 @@ func (a *assrt) Tag(k1 string, k2 string) {
 	}
 }
 
+type choices struct {
+	rule
+	x   []*ands
+	op  string
+	tag *branch
+}
+
+func (c *choices) ruleNode() {}
+func (c *choices) String() string {
+	var out bytes.Buffer
+	for i, ru := range c.x {
+		out.WriteString(fmt.Sprintf("branch-%d: ", i))
+		for _, r := range ru.x {
+			out.WriteString(r.String())
+		}
+	}
+	return out.String()
+}
+func (c *choices) Tag(k1 string, k2 string) {
+	c.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type infix struct {
 	rule
 	x   rule
@@ -322,41 +347,108 @@ func (g *Generator) orRule(inst *ir.InstOr) rule {
 	return g.parseInfix(id, x, y, "or")
 }
 
-func (g *Generator) builtInChoiceRule(x string, y string) rule {
-	refnamex := fmt.Sprintf("%s-%s", g.currentFunction, x)
-	vx := g.variables.loads[refnamex]
-	xinst := g.parseBuiltIn(vx.(*ir.InstCall), true)
-
-	refnamey := fmt.Sprintf("%s-%s", g.currentFunction, y)
-	vy := g.variables.loads[refnamey]
-	yinst := g.parseBuiltIn(vy.(*ir.InstCall), true)
+func (g *Generator) orStateRule(inst *ir.InstOr) (rule, []int) {
+	g.inPhiState.In()
+	and := g.builtInChoiceRule(inst, "")
+	and, idx := g.consolidateBranches(and)
 
 	g.newFork()
-	g.buildForkChoice(xinst, "xbranch")
-	g.buildForkChoice(yinst, "ybranch")
-	yEnds, phis := g.capCond("ybranch", make(map[string]int16))
-	xEnds, _ := g.capCond("xbranch", phis)
 
-	xSync, ySync := g.capCondSyncRules("xbranch", "ybranch")
-	xEnds = append(xEnds, xSync...)
-	yEnds = append(yEnds, ySync...)
+	var e []rule
+	var keys []string
+	ends := make(map[string][]rule)
+	phis := make(map[string]int16)
+	var x []*ands
 
-	xinst = append(xinst, xEnds...)
-	yinst = append(yinst, yEnds...)
-
-	xrule := &ands{
-		x: xinst,
-	}
-	yrule := &ands{
-		x: yinst,
+	for k, v := range and {
+		keys = append(keys, k)
+		g.buildForkChoice(v, k)
+		e, phis = g.capCond(k, phis)
+		ends[k] = append(v, e...)
 	}
 
-	return &infix{
-		x:  xrule,
-		y:  yrule,
-		ty: "Bool",
+	syncs := g.capCondSyncRules(keys)
+	for k, v := range syncs {
+		e2 := append(ends[k], v...)
+		a := &ands{
+			x: e2,
+		}
+		x = append(x, a)
+	}
+
+	r := &choices{
+		x:  x,
 		op: "or",
 	}
+	g.inPhiState.Out()
+	return r, idx
+}
+
+func (g *Generator) builtInChoiceRule(branch value.Value, bname string) map[string][]rule {
+	branches := make(map[string][]rule)
+	if ch, ok := g.variables.ref[bname]; ok {
+		branches[bname] = []rule{ch}
+		return branches
+	}
+
+	switch branch := branch.(type) {
+	case *ir.InstCall:
+		r := g.parseBuiltIn(branch, true)
+		branches[bname] = append(branches[bname], r...)
+	case *ir.InstOr:
+		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
+		vx := g.variables.loads[refnamex]
+		xinst := g.builtInChoiceRule(vx, refnamex)
+		for k, r2 := range xinst {
+			branches[k] = r2
+		}
+
+		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		vy := g.variables.loads[refnamey]
+		yinst := g.builtInChoiceRule(vy, refnamey)
+		for k, r2 := range yinst {
+			branches[k] = r2
+		}
+	}
+	return branches
+}
+
+func (g *Generator) consolidateBranches(branches map[string][]rule) (map[string][]rule, []int) {
+	var idx []int
+	filtered := make(map[string][]rule)
+
+	for k, v := range branches {
+		if i, ok := g.storedChoice[k]; ok {
+			idx = append(idx, i)
+			//branch names don't matter as long as they're unique
+			for j, b := range v[0].(*choices).x {
+				id := fmt.Sprintf("%s-%d", k, j)
+				filtered[id] = b.x
+			}
+			delete(g.storedChoice, k)
+		} else {
+			filtered[k] = v
+		}
+
+	}
+	return filtered, idx
+}
+
+func (g *Generator) removeRules(rules []rule, idx []int) []rule {
+	for _, i := range idx {
+		if i == 0 {
+			rules = rules[1:]
+			continue
+		}
+
+		if i == len(rules)-1 {
+			rules = rules[0 : len(rules)-1]
+			continue
+		}
+
+		rules = append(rules[0:i], rules[i+1:]...)
+	}
+	return rules
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {

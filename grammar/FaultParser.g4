@@ -144,8 +144,7 @@ simpleStmt
     : expression
     | incDecStmt
     | assignment
-    | builtinInfix
-    | builtins
+    | stateChange
     | emptyStmt
     ;
 
@@ -153,14 +152,10 @@ incDecStmt
     : expression (PLUS_PLUS | MINUS_MINUS)
     ;
 
-builtins
-    : 'advance' '(' paramCall ')'
-    | 'stay' '(' ')'
-    ;
-
-builtinInfix
-    : builtinInfix ('||' | '&&') builtinInfix
-    | builtins ('||' | '&&') builtins
+stateChange
+    : 'advance' '(' paramCall ')' #builtins
+    | 'stay' '(' ')'              #builtins
+    | stateChange ('||' | '&&') stateChange #builtinInfix
     ;
 
 accessHistory

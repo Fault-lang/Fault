@@ -111,9 +111,9 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		fEnds, _ = g.capCond("false", phis)
 
 		// Keep variable names in sync across branches
-		tSync, fSync := g.capCondSyncRules("true", "false")
-		tEnds = append(tEnds, tSync...)
-		fEnds = append(fEnds, fSync...)
+		syncs := g.capCondSyncRules([]string{"true", "false"})
+		tEnds = append(tEnds, syncs["false"]...)
+		fEnds = append(fEnds, syncs["true"]...)
 
 		rules = append(rules, &ite{cond: cond, t: tEnds, f: fEnds})
 		g.inPhiState.Out()
@@ -262,10 +262,17 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			g.tempRule(inst, r)
 		case *ir.InstOr:
 			if g.variables.isTemp(inst.X.Ident()) || g.variables.isTemp(inst.Y.Ident()) {
-				g.inPhiState.In()
-				r := g.builtInChoiceRule(inst.X.Ident(), inst.Y.Ident())
+				r, rmIdx := g.orStateRule(inst)
+				rules = g.removeRules(rules, rmIdx)
+
+				g.tempRule(inst, r)
 				rules = append(rules, r)
-				g.inPhiState.Out()
+				idx := len(rules) - 1
+
+				id := inst.Ident()
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.storedChoice[refname] = idx
+
 			} else {
 				r := g.orRule(inst)
 				g.tempRule(inst, r)

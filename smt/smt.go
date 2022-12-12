@@ -32,11 +32,13 @@ type Generator struct {
 	blocks         map[string][]rule
 	localCallstack []string
 
-	forks            []Fork
-	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
-	parallelGrouping string
-	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
-	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
+	forks             []Fork
+	storedChoice      map[string]int //Index of the last builtIn choice
+	choiceConsolidate bool
+	inPhiState        *PhiState //Flag, are we in a conditional or parallel?
+	parallelGrouping  string
+	parallelRunStart  bool      //Flag, make sure all branches with parallel runs begin from the same point
+	returnVoid        *PhiState //Flag, escape parseFunc before moving to next block
 }
 
 func NewGenerator() *Generator {
@@ -44,6 +46,7 @@ func NewGenerator() *Generator {
 		variables:       NewVariables(),
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rule),
+		storedChoice:    make(map[string]int),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      NewPhiState(),

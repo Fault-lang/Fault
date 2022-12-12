@@ -104,6 +104,14 @@ func (g *Generator) writeRule(ru rule) string {
 			ands = fmt.Sprintf("%s%s", ands, s)
 		}
 		return g.writeAssertlessRule("and", ands, "")
+	case *choices:
+		var ands string
+		var s string
+		for _, x := range r.x {
+			s = g.writeRule(x)
+			ands = fmt.Sprintf("%s%s", ands, s)
+		}
+		return g.writeAssertlessRule("or", ands, "")
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
@@ -136,6 +144,8 @@ func (g *Generator) unpackRule(x rule) string {
 	case *infix:
 		return g.writeRule(r)
 	case *ands:
+		return g.writeRule(r)
+	case *choices:
 		return g.writeRule(r)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))

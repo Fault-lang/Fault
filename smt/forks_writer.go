@@ -152,6 +152,11 @@ func (g *Generator) allStateChangesInRule(ru rule) []string {
 			ch := g.allStateChangesInRule(w)
 			wg = append(wg, ch...)
 		}
+	case *choices:
+		for _, w := range r.x {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
+		}
 	}
 	return wg
 }
@@ -337,31 +342,29 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string
 	return rules, phis
 }
 
-func (g *Generator) capCondSyncRules(b1 string, b2 string) ([]rule, []rule) {
+func (g *Generator) capCondSyncRules(branches []string) map[string][]rule {
 	// For cases where variables changed in one branch are not
 	// present in the other, add a rule
-	var tends []rule
-	var fends []rule
-	fork := g.getCurrentFork()
-	for k, c := range fork {
-		if len(c) == 1 {
-			start := g.variables.getStartState(k)
-			id := g.variables.getSSA(k)
-			switch c[0].Branch {
-			case b1:
-				fends = append(fends, g.capRule(k, []int16{start}, id)...)
-			case b2:
-				tends = append(tends, g.capRule(k, []int16{start}, id)...)
-			}
-			n := g.variables.ssa[k]
-			if g.inPhiState.Level() == 1 {
-				g.variables.newPhi(k, n)
-			} else {
-				g.variables.storeLastState(k, n)
+	ends := make(map[string][]rule)
+	for _, b := range branches {
+		var e []rule
+		fork := g.getCurrentFork()
+		for k, c := range fork {
+			if len(c) == 1 && c[0].Branch == b {
+				start := g.variables.getStartState(k)
+				id := g.variables.getSSA(k)
+				e = append(e, g.capRule(k, []int16{start}, id)...)
+				n := g.variables.ssa[k]
+				if g.inPhiState.Level() == 1 {
+					g.variables.newPhi(k, n)
+				} else {
+					g.variables.storeLastState(k, n)
+				}
 			}
 		}
+		ends[b] = e
 	}
-	return tends, fends
+	return ends
 }
 
 func (g *Generator) tagRules(rules []rule, branch string, block string) []rule {
@@ -396,6 +399,15 @@ func (g *Generator) tagRule(ru rule, branch string, block string) rule {
 		return r
 	case *ands:
 		r.x = g.tagRules(r.x, branch, block)
+		r.Tag(branch, block)
+		return r
+	case *choices:
+		var tagged []*ands
+		for _, v := range r.x {
+			r2 := g.tagRule(v, branch, block)
+			tagged = append(tagged, r2.(*ands))
+		}
+		r.x = tagged
 		r.Tag(branch, block)
 		return r
 	default:
