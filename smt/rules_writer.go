@@ -111,7 +111,7 @@ func (g *Generator) writeRule(ru rule) string {
 			s = g.writeRule(x)
 			ands = fmt.Sprintf("%s%s", ands, s)
 		}
-		return g.writeAssertlessRule("or", ands, "")
+		return g.writeAssert("or", ands)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
