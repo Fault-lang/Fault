@@ -96,6 +96,22 @@ func (v *BaseFaultParserVisitor) VisitStock(ctx *StockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitPropFunc(ctx *PropFuncContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitSfMisc(ctx *SfMiscContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateFunc(ctx *StateFuncContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitCompMisc(ctx *CompMiscContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitPropInt(ctx *PropIntContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -105,10 +121,6 @@ func (v *BaseFaultParserVisitor) VisitPropString(ctx *PropStringContext) interfa
 }
 
 func (v *BaseFaultParserVisitor) VisitPropBool(ctx *PropBoolContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseFaultParserVisitor) VisitPropFunc(ctx *PropFuncContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -188,6 +200,14 @@ func (v *BaseFaultParserVisitor) VisitIfStmt(ctx *IfStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitIfStmtRun(ctx *IfStmtRunContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitIfStmtState(ctx *IfStmtStateContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -197,6 +217,22 @@ func (v *BaseFaultParserVisitor) VisitRounds(ctx *RoundsContext) interface{} {
 }
 
 func (v *BaseFaultParserVisitor) VisitParamCall(ctx *ParamCallContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateBlock(ctx *StateBlockContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateStepExpr(ctx *StateStepExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateChain(ctx *StateChainContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateExpr(ctx *StateExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -293,6 +329,10 @@ func (v *BaseFaultParserVisitor) VisitBool_(ctx *Bool_Context) interface{} {
 }
 
 func (v *BaseFaultParserVisitor) VisitFunctionLit(ctx *FunctionLitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStateLit(ctx *StateLitContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

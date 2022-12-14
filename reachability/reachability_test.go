@@ -77,7 +77,7 @@ func TestIncorrect(t *testing.T) {
 			stay();
 		},
 		error: func{
-			a = 4;
+			stay();
 		},
 	};
 

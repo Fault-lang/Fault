@@ -74,6 +74,18 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#Stock.
 	VisitStock(ctx *StockContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropFunc.
+	VisitPropFunc(ctx *PropFuncContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#sfMisc.
+	VisitSfMisc(ctx *SfMiscContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#StateFunc.
+	VisitStateFunc(ctx *StateFuncContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#compMisc.
+	VisitCompMisc(ctx *CompMiscContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#PropInt.
 	VisitPropInt(ctx *PropIntContext) interface{}
 
@@ -82,9 +94,6 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#PropBool.
 	VisitPropBool(ctx *PropBoolContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#PropFunc.
-	VisitPropFunc(ctx *PropFuncContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#PropVar.
 	VisitPropVar(ctx *PropVarContext) interface{}
@@ -143,6 +152,12 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#ifStmt.
 	VisitIfStmt(ctx *IfStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#ifStmtRun.
+	VisitIfStmtRun(ctx *IfStmtRunContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#ifStmtState.
+	VisitIfStmtState(ctx *IfStmtStateContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
@@ -151,6 +166,18 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#paramCall.
 	VisitParamCall(ctx *ParamCallContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateBlock.
+	VisitStateBlock(ctx *StateBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateStepExpr.
+	VisitStateStepExpr(ctx *StateStepExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateChain.
+	VisitStateChain(ctx *StateChainContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateExpr.
+	VisitStateExpr(ctx *StateExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#runBlock.
 	VisitRunBlock(ctx *RunBlockContext) interface{}
@@ -223,6 +250,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#functionLit.
 	VisitFunctionLit(ctx *FunctionLitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateLit.
+	VisitStateLit(ctx *StateLitContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#eos.
 	VisitEos(ctx *EosContext) interface{}

@@ -74,6 +74,18 @@ type FaultParserListener interface {
 	// EnterStock is called when entering the Stock production.
 	EnterStock(c *StockContext)
 
+	// EnterPropFunc is called when entering the PropFunc production.
+	EnterPropFunc(c *PropFuncContext)
+
+	// EnterSfMisc is called when entering the sfMisc production.
+	EnterSfMisc(c *SfMiscContext)
+
+	// EnterStateFunc is called when entering the StateFunc production.
+	EnterStateFunc(c *StateFuncContext)
+
+	// EnterCompMisc is called when entering the compMisc production.
+	EnterCompMisc(c *CompMiscContext)
+
 	// EnterPropInt is called when entering the PropInt production.
 	EnterPropInt(c *PropIntContext)
 
@@ -82,9 +94,6 @@ type FaultParserListener interface {
 
 	// EnterPropBool is called when entering the PropBool production.
 	EnterPropBool(c *PropBoolContext)
-
-	// EnterPropFunc is called when entering the PropFunc production.
-	EnterPropFunc(c *PropFuncContext)
 
 	// EnterPropVar is called when entering the PropVar production.
 	EnterPropVar(c *PropVarContext)
@@ -143,6 +152,12 @@ type FaultParserListener interface {
 	// EnterIfStmt is called when entering the ifStmt production.
 	EnterIfStmt(c *IfStmtContext)
 
+	// EnterIfStmtRun is called when entering the ifStmtRun production.
+	EnterIfStmtRun(c *IfStmtRunContext)
+
+	// EnterIfStmtState is called when entering the ifStmtState production.
+	EnterIfStmtState(c *IfStmtStateContext)
+
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
@@ -151,6 +166,18 @@ type FaultParserListener interface {
 
 	// EnterParamCall is called when entering the paramCall production.
 	EnterParamCall(c *ParamCallContext)
+
+	// EnterStateBlock is called when entering the stateBlock production.
+	EnterStateBlock(c *StateBlockContext)
+
+	// EnterStateStepExpr is called when entering the stateStepExpr production.
+	EnterStateStepExpr(c *StateStepExprContext)
+
+	// EnterStateChain is called when entering the stateChain production.
+	EnterStateChain(c *StateChainContext)
+
+	// EnterStateExpr is called when entering the stateExpr production.
+	EnterStateExpr(c *StateExprContext)
 
 	// EnterRunBlock is called when entering the runBlock production.
 	EnterRunBlock(c *RunBlockContext)
@@ -224,6 +251,9 @@ type FaultParserListener interface {
 	// EnterFunctionLit is called when entering the functionLit production.
 	EnterFunctionLit(c *FunctionLitContext)
 
+	// EnterStateLit is called when entering the stateLit production.
+	EnterStateLit(c *StateLitContext)
+
 	// EnterEos is called when entering the eos production.
 	EnterEos(c *EosContext)
 
@@ -293,6 +323,18 @@ type FaultParserListener interface {
 	// ExitStock is called when exiting the Stock production.
 	ExitStock(c *StockContext)
 
+	// ExitPropFunc is called when exiting the PropFunc production.
+	ExitPropFunc(c *PropFuncContext)
+
+	// ExitSfMisc is called when exiting the sfMisc production.
+	ExitSfMisc(c *SfMiscContext)
+
+	// ExitStateFunc is called when exiting the StateFunc production.
+	ExitStateFunc(c *StateFuncContext)
+
+	// ExitCompMisc is called when exiting the compMisc production.
+	ExitCompMisc(c *CompMiscContext)
+
 	// ExitPropInt is called when exiting the PropInt production.
 	ExitPropInt(c *PropIntContext)
 
@@ -301,9 +343,6 @@ type FaultParserListener interface {
 
 	// ExitPropBool is called when exiting the PropBool production.
 	ExitPropBool(c *PropBoolContext)
-
-	// ExitPropFunc is called when exiting the PropFunc production.
-	ExitPropFunc(c *PropFuncContext)
 
 	// ExitPropVar is called when exiting the PropVar production.
 	ExitPropVar(c *PropVarContext)
@@ -362,6 +401,12 @@ type FaultParserListener interface {
 	// ExitIfStmt is called when exiting the ifStmt production.
 	ExitIfStmt(c *IfStmtContext)
 
+	// ExitIfStmtRun is called when exiting the ifStmtRun production.
+	ExitIfStmtRun(c *IfStmtRunContext)
+
+	// ExitIfStmtState is called when exiting the ifStmtState production.
+	ExitIfStmtState(c *IfStmtStateContext)
+
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
 
@@ -370,6 +415,18 @@ type FaultParserListener interface {
 
 	// ExitParamCall is called when exiting the paramCall production.
 	ExitParamCall(c *ParamCallContext)
+
+	// ExitStateBlock is called when exiting the stateBlock production.
+	ExitStateBlock(c *StateBlockContext)
+
+	// ExitStateStepExpr is called when exiting the stateStepExpr production.
+	ExitStateStepExpr(c *StateStepExprContext)
+
+	// ExitStateChain is called when exiting the stateChain production.
+	ExitStateChain(c *StateChainContext)
+
+	// ExitStateExpr is called when exiting the stateExpr production.
+	ExitStateExpr(c *StateExprContext)
 
 	// ExitRunBlock is called when exiting the runBlock production.
 	ExitRunBlock(c *RunBlockContext)
@@ -442,6 +499,9 @@ type FaultParserListener interface {
 
 	// ExitFunctionLit is called when exiting the functionLit production.
 	ExitFunctionLit(c *FunctionLitContext)
+
+	// ExitStateLit is called when exiting the stateLit production.
+	ExitStateLit(c *StateLitContext)
 
 	// ExitEos is called when exiting the eos production.
 	ExitEos(c *EosContext)

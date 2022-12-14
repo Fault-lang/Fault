@@ -21,7 +21,7 @@ globalDecl
     ;
 
 componentDecl
-    : 'component' IDENT '=' 'states' '{' (structProperties ',')* '}' eos
+    : 'component' IDENT '=' 'states' '{' (comProperties ',')* '}' eos
     ;
 
 startBlock
@@ -105,15 +105,24 @@ structDecl
     ;
 
 structType
-    : 'flow' '{' (structProperties ',')* '}'    #Flow
-    | 'stock' '{' (structProperties ',')* '}'   #Stock
+    : 'flow' '{' (sfProperties ',')* '}'    #Flow
+    | 'stock' '{' (sfProperties ',')* '}'   #Stock
+    ;
+
+sfProperties
+    : IDENT ':' functionLit #PropFunc
+    | structProperties      #sfMisc
+    ;
+
+comProperties
+    : IDENT ':' stateLit #StateFunc
+    | structProperties   #compMisc
     ;
 
 structProperties
     : IDENT ':' numeric #PropInt 
     | IDENT ':' string_ #PropString
     | IDENT ':' bool_ #PropBool
-    | IDENT ':' functionLit #PropFunc
     | IDENT ':' operandName #PropVar
     | IDENT ':' prefix #PropVar
     | IDENT ':' solvable #PropSolvable
@@ -144,7 +153,6 @@ simpleStmt
     : expression
     | incDecStmt
     | assignment
-    | stateChange
     | emptyStmt
     ;
 
@@ -194,6 +202,14 @@ ifStmt
     : 'if' (simpleStmt ';')? expression block ('else' (ifStmt | block))?
     ;
 
+ifStmtRun
+    : 'if' (simpleStmt ';')? expression runBlock ('else' (ifStmtRun | runBlock))?
+    ;
+
+ifStmtState
+    : 'if' (simpleStmt ';')? expression stateBlock ('else' (ifStmtState | stateBlock))?
+    ;
+
 forStmt
     : 'for' rounds 'run' runBlock eos?
     ;
@@ -206,6 +222,16 @@ paramCall
     : (IDENT|THIS) '.' IDENT ('.' IDENT)*
     ;
 
+stateBlock
+    : '{' stateStep* '}'
+    ;
+
+stateStep
+    : paramCall ('|' paramCall)* eos              #stateStepExpr
+    | stateChange eos                                #stateChain
+    | ifStmtState                                 #stateExpr
+    ;
+
 runBlock
     : '{' runStep* '}'
     ;
@@ -214,7 +240,7 @@ runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
     | IDENT '=' 'new' (paramCall | IDENT) eos      #runInit
     | simpleStmt eos                              #runExpr
-    | ifStmt                                      #runExpr
+    | ifStmtRun                                     #runExpr
     ;
 
 faultType
@@ -299,6 +325,10 @@ bool_
 
 functionLit
     : 'func' block
+    ;
+
+stateLit
+    : 'func' stateBlock
     ;
 
 eos

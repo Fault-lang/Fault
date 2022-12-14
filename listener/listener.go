@@ -253,7 +253,7 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitStock(c *parser.StockContext) {
-	pairs := c.AllStructProperties()
+	pairs := c.AllSfProperties()
 	token := util.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
@@ -267,7 +267,7 @@ func (l *FaultListener) ExitStock(c *parser.StockContext) {
 }
 
 func (l *FaultListener) ExitFlow(c *parser.FlowContext) {
-	pairs := c.AllStructProperties()
+	pairs := c.AllSfProperties()
 	token := util.GenerateToken("FLOW", "FLOW", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
@@ -378,6 +378,39 @@ func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
 		unknown := &ast.Unknown{Token: token2, Name: ident}
 		l.push(unknown)
 	}
+}
+
+func (l *FaultListener) EnterStateFunc(c *parser.StateFuncContext) {
+	l.scope = fmt.Sprint(l.scope, ".", c.IDENT().GetText())
+}
+
+func (l *FaultListener) ExitStateFunc(c *parser.StateFuncContext) {
+	val := l.pop()
+	token := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	l.push(&ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	},
+	)
+	l.push(val)
+
+	scope := strings.Split(l.scope, ".")
+	l.scope = strings.Join(scope[0:len(scope)-1], ".")
+
+}
+
+func (l *FaultListener) ExitStateLit(c *parser.StateLitContext) {
+	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+
+	b := l.pop()
+
+	f := &ast.FunctionLiteral{
+		Token: token,
+		Body:  b.(*ast.BlockStatement),
+	}
+	l.push(f)
 }
 
 func (l *FaultListener) EnterPropFunc(c *parser.PropFuncContext) {
@@ -669,6 +702,43 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 	}
 }
 
+func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
+	if !l.skipRun {
+		token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+
+		sl := &ast.BlockStatement{
+			Token: token,
+		}
+		steps := c.AllStateStep()
+		for i := len(steps) - 1; i >= 0; i-- {
+			ex := l.pop()
+			switch t := ex.(type) {
+			case *ast.ParallelFunctions:
+				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+			case *ast.BlockStatement:
+				n := l.packageCallsAsRunSteps(t)
+				t = n.(*ast.BlockStatement)
+				sl.Statements = append(t.Statements, sl.Statements...)
+			case *ast.ExpressionStatement:
+				n := l.packageCallsAsRunSteps(t)
+				t = n.(*ast.ExpressionStatement)
+				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+			case *ast.BuiltIn:
+				sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
+			default:
+				panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
+			}
+		}
+		l.push(sl)
+	} else {
+		// Clear run block instructions from top of stack if we are skipping
+		steps := c.AllStateStep()
+		for i := len(steps) - 1; i >= 0; i-- {
+			l.pop()
+		}
+	}
+}
+
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	txt := c.AllIDENT()
 	var right string
@@ -727,7 +797,39 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 	l.push(e)
 }
 
+func (l *FaultListener) ExitStateStepExpr(c *parser.StateStepExprContext) {
+	token := util.GenerateToken("PARALLEL", c.GetText(), c.GetStart(), c.GetStop())
+
+	var exp []ast.Expression
+	for i := 0; i < len(c.AllParamCall()); i++ {
+		idx := l.pop()
+		exp = append([]ast.Expression{idx.(ast.Expression)}, exp...)
+	}
+
+	e := &ast.ParallelFunctions{
+		Token:       token,
+		Expressions: exp,
+	}
+	l.push(e)
+}
+
 func (l *FaultListener) ExitRunExpr(c *parser.RunExprContext) {
+	token := util.GenerateToken("CODE", c.GetText(), c.GetStart(), c.GetStop())
+
+	x := l.pop()
+	exp, ok := x.(ast.Expression)
+	if !ok {
+		panic(fmt.Sprintf("top of stack is not a expression. got=%T", x))
+	}
+
+	e := &ast.ExpressionStatement{
+		Token:      token,
+		Expression: exp,
+	}
+	l.push(e)
+}
+
+func (l *FaultListener) ExitStateExpr(c *parser.StateExprContext) {
 	token := util.GenerateToken("CODE", c.GetText(), c.GetStart(), c.GetStop())
 
 	x := l.pop()
@@ -843,12 +945,10 @@ func (l *FaultListener) ExitIncDecStmt(c *parser.IncDecStmtContext) {
 	l.push(e)
 }
 
-func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
-	token := util.GenerateToken("IF", "IF", c.GetStart(), c.GetStop())
-
+func (l *FaultListener) assembleIf(token ast.Token, children []antlr.Tree) *ast.IfExpression {
 	var a *ast.BlockStatement
 	var b *ast.IfExpression
-	if len(c.GetChildren()) > 3 {
+	if len(children) > 3 {
 		ra := l.pop()
 		switch x := ra.(type) {
 		case *ast.BlockStatement:
@@ -879,7 +979,26 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 		Alternative: a,
 		Elif:        b,
 	}
+	return e
+}
 
+func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
+	token := util.GenerateToken("IF", "IF", c.GetStart(), c.GetStop())
+
+	e := l.assembleIf(token, c.GetChildren())
+
+	l.push(e)
+}
+
+func (l *FaultListener) ExitIfStmtState(c *parser.IfStmtStateContext) {
+	token := util.GenerateToken("IF", "IF", c.GetStart(), c.GetStop())
+	e := l.assembleIf(token, c.GetChildren())
+	l.push(e)
+}
+
+func (l *FaultListener) ExitIfStmtRun(c *parser.IfStmtRunContext) {
+	token := util.GenerateToken("IF", "IF", c.GetStart(), c.GetStop())
+	e := l.assembleIf(token, c.GetChildren())
 	l.push(e)
 }
 
@@ -1395,7 +1514,7 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 }
 
 func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
-	pairs := c.AllStructProperties()
+	pairs := c.AllComProperties()
 	token := util.GenerateToken("COMPONENT", "COMPONENT", c.GetStart(), c.GetStop())
 
 	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
@@ -1516,13 +1635,38 @@ func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 		}
 
 	case *ast.InfixExpression:
-		l, okLeft := n.Left.(*ast.ParameterCall)
-		r, okRight := n.Right.(*ast.ParameterCall)
-		if n.Operator == "|" && okLeft && okRight {
+		left := l.packageCallsAsRunSteps(n.Left)
+		pfLeft, okl := left.(*ast.ParallelFunctions)
+		right := l.packageCallsAsRunSteps(n.Right)
+		pfRight, okr := right.(*ast.ParallelFunctions)
+		if n.Operator == "|" && okl && okr {
 			return &ast.ParallelFunctions{
 				Token:        n.Token,
 				InferredType: n.InferredType,
-				Expressions:  []ast.Expression{l, r},
+				Expressions:  append(pfLeft.Expressions, pfRight.Expressions...),
+			}
+		}
+		if n.Operator == "|" && okl {
+			return &ast.ParallelFunctions{
+				Token:        n.Token,
+				InferredType: n.InferredType,
+				Expressions:  append(pfLeft.Expressions, right.(ast.Expression)),
+			}
+		}
+
+		if n.Operator == "|" && okr {
+			return &ast.ParallelFunctions{
+				Token:        n.Token,
+				InferredType: n.InferredType,
+				Expressions:  append(pfRight.Expressions, left.(ast.Expression)),
+			}
+		}
+
+		if n.Operator == "|" {
+			return &ast.ParallelFunctions{
+				Token:        n.Token,
+				InferredType: n.InferredType,
+				Expressions:  []ast.Expression{left.(ast.Expression), right.(ast.Expression)},
 			}
 		}
 		return n

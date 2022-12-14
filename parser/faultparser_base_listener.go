@@ -153,6 +153,30 @@ func (s *BaseFaultParserListener) EnterStock(ctx *StockContext) {}
 // ExitStock is called when production Stock is exited.
 func (s *BaseFaultParserListener) ExitStock(ctx *StockContext) {}
 
+// EnterPropFunc is called when production PropFunc is entered.
+func (s *BaseFaultParserListener) EnterPropFunc(ctx *PropFuncContext) {}
+
+// ExitPropFunc is called when production PropFunc is exited.
+func (s *BaseFaultParserListener) ExitPropFunc(ctx *PropFuncContext) {}
+
+// EnterSfMisc is called when production sfMisc is entered.
+func (s *BaseFaultParserListener) EnterSfMisc(ctx *SfMiscContext) {}
+
+// ExitSfMisc is called when production sfMisc is exited.
+func (s *BaseFaultParserListener) ExitSfMisc(ctx *SfMiscContext) {}
+
+// EnterStateFunc is called when production StateFunc is entered.
+func (s *BaseFaultParserListener) EnterStateFunc(ctx *StateFuncContext) {}
+
+// ExitStateFunc is called when production StateFunc is exited.
+func (s *BaseFaultParserListener) ExitStateFunc(ctx *StateFuncContext) {}
+
+// EnterCompMisc is called when production compMisc is entered.
+func (s *BaseFaultParserListener) EnterCompMisc(ctx *CompMiscContext) {}
+
+// ExitCompMisc is called when production compMisc is exited.
+func (s *BaseFaultParserListener) ExitCompMisc(ctx *CompMiscContext) {}
+
 // EnterPropInt is called when production PropInt is entered.
 func (s *BaseFaultParserListener) EnterPropInt(ctx *PropIntContext) {}
 
@@ -170,12 +194,6 @@ func (s *BaseFaultParserListener) EnterPropBool(ctx *PropBoolContext) {}
 
 // ExitPropBool is called when production PropBool is exited.
 func (s *BaseFaultParserListener) ExitPropBool(ctx *PropBoolContext) {}
-
-// EnterPropFunc is called when production PropFunc is entered.
-func (s *BaseFaultParserListener) EnterPropFunc(ctx *PropFuncContext) {}
-
-// ExitPropFunc is called when production PropFunc is exited.
-func (s *BaseFaultParserListener) ExitPropFunc(ctx *PropFuncContext) {}
 
 // EnterPropVar is called when production PropVar is entered.
 func (s *BaseFaultParserListener) EnterPropVar(ctx *PropVarContext) {}
@@ -291,6 +309,18 @@ func (s *BaseFaultParserListener) EnterIfStmt(ctx *IfStmtContext) {}
 // ExitIfStmt is called when production ifStmt is exited.
 func (s *BaseFaultParserListener) ExitIfStmt(ctx *IfStmtContext) {}
 
+// EnterIfStmtRun is called when production ifStmtRun is entered.
+func (s *BaseFaultParserListener) EnterIfStmtRun(ctx *IfStmtRunContext) {}
+
+// ExitIfStmtRun is called when production ifStmtRun is exited.
+func (s *BaseFaultParserListener) ExitIfStmtRun(ctx *IfStmtRunContext) {}
+
+// EnterIfStmtState is called when production ifStmtState is entered.
+func (s *BaseFaultParserListener) EnterIfStmtState(ctx *IfStmtStateContext) {}
+
+// ExitIfStmtState is called when production ifStmtState is exited.
+func (s *BaseFaultParserListener) ExitIfStmtState(ctx *IfStmtStateContext) {}
+
 // EnterForStmt is called when production forStmt is entered.
 func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
 
@@ -308,6 +338,30 @@ func (s *BaseFaultParserListener) EnterParamCall(ctx *ParamCallContext) {}
 
 // ExitParamCall is called when production paramCall is exited.
 func (s *BaseFaultParserListener) ExitParamCall(ctx *ParamCallContext) {}
+
+// EnterStateBlock is called when production stateBlock is entered.
+func (s *BaseFaultParserListener) EnterStateBlock(ctx *StateBlockContext) {}
+
+// ExitStateBlock is called when production stateBlock is exited.
+func (s *BaseFaultParserListener) ExitStateBlock(ctx *StateBlockContext) {}
+
+// EnterStateStepExpr is called when production stateStepExpr is entered.
+func (s *BaseFaultParserListener) EnterStateStepExpr(ctx *StateStepExprContext) {}
+
+// ExitStateStepExpr is called when production stateStepExpr is exited.
+func (s *BaseFaultParserListener) ExitStateStepExpr(ctx *StateStepExprContext) {}
+
+// EnterStateChain is called when production stateChain is entered.
+func (s *BaseFaultParserListener) EnterStateChain(ctx *StateChainContext) {}
+
+// ExitStateChain is called when production stateChain is exited.
+func (s *BaseFaultParserListener) ExitStateChain(ctx *StateChainContext) {}
+
+// EnterStateExpr is called when production stateExpr is entered.
+func (s *BaseFaultParserListener) EnterStateExpr(ctx *StateExprContext) {}
+
+// ExitStateExpr is called when production stateExpr is exited.
+func (s *BaseFaultParserListener) ExitStateExpr(ctx *StateExprContext) {}
 
 // EnterRunBlock is called when production runBlock is entered.
 func (s *BaseFaultParserListener) EnterRunBlock(ctx *RunBlockContext) {}
@@ -452,6 +506,12 @@ func (s *BaseFaultParserListener) EnterFunctionLit(ctx *FunctionLitContext) {}
 
 // ExitFunctionLit is called when production functionLit is exited.
 func (s *BaseFaultParserListener) ExitFunctionLit(ctx *FunctionLitContext) {}
+
+// EnterStateLit is called when production stateLit is entered.
+func (s *BaseFaultParserListener) EnterStateLit(ctx *StateLitContext) {}
+
+// ExitStateLit is called when production stateLit is exited.
+func (s *BaseFaultParserListener) ExitStateLit(ctx *StateLitContext) {}
 
 // EnterEos is called when production eos is entered.
 func (s *BaseFaultParserListener) EnterEos(ctx *EosContext) {}
