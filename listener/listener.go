@@ -1282,8 +1282,6 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 }
 
 func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression) map[*ast.Identifier]ast.Expression {
-	//Wrap inner function in conditional so that only
-	// executes if the state is active
 	p := make(map[*ast.Identifier]ast.Expression)
 	for k, v := range pairs {
 		switch f := v.(type) {
@@ -1296,6 +1294,8 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 				continue
 			}
 
+			//Wrap inner function in conditional so that only
+			// executes if the state is active
 			this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}
 			cond := &ast.InfixExpression{Left: this, Operator: "==", Right: &ast.Boolean{Value: true}}
 			con := &ast.IfExpression{Condition: cond, Consequence: f.Body}

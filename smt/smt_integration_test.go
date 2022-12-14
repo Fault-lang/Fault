@@ -58,18 +58,20 @@ func TestTestData(t *testing.T) {
 
 func TestSys(t *testing.T) {
 	specs := [][]string{
-		{"testdata/statecharts/statechart.fsystem", "1"},
-		{"testdata/statecharts/advanceor.fsystem", "0"},
-		{"testdata/statecharts/multioradvance.fsystem", "0"},
-		{"testdata/statecharts/advanceand.fsystem", "0"},
-		{"testdata/statecharts/mixedcalls.fsystem", "1"},
+		// {"testdata/statecharts/statechart.fsystem", "1"},
+		// {"testdata/statecharts/advanceor.fsystem", "0"},
+		// {"testdata/statecharts/multioradvance.fsystem", "0"},
+		// {"testdata/statecharts/advanceand.fsystem", "0"},
+		//{"testdata/statecharts/mixedcalls.fsystem", "1"},
+		{"testdata/statecharts/triggerfunc.fsystem", "1"},
 	}
 	smt2s := []string{
-		"testdata/statecharts/statechart.smt2",
-		"testdata/statecharts/advanceor.smt2",
-		"testdata/statecharts/multioradvance.smt2",
-		"testdata/statecharts/advanceand.smt2",
-		"testdata/statecharts/mixedcalls.smt2",
+		// "testdata/statecharts/statechart.smt2",
+		// "testdata/statecharts/advanceor.smt2",
+		// "testdata/statecharts/multioradvance.smt2",
+		// "testdata/statecharts/advanceand.smt2",
+		//"testdata/statecharts/mixedcalls.smt2",
+		"testdata/statecharts/triggerfunc.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])
@@ -126,6 +128,7 @@ func TestMultiCond(t *testing.T) {
 		"testdata/conditionals/multicond3.fspec",
 		"testdata/conditionals/multicond4.fspec",
 		"testdata/conditionals/multicond5.fspec",
+		"testdata/conditionals/condwelse.fspec",
 	}
 	smt2s := []string{
 		"testdata/conditionals/multicond.smt2",
@@ -133,6 +136,7 @@ func TestMultiCond(t *testing.T) {
 		"testdata/conditionals/multicond3.smt2",
 		"testdata/conditionals/multicond4.smt2",
 		"testdata/conditionals/multicond5.smt2",
+		"testdata/conditionals/condwelse.smt2",
 	}
 
 	for i, s := range specs {
@@ -259,7 +263,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	generator := NewGenerator()
 	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.Run(compiler.GetIR())
-	fmt.Println(generator.SMT())
+	//fmt.Println(generator.SMT())
 	return generator.SMT(), nil
 }
 
