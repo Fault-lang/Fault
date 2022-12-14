@@ -504,9 +504,16 @@ func TestSimpleConditional(t *testing.T) {
 		if !ok {
 			t.Fatalf("Function body missing IfExpression. got=%T", s.Expression)
 		}
-		_, ok = ife.Condition.(*ast.Identifier)
+		in, ok := ife.Condition.(*ast.InfixExpression)
 		if !ok {
-			t.Fatalf("If Condition does not contain an Identifier. got=%T", ife.Condition)
+			t.Fatalf("If Condition operand not wrapped. got=%T", ife.Condition)
+		}
+
+		if _, ok = in.Left.(*ast.Identifier); !ok {
+			t.Fatalf("If Condition does not contain an Identifier. got=%T", in.Left)
+		}
+		if _, ok = in.Right.(*ast.Boolean); !ok {
+			t.Fatalf("If Condition does not contain a boolean. got=%T", in.Right)
 		}
 		if len(ife.Consequence.Statements) == 0 {
 			t.Fatalf("If Condition does not contain an consequence clause. got=%s", ife.Consequence)
@@ -546,9 +553,13 @@ func TestConditional(t *testing.T) {
 		if !ok {
 			t.Fatalf("Function body missing IfExpression. got=%T", s.Expression)
 		}
-		_, ok = ife.Condition.(*ast.Identifier)
+		in, ok := ife.Condition.(*ast.InfixExpression)
 		if !ok {
-			t.Fatalf("If Condition does not contain an Identifier. got=%T", ife.Condition)
+			t.Fatalf("If Condition does not contain an Infix. got=%T", ife.Condition)
+		}
+		_, ok = in.Left.(*ast.Identifier)
+		if !ok {
+			t.Fatalf("If Condition does not contain an Identifier. got=%T", in.Left)
 		}
 		if len(ife.Consequence.Statements) == 0 {
 			t.Fatalf("If Condition does not contain an consequence clause. got=%s", ife.Consequence)

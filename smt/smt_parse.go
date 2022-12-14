@@ -57,13 +57,8 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 	rules = append(rules, r...)
 
 	for k, v := range g.storedChoice {
-		r0 := g.orStateRule(k, v)
+		r0 := g.stateRules(k, v)
 		rules = append(rules, r0)
-	}
-
-	for k, v := range g.storedAnds {
-		r0 := g.andStateRule(k, v)
-		rules = append(rules, r0...)
 	}
 
 	var r1 []rule
@@ -270,11 +265,15 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			g.tempRule(inst, r)
 		case *ir.InstAnd:
 			if g.isStateChangeChain(inst) {
-				andAd := g.parseAnd(inst)
+				sc := &stateChange{
+					ors:  []value.Value{},
+					ands: []value.Value{},
+				}
+				andAd, _ := g.parseChoice(inst, sc)
 				id := inst.Ident()
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 				g.variables.loads[refname] = inst
-				g.storedAnds[refname] = andAd
+				g.storedChoice[refname] = andAd
 
 			} else {
 				r := g.andRule(inst)
@@ -282,7 +281,11 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			}
 		case *ir.InstOr:
 			if g.isStateChangeChain(inst) {
-				orAd := g.parseOr(inst)
+				sc := &stateChange{
+					ors:  []value.Value{},
+					ands: []value.Value{},
+				}
+				orAd, _ := g.parseChoice(inst, sc)
 				id := inst.Ident()
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 				g.variables.loads[refname] = inst
@@ -344,46 +347,65 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	return t, f, a
 }
 
-func (g *Generator) parseOr(branch value.Value) []value.Value {
+func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChange, []value.Value) {
 	var ret []value.Value
 	switch branch := branch.(type) {
 	case *ir.InstCall:
-		return append(ret, branch)
+		return sc, append(ret, branch)
 	case *ir.InstOr:
 		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
 		vx := g.variables.loads[refnamex]
-		ret = append(ret, g.parseOr(vx)...)
+		if g.peek(vx) != "infix" {
+			sc, ret = g.parseChoice(vx, sc)
+			sc.ors = append(sc.ors, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamex]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
 		delete(g.storedChoice, refnamex)
 
 		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
 		vy := g.variables.loads[refnamey]
-		ret = append(ret, g.parseOr(vy)...)
+		if g.peek(vy) != "infix" {
+			sc, ret = g.parseChoice(vy, sc)
+			sc.ors = append(sc.ors, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamey]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
 		delete(g.storedChoice, refnamey)
 
-		return ret
-	}
-	return ret
-}
-
-func (g *Generator) parseAnd(branch value.Value) []value.Value {
-	var ret []value.Value
-	switch branch := branch.(type) {
-	case *ir.InstCall:
-		return append(ret, branch)
+		return sc, ret
 	case *ir.InstAnd:
 		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
 		vx := g.variables.loads[refnamex]
-		ret = append(ret, g.parseAnd(vx)...)
+		if g.peek(vx) != "infix" {
+			sc, ret = g.parseChoice(vx, sc)
+			sc.ands = append(sc.ands, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamex]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
 		delete(g.storedChoice, refnamex)
 
 		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
 		vy := g.variables.loads[refnamey]
-		ret = append(ret, g.parseAnd(vy)...)
+		if g.peek(vy) != "infix" {
+			sc, ret = g.parseChoice(vy, sc)
+			sc.ands = append(sc.ands, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamey]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
 		delete(g.storedChoice, refnamey)
 
-		return ret
+		return sc, ret
 	}
-	return ret
+	return sc, ret
 }
 
 func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
@@ -536,6 +558,17 @@ func (g *Generator) parseCompareOp(op string) string {
 	}
 }
 
+func (g *Generator) peek(inst value.Value) string {
+	switch inst.(type) {
+	case *ir.InstOr, *ir.InstAnd:
+		return "infix"
+	case *ir.InstCall:
+		return "call"
+	default:
+		panic("unsupported instruction type")
+	}
+}
+
 func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 	switch inst := inst.(type) {
 	case *ir.InstAnd:
@@ -543,10 +576,10 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
-		x := g.variables.loads[refnamex]
-		switch x.(type) {
-		case *ir.InstCall, *ir.InstAdd, *ir.InstOr:
+		//refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
+		//x := g.variables.loads[refnamex]
+		switch inst.X.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
 			return false
 		}
@@ -555,10 +588,10 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
-		y := g.variables.loads[refnamey]
-		switch y.(type) {
-		case *ir.InstCall, *ir.InstAdd, *ir.InstOr:
+		//refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
+		//y := g.variables.loads[refnamey]
+		switch inst.Y.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
 			return false
 		}
@@ -568,10 +601,10 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
-		x := g.variables.loads[refnamex]
-		switch x.(type) {
-		case *ir.InstCall, *ir.InstAdd, *ir.InstOr:
+		//refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
+		//x := g.variables.loads[refnamex]
+		switch inst.X.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
 			return false
 		}
@@ -580,10 +613,10 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
-		y := g.variables.loads[refnamey]
-		switch y.(type) {
-		case *ir.InstCall, *ir.InstAdd, *ir.InstOr:
+		//refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
+		//y := g.variables.loads[refnamey]
+		switch inst.Y.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
 			return false
 		}

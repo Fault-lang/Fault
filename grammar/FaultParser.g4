@@ -155,7 +155,8 @@ incDecStmt
 stateChange
     : 'advance' '(' paramCall ')' #builtins
     | 'stay' '(' ')'              #builtins
-    | stateChange ('||' | '&&') stateChange #builtinInfix
+    | stateChange '&&' stateChange #builtinInfix
+    | stateChange '||' stateChange #builtinInfix
     ;
 
 accessHistory

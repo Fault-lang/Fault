@@ -863,6 +863,15 @@ func (l *FaultListener) ExitIfStmt(c *parser.IfStmtContext) {
 	csq := l.pop()
 	cond := l.pop()
 
+	if c, ok := cond.(ast.Operand); ok {
+		//Modifying the construction if a {} to be more specific
+		cond = &ast.InfixExpression{
+			Left:     c,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
+	}
+
 	e := &ast.IfExpression{
 		Token:       token,
 		Condition:   cond.(ast.Expression),

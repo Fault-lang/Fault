@@ -162,6 +162,33 @@ func (p *phi) Tag(k1 string, k2 string) {
 	}
 }
 
+type stateChange struct {
+	rule
+	ands []value.Value
+	ors  []value.Value
+	tag  *branch
+}
+
+func (sc *stateChange) ruleNode() {}
+func (sc *stateChange) String() string {
+	var out bytes.Buffer
+	for _, n := range sc.ands {
+		r := fmt.Sprintf("and %s ", n)
+		out.WriteString(r)
+	}
+	for _, n := range sc.ors {
+		r := fmt.Sprintf("or %s ", n)
+		out.WriteString(r)
+	}
+	return out.String()
+}
+func (sc *stateChange) Tag(k1 string, k2 string) {
+	sc.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type wrap struct { //wrapper for constant values to be used in infix as rules
 	rule
 	value    string
@@ -347,7 +374,39 @@ func (g *Generator) orRule(inst *ir.InstOr) rule {
 	return g.parseInfix(id, x, y, "or")
 }
 
-func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) rule {
+func (g *Generator) stateRules(key string, sc *stateChange) rule {
+	if len(sc.ors) == 0 {
+		and := g.andStateRule(key, sc.ands)
+		a := &ands{
+			x: and,
+		}
+
+		c := &choices{
+			x:  []*ands{a},
+			op: "and",
+		}
+		return c
+	}
+
+	and := g.andStateRule(key, sc.ands)
+	ors := g.orStateRule(key, sc.ors)
+
+	if len(sc.ands) != 0 {
+		ors["joined_ands"] = and
+	}
+
+	x := g.syncStateRules(ors)
+
+	r := &choices{
+		x:  x,
+		op: "or",
+	}
+
+	return r
+
+}
+
+func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[string][]rule {
 	g.inPhiState.In()
 
 	and := make(map[string][]rule)
@@ -357,6 +416,26 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) rule {
 	}
 	delete(g.storedChoice, choiceK)
 
+	g.inPhiState.Out()
+	return and
+}
+
+func (g *Generator) andStateRule(andK string, andV []value.Value) []rule {
+	g.inPhiState.In()
+
+	var ands []rule
+	for _, b := range andV {
+		a := g.parseBuiltIn(b.(*ir.InstCall), true)
+		ands = append(ands, a...)
+	}
+	delete(g.storedChoice, andK)
+
+	g.inPhiState.Out()
+	return ands
+}
+
+func (g *Generator) syncStateRules(branches map[string][]rule) []*ands {
+	g.inPhiState.In()
 	g.newFork()
 
 	var e []rule
@@ -365,7 +444,7 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) rule {
 	phis := make(map[string]int16)
 	var x []*ands
 
-	for k, v := range and {
+	for k, v := range branches {
 		keys = append(keys, k)
 		g.buildForkChoice(v, k)
 		e, phis = g.capCond(k, phis)
@@ -380,27 +459,8 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) rule {
 		}
 		x = append(x, a)
 	}
-
-	r := &choices{
-		x:  x,
-		op: "or",
-	}
 	g.inPhiState.Out()
-	return r
-}
-
-func (g *Generator) andStateRule(andK string, andV []value.Value) []rule {
-	g.inPhiState.In()
-
-	var ands []rule
-	for _, b := range andV {
-		a := g.parseBuiltIn(b.(*ir.InstCall), true)
-		ands = append(ands, a...)
-	}
-	delete(g.storedAnds, andK)
-
-	g.inPhiState.Out()
-	return ands
+	return x
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {

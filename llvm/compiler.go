@@ -825,8 +825,11 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
+		gname := name.ParallelGroup(node.String())
 		l := c.compileInfixNode(node.Left)
+		l = c.tagBuiltIns(l, gname)
 		r := c.compileInfixNode(node.Right)
+		r = c.tagBuiltIns(r, gname)
 
 		return c.contextBlock.NewAnd(l, r)
 
