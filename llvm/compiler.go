@@ -524,10 +524,6 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 }
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
-	if c.contextFuncName != "__run" {
-		pos := node.Position()
-		panic(fmt.Sprintf("cannot use parallel operator outside of the run block. line: %d, col: %d", pos[0], pos[1]))
-	}
 	gname := name.ParallelGroup(node.String())
 	for i := 0; i < len(node.Expressions); i++ {
 		l := c.compileValue(node.Expressions[i])
@@ -890,6 +886,10 @@ func (c *Compiler) compileThis(node *ast.This) *ir.InstLoad {
 }
 
 func (c *Compiler) compileIf(n *ast.IfExpression) {
+	if n.Elif != nil {
+		c.compileIf(n.Elif)
+	}
+
 	cond := c.compileConditional(n.Condition)
 
 	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")

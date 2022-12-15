@@ -449,10 +449,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
-		if p.inStruct == "" {
-			rawid := node.RawId()
-			p.inStruct = rawid[1]
-		}
+		rawid := node.RawId()
+		p.inStruct = rawid[1] 
 
 		p.inFunc = true
 		pro, err = p.walk(node.Body)

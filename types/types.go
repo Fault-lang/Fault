@@ -211,6 +211,8 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		node.InferredType = valtype
 		return node, err
+	case *ast.BuiltIn:
+		return node, nil
 	case *ast.IntegerLiteral:
 		return c.infer(node)
 	case *ast.FloatLiteral:
@@ -286,6 +288,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.ParameterCall:
 		return true
+	case *ast.BuiltIn:
+		return true
 	case *ast.Natural:
 		return true
 	case *ast.Uncertain:
@@ -329,6 +333,8 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 				Scope:      0,
 				Parameters: nil}
 		}
+		return node, nil
+	case *ast.BuiltIn:
 		return node, nil
 	case *ast.FloatLiteral:
 		if node.InferredType == nil {
@@ -433,7 +439,7 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 	if t, ok := c.temps[node.String()]; ok {
 		return t, nil
 	}
-	
+
 	//Prepare ID
 	var rawid []string
 	switch n := node.(type) {
@@ -445,6 +451,10 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 			Parameters: nil}, nil
 	case *ast.Instance:
 		return &ast.Type{Type: n.Type(),
+			Scope:      0,
+			Parameters: nil}, nil
+	case *ast.BuiltIn:
+		return &ast.Type{Type: "BOOLEAN",
 			Scope:      0,
 			Parameters: nil}, nil
 	case *ast.ParameterCall:
@@ -483,6 +493,9 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 	case *ast.BuiltIn:
 		return node, err
 
+	case *ast.ParameterCall:
+		exp, err := c.infer(node)
+		return exp.(ast.Expression), err
 	case *ast.Instance:
 		node.InferredType = &ast.Type{Type: node.Type(),
 			Scope:      0,
@@ -640,35 +653,49 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		node.Condition = ncond.(ast.Expression)
 
 		for i := 0; i < len(node.Consequence.Statements); i++ {
-			exp := node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression
-			if c.isValue(exp) {
-				typedNode, err = c.infer(exp)
-			} else {
-				typedNode, err = c.inferFunction(exp)
-			}
-			if err != nil {
-				return nil, err
-			}
-			node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
-			valtype = typeable(typedNode)
-		}
-		node.Consequence.InferredType = valtype
-
-		if node.Alternative != nil {
-			for i := 0; i < len(node.Alternative.Statements); i++ {
-				exp := node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression
-				if c.isValue(exp) {
-					typedNode, err = c.infer(exp)
+			switch exp := node.Consequence.Statements[i].(type) {
+			case *ast.ExpressionStatement:
+				if c.isValue(exp.Expression) {
+					typedNode, err = c.infer(exp.Expression)
 				} else {
-					typedNode, err = c.inferFunction(exp)
+					typedNode, err = c.inferFunction(exp.Expression)
 				}
 				if err != nil {
 					return nil, err
 				}
-				node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
+				node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
 				valtype = typeable(typedNode)
+				node.Consequence.InferredType = valtype
+			case *ast.ParallelFunctions:
+				for idx, p := range exp.Expressions {
+					typedNode, err = c.inferFunction(p)
+					exp.Expressions[idx] = typedNode.(ast.Expression)
+				}
 			}
-			node.Alternative.InferredType = valtype
+		}
+
+		if node.Alternative != nil {
+			for i := 0; i < len(node.Alternative.Statements); i++ {
+				switch exp := node.Alternative.Statements[i].(type) {
+				case *ast.ExpressionStatement:
+					if c.isValue(exp.Expression) {
+						typedNode, err = c.infer(exp.Expression)
+					} else {
+						typedNode, err = c.inferFunction(exp.Expression)
+					}
+					if err != nil {
+						return nil, err
+					}
+					node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
+					valtype = typeable(typedNode)
+					node.Alternative.InferredType = valtype
+				case *ast.ParallelFunctions:
+					for idx, p := range exp.Expressions {
+						typedNode, err = c.inferFunction(p)
+						exp.Expressions[idx] = typedNode.(ast.Expression)
+					}
+				}
+			}
 		}
 
 		if node.Elif != nil {
