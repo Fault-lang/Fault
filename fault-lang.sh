@@ -50,7 +50,7 @@ path=${path#"/"}
 ################################################################################
 
 
-while getopts f:m:i:hV flag
+while getopts f:m:i:c:hV flag
 do
     case "${flag}" in
         f) file=${OPTARG};;

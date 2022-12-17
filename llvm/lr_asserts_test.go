@@ -11,7 +11,7 @@ import (
 	"fault/types"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSimpleAssert(t *testing.T) {
@@ -202,8 +202,8 @@ func prepAssertTest(test string) (*Compiler, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := &types.Checker{}
-	tree, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	tree, err := ty.Check(tree)
 
 	if err != nil {
 		return nil, err

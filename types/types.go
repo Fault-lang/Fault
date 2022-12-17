@@ -24,12 +24,19 @@ var COMPARE = map[string]bool{
 type Checker struct {
 	SpecStructs map[string]*preprocess.SpecRecord
 	Constants   map[string]map[string]ast.Node
-	inStock string
+	inStock     string
+	temps       map[string]*ast.Type
 }
 
-func (c *Checker) Check(a *ast.Spec, structs map[string]*preprocess.SpecRecord) (*ast.Spec, error) {
-	c.SpecStructs = structs
-	
+func NewTypeChecker(specs map[string]*preprocess.SpecRecord) *Checker {
+	return &Checker{
+		SpecStructs: specs,
+		Constants:   make(map[string]map[string]ast.Node),
+		temps:       make(map[string]*ast.Type),
+	}
+}
+
+func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {
 	// Break down the AST into constants and structs
 	n, err := c.typecheck(a)
 
@@ -95,13 +102,19 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.StockLiteral:
 		c.inStock = node.IdString()
+		rawid := node.RawId()
+		spec := c.SpecStructs[rawid[0]]
 		node.InferredType = &ast.Type{Type: "STOCK", Scope: 0, Parameters: nil}
-		for k, v := range node.Pairs {
+		for _, key := range node.Order {
+			propid := node.GetPropertyIdent(key)
+			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
 			if err != nil {
 				return node, err
 			}
-			node.Pairs[k] = tnode.(ast.Expression)
+			node.Pairs[propid] = tnode.(ast.Expression)
+			name := append(rawid, key)
+			spec.UpdateVar(name, "STOCK", tnode)
 		}
 		c.inStock = ""
 		return node, err
@@ -109,12 +122,18 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		node.InferredType = &ast.Type{Type: "FLOW",
 			Scope:      0,
 			Parameters: nil}
-		for k, v := range node.Pairs {
+		rawid := node.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		for _, key := range node.Order {
+			propid := node.GetPropertyIdent(key)
+			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
 			if err != nil {
 				return node, err
 			}
-			node.Pairs[k] = tnode.(ast.Expression)
+			node.Pairs[propid] = tnode.(ast.Expression)
+			name := append(rawid, key)
+			spec.UpdateVar(name, "FLOW", tnode)
 		}
 
 		return node, err
@@ -122,12 +141,18 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		node.InferredType = &ast.Type{Type: "COMPONENT",
 			Scope:      0,
 			Parameters: nil}
-		for k, v := range node.Pairs {
+		rawid := node.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		for _, key := range node.Order {
+			propid := node.GetPropertyIdent(key)
+			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
 			if err != nil {
 				return node, err
 			}
-			node.Pairs[k] = tnode.(ast.Expression)
+			node.Pairs[propid] = tnode.(ast.Expression)
+			name := append(rawid, key)
+			spec.UpdateVar(name, "COMPONENT", tnode)
 		}
 
 		return node, err
@@ -163,11 +188,13 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		node = cnode
 		return node, err
 	case *ast.FunctionLiteral:
+		oldTemps := c.temps
 		node2, err := c.typecheck(node.Body)
 		if err != nil {
 			return nil, err
 		}
 		node.Body = node2.(*ast.BlockStatement)
+		c.temps = oldTemps
 		return node, err
 	case *ast.BlockStatement:
 		var valtype *ast.Type
@@ -184,6 +211,8 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		node.InferredType = valtype
 		return node, err
+	case *ast.BuiltIn:
+		return node, nil
 	case *ast.IntegerLiteral:
 		return c.infer(node)
 	case *ast.FloatLiteral:
@@ -259,6 +288,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.ParameterCall:
 		return true
+	case *ast.BuiltIn:
+		return true
 	case *ast.Natural:
 		return true
 	case *ast.Uncertain:
@@ -302,6 +333,8 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 				Scope:      0,
 				Parameters: nil}
 		}
+		return node, nil
+	case *ast.BuiltIn:
 		return node, nil
 	case *ast.FloatLiteral:
 		if node.InferredType == nil {
@@ -402,6 +435,11 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 	if t := typeable(node); t != nil {
 		return t, nil
 	}
+
+	if t, ok := c.temps[node.String()]; ok {
+		return t, nil
+	}
+
 	//Prepare ID
 	var rawid []string
 	switch n := node.(type) {
@@ -415,40 +453,21 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 		return &ast.Type{Type: n.Type(),
 			Scope:      0,
 			Parameters: nil}, nil
+	case *ast.BuiltIn:
+		return &ast.Type{Type: "BOOLEAN",
+			Scope:      0,
+			Parameters: nil}, nil
 	case *ast.ParameterCall:
 		return c.lookupCallType(n)
 	}
 
-	var branches map[string]ast.Node
 	spec := c.SpecStructs[rawid[0]]
-	ty, structId := spec.GetStructType(rawid)
-	name := strings.Join(structId[1:], "_")
-	switch ty {
-	case "STOCK":
-		branches, err = spec.FetchStock(name)
-	case "FLOW":
-		branches, err = spec.FetchFlow(name)
-	case "CONSTANT":
-		constant, err := spec.FetchConstant(name)
-		if constant != nil {
-			return typeable(constant), err
-		}
-	case "NIL":
-		return nil, err
-	default:
-		return nil, fmt.Errorf("unimplemented type %s", ty)
-	}
-
+	ty, _ := spec.GetStructType(rawid)
+	v, err := spec.FetchVar(rawid, ty)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
 	}
-
-	for k, v := range branches {
-		if k == rawid[len(rawid)-1] {
-			return typeable(v), err
-		}
-	}
-	return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
+	return typeable(v), err
 }
 
 func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
@@ -474,6 +493,9 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 	case *ast.BuiltIn:
 		return node, err
 
+	case *ast.ParameterCall:
+		exp, err := c.infer(node)
+		return exp.(ast.Expression), err
 	case *ast.Instance:
 		node.InferredType = &ast.Type{Type: node.Type(),
 			Scope:      0,
@@ -500,6 +522,28 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		}
 
 		var nl, nr ast.Node
+		if c.isValue(node.Right) {
+			nr, err = c.infer(node.Right)
+
+		} else {
+			nr, err = c.inferFunction(node.Right)
+		}
+		if err != nil {
+			return nil, err
+		}
+		right := typeable(nr)
+
+		if node.Token.Type == "ASSIGN" { //In case of temp values
+			ty, _ := c.lookupType(node.Left)
+			if ty != nil && !isConvertible(ty, right) {
+				return node, fmt.Errorf("cannot redeclare variable %s is type %s got %s", node.Left.String(), ty.Type, right.Type)
+			}
+			node.InferredType = right
+			node.Left.SetType(right)
+			c.temps[node.Left.String()] = right
+			return node, nil
+		}
+
 		if c.isValue(node.Left) {
 			nl, err = c.infer(node.Left)
 		} else {
@@ -511,16 +555,6 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		}
 		left := typeable(nl)
 
-		if c.isValue(node.Right) {
-			nr, err = c.infer(node.Right)
-
-		} else {
-			nr, err = c.inferFunction(node.Right)
-		}
-		if err != nil {
-			return nil, err
-		}
-		right := typeable(nr)
 		node.Left = nl.(ast.Expression)
 		node.Right = nr.(ast.Expression)
 
@@ -619,35 +653,49 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		node.Condition = ncond.(ast.Expression)
 
 		for i := 0; i < len(node.Consequence.Statements); i++ {
-			exp := node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression
-			if c.isValue(exp) {
-				typedNode, err = c.infer(exp)
-			} else {
-				typedNode, err = c.inferFunction(exp)
-			}
-			if err != nil {
-				return nil, err
-			}
-			node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
-			valtype = typeable(typedNode)
-		}
-		node.Consequence.InferredType = valtype
-
-		if node.Alternative != nil {
-			for i := 0; i < len(node.Alternative.Statements); i++ {
-				exp := node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression
-				if c.isValue(exp) {
-					typedNode, err = c.infer(exp)
+			switch exp := node.Consequence.Statements[i].(type) {
+			case *ast.ExpressionStatement:
+				if c.isValue(exp.Expression) {
+					typedNode, err = c.infer(exp.Expression)
 				} else {
-					typedNode, err = c.inferFunction(exp)
+					typedNode, err = c.inferFunction(exp.Expression)
 				}
 				if err != nil {
 					return nil, err
 				}
-				node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
+				node.Consequence.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
 				valtype = typeable(typedNode)
+				node.Consequence.InferredType = valtype
+			case *ast.ParallelFunctions:
+				for idx, p := range exp.Expressions {
+					typedNode, err = c.inferFunction(p)
+					exp.Expressions[idx] = typedNode.(ast.Expression)
+				}
 			}
-			node.Alternative.InferredType = valtype
+		}
+
+		if node.Alternative != nil {
+			for i := 0; i < len(node.Alternative.Statements); i++ {
+				switch exp := node.Alternative.Statements[i].(type) {
+				case *ast.ExpressionStatement:
+					if c.isValue(exp.Expression) {
+						typedNode, err = c.infer(exp.Expression)
+					} else {
+						typedNode, err = c.inferFunction(exp.Expression)
+					}
+					if err != nil {
+						return nil, err
+					}
+					node.Alternative.Statements[i].(*ast.ExpressionStatement).Expression = typedNode.(ast.Expression)
+					valtype = typeable(typedNode)
+					node.Alternative.InferredType = valtype
+				case *ast.ParallelFunctions:
+					for idx, p := range exp.Expressions {
+						typedNode, err = c.inferFunction(p)
+						exp.Expressions[idx] = typedNode.(ast.Expression)
+					}
+				}
+			}
 		}
 
 		if node.Elif != nil {
@@ -795,6 +843,26 @@ func typeAdju(left *ast.Type, right *ast.Type, op string) (*ast.Type, error) {
 		}
 	}
 	return left, nil
+}
+
+func isConvertible(t1 *ast.Type, t2 *ast.Type) bool {
+	if t1.Type == t2.Type {
+		return true
+	}
+	if isNumeric(t1) && isNumeric(t2) {
+		return true
+	}
+	return false
+}
+
+func isNumeric(t *ast.Type) bool {
+	switch t.Type {
+	case "INT":
+		return true
+	case "FLOAT":
+		return true
+	}
+	return false
 }
 
 func typeable(node ast.Node) *ast.Type {

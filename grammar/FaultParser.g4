@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt? eos
+    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt?
     ;
 
 sysClause
@@ -21,7 +21,7 @@ globalDecl
     ;
 
 componentDecl
-    : 'component' IDENT '=' 'states' '{' (structProperties ',')* '}' eos
+    : 'component' IDENT '=' 'states' '{' (comProperties ',')* '}' eos
     ;
 
 startBlock
@@ -36,7 +36,7 @@ startPair
 */
 
 spec
-    : specClause declaration* forStmt? eos
+    : specClause declaration* forStmt?
     ;
 
 specClause
@@ -72,7 +72,7 @@ comparison
     ;
 
 constDecl
-    : 'const' ((constSpec eos) | '(' (constSpec eos)* ')')
+    : 'const' ((constSpec eos) | '(' constSpec* ')' eos)
     ;
 
 constSpec
@@ -88,7 +88,13 @@ constants
     | string_
     | bool_
     | solvable
+    | nil
     ;
+
+nil
+: NIL
+;
+
 
 expressionList
     : expression (',' expression)*
@@ -99,15 +105,24 @@ structDecl
     ;
 
 structType
-    : 'flow' '{' (structProperties ',')* '}'    #Flow
-    | 'stock' '{' (structProperties ',')* '}'   #Stock
+    : 'flow' '{' (sfProperties ',')* '}'    #Flow
+    | 'stock' '{' (sfProperties ',')* '}'   #Stock
+    ;
+
+sfProperties
+    : IDENT ':' functionLit #PropFunc
+    | structProperties      #sfMisc
+    ;
+
+comProperties
+    : IDENT ':' stateLit #StateFunc
+    | structProperties   #compMisc
     ;
 
 structProperties
     : IDENT ':' numeric #PropInt 
     | IDENT ':' string_ #PropString
     | IDENT ':' bool_ #PropBool
-    | IDENT ':' functionLit #PropFunc
     | IDENT ':' operandName #PropVar
     | IDENT ':' prefix #PropVar
     | IDENT ':' solvable #PropSolvable
@@ -138,7 +153,6 @@ simpleStmt
     : expression
     | incDecStmt
     | assignment
-    | builtins
     | emptyStmt
     ;
 
@@ -146,9 +160,11 @@ incDecStmt
     : expression (PLUS_PLUS | MINUS_MINUS)
     ;
 
-builtins
-    : 'advance' '(' paramCall ')'
-    | 'stay' '(' ')'
+stateChange
+    : 'advance' '(' paramCall ')' #builtins
+    | 'stay' '(' ')'              #builtins
+    | stateChange '&&' stateChange #builtinInfix
+    | stateChange '||' stateChange #builtinInfix
     ;
 
 accessHistory
@@ -186,8 +202,16 @@ ifStmt
     : 'if' (simpleStmt ';')? expression block ('else' (ifStmt | block))?
     ;
 
+ifStmtRun
+    : 'if' (simpleStmt ';')? expression runBlock ('else' (ifStmtRun | runBlock))?
+    ;
+
+ifStmtState
+    : 'if' (simpleStmt ';')? expression stateBlock ('else' (ifStmtState | stateBlock))?
+    ;
+
 forStmt
-    : 'for' rounds 'run' runBlock eos
+    : 'for' rounds 'run' runBlock eos?
     ;
 
 rounds
@@ -198,6 +222,16 @@ paramCall
     : (IDENT|THIS) '.' IDENT ('.' IDENT)*
     ;
 
+stateBlock
+    : '{' stateStep* '}'
+    ;
+
+stateStep
+    : paramCall ('|' paramCall)* eos              #stateStepExpr
+    | stateChange eos                                #stateChain
+    | ifStmtState                                 #stateExpr
+    ;
+
 runBlock
     : '{' runStep* '}'
     ;
@@ -206,7 +240,7 @@ runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
     | IDENT '=' 'new' (paramCall | IDENT) eos      #runInit
     | simpleStmt eos                              #runExpr
-    | ifStmt                                      #runExpr
+    | ifStmtRun                                     #runExpr
     ;
 
 faultType
@@ -236,7 +270,7 @@ expression
     ;
 
 operand
-    : NIL
+    : nil
     | numeric
     | string_
     | bool_
@@ -291,6 +325,10 @@ bool_
 
 functionLit
     : 'func' block
+    ;
+
+stateLit
+    : 'func' stateBlock
     ;
 
 eos

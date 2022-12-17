@@ -13,7 +13,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
@@ -583,53 +583,67 @@ func TestComponentIR(t *testing.T) {
 			%test_foo_alarm = alloca i1
 			store i1 false, i1* %test_foo_alarm
 			store i1 true, i1* %test_foo_initial
+			call void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm)
+			call void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm)
 			ret void
 		}
 		
-		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, double* %test_foo_alarm) {
+		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
 		block-17:
 			%0 = load i1, i1* %test_foo_initial
 			%1 = icmp eq i1 %0, true
-			%2 = load double, double* %test_foo_x
-			%3 = fcmp ogt double %2, 10.0
-			%4 = and i1 %1, %3
-			br i1 %4, label %block-19-true, label %block-18-after
+			br i1 %1, label %block-19-true, label %block-18-after
 		
 		block-18-after:
-			ret void
+			%2 = load i1, i1* %test_foo_initial
+			%3 = icmp eq i1 %2, true
+			%4 = load double, double* %test_foo_x
+			%5 = fcmp ogt double %4, 10.0
+			%6 = and i1 %3, %5
+			br i1 %6, label %block-22-true, label %block-21-after
 		
 		block-19-true:
-			call void @stay()
+			%7 = alloca [14 x i8]
+			store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
+			%8 = bitcast [14 x i8]* %7 to i8*
+			%9 = call i1 @advance(i8* %8)
 			br label %block-18-after
+		
+		block-21-after:
+			ret void
+		
+		block-22-true:
+			%10 = call i1 @stay()
+			br label %block-21-after
 		}
 		
-		define void @stay() {
+		define i1 @advance(i8* %toState) {
 		block-20:
-			ret void
+			ret i1 true
+		}
+		
+		define i1 @stay() {
+		block-23:
+			ret i1 true
 		}
 		
 		define void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
-		block-21:
+		block-24:
 			%0 = load i1, i1* %test_foo_alarm
 			%1 = icmp eq i1 %0, true
-			br i1 %1, label %block-23-true, label %block-22-after
+			br i1 %1, label %block-26-true, label %block-25-after
 		
-		block-22-after:
+		block-25-after:
 			ret void
 		
-		block-23-true:
+		block-26-true:
 			%2 = alloca [14 x i8]
 			store [14 x i8] c"test_foo_close", [14 x i8]* %2
 			%3 = bitcast [14 x i8]* %2 to i8*
-			call void @advance(i8* %3)
-			br label %block-22-after
-		}
-		
-		define void @advance(i8* %toState) {
-		block-24:
-			ret void
-		}
-		`
+			%4 = call i1 @advance(i8* %3)
+			br label %block-25-after
+		}`
+
 	llvm, err := prepTestSys(test)
 
 	if err != nil {
@@ -650,12 +664,9 @@ func TestComponentIR(t *testing.T) {
 
 }
 
-// run block
 // init values
-// instances (target/source)
 // clock
 // index
-// importing
 
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {
@@ -704,8 +715,8 @@ func prepTest(test string) (string, error) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := &types.Checker{}
-	tree, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	tree, err := ty.Check(tree)
 
 	if err != nil {
 		return "", err
@@ -733,8 +744,8 @@ func prepTestSys(test string) (string, error) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := &types.Checker{}
-	tree, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	tree, err := ty.Check(tree)
 	if err != nil {
 		return "", err
 	}

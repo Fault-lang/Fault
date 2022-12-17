@@ -14,6 +14,27 @@ type rule interface {
 	String() string
 }
 
+type ands struct {
+	rule
+	x   []rule
+	tag *branch
+}
+
+func (a *ands) ruleNode() {}
+func (a *ands) String() string {
+	var out bytes.Buffer
+	for _, r := range a.x {
+		out.WriteString(r.String())
+	}
+	return out.String()
+}
+func (a *ands) Tag(k1 string, k2 string) {
+	a.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type assrt struct {
 	rule
 	variable       *wrap
@@ -30,6 +51,31 @@ func (a *assrt) String() string {
 }
 func (a *assrt) Tag(k1 string, k2 string) {
 	a.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type choices struct {
+	rule
+	x   []*ands
+	op  string
+	tag *branch
+}
+
+func (c *choices) ruleNode() {}
+func (c *choices) String() string {
+	var out bytes.Buffer
+	for i, ru := range c.x {
+		out.WriteString(fmt.Sprintf("branch-%d: ", i))
+		for _, r := range ru.x {
+			out.WriteString(r.String())
+		}
+	}
+	return out.String()
+}
+func (c *choices) Tag(k1 string, k2 string) {
+	c.tag = &branch{
 		branch: k1,
 		block:  k2,
 	}
@@ -111,6 +157,33 @@ func (p *phi) String() string {
 }
 func (p *phi) Tag(k1 string, k2 string) {
 	p.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type stateChange struct {
+	rule
+	ands []value.Value
+	ors  []value.Value
+	tag  *branch
+}
+
+func (sc *stateChange) ruleNode() {}
+func (sc *stateChange) String() string {
+	var out bytes.Buffer
+	for _, n := range sc.ands {
+		r := fmt.Sprintf("and %s ", n)
+		out.WriteString(r)
+	}
+	for _, n := range sc.ors {
+		r := fmt.Sprintf("or %s ", n)
+		out.WriteString(r)
+	}
+	return out.String()
+}
+func (sc *stateChange) Tag(k1 string, k2 string) {
+	sc.tag = &branch{
 		branch: k1,
 		block:  k2,
 	}
@@ -218,7 +291,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 			n := g.variables.ssa[id]
 			if !g.inPhiState.Check() {
 				g.variables.newPhi(id, n+1)
-			}else{
+			} else {
 				g.variables.storeLastState(id, n+1)
 			}
 			id = g.variables.advanceSSA(id)
@@ -236,7 +309,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				n := g.variables.ssa[id]
 				if !g.inPhiState.Check() {
 					g.variables.newPhi(id, n+1)
-				}else{
+				} else {
 					g.variables.storeLastState(id, n+1)
 				}
 				id = g.variables.advanceSSA(id)
@@ -252,9 +325,9 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				n := g.variables.ssa[id]
 				if !g.inPhiState.Check() {
 					g.variables.newPhi(id, n+1)
-					}else{
-						g.variables.storeLastState(id, n+1)
-					}
+				} else {
+					g.variables.storeLastState(id, n+1)
+				}
 				ty := g.variables.lookupType(id, nil)
 				id = g.variables.advanceSSA(id)
 				wid := &wrap{value: id}
@@ -268,9 +341,9 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		n := g.variables.ssa[id]
 		if !g.inPhiState.Check() {
 			g.variables.newPhi(id, n+1)
-			}else{
-				g.variables.storeLastState(id, n+1)
-			}
+		} else {
+			g.variables.storeLastState(id, n+1)
+		}
 		id = g.variables.advanceSSA(id)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
@@ -293,12 +366,101 @@ func (g *Generator) andRule(inst *ir.InstAnd) rule {
 }
 
 func (g *Generator) orRule(inst *ir.InstOr) rule {
-	id := inst.Ident()
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
+	id := inst.Ident()
 	x = g.variables.convertIdent(g.currentFunction, x)
 	y = g.variables.convertIdent(g.currentFunction, y)
 	return g.parseInfix(id, x, y, "or")
+}
+
+func (g *Generator) stateRules(key string, sc *stateChange) rule {
+	if len(sc.ors) == 0 {
+		and := g.andStateRule(key, sc.ands)
+		a := &ands{
+			x: and,
+		}
+
+		c := &choices{
+			x:  []*ands{a},
+			op: "and",
+		}
+		return c
+	}
+
+	and := g.andStateRule(key, sc.ands)
+	ors := g.orStateRule(key, sc.ors)
+
+	if len(sc.ands) != 0 {
+		ors["joined_ands"] = and
+	}
+
+	x := g.syncStateRules(ors)
+
+	r := &choices{
+		x:  x,
+		op: "or",
+	}
+
+	return r
+
+}
+
+func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[string][]rule {
+	g.inPhiState.In()
+
+	and := make(map[string][]rule)
+	for _, b := range choiceV {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, b.Ident())
+		and[refname] = g.parseBuiltIn(b.(*ir.InstCall), true)
+	}
+	delete(g.storedChoice, choiceK)
+
+	g.inPhiState.Out()
+	return and
+}
+
+func (g *Generator) andStateRule(andK string, andV []value.Value) []rule {
+	g.inPhiState.In()
+
+	var ands []rule
+	for _, b := range andV {
+		a := g.parseBuiltIn(b.(*ir.InstCall), true)
+		ands = append(ands, a...)
+	}
+	delete(g.storedChoice, andK)
+
+	g.inPhiState.Out()
+	return ands
+}
+
+func (g *Generator) syncStateRules(branches map[string][]rule) []*ands {
+	g.inPhiState.In()
+	g.newFork()
+
+	var e []rule
+	var keys []string
+	ends := make(map[string][]rule)
+	phis := make(map[string]int16)
+	var x []*ands
+
+	for k, v := range branches {
+		keys = append(keys, k)
+		g.buildForkChoice(v, k)
+		e, phis = g.capCond(k, phis)
+		ends[k] = append(v, e...)
+	}
+
+	syncs := g.capCondSyncRules(keys)
+	for k, v := range syncs {
+		e2 := append(ends[k], v...)
+		a := &ands{
+			x: e2,
+		}
+		x = append(x, a)
+	}
+	g.inPhiState.Out()
+	return x
 }
 
 func (g *Generator) tempRule(inst value.Value, r rule) {

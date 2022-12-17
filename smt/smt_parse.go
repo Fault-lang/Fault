@@ -7,6 +7,7 @@ import (
 
 	"github.com/llir/llvm/ir"
 	irtypes "github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/value"
 )
 
 func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
@@ -54,6 +55,11 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 	// For each non-branching instruction of the basic block.
 	r := g.parseInstruct(block)
 	rules = append(rules, r...)
+
+	for k, v := range g.storedChoice {
+		r0 := g.stateRules(k, v)
+		rules = append(rules, r0)
+	}
 
 	var r1 []rule
 	switch term := block.Term.(type) {
@@ -111,9 +117,9 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		fEnds, _ = g.capCond("false", phis)
 
 		// Keep variable names in sync across branches
-		tSync, fSync := g.capCondSyncRules()
-		tEnds = append(tEnds, tSync...)
-		fEnds = append(fEnds, fSync...)
+		syncs := g.capCondSyncRules([]string{"true", "false"})
+		tEnds = append(tEnds, syncs["true"]...)
+		fEnds = append(fEnds, syncs["false"]...)
 
 		rules = append(rules, &ite{cond: cond, t: tEnds, f: fEnds})
 		g.inPhiState.Out()
@@ -221,7 +227,17 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstCall:
 			callee := inst.Callee.Ident()
 			if g.isBuiltIn(callee) {
-				g.parseBuiltIn(inst)
+				meta := inst.Metadata // Is this in a "b || b" construction?
+				if len(meta) > 0 {
+					id := inst.Ident()
+					refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+					inst.Metadata = nil // don't need this anymore
+					g.variables.loads[refname] = inst
+				} else {
+					r := g.parseBuiltIn(inst, false)
+					rules = append(rules, r...)
+				}
+				continue
 			}
 			meta := inst.Metadata
 			if g.isSameParallelGroup(meta) {
@@ -248,11 +264,37 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			r := g.xorRule(inst)
 			g.tempRule(inst, r)
 		case *ir.InstAnd:
-			r := g.andRule(inst)
-			g.tempRule(inst, r)
+			if g.isStateChangeChain(inst) {
+				sc := &stateChange{
+					ors:  []value.Value{},
+					ands: []value.Value{},
+				}
+				andAd, _ := g.parseChoice(inst, sc)
+				id := inst.Ident()
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.variables.loads[refname] = inst
+				g.storedChoice[refname] = andAd
+
+			} else {
+				r := g.andRule(inst)
+				g.tempRule(inst, r)
+			}
 		case *ir.InstOr:
-			r := g.orRule(inst)
-			g.tempRule(inst, r)
+			if g.isStateChangeChain(inst) {
+				sc := &stateChange{
+					ors:  []value.Value{},
+					ands: []value.Value{},
+				}
+				orAd, _ := g.parseChoice(inst, sc)
+				id := inst.Ident()
+				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				g.variables.loads[refname] = inst
+				g.storedChoice[refname] = orAd
+
+			} else {
+				r := g.orRule(inst)
+				g.tempRule(inst, r)
+			}
 		case *ir.InstBitCast:
 			//Do nothing
 		default:
@@ -305,16 +347,113 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	return t, f, a
 }
 
-func (g *Generator) parseBuiltIn(call *ir.InstCall) rule {
+func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChange, []value.Value) {
+	var ret []value.Value
+	switch branch := branch.(type) {
+	case *ir.InstCall:
+		return sc, append(ret, branch)
+	case *ir.InstOr:
+		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
+		vx := g.variables.loads[refnamex]
+		if g.peek(vx) != "infix" {
+			sc, ret = g.parseChoice(vx, sc)
+			sc.ors = append(sc.ors, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamex]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
+		delete(g.storedChoice, refnamex)
+
+		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		vy := g.variables.loads[refnamey]
+		if g.peek(vy) != "infix" {
+			sc, ret = g.parseChoice(vy, sc)
+			sc.ors = append(sc.ors, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamey]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
+		delete(g.storedChoice, refnamey)
+
+		return sc, ret
+	case *ir.InstAnd:
+		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
+		vx := g.variables.loads[refnamex]
+		if g.peek(vx) != "infix" {
+			sc, ret = g.parseChoice(vx, sc)
+			sc.ands = append(sc.ands, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamex]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
+		delete(g.storedChoice, refnamex)
+
+		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		vy := g.variables.loads[refnamey]
+		if g.peek(vy) != "infix" {
+			sc, ret = g.parseChoice(vy, sc)
+			sc.ands = append(sc.ands, ret...)
+		} else {
+			sc2 := g.storedChoice[refnamey]
+			sc.ands = append(sc.ands, sc2.ands...)
+			sc.ors = append(sc.ors, sc2.ors...)
+		}
+		delete(g.storedChoice, refnamey)
+
+		return sc, ret
+	}
+	return sc, ret
+}
+
+func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	p := call.Args
+	if len(p) == 0 {
+		return []rule{}
+	}
+
 	bc, ok := p[0].(*ir.InstBitCast)
 	if !ok {
 		panic("improper argument to built in function")
 	}
+
 	id := bc.From.Ident()
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 	state := g.variables.loads[refname]
-	return g.parseRule(state.Ident(), "true", "Bool", "=")
+	newState := state.Ident()
+	newState = newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
+	n := g.variables.ssa[newState]
+	if !g.inPhiState.Check() {
+		g.variables.newPhi(newState, n+1)
+	} else {
+		g.variables.storeLastState(newState, n+1)
+	}
+	newState = g.variables.advanceSSA(newState)
+	if complex {
+		g.declareVar(newState, "Bool")
+	}
+	r1 := g.parseRule(newState, "true", "Bool", "=")
+
+	if g.currentFunction[len(g.currentFunction)-7:] != "__state" {
+		panic("calling advance from outside the state chart")
+	}
+
+	currentState := g.currentFunction[1 : len(g.currentFunction)-7]
+	n2 := g.variables.ssa[currentState]
+	if !g.inPhiState.Check() {
+		g.variables.newPhi(currentState, n2+1)
+	} else {
+		g.variables.storeLastState(currentState, n2+1)
+	}
+
+	currentState = g.variables.advanceSSA(currentState)
+	if complex {
+		g.declareVar(currentState, "Bool")
+	}
+	r2 := g.parseRule(currentState, "false", "Bool", "=")
+	return []rule{r1, r2}
 }
 
 func (g *Generator) isBuiltIn(c string) bool {
@@ -417,4 +556,73 @@ func (g *Generator) parseCompareOp(op string) string {
 	default:
 		return op
 	}
+}
+
+func (g *Generator) peek(inst value.Value) string {
+	switch inst.(type) {
+	case *ir.InstOr, *ir.InstAnd:
+		return "infix"
+	case *ir.InstCall:
+		return "call"
+	default:
+		panic("unsupported instruction type")
+	}
+}
+
+func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
+	switch inst := inst.(type) {
+	case *ir.InstAnd:
+		if !g.variables.isTemp(inst.X.Ident()) {
+			return false
+		}
+
+		//refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
+		//x := g.variables.loads[refnamex]
+		switch inst.X.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
+		default:
+			return false
+		}
+
+		if !g.variables.isTemp(inst.Y.Ident()) {
+			return false
+		}
+
+		//refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
+		//y := g.variables.loads[refnamey]
+		switch inst.Y.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
+		default:
+			return false
+		}
+
+	case *ir.InstOr:
+		if !g.variables.isTemp(inst.X.Ident()) {
+			return false
+		}
+
+		//refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
+		//x := g.variables.loads[refnamex]
+		switch inst.X.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
+		default:
+			return false
+		}
+
+		if !g.variables.isTemp(inst.Y.Ident()) {
+			return false
+		}
+
+		//refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
+		//y := g.variables.loads[refnamey]
+		switch inst.Y.(type) {
+		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
+		default:
+			return false
+		}
+
+	default:
+		return false
+	}
+	return true
 }

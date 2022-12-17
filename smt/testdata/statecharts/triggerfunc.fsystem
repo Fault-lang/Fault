@@ -1,0 +1,27 @@
+system trigger;
+
+import "../simple.fspec";
+
+global fl = new simple.fl;
+
+component x = states{
+    foo: func{
+        fl.fn;
+    },
+    bar: func{
+        if fl.active {
+            fl.fn;
+        }
+    },
+    bash: func{
+        if fl.active {
+            advance(this.foo);
+        }else{
+            fl.fn;
+        }
+    },
+};
+
+start {
+    x: foo,
+};

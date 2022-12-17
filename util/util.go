@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) ast.Token {
@@ -276,6 +276,23 @@ func DetectMode(filename string) string {
 	default:
 		return ""
 	}
+}
+
+func Intersection(s1 []string, s2 []string, init bool) []string {
+	var s3 []string
+	for _, s := range s1 {
+		s3 = append(s3, s)
+		for _, z := range s2 {
+			if s == z {
+				s3 = s3[0 : len(s3)-1]
+			}
+		}
+	}
+	if init {
+		s4 := Intersection(s2, s1, false)
+		s3 = append(s3, s4...)
+	}
+	return s3
 }
 
 type ImportTrail []string

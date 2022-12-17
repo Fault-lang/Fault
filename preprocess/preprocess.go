@@ -449,10 +449,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
-		if p.inStruct == "" {
-			rawid := node.RawId()
-			p.inStruct = rawid[1]
-		}
+		rawid := node.RawId()
+		p.inStruct = rawid[1] 
 
 		p.inFunc = true
 		pro, err = p.walk(node.Body)
@@ -969,8 +967,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		if fn, ok := branch.(*ast.FunctionLiteral); ok {
 			var oldScope string
+			var oldState string
 			if ty == "COMPONENT" {
 				oldScope = p.scope
+				oldState = p.inState
 				p.scope = rawid[1]
 				p.inState = rawid[1]
 			}
@@ -984,7 +984,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			if ty == "COMPONENT" {
 				p.scope = oldScope
-				p.inState = ""
+				p.inState = oldState
 			}
 		}
 

@@ -7,7 +7,7 @@ import (
 	"fault/types"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSeenBefore(t *testing.T) {
@@ -77,7 +77,7 @@ func TestIncorrect(t *testing.T) {
 			stay();
 		},
 		error: func{
-			a = 4;
+			stay();
 		},
 	};
 
@@ -232,8 +232,8 @@ func prepTestSys(test string) (bool, []string) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := &types.Checker{}
-	tree, err := ty.Check(tree, pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs)
+	tree, err := ty.Check(tree)
 	if err != nil {
 		panic(err)
 	}

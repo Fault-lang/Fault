@@ -36,7 +36,8 @@ var OP_NEGATE = map[string]string{
 type Compiler struct {
 	module *ir.Module
 
-	runRound int16
+	hasRunBlock bool
+	runRound    int16
 
 	currentSpec      string
 	specs            map[string]*spec
@@ -84,6 +85,7 @@ func NewCompiler() *Compiler {
 		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
 
+		hasRunBlock:   false,
 		runRound:      0,
 		builtIns:      make(map[string]*ir.Func),
 		specStructs:   make(map[string]*preprocess.SpecRecord),
@@ -133,6 +135,12 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	case *ast.SpecDeclStatement:
 		c.currentSpec = decl.Name.Value
 	case *ast.SysDeclStatement:
+		for _, v := range specfile.Statements {
+			if _, ok := v.(*ast.ForStatement); ok {
+				c.hasRunBlock = true
+				continue
+			}
+		}
 		c.currentSpec = decl.Name.Value
 	default:
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
@@ -216,6 +224,12 @@ func (c *Compiler) compile(node ast.Node) {
 				s := c.specs[c.currentSpec]
 				p := s.GetSpecVarPointer(rawid)
 				c.contextBlock.NewStore(r, p)
+			}
+
+			if !c.hasRunBlock { // If no run block,
+				c.contextFuncName = "__run" // execute starting states
+				c.stateCheck()
+				c.contextFuncName = ""
 			}
 
 		}
@@ -310,6 +324,8 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 		return c.compileBlock(v)
 	case *ast.This:
 		return c.compileThis(v)
+	case *ast.BuiltIn:
+		return c.compileFunction(v)
 	default:
 		pos := v.Position()
 		panic(fmt.Sprintf("unknown value type %T line: %d col: %d", v, pos[0], pos[1]))
@@ -397,6 +413,11 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 
 			params := c.generateParameters(id, tree, true)
 			params = c.includeGlobalParams(params)
+			s := c.specs[id[0]]
+			funcId := append(p.(ast.Nameable).Id(), "__state")
+			for _, par := range params { //Not sure why []*ir.Param can't act like []value.Value
+				s.vars.AddParam(funcId, par) // when *ir.Param can be a value.Value
+			}
 			c.resetParaState(params)
 			f := c.module.NewFunc(childId, irtypes.Void, params...)
 			c.contextFunc = f
@@ -503,10 +524,6 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 }
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
-	if c.contextFuncName != "__run" {
-		pos := node.Position()
-		panic(fmt.Sprintf("cannot use parallel operator outside of the run block. line: %d, col: %d", pos[0], pos[1]))
-	}
 	gname := name.ParallelGroup(node.String())
 	for i := 0; i < len(node.Expressions); i++ {
 		l := c.compileValue(node.Expressions[i])
@@ -580,10 +597,10 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 				param = append(param, ir.NewParam(k, irtypes.NewPointer(irtypes.I8)))
 			}
 			oldBlock := c.contextBlock
-			f := c.module.NewFunc(v.Function, irtypes.Void, param...)
+			f := c.module.NewFunc(v.Function, irtypes.I1, param...)
 			c.contextBlock = f.NewBlock(name.Block())
-
-			c.contextBlock.NewRet(nil)
+			// These return true so that we generate advance() || advance() correctly
+			c.contextBlock.NewRet(constant.NewInt(irtypes.I1, 1))
 			c.contextBlock = oldBlock
 
 			c.builtIns[v.Function] = f
@@ -598,7 +615,7 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 			params = append(params, cast)
 		}
 
-		c.contextBlock.NewCall(c.builtIns[v.Function], params...)
+		return c.contextBlock.NewCall(c.builtIns[v.Function], params...)
 
 	default:
 		pos := node.Position()
@@ -804,8 +821,11 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
+		gname := name.ParallelGroup(node.String())
 		l := c.compileInfixNode(node.Left)
+		l = c.tagBuiltIns(l, gname)
 		r := c.compileInfixNode(node.Right)
+		r = c.tagBuiltIns(r, gname)
 
 		return c.contextBlock.NewAnd(l, r)
 
@@ -814,8 +834,11 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
+		gname := name.ParallelGroup(node.String())
 		l := c.compileInfixNode(node.Left)
+		l = c.tagBuiltIns(l, gname)
 		r := c.compileInfixNode(node.Right)
+		r = c.tagBuiltIns(r, gname)
 
 		return c.contextBlock.NewOr(l, r)
 
@@ -837,6 +860,23 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	}
 }
 
+func (c *Compiler) tagBuiltIns(v1 value.Value, gname string) value.Value {
+	// BuiltIns in a "b || b" or "b && b" construction need metadata
+	// so we can find parse them correctly
+	switch v2 := v1.(type) {
+	case *ir.InstCall:
+		md := &metadata.Attachment{
+			Name: gname,
+			Node: &metadata.DIBasicType{
+				MetadataID: -1,
+				Tag:        enum.DwarfTagStringType,
+			}}
+		v2.Metadata = append(v2.Metadata, md)
+		v1 = v2
+	}
+	return v1
+}
+
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
 	return c.lookupIdent(node.Id(), node.Position())
 }
@@ -846,6 +886,10 @@ func (c *Compiler) compileThis(node *ast.This) *ir.InstLoad {
 }
 
 func (c *Compiler) compileIf(n *ast.IfExpression) {
+	if n.Elif != nil {
+		c.compileIf(n.Elif)
+	}
+
 	cond := c.compileConditional(n.Condition)
 
 	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
@@ -1211,8 +1255,7 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 				rawid := n.RawId()
 				s = c.specs[rawid[0]]
 				vname := strings.Join(rawid, "_")
-				ty := s.GetPointerType(vname)
-				p = append(p, ir.NewParam(vname, ty))
+				p = append(p, ir.NewParam(vname, I1P))
 			}
 		default:
 			rawid := n.(ast.Nameable).RawId()

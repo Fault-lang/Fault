@@ -1,13 +1,12 @@
 system statechart;
 
-import "simple.fspec";
+import "../simple.fspec";
 
 global fl = new simple.fl;
 
 component drain = states{
     initial: func{
         if !fl.active {
-            fl.active = true;
             advance(this.open);
         }
     },
@@ -17,7 +16,7 @@ component drain = states{
         }
     },
     close: func{
-        fl.active = false;
+        stay();
     },
 };
 

@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.9.3. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 // A complete Visitor for a parse tree produced by FaultParser.
 type FaultParserVisitor interface {
@@ -56,6 +56,12 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#identList.
 	VisitIdentList(ctx *IdentListContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#constants.
+	VisitConstants(ctx *ConstantsContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#nil.
+	VisitNil(ctx *NilContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#expressionList.
 	VisitExpressionList(ctx *ExpressionListContext) interface{}
 
@@ -68,6 +74,18 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#Stock.
 	VisitStock(ctx *StockContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropFunc.
+	VisitPropFunc(ctx *PropFuncContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#sfMisc.
+	VisitSfMisc(ctx *SfMiscContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#StateFunc.
+	VisitStateFunc(ctx *StateFuncContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#compMisc.
+	VisitCompMisc(ctx *CompMiscContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#PropInt.
 	VisitPropInt(ctx *PropIntContext) interface{}
 
@@ -76,9 +94,6 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#PropBool.
 	VisitPropBool(ctx *PropBoolContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#PropFunc.
-	VisitPropFunc(ctx *PropFuncContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#PropVar.
 	VisitPropVar(ctx *PropVarContext) interface{}
@@ -107,6 +122,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#builtins.
 	VisitBuiltins(ctx *BuiltinsContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#builtinInfix.
+	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#accessHistory.
 	VisitAccessHistory(ctx *AccessHistoryContext) interface{}
 
@@ -134,6 +152,12 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#ifStmt.
 	VisitIfStmt(ctx *IfStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#ifStmtRun.
+	VisitIfStmtRun(ctx *IfStmtRunContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#ifStmtState.
+	VisitIfStmtState(ctx *IfStmtStateContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
@@ -142,6 +166,18 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#paramCall.
 	VisitParamCall(ctx *ParamCallContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateBlock.
+	VisitStateBlock(ctx *StateBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateStepExpr.
+	VisitStateStepExpr(ctx *StateStepExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateChain.
+	VisitStateChain(ctx *StateChainContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateExpr.
+	VisitStateExpr(ctx *StateExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#runBlock.
 	VisitRunBlock(ctx *RunBlockContext) interface{}
@@ -214,6 +250,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#functionLit.
 	VisitFunctionLit(ctx *FunctionLitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateLit.
+	VisitStateLit(ctx *StateLitContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#eos.
 	VisitEos(ctx *EosContext) interface{}
