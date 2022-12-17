@@ -89,7 +89,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string)
 		log.Fatal(err)
 	}
 	if !ok {
-		fmt.Print("Fault could not find a failure case.")
+		fmt.Print("Fault could not find a failure case.\n")
 		os.Exit(0)
 	}
 	scenario, err := ex.Solve()
