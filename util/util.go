@@ -37,6 +37,9 @@ func Filepath(filepath string) string {
 		}
 		for strings.Contains(filepath, "..") {
 			idx := strings.Index(filepath, "..")
+			if idx == 0 {
+				break
+			}
 			path := strings.Split(filepath[0:idx], "/")
 			if path[len(path)-1] == "" { //Trailing slashes
 				path = path[0 : len(path)-1]

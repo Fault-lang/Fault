@@ -210,6 +210,7 @@ func (g *Generator) runParallel(perm [][]string) []rule {
 		g.variables.loadState(varState)
 		rules = append(rules, raw...)
 	}
+	
 	rules = append(rules, g.capParallel()...)
 	return rules
 }

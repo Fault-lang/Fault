@@ -107,15 +107,29 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.rules = append(g.rules, g.generateRules(run)...)
 
-	for _, v := range g.rawAsserts {
-		a1, a2, op := g.parseAssert(v)
-		if op != "&&" && op != "||" {
-			for _, assrt := range a1 {
-				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
-				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "and", "or"))
+	if len(g.rawAsserts) > 0 {
+		var asserts []string
+		for _, v := range g.rawAsserts {
+			a1, a2, op := g.parseAssert(v)
+			if op != "&&" && op != "||" {
+				var aa []string
+				for _, assrt := range a1 {
+					ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
+					aa = append(aa, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "and", "or"))
+				}
+				if len(a1) > 1 {
+					asserts = append(asserts, g.writeAssert("and", strings.Join(aa, " ")))
+				} else {
+					asserts = append(asserts, aa...)
+				}
+			} else {
+				asserts = append(asserts, g.generateCompound(a1, a2, op))
 			}
+		}
+		if len(asserts) > 1 {
+			g.asserts = append(g.asserts, g.writeAssert("or", strings.Join(asserts, "")))
 		} else {
-			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
+			g.asserts = append(g.asserts, g.writeAssert("", asserts[0]))
 		}
 	}
 
@@ -124,10 +138,12 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 		if op != "&&" && op != "||" {
 			for _, assrt := range a1 {
 				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
-				g.asserts = append(g.asserts, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "or", "and"))
+				assume := g.writeAssert("", g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "or", "and"))
+				g.asserts = append(g.asserts, assume)
 			}
 		} else {
-			g.asserts = append(g.asserts, g.generateCompound(a1, a2, op)...)
+			assume := g.writeAssert("", g.generateCompound(a1, a2, op))
+			g.asserts = append(g.asserts, assume)
 		}
 	}
 }
@@ -173,21 +189,21 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter 
 	case "eventually":
 		if len(ir) > 1 {
 			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
-			return fmt.Sprintf("(assert %s)", or)
+			return or
 		}
-		return fmt.Sprintf("(assert %s)", ir[0])
+		return ir[0]
 	case "always":
 		if len(ir) > 1 {
 			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
-			return fmt.Sprintf("(assert %s)", or)
+			return or
 		}
-		return fmt.Sprintf("(assert %s)", ir[0])
+		return ir[0]
 	case "eventually-always":
 		if len(ir) > 1 {
 			or := g.eventuallyAlways(ir)
-			return fmt.Sprintf("(assert %s)", or)
+			return or
 		}
-		return fmt.Sprintf("(assert %s)", ir[0])
+		return ir[0]
 	default:
 		if len(ir) > 1 {
 			var op string
@@ -200,9 +216,9 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter 
 				op = off
 			}
 			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
-			return fmt.Sprintf("(assert %s)", or)
+			return or
 		}
-		return fmt.Sprintf("(assert %s)", ir[0])
+		return ir[0]
 	}
 }
 
