@@ -16,7 +16,7 @@ func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints, e)
 		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints, e)
 
-		if e.Constraints.Operator != "&&" && e.Constraints.Operator != "||" {
+		if e.Constraints.Operator == "&&" || e.Constraints.Operator == "||" {
 			return a1, a2, e.Constraints.Operator
 		} else {
 			a2 = removeDuplicates(a1, a2)
@@ -25,7 +25,7 @@ func (g *Generator) parseAssert(assert ast.Node) ([]*assrt, []*assrt, string) {
 	case *ast.AssumptionStatement:
 		a1 := g.generateAsserts(e.Constraints.Left, e.Constraints.Operator, e.Constraints, e)
 		a2 := g.generateAsserts(e.Constraints.Right, e.Constraints.Operator, e.Constraints, e)
-		if e.Constraints.Operator != "&&" && e.Constraints.Operator != "||" {
+		if e.Constraints.Operator == "&&" || e.Constraints.Operator == "||" {
 			return a1, a2, e.Constraints.Operator
 		} else {
 			return append(a1, a2...), nil, ""
@@ -290,7 +290,7 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	return expandAssertStateGraph(left, right, i.operator, t, tn)
 }
 
-func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []string {
+func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) string {
 	var left, right []string
 	for _, l := range a1 {
 		left = append(left, g.generateAssertRules(l, l.temporalFilter, l.temporalN)...)
@@ -304,11 +304,10 @@ func (g *Generator) generateCompound(a1 []*assrt, a2 []*assrt, op string) []stri
 	case "&&":
 		lor := fmt.Sprintf("(or %s)", strings.Join(left, " "))
 		ror := fmt.Sprintf("(or %s)", strings.Join(right, " "))
-		return []string{
-			g.writeAssert("", fmt.Sprintf("(and %s %s)", lor, ror))}
+		return fmt.Sprintf("(and %s %s)", lor, ror)
 	case "||":
 		combo := append(left, right...)
-		return []string{g.writeAssert("", fmt.Sprintf("(or %s)", strings.Join(combo, " ")))}
+		return fmt.Sprintf("(or %s)", strings.Join(combo, " "))
 	default:
 		panic(fmt.Sprintf("improper conjunction for assert got=%s", op))
 	}
@@ -318,10 +317,10 @@ func (g *Generator) filterOutTempStates(v string, i int16) bool {
 	for _, opt := range g.forks {
 		choices := opt[v]
 		for _, c := range choices {
-			if len(c.Values) == 1{
+			if len(c.Values) == 1 {
 				return false
 			}
-			
+
 			c.Values = c.Values[1:] //First value is not temp
 			n := len(c.Values)
 			t := sort.Search(n, func(k int) bool { return c.Values[k] == i })

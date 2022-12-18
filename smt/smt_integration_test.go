@@ -20,17 +20,17 @@ import (
 
 func TestTestData(t *testing.T) {
 	specs := []string{
-		"testdata/bathtub.fspec",
-		"testdata/simple.fspec",
-		"testdata/bathtub2.fspec",
-		"testdata/booleans.fspec",
+		//"testdata/bathtub.fspec",
+		//"testdata/simple.fspec",
+		//"testdata/bathtub2.fspec",
+		//"testdata/booleans.fspec",
 		"testdata/unknowns.fspec",
 	}
 	smt2s := []string{
-		"testdata/bathtub.smt2",
-		"testdata/simple.smt2",
-		"testdata/bathtub2.smt2",
-		"testdata/booleans.smt2",
+		// "testdata/bathtub.smt2",
+		// "testdata/simple.smt2",
+		// "testdata/bathtub2.smt2",
+		// "testdata/booleans.smt2",
 		"testdata/unknowns.smt2",
 	}
 	for i, s := range specs {
@@ -95,29 +95,6 @@ func TestSys(t *testing.T) {
 		if err != nil {
 			t.Fatalf(err.Error())
 		}
-	}
-}
-
-func TestIndividual(t *testing.T) {
-
-	data, err := os.ReadFile("testdata/unknowns.fspec")
-	if err != nil {
-		panic(fmt.Sprintf("spec %s is not valid", "testdata/unknowns.fspec"))
-	}
-	expecting, err := os.ReadFile("testdata/unknowns.smt2")
-	if err != nil {
-		panic(fmt.Sprintf("compiled spec %s is not valid", "testdata/unknowns.smt2"))
-	}
-	smt, err := prepTest("testdata/unknowns.fspec", string(data))
-
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec testdata/unknowns.fspec. got=%s", err)
-	}
-
-	err = compareResults("testdata/unknowns.fspec", smt, string(expecting))
-
-	if err != nil {
-		t.Fatalf(err.Error())
 	}
 }
 
