@@ -89,7 +89,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string)
 		log.Fatal(err)
 	}
 	if !ok {
-		fmt.Print("Fault could not find a failure case.\n")
+		fmt.Println("Fault could not find a failure case.")
 		os.Exit(0)
 	}
 	scenario, err := ex.Solve()
@@ -181,7 +181,7 @@ func main() {
 
 	if *fpCommand == "" {
 		flag.PrintDefaults()
-		fmt.Printf("must provide path of file to compile")
+		fmt.Println("must provide path of file to compile")
 		os.Exit(1)
 	}
 	filepath = *fpCommand
@@ -196,7 +196,7 @@ func main() {
 		case "smt":
 		case "check":
 		default:
-			fmt.Printf("%s is not a valid mode", mode)
+			fmt.Printf("%s is not a valid mode\n", mode)
 			os.Exit(1)
 		}
 	}
@@ -210,7 +210,7 @@ func main() {
 		case "ll":
 		case "smt2":
 		default:
-			fmt.Printf("%s is not a valid input format", input)
+			fmt.Printf("%s is not a valid input format\n", input)
 			os.Exit(1)
 		}
 	}
@@ -229,7 +229,7 @@ func main() {
 		case "f":
 			reach = false
 		default:
-			fmt.Printf("%s is not a valid option for completeness please use true or false", r)
+			fmt.Printf("%s is not a valid option for completeness please use true or false\n", r)
 			os.Exit(1)
 		}
 	}
