@@ -1090,17 +1090,6 @@ func (l *FaultListener) ExitNil(c *parser.NilContext) {
 	})
 }
 
-func (l *FaultListener) ExitRounds(c *parser.RoundsContext) {
-	if l.skipRun {
-		//Throw away the integer on top of the stack
-		lf := l.pop()
-		_, ok := lf.(*ast.IntegerLiteral)
-		if !ok {
-			panic(fmt.Sprintf("top of stack is not an integer got=%T", lf))
-		}
-	}
-}
-
 func (l *FaultListener) ExitInteger(c *parser.IntegerContext) {
 	token := util.GenerateToken("INT", "INT", c.GetStart(), c.GetStop())
 
@@ -1213,36 +1202,36 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 }
 
 func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
+	token := util.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
+
+	rg := l.pop()
+	lf := l.pop()
+
+	if rg == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+	}
+
+	block, ok := rg.(*ast.BlockStatement)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+	}
+
+	if lf == nil {
+		panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	}
+
+	rounds, ok := lf.(*ast.IntegerLiteral)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	}
+
+	forSt := &ast.ForStatement{
+		Token:  token,
+		Rounds: rounds,
+		Body:   block,
+	}
+
 	if !l.skipRun {
-		token := util.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
-
-		rg := l.pop()
-		lf := l.pop()
-
-		if rg == nil {
-			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
-		}
-
-		block, ok := rg.(*ast.BlockStatement)
-		if !ok {
-			panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
-		}
-
-		if lf == nil {
-			panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
-		}
-
-		rounds, ok := lf.(*ast.IntegerLiteral)
-		if !ok {
-			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
-		}
-
-		forSt := &ast.ForStatement{
-			Token:  token,
-			Rounds: rounds,
-			Body:   block,
-		}
-
 		l.push(forSt)
 	}
 }
