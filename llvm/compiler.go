@@ -226,12 +226,12 @@ func (c *Compiler) compile(node ast.Node) {
 				c.contextBlock.NewStore(r, p)
 			}
 
-			if !c.hasRunBlock { // If no run block,
-				c.contextFuncName = "__run" // execute starting states
-				c.stateCheck()
-				c.contextFuncName = ""
-			}
+		}
 
+		if !c.hasRunBlock { // If no run block,
+			c.contextFuncName = "__run" // execute starting states
+			c.stateCheck()
+			c.contextFuncName = ""
 		}
 
 	default:

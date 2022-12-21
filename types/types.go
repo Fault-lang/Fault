@@ -199,15 +199,32 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 	case *ast.BlockStatement:
 		var valtype *ast.Type
 		for i := 0; i < len(node.Statements); i++ {
-			exp := node.Statements[i].(*ast.ExpressionStatement).Expression
-			typedNode, err := c.inferFunction(exp)
-			if err != nil {
-				return nil, err
+			switch e := node.Statements[i].(type) {
+			case *ast.ExpressionStatement:
+				exp := e.Expression
+				typedNode, err := c.inferFunction(exp)
+				if err != nil {
+					return nil, err
 
+				}
+				node.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
+				valtype = typeable(typedNode)
+				node.Statements[i].(*ast.ExpressionStatement).InferredType = valtype
+			case *ast.ParallelFunctions:
+				var exp []ast.Expression
+				var valtype *ast.Type
+				for _, f := range e.Expressions {
+					typedNode, err := c.inferFunction(f)
+					if err != nil {
+						return nil, err
+
+					}
+					exp = append(exp, typedNode)
+					valtype = typeable(typedNode)
+				}
+				node.Statements[i].(*ast.ParallelFunctions).Expressions = exp
+				node.Statements[i].(*ast.ParallelFunctions).InferredType = valtype
 			}
-			node.Statements[i].(*ast.ExpressionStatement).Expression = typedNode
-			valtype = typeable(typedNode)
-			node.Statements[i].(*ast.ExpressionStatement).InferredType = valtype
 		}
 		node.InferredType = valtype
 		return node, err
