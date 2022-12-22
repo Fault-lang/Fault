@@ -650,96 +650,80 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 }
 
 func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
-	if !l.skipRun {
-		token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
-		sl := &ast.BlockStatement{
-			Token: token,
-		}
-		steps := c.AllRunStep()
-		for i := len(steps) - 1; i >= 0; i-- {
-			v := steps[i]
-			ex := l.pop()
-			switch t := ex.(type) {
-			case *ast.Instance:
-				token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+	sl := &ast.BlockStatement{
+		Token: token,
+	}
+	steps := c.AllRunStep()
+	for i := len(steps) - 1; i >= 0; i-- {
+		v := steps[i]
+		ex := l.pop()
+		switch t := ex.(type) {
+		case *ast.Instance:
+			token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
 
-				s := &ast.ExpressionStatement{
-					Token:      token2,
-					Expression: t,
-				}
-				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
-			case *ast.ParallelFunctions:
-				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-			case ast.Expression:
-				token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
-				n := l.packageCallsAsRunSteps(t)
-
-				s := &ast.ExpressionStatement{
-					Token:      token2,
-					Expression: n.(ast.Expression),
-				}
-				sl.Statements = append([]ast.Statement{s}, sl.Statements...)
-			case *ast.BlockStatement:
-				n := l.packageCallsAsRunSteps(t)
-				t = n.(*ast.BlockStatement)
-				sl.Statements = append(t.Statements, sl.Statements...)
-			case *ast.ExpressionStatement:
-				n := l.packageCallsAsRunSteps(t)
-				t = n.(*ast.ExpressionStatement)
-				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-			default:
-				panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
+			s := &ast.ExpressionStatement{
+				Token:      token2,
+				Expression: t,
 			}
-		}
-		l.push(sl)
-	} else {
-		// Clear run block instructions from top of stack if we are skipping
-		steps := c.AllRunStep()
-		for i := len(steps) - 1; i >= 0; i-- {
-			l.pop()
+			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+		case *ast.ParallelFunctions:
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		case ast.Expression:
+			token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+			n := l.packageCallsAsRunSteps(t)
+
+			s := &ast.ExpressionStatement{
+				Token:      token2,
+				Expression: n.(ast.Expression),
+			}
+			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+		case *ast.BlockStatement:
+			n := l.packageCallsAsRunSteps(t)
+			t = n.(*ast.BlockStatement)
+			sl.Statements = append(t.Statements, sl.Statements...)
+		case *ast.ExpressionStatement:
+			n := l.packageCallsAsRunSteps(t)
+			t = n.(*ast.ExpressionStatement)
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		default:
+			panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
 		}
 	}
+	l.push(sl)
 }
 
 func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
-	if !l.skipRun {
-		token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
-		sl := &ast.BlockStatement{
-			Token: token,
-		}
-		steps := c.AllStateStep()
-		for i := len(steps) - 1; i >= 0; i-- {
-			ex := l.pop()
-			switch t := ex.(type) {
-			case *ast.ParallelFunctions:
-				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-			case *ast.BlockStatement:
-				n := l.packageCallsAsRunSteps(t)
-				t = n.(*ast.BlockStatement)
-				sl.Statements = append(t.Statements, sl.Statements...)
-			case *ast.ExpressionStatement:
-				n := l.packageCallsAsRunSteps(t)
-				t = n.(*ast.ExpressionStatement)
-				sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-			case *ast.BuiltIn:
-				sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
-			case *ast.InfixExpression:
-				sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
+	sl := &ast.BlockStatement{
+		Token: token,
+	}
+	steps := c.AllStateStep()
+	for i := len(steps) - 1; i >= 0; i-- {
+		ex := l.pop()
+		switch t := ex.(type) {
+		case *ast.ParallelFunctions:
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		case *ast.BlockStatement:
+			n := l.packageCallsAsRunSteps(t)
+			t = n.(*ast.BlockStatement)
+			sl.Statements = append(t.Statements, sl.Statements...)
+		case *ast.ExpressionStatement:
+			n := l.packageCallsAsRunSteps(t)
+			t = n.(*ast.ExpressionStatement)
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		case *ast.BuiltIn:
+			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
+		case *ast.InfixExpression:
+			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
 
-			default:
-				panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
-			}
-		}
-		l.push(sl)
-	} else {
-		// Clear run block instructions from top of stack if we are skipping
-		steps := c.AllStateStep()
-		for i := len(steps) - 1; i >= 0; i-- {
-			l.pop()
+		default:
+			panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
 		}
 	}
+	l.push(sl)
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
@@ -958,6 +942,10 @@ func (l *FaultListener) assembleIf(token ast.Token, children []antlr.Tree) *ast.
 			a = x
 		case *ast.IfExpression:
 			b = x
+		case *ast.ParallelFunctions:
+			a = &ast.BlockStatement{Statements: []ast.Statement{
+				x,
+			}}
 		default:
 			panic(fmt.Sprintf("improper type in conditional got=%T", ra))
 		}
@@ -966,6 +954,13 @@ func (l *FaultListener) assembleIf(token ast.Token, children []antlr.Tree) *ast.
 	csq := l.pop()
 	cond := l.pop()
 
+	//Delete this in a minute
+	if _, ok := cond.(*ast.ParallelFunctions); ok {
+		cond1 := csq
+		csq = cond
+		cond = cond1
+	}
+
 	if c, ok := cond.(ast.Operand); ok {
 		//Modifying the construction if a {} to be more specific
 		cond = &ast.InfixExpression{
@@ -973,6 +968,12 @@ func (l *FaultListener) assembleIf(token ast.Token, children []antlr.Tree) *ast.
 			Operator: "==",
 			Right:    &ast.Boolean{Value: true},
 		}
+	}
+
+	if p, ok := csq.(*ast.ParallelFunctions); ok {
+		csq = &ast.BlockStatement{Statements: []ast.Statement{
+			p,
+		}}
 	}
 
 	e := &ast.IfExpression{
@@ -1089,17 +1090,6 @@ func (l *FaultListener) ExitNil(c *parser.NilContext) {
 	})
 }
 
-func (l *FaultListener) ExitRounds(c *parser.RoundsContext) {
-	if l.skipRun {
-		//Throw away the integer on top of the stack
-		lf := l.pop()
-		_, ok := lf.(*ast.IntegerLiteral)
-		if !ok {
-			panic(fmt.Sprintf("top of stack is not an integer got=%T", lf))
-		}
-	}
-}
-
 func (l *FaultListener) ExitInteger(c *parser.IntegerContext) {
 	token := util.GenerateToken("INT", "INT", c.GetStart(), c.GetStop())
 
@@ -1212,36 +1202,36 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 }
 
 func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
+	token := util.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
+
+	rg := l.pop()
+	lf := l.pop()
+
+	if rg == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+	}
+
+	block, ok := rg.(*ast.BlockStatement)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+	}
+
+	if lf == nil {
+		panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	}
+
+	rounds, ok := lf.(*ast.IntegerLiteral)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	}
+
+	forSt := &ast.ForStatement{
+		Token:  token,
+		Rounds: rounds,
+		Body:   block,
+	}
+
 	if !l.skipRun {
-		token := util.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
-
-		rg := l.pop()
-		lf := l.pop()
-
-		if rg == nil {
-			panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
-		}
-
-		block, ok := rg.(*ast.BlockStatement)
-		if !ok {
-			panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
-		}
-
-		if lf == nil {
-			panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
-		}
-
-		rounds, ok := lf.(*ast.IntegerLiteral)
-		if !ok {
-			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
-		}
-
-		forSt := &ast.ForStatement{
-			Token:  token,
-			Rounds: rounds,
-			Body:   block,
-		}
-
 		l.push(forSt)
 	}
 }

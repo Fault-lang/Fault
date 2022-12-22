@@ -61,21 +61,20 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 		rules = append(rules, r0)
 	}
 
-	var r1 []rule
+	//Make sure call stack is clear
+	stack := util.Copy(g.localCallstack)
+	g.localCallstack = []string{}
+	r1 := g.generateFromCallstack(stack)
+	rules = append(rules, r1...)
+
+	var r2 []rule
 	switch term := block.Term.(type) {
 	case *ir.TermCondBr:
-		r1 = g.parseTermCon(term)
+		r2 = g.parseTermCon(term)
 	case *ir.TermRet:
-		stack := util.Copy(g.localCallstack)
-		g.localCallstack = []string{}
-		r1 = g.generateFromCallstack(stack)
 		g.returnVoid.In()
-	default:
-		stack := util.Copy(g.localCallstack)
-		g.localCallstack = []string{}
-		r1 = g.generateFromCallstack(stack)
 	}
-	rules = append(rules, r1...)
+	rules = append(rules, r2...)
 
 	g.currentBlock = oldBlock
 	return rules
