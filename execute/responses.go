@@ -11,11 +11,13 @@ type SMTListener struct {
 	*parser.BaseSMTLIBv2Listener
 	stack   []interface{}
 	Results map[string]Scenario
+	Values  map[string]string
 }
 
 func NewSMTListener() *SMTListener {
 	return &SMTListener{
 		Results: make(map[string]Scenario),
+		Values:  make(map[string]string),
 	}
 }
 
@@ -45,7 +47,14 @@ func (l *SMTListener) ExitFunction_def(c *parser.Function_defContext) {
 	sort := l.pop()
 	sym := l.pop()
 
-	value := convertTerm(sort.(string), term.(string))
+	t := term.(string)
+	if string(t[0]) == "(" { // Happens in negative values
+		t = t[1 : len(t)-2]
+	}
+
+	l.Values[sym.(string)] = t
+
+	value := convertTerm(sort.(string), t)
 	key, id := splitIdent(sym.(string))
 	i, err := strconv.ParseInt(key, 10, 16)
 	k := int16(i)
@@ -97,10 +106,6 @@ func (l *SMTListener) ExitSort(c *parser.SortContext) {
 func convertTerm(sort string, term string) interface{} {
 	var value interface{}
 	var err error
-
-	if string(term[0]) == "(" {
-		term = term[1 : len(term)-2]
-	}
 
 	switch sort {
 	case "Real":

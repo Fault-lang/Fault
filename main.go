@@ -81,9 +81,9 @@ func smt2(ir string, uncertains map[string][]float64, unknowns []string, asserts
 	return generator
 }
 
-func probability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, map[string]execute.Scenario) {
+func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smt.VarChange) (*execute.ModelChecker, map[string]execute.Scenario) {
 	ex := execute.NewModelChecker()
-	ex.LoadModel(smt, uncertains, unknowns)
+	ex.LoadModel(smt, uncertains, unknowns, results)
 	ok, err := ex.Check()
 	if err != nil {
 		log.Fatal(err)
@@ -144,7 +144,11 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns)
+		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results)
+		if mode == "visualize" {
+			mc.Mermaid()
+			return
+		}
 		mc.LoadMeta(generator.GetForks())
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
@@ -155,13 +159,21 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns)
+		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results)
+		if mode == "visualize" {
+			mc.Mermaid()
+			return
+		}
 		mc.LoadMeta(generator.GetForks())
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "smt2":
-		mc, data := probability(d, uncertains, unknowns)
+		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smt.VarChange))
 
+		if mode == "visualize" {
+			mc.Mermaid()
+			return
+		}
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	}
@@ -195,6 +207,7 @@ func main() {
 		case "ir":
 		case "smt":
 		case "check":
+		case "visualize":
 		default:
 			fmt.Printf("%s is not a valid mode\n", mode)
 			os.Exit(1)

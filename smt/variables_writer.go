@@ -10,6 +10,33 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
+type VarChange struct {
+	Id     string // SSA name of var
+	Parent string // SSA name of proceeding var
+}
+
+func (g *Generator) AddNewVarChange(base string, id string, parent string) {
+	var v *VarChange
+	if id == parent {
+		v = &VarChange{Id: id, Parent: ""}
+	} else {
+		v = &VarChange{Id: id, Parent: parent}
+	}
+
+	if len(g.Results[base]) == 0 {
+		g.Results[base] = append(g.Results[base], v)
+	} else {
+		g.Results[base] = append(g.Results[base], v)
+	}
+}
+
+func (g *Generator) VarChangePhi(base string, end string, nums []int16) {
+	for _, n := range nums {
+		start := fmt.Sprintf("%s_%d", base, n)
+		g.AddNewVarChange(base, end, start)
+	}
+}
+
 type variables struct {
 	ssa   map[string]int16
 	ref   map[string]rule

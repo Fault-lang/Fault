@@ -38,6 +38,8 @@ type Generator struct {
 	parallelGrouping string
 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
 	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
+
+	Results map[string][]*VarChange
 }
 
 func NewGenerator() *Generator {
@@ -50,6 +52,7 @@ func NewGenerator() *Generator {
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      NewPhiState(),
 		returnVoid:      NewPhiState(),
+		Results:         make(map[string][]*VarChange),
 	}
 }
 
