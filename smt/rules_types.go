@@ -282,37 +282,41 @@ func (g *Generator) loadsRule(inst *ir.InstLoad) {
 
 func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 	var rules []rule
-	id := g.variables.formatIdent(inst.Dst.Ident())
+	base := g.variables.formatIdent(inst.Dst.Ident())
 	if g.variables.isTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
 		if val, ok := g.variables.loads[refname]; ok {
 			ty := g.variables.lookupType(refname, val)
-			n := g.variables.ssa[id]
+			n := g.variables.ssa[base]
+			prev := fmt.Sprintf("%s_%d", base, n)
 			if !g.inPhiState.Check() {
-				g.variables.newPhi(id, n+1)
+				g.variables.newPhi(base, n+1)
 			} else {
-				g.variables.storeLastState(id, n+1)
+				g.variables.storeLastState(base, n+1)
 			}
-			id = g.variables.advanceSSA(id)
+			id := g.variables.advanceSSA(base)
 			v := g.variables.formatValue(val)
 			if !g.variables.isBolean(v) && !g.variables.isNumeric(v) {
 				v = g.variables.formatIdent(v)
 				v = fmt.Sprintf("%s_%d", v, n)
 			}
+			g.AddNewVarChange(base, id, prev)
 			rules = append(rules, g.parseRule(id, v, ty, ""))
 		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
 			case *infix:
 				r.x = g.tempToIdent(r.x)
 				r.y = g.tempToIdent(r.y)
-				n := g.variables.ssa[id]
+				n := g.variables.ssa[base]
+				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
-					g.variables.newPhi(id, n+1)
+					g.variables.newPhi(base, n+1)
 				} else {
-					g.variables.storeLastState(id, n+1)
+					g.variables.storeLastState(base, n+1)
 				}
-				id = g.variables.advanceSSA(id)
+				id := g.variables.advanceSSA(base)
+				g.AddNewVarChange(base, id, prev)
 				wid := &wrap{value: id}
 				if g.variables.isBolean(r.y.String()) {
 					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, op: "="})
@@ -322,29 +326,33 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
 				}
 			default:
-				n := g.variables.ssa[id]
+				n := g.variables.ssa[base]
+				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
-					g.variables.newPhi(id, n+1)
+					g.variables.newPhi(base, n+1)
 				} else {
-					g.variables.storeLastState(id, n+1)
+					g.variables.storeLastState(base, n+1)
 				}
-				ty := g.variables.lookupType(id, nil)
-				id = g.variables.advanceSSA(id)
+				ty := g.variables.lookupType(base, nil)
+				id := g.variables.advanceSSA(base)
+				g.AddNewVarChange(base, id, prev)
 				wid := &wrap{value: id}
 				rules = append(rules, &infix{x: wid, ty: ty, y: r})
 			}
 		} else {
-			panic(fmt.Sprintf("smt generation error, value for %s not found", id))
+			panic(fmt.Sprintf("smt generation error, value for %s not found", base))
 		}
 	} else {
-		ty := g.variables.lookupType(id, inst.Src)
-		n := g.variables.ssa[id]
+		ty := g.variables.lookupType(base, inst.Src)
+		n := g.variables.ssa[base]
+		prev := fmt.Sprintf("%s_%d", base, n)
 		if !g.inPhiState.Check() {
-			g.variables.newPhi(id, n+1)
+			g.variables.newPhi(base, n+1)
 		} else {
-			g.variables.storeLastState(id, n+1)
+			g.variables.storeLastState(base, n+1)
 		}
-		id = g.variables.advanceSSA(id)
+		id := g.variables.advanceSSA(base)
+		g.AddNewVarChange(base, id, prev)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
 	return rules

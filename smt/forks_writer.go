@@ -210,7 +210,7 @@ func (g *Generator) runParallel(perm [][]string) []rule {
 		g.variables.loadState(varState)
 		rules = append(rules, raw...)
 	}
-	
+
 	rules = append(rules, g.capParallel()...)
 	return rules
 }
@@ -278,6 +278,7 @@ func (g *Generator) capParallel() []rule {
 			endState: id,
 			nums:     nums,
 		}
+		g.VarChangePhi(k, id, nums)
 		rules = append(rules, rule)
 
 		base, i := g.variables.getVarBase(id)
@@ -296,7 +297,9 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rule {
 	var e []rule
 	for _, v := range nums {
 		id2 := fmt.Sprint(k, "_", v)
-		if g.variables.isBolean(id2) {
+		g.AddNewVarChange(k, id, id2)
+		ty := g.variables.lookupType(k, nil)
+		if ty == "Bool" {
 			r := &infix{
 				x:  &wrap{value: id},
 				y:  &wrap{value: id2},

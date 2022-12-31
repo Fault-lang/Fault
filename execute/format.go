@@ -2,6 +2,7 @@ package execute
 
 import (
 	"bytes"
+	"fault/smt"
 	"fmt"
 	"strings"
 )
@@ -10,6 +11,39 @@ import (
  Set of functions for formating the results from the model
  checker in user friendly ways
 */
+
+func (mc *ModelChecker) Mermaid() {
+	var out bytes.Buffer
+	out.WriteString("flowchart LR\n")
+	for k, l := range mc.Results {
+		out.WriteString(mc.writeObjects(k, l))
+		out.WriteString("\n")
+	}
+	fmt.Println(out.String())
+}
+
+func (mc *ModelChecker) writeObjects(k string, objects []*smt.VarChange) string {
+	var objs []string
+	for _, o := range objects {
+		if o.Parent != "" {
+			objs = append(objs, mc.writeObject(o))
+		}
+	}
+	last := objects[len(objects)-1]
+	value := mc.ResultValues[last.Id]
+	cap := fmt.Sprintf("\t% s--> %s(%s)", last.Id, k, value)
+	objs = append(objs, cap)
+	return strings.Join(objs, "\n")
+}
+
+func (mc *ModelChecker) writeObject(o *smt.VarChange) string {
+	value, ok := mc.ResultValues[o.Parent]
+	if ok {
+		return fmt.Sprintf("\t% s--> |%s| %s", o.Parent, value, o.Id)
+	} else {
+		return fmt.Sprintf("\t%s --> %s", o.Parent, o.Id)
+	}
+}
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
 	var out bytes.Buffer

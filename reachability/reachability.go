@@ -10,11 +10,13 @@ import (
 type Tracer struct {
 	graph     map[string]bool
 	undefined []string
+	last      string
 }
 
 func NewTracer() *Tracer {
 	return &Tracer{graph: make(map[string]bool)}
 }
+
 
 func (t *Tracer) Scan(spec *ast.Spec) {
 	t.walk(spec)

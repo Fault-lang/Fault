@@ -422,14 +422,17 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 	state := g.variables.loads[refname]
 	newState := state.Ident()
-	newState = newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
-	n := g.variables.ssa[newState]
+	base := newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
+	n := g.variables.ssa[base]
+	prev := fmt.Sprintf("%s_%d", base, n)
 	if !g.inPhiState.Check() {
-		g.variables.newPhi(newState, n+1)
+		g.variables.newPhi(base, n+1)
 	} else {
-		g.variables.storeLastState(newState, n+1)
+		g.variables.storeLastState(base, n+1)
 	}
-	newState = g.variables.advanceSSA(newState)
+	newState = g.variables.advanceSSA(base)
+	g.AddNewVarChange(base, newState, prev)
+
 	if complex {
 		g.declareVar(newState, "Bool")
 	}
@@ -439,15 +442,17 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 		panic("calling advance from outside the state chart")
 	}
 
-	currentState := g.currentFunction[1 : len(g.currentFunction)-7]
-	n2 := g.variables.ssa[currentState]
+	base2 := g.currentFunction[1 : len(g.currentFunction)-7]
+	n2 := g.variables.ssa[base2]
+	prev2 := fmt.Sprintf("%s_%d", base2, n2)
 	if !g.inPhiState.Check() {
-		g.variables.newPhi(currentState, n2+1)
+		g.variables.newPhi(base2, n2+1)
 	} else {
-		g.variables.storeLastState(currentState, n2+1)
+		g.variables.storeLastState(base2, n2+1)
 	}
 
-	currentState = g.variables.advanceSSA(currentState)
+	currentState := g.variables.advanceSSA(base2)
+	g.AddNewVarChange(base2, currentState, prev2)
 	if complex {
 		g.declareVar(currentState, "Bool")
 	}
@@ -575,8 +580,6 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		//refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
-		//x := g.variables.loads[refnamex]
 		switch inst.X.(type) {
 		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
@@ -587,8 +590,6 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		//refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
-		//y := g.variables.loads[refnamey]
 		switch inst.Y.(type) {
 		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
@@ -600,8 +601,6 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		//refnamex := fmt.Sprintf("%s-%s", g.currentFunction, inst.X.Ident())
-		//x := g.variables.loads[refnamex]
 		switch inst.X.(type) {
 		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:
@@ -612,8 +611,6 @@ func (g *Generator) isStateChangeChain(inst ir.Instruction) bool {
 			return false
 		}
 
-		//refnamey := fmt.Sprintf("%s-%s", g.currentFunction, inst.Y.Ident())
-		//y := g.variables.loads[refnamey]
 		switch inst.Y.(type) {
 		case *ir.InstCall, *ir.InstAnd, *ir.InstOr:
 		default:

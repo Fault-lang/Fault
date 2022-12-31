@@ -25,18 +25,21 @@ type Solver struct {
 }
 
 type ModelChecker struct {
-	SMT        string
-	Uncertains map[string][]float64
-	Unknowns   []string
-	solver     map[string]*Solver
-	forks      map[string][]*Branch
+	SMT          string
+	Uncertains   map[string][]float64
+	Unknowns     []string
+	Results      map[string][]*smt.VarChange
+	ResultValues map[string]string
+	solver       map[string]*Solver
+	forks        map[string][]*Branch
 }
 
 func NewModelChecker() *ModelChecker {
 
 	mc := &ModelChecker{
-		solver: GenerateSolver(),
-		forks:  make(map[string][]*Branch),
+		solver:       GenerateSolver(),
+		forks:        make(map[string][]*Branch),
+		ResultValues: make(map[string]string),
 	}
 	return mc
 }
@@ -62,10 +65,11 @@ func GenerateSolver() map[string]*Solver {
 	return s
 }
 
-func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string) {
+func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smt.VarChange) {
 	mc.SMT = smt
 	mc.Uncertains = uncertains
 	mc.Unknowns = unknowns
+	mc.Results = results
 }
 
 func (mc *ModelChecker) LoadMeta(forks []smt.Fork) {
@@ -139,6 +143,8 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 	p := parser.NewSMTLIBv2Parser(stream)
 	l := NewSMTListener()
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Start())
+
+	mc.ResultValues = l.Values
 
 	return l.Results, err
 }
