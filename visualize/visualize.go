@@ -125,7 +125,7 @@ func (vis *Visual) walk(n ast.Node) error {
 		}
 
 		if node.Elif != nil {
-			err = vis.walk(node.Elif) // Since Elif is an IfExpression we already check for collapsibility
+			err = vis.walk(node.Elif)
 			if err != nil {
 				return err
 			}
@@ -211,15 +211,20 @@ func (v *Visual) addLine(k string, s string) {
 }
 
 func (v *Visual) Render() string {
-	s := "stateDiagram"
-	for k, v := range v.VisualState {
-		block := strings.Join(v, "\n")
-		s = fmt.Sprintf("%s\nstate %s {\n%s\n}", s, k, block)
+	var s string
+	if len(v.VisualState) > 0 {
+		s = "stateDiagram"
+		for k, v := range v.VisualState {
+			block := strings.Join(v, "\n")
+			s = fmt.Sprintf("%s\nstate %s {\n%s\n}", s, k, block)
+		}
 	}
 
-	if len(v.systemState) > 1 {
+	if len(v.systemState) > 1 && s != "" {
 		sys := strings.Join(v.systemState, "\n")
-		return fmt.Sprintf("%s\n\n%s", s, sys)
+		return strings.Join([]string{s, sys}, "\n\n")
+	} else if len(v.systemState) > 1 {
+		return strings.Join(v.systemState, "\n")
 	} else {
 		return s
 	}
