@@ -11,6 +11,7 @@ import (
 	"fault/smt"
 	"fault/types"
 	"fault/util"
+	"fault/visualize"
 	"flag"
 	"fmt"
 	"log"
@@ -22,7 +23,7 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string, filetype string, reach bool) (*listener.FaultListener, *types.Checker) {
+func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*listener.FaultListener, *types.Checker, string) {
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
@@ -57,11 +58,18 @@ func parse(data string, path string, file string, filetype string, reach bool) (
 		log.Fatal(err)
 	}
 
+	var visual string
+	if visu {
+		vis := visualize.NewVisual(tree)
+		vis.Build()
+		visual = vis.Render()
+	}
+
 	if reach {
 		r := reachability.NewTracer()
 		r.Scan(tree)
 	}
-	return lstnr, ty
+	return lstnr, ty, visual
 }
 
 func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
@@ -119,7 +127,7 @@ func run(filepath string, mode string, input string, reach bool) {
 
 	switch input {
 	case "fspec":
-		lstnr, ty := parse(d, path, filepath, filetype, reach)
+		lstnr, ty, visual := parse(d, path, filepath, filetype, reach, mode == "visualize")
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -146,6 +154,8 @@ func run(filepath string, mode string, input string, reach bool) {
 
 		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results)
 		if mode == "visualize" {
+			fmt.Println(visual)
+			fmt.Printf("\n\n")
 			mc.Mermaid()
 			return
 		}

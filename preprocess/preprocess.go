@@ -450,7 +450,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
 		rawid := node.RawId()
-		p.inStruct = rawid[1] 
+		p.inStruct = rawid[1]
 
 		p.inFunc = true
 		pro, err = p.walk(node.Body)
@@ -972,7 +972,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				oldScope = p.scope
 				oldState = p.inState
 				p.scope = rawid[1]
-				p.inState = rawid[1]
+				p.inState = rawid[2]
 			}
 
 			fn2, err := p.walk(fn)
@@ -1016,6 +1016,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
+		spec := p.Specs[p.trail.CurrentSpec()]
+		rawid := []string{spec.Id()}
+		rawid = append(rawid, p.scope, p.inState, node.Function)
+		node.FromState = p.inState
+		node.ProcessedName = rawid
+
 		if node.Function == "advance" {
 			pro, err := p.walk(node.Parameters["toState"])
 			if err != nil {
@@ -1024,11 +1030,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.Parameters["toState"] = pro.(ast.Operand)
 		}
 
-		spec := p.Specs[p.trail.CurrentSpec()]
-		rawid := []string{spec.Id()}
-		rawid = append(rawid, p.scope, p.inState, node.Function)
-		node.FromState = p.inState
-		node.ProcessedName = rawid
 		return node, err
 	default:
 		return node, err
