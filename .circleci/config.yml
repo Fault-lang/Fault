@@ -39,7 +39,7 @@ jobs:
       - store_test_results:
           path: /tmp/test-reports
   
-  # mutate:
+  mutate:
   #   working_directory: ~/Fault
   #   docker:
   #     - image: cimg/go:1.17.5
