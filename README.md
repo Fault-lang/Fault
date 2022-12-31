@@ -56,7 +56,10 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (11/30/2022)
+### Current Status (12/30/2022)
+Taking another stab at the interface question and display of results. Settled on using mermaid to visualize the solutions received from the solver which is much more useful than what I was trying otherwise. This reintroduces the dotviz generation from way back with the prototype so I've also included generated mermaid viz for the state machine and the active stock-flow subsystems.
+
+#### (11/30/2022)
 Trying to finish up state charts exposed some problems with conditionals that needed to be addressed, plus some bugs and funny edge cases. But state charts are now done, including a reachability analysis verifying that the system is appropriately specified that I think will be opt-in for now.
 
 #### (11/2/2022)
