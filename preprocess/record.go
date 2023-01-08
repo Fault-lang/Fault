@@ -165,9 +165,9 @@ func (sr *SpecRecord) FetchVar(rawid []string, ty string) (ast.Node, error) {
 	var br string
 	var ret ast.Node
 
-	if len(rawid) == 2 {
-		return sr.FetchConstant(rawid[1])
-	}
+	// if len(rawid) == 2 {
+	// 	return sr.FetchConstant(rawid[1])
+	// }
 
 	if len(rawid) > 3 {
 		str := strings.Join(rawid[1:len(rawid)-1], "_")

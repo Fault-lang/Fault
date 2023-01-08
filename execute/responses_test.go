@@ -20,6 +20,32 @@ func TestParseReals(t *testing.T) {
 	}
 }
 
+func TestParsePrecise(t *testing.T) {
+	test := `(model 
+		(define-fun imports_fl3_vault_value_2 () Real
+		  (/ 3.0 20.0))
+	  )
+	  `
+	response := prepTestParser(test)
+
+	if response["imports_fl3_vault_value"] == nil {
+		t.Fatalf("SMT parser failed to parse reals in solution returned. got=%s", response)
+	}
+}
+
+func TestParseNegPrecise(t *testing.T) {
+	test := `(model 
+		(define-fun imports_fl3_vault_value_2 () Real
+		  (- 20.0))
+	  )
+	  `
+	response := prepTestParser(test)
+
+	if response["imports_fl3_vault_value"] == nil {
+		t.Fatalf("SMT parser failed to parse reals in solution returned. got=%s", response)
+	}
+}
+
 func TestParseInts(t *testing.T) {
 	test := `(model 
 		(define-fun imports_fl3_vault_value_2 () Int

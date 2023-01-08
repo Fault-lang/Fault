@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
@@ -268,7 +269,11 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 		if g.isASolvable(id) {
 			g.declareVar(id, ty)
 		} else {
-			return g.writeInitRule(id, ty, val.String())
+			v := val.X.String()
+			if strings.Contains(v, ".") {
+				return g.writeInitRule(id, ty, v)
+			}
+			return g.writeInitRule(id, ty, v+".0")
 		}
 	}
 	return ""

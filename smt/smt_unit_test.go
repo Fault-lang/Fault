@@ -45,15 +45,15 @@ func TestNewConstants(t *testing.T) {
 		t.Fatalf("newConstants returned an incorrect number of results. got=%d", len(results))
 	}
 
-	if results[0] != "(assert (= test1_1 double 10.0))" {
+	if results[0] != "(assert (= test1_1 10.0))" {
 		t.Fatalf("newConstants returned an incorrect value at index 0. got=%s", results[0])
 	}
 
-	if results[1] != "(assert (= test2_3 double 20.0))" {
+	if results[1] != "(assert (= test2_3 20.0))" {
 		t.Fatalf("newConstants returned an incorrect value at index 1. got=%s", results[1])
 	}
 
-	if results[2] != "(assert (= test3_6 double 30.0))" {
+	if results[2] != "(assert (= test3_6 30.0))" {
 		t.Fatalf("newConstants returned an incorrect value at index 2. got=%s", results[2])
 	}
 }

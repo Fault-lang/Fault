@@ -936,12 +936,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec = p.Specs[p.trail.CurrentSpec()]
 		rawid = p.buildIdContext(p.trail.CurrentSpec())
 
-		if rawid[len(rawid)-1] == node.Value[0] {
-			//Happens when it's being called from the run block
-			rawid = append(rawid, node.Value[1])
-		} else {
-			rawid = append(rawid, node.Value...)
-		}
+		rawid = append(rawid, node.Value...)
 
 		node.ProcessedName = rawid
 
@@ -962,6 +957,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		branch, err := spec.FetchVar(rawid, ty)
 		if err != nil {
+			return node, err
+		}
+
+		// State charts tend to create endless loops by design
+		// short-curcuit if we've already processed this node
+		if alreadyNamed(branch.(ast.Nameable).RawId(), rawid) {
 			return node, err
 		}
 
@@ -998,16 +999,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		for i, v := range node.Expressions {
 			// Not sure we ever want this to be anything
 			// other than a call actually :/
-			scope := v.(*ast.ParameterCall).Value
-			oldScope := p.scope
-			p.scope = strings.Join(scope[0:len(scope)-1], "_")
 
 			n, err := p.walk(v)
 			if err != nil {
 				return node, err
 			}
 			node.Expressions[i] = n.(ast.Expression)
-			p.scope = oldScope
 		}
 		return node, err
 
@@ -1034,4 +1031,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	default:
 		return node, err
 	}
+}
+
+func alreadyNamed(n1 []string, n2 []string) bool {
+	if len(n1) != len(n2) {
+		return false
+	}
+	for i, v := range n1 {
+		if v != n2[i] {
+			return false
+		}
+	}
+	return true
 }

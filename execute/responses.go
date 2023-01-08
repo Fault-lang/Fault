@@ -34,6 +34,36 @@ func (l *SMTListener) pop() interface{} {
 	return nil
 }
 
+func (l *SMTListener) peek() interface{} {
+	if len(l.stack) > 0 {
+		return l.stack[len(l.stack)-1]
+	}
+	return nil
+}
+
+func mergeTermParts(parts []string) string {
+	if len(parts) == 1 {
+		return "-" + parts[0]
+	}
+
+	if len(parts) > 2 {
+		panic("Too many term parts received")
+	}
+
+	value1, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return strings.Join(parts, "") // a negative value
+	}
+
+	value2, err := strconv.ParseFloat(parts[1], 64)
+	if err != nil {
+		panic("unclear term part")
+	}
+
+	value3 := value1 / value2
+	return fmt.Sprintf("%f", value3)
+}
+
 func (l *SMTListener) ExitGet_model_response(c *parser.Get_model_responseContext) {
 
 }
@@ -93,10 +123,16 @@ func (l *SMTListener) ExitVariable(c *parser.VariableContext) {
 }
 
 func (l *SMTListener) ExitTerm(c *parser.TermContext) {
+	term := c.GetText()
 	if c.GetChildCount() > 1 {
-		l.pop() // when negative term is also a child of term :(
+		parts := []string{}
+		for _, child := range c.AllTerm() {
+			parts = append(parts, child.GetText())
+			l.pop()
+		}
+		term = mergeTermParts(parts)
 	}
-	l.push(c.GetText())
+	l.push(term)
 }
 
 func (l *SMTListener) ExitSort(c *parser.SortContext) {
