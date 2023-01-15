@@ -261,14 +261,6 @@ func (sr *SpecRecord) UpdateComponent(name string, val map[string]ast.Node) erro
 	return fmt.Errorf("no component found with name %s in spec %s", name, sr.SpecName)
 }
 
-func (sr *SpecRecord) UpdateConstant(name string, val ast.Node) error {
-	if sr.Constants[name] != nil {
-		sr.Constants[name] = val
-		return nil
-	}
-	return fmt.Errorf("no constant found with name %s in spec %s", name, sr.SpecName)
-}
-
 func (sr *SpecRecord) UpdateVar(rawid []string, ty string, val ast.Node) error {
 	var err error
 	name := strings.Join(rawid[1:len(rawid)-1], "_")

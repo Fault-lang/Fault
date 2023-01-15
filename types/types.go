@@ -328,15 +328,6 @@ func (c *Checker) isValue(exp interface{}) bool {
 
 func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	switch node := exp.(type) {
-	/*case int64:
-		return &ast.Type{"INT", 1, nil}, nil
-	case float64:
-		scope := c.inferScope(node)
-		return &ast.Type{"FLOAT", scope, nil}, nil
-	case string:
-		return &ast.Type{"STRING", 0, nil}, nil
-	case bool:
-		return &ast.Type{"BOOL", 0, nil}, nil*/
 	case *ast.IntegerLiteral:
 		if node.InferredType == nil {
 			node.InferredType = &ast.Type{Type: "INT",
@@ -484,7 +475,17 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
 	}
-	return typeable(v), err
+	
+	ret := typeable(v)
+	if ret == nil {
+		v2, err := c.typecheck(v)
+		if err != nil {
+			return nil, err
+		}
+		spec.UpdateVar(rawid, ty, v2)
+		return typeable(v2), err
+	}
+	return ret, err
 }
 
 func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
@@ -549,6 +550,9 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			return nil, err
 		}
 		right := typeable(nr)
+		if right == nil {
+			nr, err = c.infer(node.Right)
+		}
 
 		if node.Token.Type == "ASSIGN" { //In case of temp values
 			ty, _ := c.lookupType(node.Left)
