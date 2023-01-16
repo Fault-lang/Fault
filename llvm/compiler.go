@@ -136,9 +136,22 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 		c.currentSpec = decl.Name.Value
 	case *ast.SysDeclStatement:
 		for _, v := range specfile.Statements {
-			if _, ok := v.(*ast.ForStatement); ok {
+			switch n := v.(type) {
+			case *ast.ForStatement:
 				c.hasRunBlock = true
 				continue
+			case *ast.DefStatement:
+				if cm, ok := n.Value.(*ast.ComponentLiteral); ok {
+					//assembling component parts as params
+					id := cm.Id()
+					s := c.specStructs[id[0]]
+					branches, err := s.FetchComponent(id[1])
+					if err != nil {
+						panic(err)
+					}
+					params := c.generateParameters(cm.Id(), branches, true)
+					c.sysGlobals = append(c.sysGlobals, params...)
+				}
 			}
 		}
 		c.currentSpec = decl.Name.Value
@@ -411,7 +424,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			parentID := node.IdString()
 			c.structPropOrder[childId] = c.structPropOrder[parentID]
 
-			params := c.generateParameters(id, tree, true)
+			params := []*ir.Param{}
 			params = c.includeGlobalParams(params)
 			s := c.specs[id[0]]
 			funcId := append(p.(ast.Nameable).Id(), "__state")

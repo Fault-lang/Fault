@@ -364,17 +364,32 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 }
 
 func (g *Generator) xorRule(inst *ir.InstXor) rule {
+	id := inst.Ident()
 	x := inst.X.Ident()
-	x = g.variables.convertIdent(g.currentFunction, x)
-	return g.parseRule(x, "", "", "not")
+	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	if xRule == nil {
+		x = g.variables.convertIdent(g.currentFunction, x)
+		xRule = &wrap{value: x}
+	}
+	return g.parseMultiCond(id, xRule, &wrap{}, "not")
 }
 
 func (g *Generator) andRule(inst *ir.InstAnd) rule {
 	id := inst.Ident()
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
+
 	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	if xRule == nil {
+		x = g.variables.convertIdent(g.currentFunction, x)
+		xRule = &wrap{value: x}
+	}
+
 	yRule := g.variables.lookupCondPart(g.currentFunction, y)
+	if yRule == nil {
+		y = g.variables.convertIdent(g.currentFunction, y)
+		yRule = &wrap{value: y}
+	}
 	return g.parseMultiCond(id, xRule, yRule, "and")
 }
 
@@ -382,9 +397,18 @@ func (g *Generator) orRule(inst *ir.InstOr) rule {
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
 	id := inst.Ident()
-	x = g.variables.convertIdent(g.currentFunction, x)
-	y = g.variables.convertIdent(g.currentFunction, y)
-	return g.parseInfix(id, x, y, "or")
+	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	if xRule == nil {
+		x = g.variables.convertIdent(g.currentFunction, x)
+		xRule = &wrap{value: x}
+	}
+
+	yRule := g.variables.lookupCondPart(g.currentFunction, y)
+	if yRule == nil {
+		y = g.variables.convertIdent(g.currentFunction, y)
+		yRule = &wrap{value: y}
+	}
+	return g.parseMultiCond(id, xRule, yRule, "or")
 }
 
 func (g *Generator) stateRules(key string, sc *stateChange) rule {
