@@ -132,23 +132,6 @@ func TestSpecRecordUpdate(t *testing.T) {
 	if i3.Value != 2 {
 		t.Fatalf("property bar has incorrect value got=%d want=2", i3.Value)
 	}
-
-	sr.AddConstant("test4", &ast.IntegerLiteral{Value: 1})
-	t4, _ := sr.FetchConstant("test4")
-	sr.UpdateConstant("test4", &ast.IntegerLiteral{Value: 2})
-	t4a, _ := sr.FetchConstant("test4")
-	if t4 == t4a {
-		t.Fatal("constant not found in spec record")
-	}
-
-	i4, ok := t4a.(*ast.IntegerLiteral)
-	if !ok {
-		t.Fatalf("constant is incorrect type got=%T want=IntegerLiteral", t4a)
-	}
-
-	if i4.Value != 2 {
-		t.Fatalf("constant has incorrect value got=%d want=2", i4.Value)
-	}
 }
 
 func TestUpdateVar(t *testing.T) {

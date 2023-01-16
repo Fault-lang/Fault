@@ -48,7 +48,7 @@ importDecl
     ;
 
 importSpec
-    : ('.' | IDENT)? importPath
+    : ('.' | IDENT)? importPath ','?
     ;
 
 importPath

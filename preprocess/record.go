@@ -165,9 +165,9 @@ func (sr *SpecRecord) FetchVar(rawid []string, ty string) (ast.Node, error) {
 	var br string
 	var ret ast.Node
 
-	if len(rawid) == 2 {
-		return sr.FetchConstant(rawid[1])
-	}
+	// if len(rawid) == 2 {
+	// 	return sr.FetchConstant(rawid[1])
+	// }
 
 	if len(rawid) > 3 {
 		str := strings.Join(rawid[1:len(rawid)-1], "_")
@@ -259,14 +259,6 @@ func (sr *SpecRecord) UpdateComponent(name string, val map[string]ast.Node) erro
 		return nil
 	}
 	return fmt.Errorf("no component found with name %s in spec %s", name, sr.SpecName)
-}
-
-func (sr *SpecRecord) UpdateConstant(name string, val ast.Node) error {
-	if sr.Constants[name] != nil {
-		sr.Constants[name] = val
-		return nil
-	}
-	return fmt.Errorf("no constant found with name %s in spec %s", name, sr.SpecName)
 }
 
 func (sr *SpecRecord) UpdateVar(rawid []string, ty string, val ast.Node) error {

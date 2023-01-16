@@ -135,13 +135,26 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	case *ast.SpecDeclStatement:
 		c.currentSpec = decl.Name.Value
 	case *ast.SysDeclStatement:
+		c.currentSpec = decl.Name.Value
 		for _, v := range specfile.Statements {
-			if _, ok := v.(*ast.ForStatement); ok {
+			switch n := v.(type) {
+			case *ast.ForStatement:
 				c.hasRunBlock = true
 				continue
+			case *ast.DefStatement:
+				if cm, ok := n.Value.(*ast.ComponentLiteral); ok {
+					//assembling component parts as params
+					id := cm.Id()
+					s := c.specStructs[id[0]]
+					branches, err := s.FetchComponent(id[1])
+					if err != nil {
+						panic(err)
+					}
+					params := c.generateParameters(cm.Id(), branches, true)
+					c.sysGlobals = append(c.sysGlobals, params...)
+				}
 			}
 		}
-		c.currentSpec = decl.Name.Value
 	default:
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
@@ -411,7 +424,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			parentID := node.IdString()
 			c.structPropOrder[childId] = c.structPropOrder[parentID]
 
-			params := c.generateParameters(id, tree, true)
+			params := []*ir.Param{}
 			params = c.includeGlobalParams(params)
 			s := c.specs[id[0]]
 			funcId := append(p.(ast.Nameable).Id(), "__state")
@@ -1253,17 +1266,27 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 		case *ast.FunctionLiteral:
 			if component {
 				rawid := n.RawId()
-				s = c.specs[rawid[0]]
 				vname := strings.Join(rawid, "_")
 				p = append(p, ir.NewParam(vname, I1P))
 			}
+		case *ast.IntegerLiteral:
+			rawid := n.RawId()
+			vname := strings.Join(rawid, "_")
+			p = append(p, ir.NewParam(vname, DoubleP))
+		case *ast.FloatLiteral:
+			rawid := n.RawId()
+			vname := strings.Join(rawid, "_")
+			p = append(p, ir.NewParam(vname, DoubleP))
+		case *ast.Boolean:
+			rawid := n.RawId()
+			vname := strings.Join(rawid, "_")
+			p = append(p, ir.NewParam(vname, I1P))
 		default:
 			rawid := n.(ast.Nameable).RawId()
 			s = c.specs[rawid[0]]
 			vname := strings.Join(rawid, "_")
 			ty := s.GetPointerType(vname)
 			p = append(p, ir.NewParam(vname, ty))
-
 		}
 	}
 	return p

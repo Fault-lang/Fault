@@ -562,19 +562,25 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.Specs[p.trail.CurrentSpec()] = NewSpecRecord()
 		}
 
+		order := node.Order
+
 		if p.initialPass {
 			pro, err = p.walk(node.Value)
 			if err != nil {
 				return node, err
 			}
 			pn := p.buildIdContext(p.trail.CurrentSpec())
+			pn = append(pn, node.Name)
 			node.Value = pro.(*ast.Identifier)
-			node.ProcessedName = append(pn, node.Name)
+			node.ProcessedName = pn
+
+			if !node.Complex && p.inGlobal {
+				local := strings.Join(pn[0:2], "_")
+				p.localIdents[local] = order
+			}
 
 			return node, err
 		}
-
-		order := node.Order
 
 		var key string
 		importSpec := p.Specs[node.Value.Spec] //Where the struct definition lives
@@ -662,6 +668,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
+
 			p.scope = oldScope
 			return pro, err
 		case "FLOW":
@@ -730,6 +737,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
+
 			p.scope = oldScope
 			return pro, err
 		default:
@@ -879,11 +887,17 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, fmt.Errorf("can't find a struct instance named %s", node.Parent)
 		}
 	case *ast.Identifier:
-		if !p.initialPass {
-			return node, err
-		}
+		var spec *SpecRecord
 
-		spec := p.Specs[node.Spec]
+		// Check to see if this is a constant from
+		// an import
+		im := p.Specs[node.Spec]
+		_, check := im.FetchConstant(node.Value)
+		if check == nil {
+			spec = im
+		} else {
+			spec = p.Specs[p.trail.CurrentSpec()]
+		}
 		rawid := p.buildIdContext(spec.Id())
 
 		if p.inFunc {
@@ -908,7 +922,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
-		spec := p.Specs[node.Name.Spec]
+		spec := p.Specs[p.trail.CurrentSpec()]
 		rawid := p.buildIdContext(spec.Id())
 
 		rawid = append(rawid, node.Name.Value)
@@ -936,12 +950,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec = p.Specs[p.trail.CurrentSpec()]
 		rawid = p.buildIdContext(p.trail.CurrentSpec())
 
-		if rawid[len(rawid)-1] == node.Value[0] {
-			//Happens when it's being called from the run block
-			rawid = append(rawid, node.Value[1])
-		} else {
-			rawid = append(rawid, node.Value...)
-		}
+		rawid = append(rawid, node.Value...)
 
 		node.ProcessedName = rawid
 
@@ -962,6 +971,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		branch, err := spec.FetchVar(rawid, ty)
 		if err != nil {
+			return node, err
+		}
+
+		// State charts tend to create endless loops by design
+		// short-curcuit if we've already processed this node
+		brName := branch.(ast.Nameable).RawId()
+		if brName[0] == rawid[0] {
 			return node, err
 		}
 
@@ -998,16 +1014,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		for i, v := range node.Expressions {
 			// Not sure we ever want this to be anything
 			// other than a call actually :/
-			scope := v.(*ast.ParameterCall).Value
-			oldScope := p.scope
-			p.scope = strings.Join(scope[0:len(scope)-1], "_")
 
 			n, err := p.walk(v)
 			if err != nil {
 				return node, err
 			}
 			node.Expressions[i] = n.(ast.Expression)
-			p.scope = oldScope
 		}
 		return node, err
 
@@ -1034,4 +1046,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	default:
 		return node, err
 	}
+}
+
+func alreadyNamed(n1 []string, n2 []string) bool {
+	if len(n1) != len(n2) {
+		return false
+	}
+	for i, v := range n1 {
+		if v != n2[i] {
+			return false
+		}
+	}
+	return true
 }

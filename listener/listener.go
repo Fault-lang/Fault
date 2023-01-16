@@ -130,7 +130,10 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 
 	// If no ident, create one from import path
 	var importId string
-	if len(c.GetChildren()) == 2 {
+	txt := c.GetText()
+	if len(c.GetChildren()) > 2 {
+		importId = c.IDENT().GetText()
+	} else if len(c.GetChildren()) == 2 && string(txt[len(txt)-1]) != "," {
 		importId = c.IDENT().GetText()
 	} else {
 		importId = pathToIdent(fpath.String())
@@ -1349,10 +1352,7 @@ func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64,
 		l1.Uncertains[k] = v
 	}
 
-	for k, v := range l2.Unknowns {
-		l1.Unknowns[k] = v
-
-	}
+	l1.Unknowns = append(l1.Unknowns, l2.Unknowns...)
 
 	for k, v := range l2.StructsPropertyOrder {
 		l1.StructsPropertyOrder[k] = v

@@ -88,11 +88,20 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		node.Value = n.(ast.Expression)
 		return node, err
 	case *ast.Identifier:
-		n, err := c.infer(node)
+		n2, err := c.lookupReference(node)
 		if err != nil {
 			return node, err
 		}
-		return n, err
+
+		tnode, err = c.typecheck(n2)
+		if err != nil {
+			return node, err
+		}
+
+		node.InferredType = &ast.Type{Type: tnode.Type(),
+			Scope:      0,
+			Parameters: nil}
+		return node, err
 	case *ast.DefStatement:
 		tnode, err = c.typecheck(node.Value)
 		if err != nil {
@@ -328,15 +337,6 @@ func (c *Checker) isValue(exp interface{}) bool {
 
 func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	switch node := exp.(type) {
-	/*case int64:
-		return &ast.Type{"INT", 1, nil}, nil
-	case float64:
-		scope := c.inferScope(node)
-		return &ast.Type{"FLOAT", scope, nil}, nil
-	case string:
-		return &ast.Type{"STRING", 0, nil}, nil
-	case bool:
-		return &ast.Type{"BOOL", 0, nil}, nil*/
 	case *ast.IntegerLiteral:
 		if node.InferredType == nil {
 			node.InferredType = &ast.Type{Type: "INT",
@@ -484,7 +484,17 @@ func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
 	}
-	return typeable(v), err
+
+	ret := typeable(v)
+	if ret == nil {
+		v2, err := c.typecheck(v)
+		if err != nil {
+			return nil, err
+		}
+		spec.UpdateVar(rawid, ty, v2)
+		return typeable(v2), err
+	}
+	return ret, err
 }
 
 func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
@@ -549,6 +559,9 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			return nil, err
 		}
 		right := typeable(nr)
+		if right == nil {
+			nr, err = c.infer(node.Right)
+		}
 
 		if node.Token.Type == "ASSIGN" { //In case of temp values
 			ty, _ := c.lookupType(node.Left)
@@ -765,6 +778,44 @@ func (c *Checker) inferUncertain(node *ast.Uncertain) []ast.Type {
 	return []ast.Type{
 		{Type: "MEAN", Scope: c.inferScope(node.Mean), Parameters: nil},
 		{Type: "SIGMA", Scope: c.inferScope(node.Sigma), Parameters: nil},
+	}
+}
+
+func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
+	switch b := base.(type) {
+	case *ast.ParameterCall:
+		rawid := b.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		p, err := spec.FetchVar(rawid, ty)
+		if err != nil {
+			return nil, err
+		}
+		return c.lookupReference(p)
+	case *ast.Identifier:
+		// Check to see if this variable is referencing
+		// a local variable
+		rawid := b.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		p, err := spec.FetchVar(rawid, ty)
+		if _, ok := p.(*ast.Identifier); !ok {
+			return c.infer(p)
+		}
+
+		// Assume it's referencing a constant then
+		spec = c.SpecStructs[b.Spec]
+		n, _ := spec.FetchConstant(b.Value)
+		if n != nil {
+			return n, err
+		}
+		return nil, fmt.Errorf("cannot establish node %s", b.IdString())
+	default:
+		if c.isValue(base) {
+			return c.infer(base)
+		} else {
+			return c.inferFunction(base.(ast.Expression))
+		}
 	}
 }
 

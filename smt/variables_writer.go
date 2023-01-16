@@ -197,12 +197,9 @@ func (g *variables) lookupCondPart(f string, val string) rule {
 		refname := fmt.Sprintf("%s-%s", f, val)
 		if v, ok := g.ref[refname]; ok {
 			return v
-		} else {
-			panic(fmt.Sprintf("variable %s not initialized", val))
 		}
-	} else {
-		panic(fmt.Sprintf("variable %s not valid construction", val))
 	}
+	return nil
 }
 
 func (g *variables) formatValue(val value.Value) string {
