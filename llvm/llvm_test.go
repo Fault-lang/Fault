@@ -583,12 +583,12 @@ func TestComponentIR(t *testing.T) {
 			%test_foo_alarm = alloca i1
 			store i1 false, i1* %test_foo_alarm
 			store i1 true, i1* %test_foo_initial
-			call void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm)
-			call void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm)
+			call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
+			call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
 			ret void
 		}
 		
-		define void @test_foo_initial__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
+		define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
 		block-17:
 			%0 = load i1, i1* %test_foo_initial
 			%1 = icmp eq i1 %0, true
@@ -627,7 +627,7 @@ func TestComponentIR(t *testing.T) {
 			ret i1 true
 		}
 		
-		define void @test_foo_alarm__state(double* %test_foo_x, i1* %test_foo_initial, i1* %test_foo_alarm) {
+		define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
 		block-24:
 			%0 = load i1, i1* %test_foo_alarm
 			%1 = icmp eq i1 %0, true

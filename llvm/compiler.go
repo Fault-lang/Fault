@@ -135,6 +135,7 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	case *ast.SpecDeclStatement:
 		c.currentSpec = decl.Name.Value
 	case *ast.SysDeclStatement:
+		c.currentSpec = decl.Name.Value
 		for _, v := range specfile.Statements {
 			switch n := v.(type) {
 			case *ast.ForStatement:
@@ -154,7 +155,6 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 				}
 			}
 		}
-		c.currentSpec = decl.Name.Value
 	default:
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
@@ -1270,13 +1270,24 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 				vname := strings.Join(rawid, "_")
 				p = append(p, ir.NewParam(vname, I1P))
 			}
+		case *ast.IntegerLiteral:
+			rawid := n.RawId()
+			vname := strings.Join(rawid, "_")
+			p = append(p, ir.NewParam(vname, DoubleP))
+		case *ast.FloatLiteral:
+			rawid := n.RawId()
+			vname := strings.Join(rawid, "_")
+			p = append(p, ir.NewParam(vname, DoubleP))
+		case *ast.Boolean:
+			rawid := n.RawId()
+			vname := strings.Join(rawid, "_")
+			p = append(p, ir.NewParam(vname, I1P))
 		default:
 			rawid := n.(ast.Nameable).RawId()
 			s = c.specs[rawid[0]]
 			vname := strings.Join(rawid, "_")
 			ty := s.GetPointerType(vname)
 			p = append(p, ir.NewParam(vname, ty))
-
 		}
 	}
 	return p
