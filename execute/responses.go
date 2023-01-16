@@ -43,7 +43,7 @@ func (l *SMTListener) peek() interface{} {
 
 func mergeTermParts(parts []string) string {
 	if len(parts) == 1 {
-		return "-" + parts[0]
+		return parts[0]
 	}
 
 	if len(parts) > 2 {
@@ -124,13 +124,17 @@ func (l *SMTListener) ExitVariable(c *parser.VariableContext) {
 
 func (l *SMTListener) ExitTerm(c *parser.TermContext) {
 	term := c.GetText()
+
 	if c.GetChildCount() > 1 {
 		parts := []string{}
-		for _, child := range c.AllTerm() {
-			parts = append(parts, child.GetText())
-			l.pop()
+		for i := 0; i < len(c.AllTerm()); i++ {
+			p := l.pop()
+			parts = append([]string{p.(string)}, parts...)
 		}
 		term = mergeTermParts(parts)
+		if strings.Contains(term, "-") {
+			term = fmt.Sprintf("-%s", term)
+		}
 	}
 	l.push(term)
 }
