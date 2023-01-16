@@ -1266,7 +1266,6 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 		case *ast.FunctionLiteral:
 			if component {
 				rawid := n.RawId()
-				s = c.specs[rawid[0]]
 				vname := strings.Join(rawid, "_")
 				p = append(p, ir.NewParam(vname, I1P))
 			}
