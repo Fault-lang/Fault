@@ -160,7 +160,7 @@ func TestString(t *testing.T) {
 			want = "Mean: 2.000000Sigma: 0.400000;"
 		case *PrefixExpression:
 			got = t.String()
-			want = "(!3)"
+			want = "!3"
 		case *InfixExpression:
 			got = t.String()
 			want = "(3 > 3)"
@@ -181,7 +181,7 @@ func TestString(t *testing.T) {
 			want = "test fuzz = 24;"
 		case *ExpressionStatement:
 			got = t.String()
-			want = "(!3)"
+			want = "!3"
 		case *ParallelFunctions:
 			got = t.String()
 			want = "testtest"

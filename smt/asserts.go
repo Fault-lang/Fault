@@ -59,8 +59,8 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 		}
 		return assrt
 	case *ast.AssertVar:
-		for _, v := range v.Instances {
-			assrt = append(assrt, g.packageAssert(v, comp, constr, stmt))
+		for _, inst := range v.Instances {
+			assrt = append(assrt, g.packageAssert(inst, comp, constr, stmt))
 		}
 		return assrt
 	case *ast.IndexExpression:
@@ -85,6 +85,10 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 func (g *Generator) parseInvariant(ex ast.Expression) rule {
 	switch e := ex.(type) {
 	case *ast.InvariantClause:
+		if e.Operator == "then" {
+			return g.parseStageInvar(e)
+		}
+
 		left := g.parseInvariant(e.Left)
 		right := g.parseInvariant(e.Right)
 
@@ -169,6 +173,16 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
 	}
 	return nil
+}
+
+func (g *Generator) parseStageInvar(inv *ast.InvariantClause) rule {
+	left := g.parseInvariant(inv.Left)
+	right := g.parseInvariant(inv.Right)
+
+	fmt.Println(left)
+	fmt.Println(right)
+
+	return &assrt{}
 }
 
 func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt ast.Statement) *assrt {

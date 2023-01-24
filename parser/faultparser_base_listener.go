@@ -279,11 +279,17 @@ func (s *BaseFaultParserListener) EnterTemporal(ctx *TemporalContext) {}
 // ExitTemporal is called when production temporal is exited.
 func (s *BaseFaultParserListener) ExitTemporal(ctx *TemporalContext) {}
 
-// EnterInvariant is called when production invariant is entered.
-func (s *BaseFaultParserListener) EnterInvariant(ctx *InvariantContext) {}
+// EnterInvar is called when production invar is entered.
+func (s *BaseFaultParserListener) EnterInvar(ctx *InvarContext) {}
 
-// ExitInvariant is called when production invariant is exited.
-func (s *BaseFaultParserListener) ExitInvariant(ctx *InvariantContext) {}
+// ExitInvar is called when production invar is exited.
+func (s *BaseFaultParserListener) ExitInvar(ctx *InvarContext) {}
+
+// EnterStageInvariant is called when production stageInvariant is entered.
+func (s *BaseFaultParserListener) EnterStageInvariant(ctx *StageInvariantContext) {}
+
+// ExitStageInvariant is called when production stageInvariant is exited.
+func (s *BaseFaultParserListener) ExitStageInvariant(ctx *StageInvariantContext) {}
 
 // EnterMiscAssign is called when production MiscAssign is entered.
 func (s *BaseFaultParserListener) EnterMiscAssign(ctx *MiscAssignContext) {}

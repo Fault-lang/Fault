@@ -182,11 +182,11 @@ assumption
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
     | ('nmt' | 'nft') integer
-    | 'then' expression
     ;
 
 invariant
-    : expression
+    : expression                            # invar
+    | 'when' expression 'then' expression   # stageInvariant
     ;
 
 assignment

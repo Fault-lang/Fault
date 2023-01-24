@@ -137,8 +137,11 @@ type FaultParserListener interface {
 	// EnterTemporal is called when entering the temporal production.
 	EnterTemporal(c *TemporalContext)
 
-	// EnterInvariant is called when entering the invariant production.
-	EnterInvariant(c *InvariantContext)
+	// EnterInvar is called when entering the invar production.
+	EnterInvar(c *InvarContext)
+
+	// EnterStageInvariant is called when entering the stageInvariant production.
+	EnterStageInvariant(c *StageInvariantContext)
 
 	// EnterMiscAssign is called when entering the MiscAssign production.
 	EnterMiscAssign(c *MiscAssignContext)
@@ -386,8 +389,11 @@ type FaultParserListener interface {
 	// ExitTemporal is called when exiting the temporal production.
 	ExitTemporal(c *TemporalContext)
 
-	// ExitInvariant is called when exiting the invariant production.
-	ExitInvariant(c *InvariantContext)
+	// ExitInvar is called when exiting the invar production.
+	ExitInvar(c *InvarContext)
+
+	// ExitStageInvariant is called when exiting the stageInvariant production.
+	ExitStageInvariant(c *StageInvariantContext)
 
 	// ExitMiscAssign is called when exiting the MiscAssign production.
 	ExitMiscAssign(c *MiscAssignContext)

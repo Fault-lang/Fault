@@ -1239,24 +1239,31 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	}
 }
 
+func (l *FaultListener) ExitStageInvariant(c *parser.StageInvariantContext) {
+	right := l.pop()
+	left := l.pop()
+	token := util.GenerateToken("ASSERT", "assert", c.GetStart(), c.GetStop())
+	l.push(&ast.InvariantClause{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "then",
+		Right:    right.(ast.Expression),
+	})
+}
+
 func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 	token := util.GenerateToken("ASSERT", "assert", c.GetStart(), c.GetStop())
 
 	var temporal string
 	var temporalFilter string
 	var temporalN int
-	var err error
 	if c.Temporal() != nil {
 		if c.Temporal().GetChildCount() == 2 {
-			l.pop() // Discard the int
+			i := l.pop()
 			temporalRaw := c.Temporal().GetText()
 			temporal = ""
-			temporalFilter = temporalRaw[0 : len(temporalRaw)-1]
-			temporalN, err = strconv.Atoi(string(temporalRaw[len(temporalRaw)-1]))
-			if err != nil {
-				pos := token.Position
-				panic(fmt.Sprintf("temporal logic not value, filter should be an int: line %d col %d", pos[0], pos[1]))
-			}
+			temporalFilter = temporalRaw[0 : len(temporalRaw)-len(i.(*ast.IntegerLiteral).String())]
+			temporalN = int(i.(*ast.IntegerLiteral).Value)
 		} else {
 			temporal = c.Temporal().GetText()
 		}
@@ -1277,6 +1284,8 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 			Operator: e.Operator,
 			Right:    e.Right,
 		}
+	case *ast.InvariantClause:
+		con = e
 	}
 
 	l.push(&ast.AssertionStatement{
@@ -1293,18 +1302,13 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	var temporal string
 	var temporalFilter string
 	var temporalN int
-	var err error
 	if c.Temporal() != nil {
 		if c.Temporal().GetChildCount() == 2 {
-			l.pop() // Discard the int
+			i := l.pop()
 			temporalRaw := c.Temporal().GetText()
 			temporal = ""
-			temporalFilter = temporalRaw[0 : len(temporalRaw)-1]
-			temporalN, err = strconv.Atoi(string(temporalRaw[len(temporalRaw)-1]))
-			if err != nil {
-				pos := token.Position
-				panic(fmt.Sprintf("temporal logic not value, filter should be an int: line %d col %d", pos[0], pos[1]))
-			}
+			temporalFilter = temporalRaw[0 : len(temporalRaw)-len(i.(*ast.IntegerLiteral).String())]
+			temporalN = int(i.(*ast.IntegerLiteral).Value)
 		} else {
 			temporal = c.Temporal().GetText()
 		}
@@ -1323,6 +1327,8 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 			Operator: e.Operator,
 			Right:    e.Right,
 		}
+	case *ast.InvariantClause:
+		con = e
 	}
 
 	l.push(&ast.AssumptionStatement{

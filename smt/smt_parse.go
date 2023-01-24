@@ -154,6 +154,17 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstLoad:
 			g.loadsRule(inst)
 		case *ir.InstStore:
+			vname := inst.Dst.Ident()
+			if vname == "@__rounds" {
+				g.rawRules = append(g.rawRules, rules)
+				rules = []rule{}
+				continue
+			}
+
+			if vname == "@__parallelGroup" {
+				continue
+			}
+
 			switch inst.Src.Type().(type) {
 			case *irtypes.ArrayType:
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, inst.Dst.Ident())

@@ -180,7 +180,11 @@ func (v *BaseFaultParserVisitor) VisitTemporal(ctx *TemporalContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitInvariant(ctx *InvariantContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitInvar(ctx *InvarContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitStageInvariant(ctx *StageInvariantContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

@@ -21,6 +21,7 @@ type Generator struct {
 	functions  map[string]*ir.Func
 	rawAsserts []*ast.AssertionStatement
 	rawAssumes []*ast.AssumptionStatement
+	rawRules [][]rule
 
 	// Generated SMT
 	inits     []string
@@ -39,6 +40,9 @@ type Generator struct {
 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
 	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
 
+	currentRound int
+	Rounds  [][]string
+	RVarLookup map[string][]int 
 	Results map[string][]*VarChange
 }
 
@@ -53,6 +57,7 @@ func NewGenerator() *Generator {
 		inPhiState:      NewPhiState(),
 		returnVoid:      NewPhiState(),
 		Results:         make(map[string][]*VarChange),
+		RVarLookup: make(map[string][]int), 
 	}
 }
 
@@ -70,6 +75,11 @@ func (g *Generator) Run(llopt string) {
 	}
 	g.newCallgraph(m)
 
+}
+
+func (g *Generator) newRound() {
+	g.currentRound++
+	g.Rounds = append(g.Rounds, []string{})
 }
 
 func (g *Generator) GetForks() []Fork {
@@ -107,8 +117,9 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.sortFuncs(m.Funcs)
 
 	run := g.parseRunBlock(m.Funcs)
+	g.rawRules = append(g.rawRules, run)
 
-	g.rules = append(g.rules, g.generateRules(run)...)
+	g.rules = append(g.rules, g.generateRules()...)
 
 	if len(g.rawAsserts) > 0 {
 		var asserts []string
