@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt?
+    : sysClause importDecl* globalDecl* componentDecl+ (assertion | assumption)? startBlock forStmt?
     ;
 
 sysClause

@@ -267,6 +267,7 @@ func (g *Generator) capParallel() []rule {
 	var rules []rule
 	for k, v := range fork {
 		id := g.variables.advanceSSA(k)
+		g.addVarToRound(k, int(g.variables.ssa[k]))
 
 		var nums []int16
 		for _, c := range v {
@@ -333,6 +334,7 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string
 			id = g.variables.advanceSSA(k)
 			g.declareVar(id, g.variables.lookupType(k, nil))
 			_, i := g.variables.getVarBase(id)
+			g.addVarToRound(k, i)
 			phis[k] = int16(i)
 		} else {
 			id = fmt.Sprintf("%s_%d", k, phi)

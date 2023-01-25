@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fault/ast"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/llir/llvm/asm"
@@ -21,7 +22,7 @@ type Generator struct {
 	functions  map[string]*ir.Func
 	rawAsserts []*ast.AssertionStatement
 	rawAssumes []*ast.AssumptionStatement
-	rawRules [][]rule
+	rawRules   [][]rule
 
 	// Generated SMT
 	inits     []string
@@ -40,10 +41,9 @@ type Generator struct {
 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
 	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
 
-	currentRound int
-	Rounds  [][]string
-	RVarLookup map[string][]int 
-	Results map[string][]*VarChange
+	RoundVars  [][][]string
+	RVarLookup map[string][][]int
+	Results    map[string][]*VarChange
 }
 
 func NewGenerator() *Generator {
@@ -57,7 +57,7 @@ func NewGenerator() *Generator {
 		inPhiState:      NewPhiState(),
 		returnVoid:      NewPhiState(),
 		Results:         make(map[string][]*VarChange),
-		RVarLookup: make(map[string][]int), 
+		RVarLookup:      make(map[string][][]int),
 	}
 }
 
@@ -78,8 +78,38 @@ func (g *Generator) Run(llopt string) {
 }
 
 func (g *Generator) newRound() {
-	g.currentRound++
-	g.Rounds = append(g.Rounds, []string{})
+	g.RoundVars = append(g.RoundVars, [][]string{})
+}
+
+func (g *Generator) addVarToRound(base string, num int) {
+	idx := len(g.RoundVars) - 1
+	if idx == -1 {
+		idx = 0
+		g.RoundVars = [][][]string{{{base, fmt.Sprint(num)}}}
+	} else {
+		g.RoundVars[idx] = append(g.RoundVars[idx], []string{base, fmt.Sprint(num)})
+	}
+
+	idx2 := len(g.RoundVars[idx]) - 1
+	g.RVarLookup[base] = append(g.RVarLookup[base], []int{num, idx, idx2})
+}
+
+func (g *Generator) lookupVarRounds(base string, num string) [][]int {
+	if num == "" {
+		return g.RVarLookup[base]
+	}
+
+	state, err := strconv.Atoi(num)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, b := range g.RVarLookup[base] {
+		if b[0] == state {
+			return [][]int{b}
+		}
+	}
+	panic(fmt.Errorf("state %s of variable %s is missing", num, base))
 }
 
 func (g *Generator) GetForks() []Fork {

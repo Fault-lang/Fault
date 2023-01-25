@@ -441,6 +441,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	} else {
 		g.variables.storeLastState(base, n+1)
 	}
+	g.addVarToRound(base, int(n+1))
 	newState = g.variables.advanceSSA(base)
 	g.AddNewVarChange(base, newState, prev)
 
@@ -462,6 +463,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 		g.variables.storeLastState(base2, n2+1)
 	}
 
+	g.addVarToRound(base2, int(n2+1))
 	currentState := g.variables.advanceSSA(base2)
 	g.AddNewVarChange(base2, currentState, prev2)
 	if complex {

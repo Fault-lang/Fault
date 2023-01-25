@@ -266,6 +266,7 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 	case *constant.Float:
 		ty := g.variables.lookupType(id, val)
 		id = g.variables.advanceSSA(id)
+		g.addVarToRound(id, int(g.variables.ssa[id]))
 		if g.isASolvable(id) {
 			g.declareVar(id, ty)
 		} else {
@@ -301,6 +302,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				g.variables.storeLastState(base, n+1)
 			}
 			id := g.variables.advanceSSA(base)
+			g.addVarToRound(base, int(n+1))
 			v := g.variables.formatValue(val)
 			if !g.variables.isBolean(v) && !g.variables.isNumeric(v) {
 				v = g.variables.formatIdent(v)
@@ -321,6 +323,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 					g.variables.storeLastState(base, n+1)
 				}
 				id := g.variables.advanceSSA(base)
+				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 				wid := &wrap{value: id}
 				if g.variables.isBolean(r.y.String()) {
@@ -340,6 +343,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				}
 				ty := g.variables.lookupType(base, nil)
 				id := g.variables.advanceSSA(base)
+				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 				wid := &wrap{value: id}
 				rules = append(rules, &infix{x: wid, ty: ty, y: r})
@@ -356,6 +360,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		} else {
 			g.variables.storeLastState(base, n+1)
 		}
+		g.addVarToRound(base, int(n+1))
 		id := g.variables.advanceSSA(base)
 		g.AddNewVarChange(base, id, prev)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
