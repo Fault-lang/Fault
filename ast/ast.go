@@ -274,8 +274,10 @@ func (ds *DefStatement) SetType(ty *Type) {
 
 type AssertionStatement struct {
 	Token          Token
-	Variables      []Expression
-	Constraints    *InvariantClause
+	Left           Expression
+	Operator       string
+	Right          Expression
+	Assume         bool
 	Temporal       string
 	TemporalFilter string
 	TemporalN      int
@@ -288,45 +290,21 @@ func (as *AssertionStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(as.TokenLiteral() + " ")
-	out.WriteString(as.Constraints.Left.String())
-	out.WriteString(as.Constraints.Operator)
-	out.WriteString(as.Constraints.Right.String())
+	if as.Assume {
+		out.WriteString("assume ")
+	} else {
+		out.WriteString("assert ")
+	}
+	out.WriteString(as.Left.String())
+	out.WriteString(as.Operator)
+	out.WriteString(as.Right.String())
 	out.WriteString(";")
 	return out.String()
 }
 func (as *AssertionStatement) Type() string {
-	return as.Constraints.Right.Type()
+	return as.Right.Type()
 }
 func (as *AssertionStatement) SetType(ty *Type) {
-	//Skip
-}
-
-type AssumptionStatement struct {
-	Token          Token
-	Variables      []Expression
-	Constraints    *InvariantClause
-	Temporal       string
-	TemporalFilter string
-	TemporalN      int
-}
-
-func (as *AssumptionStatement) statementNode()       {}
-func (as *AssumptionStatement) TokenLiteral() string { return as.Token.Literal }
-func (as *AssumptionStatement) Position() []int      { return as.Token.GetPosition() }
-func (as *AssumptionStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(as.TokenLiteral() + " ")
-	out.WriteString(as.Constraints.Left.String())
-	out.WriteString(as.Constraints.Operator)
-	out.WriteString(as.Constraints.Right.String())
-	out.WriteString(";")
-	return out.String()
-}
-func (as *AssumptionStatement) Type() string {
-	return as.Constraints.Right.Type()
-}
-func (as *AssumptionStatement) SetType(ty *Type) {
 	//Skip
 }
 

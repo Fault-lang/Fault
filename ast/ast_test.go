@@ -32,8 +32,8 @@ func InitNodes() []Node {
 		&ImportStatement{Token: token, Name: &Identifier{InferredType: baseType, Token: token, Value: "bar"}, Path: &StringLiteral{InferredType: stringType, Token: token, Value: "foo/bar/baz"}},
 		&ConstantStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "fuzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 24}},
 		&DefStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "buzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 3}},
-		&AssertionStatement{Token: token, Constraints: &InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}}},
-		&AssumptionStatement{Token: token, Constraints: &InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}}},
+		&AssertionStatement{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}, Assume: false},
+		&AssertionStatement{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}, Assume: true},
 		&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Comparison: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Conjuction: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		&InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}},
@@ -121,10 +121,11 @@ func TestString(t *testing.T) {
 			want = "test buzz = 3;"
 		case *AssertionStatement:
 			got = t.String()
-			want = "test 3==3;"
-		case *AssumptionStatement:
-			got = t.String()
-			want = "test 3==3;"
+			if t.Assume {
+				want = "test assume 3==3;"
+			} else {
+				want = "test assert 3==3;"
+			}
 		case *Invariant:
 			got = t.String()
 			want = "test assert 3==3;"
@@ -258,9 +259,6 @@ func TestTypes(t *testing.T) {
 			got = t.Type()
 			want = "test"
 		case *AssertionStatement:
-			got = t.Type()
-			want = "INT"
-		case *AssumptionStatement:
 			got = t.Type()
 			want = "INT"
 		case *Invariant:
