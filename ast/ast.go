@@ -274,9 +274,7 @@ func (ds *DefStatement) SetType(ty *Type) {
 
 type AssertionStatement struct {
 	Token          Token
-	Left           Expression
-	Operator       string
-	Right          Expression
+	Constraint     *InvariantClause
 	Assume         bool
 	Temporal       string
 	TemporalFilter string
@@ -295,14 +293,14 @@ func (as *AssertionStatement) String() string {
 	} else {
 		out.WriteString("assert ")
 	}
-	out.WriteString(as.Left.String())
-	out.WriteString(as.Operator)
-	out.WriteString(as.Right.String())
+	out.WriteString(as.Constraint.Left.String())
+	out.WriteString(as.Constraint.Operator)
+	out.WriteString(as.Constraint.Right.String())
 	out.WriteString(";")
 	return out.String()
 }
 func (as *AssertionStatement) Type() string {
-	return as.Right.Type()
+	return as.Constraint.Right.Type()
 }
 func (as *AssertionStatement) SetType(ty *Type) {
 	//Skip
@@ -337,40 +335,40 @@ func (i *InvariantClause) SetType(ty *Type) {
 	//Skip
 }
 
-type Invariant struct {
-	Token        Token
-	Variable     Expression
-	Comparison   string
-	Expression   Expression
-	Conjuction   string
-	InferredType *Type
-}
+// type Invariant struct {
+// 	Token        Token
+// 	Variable     Expression
+// 	Comparison   string
+// 	Expression   Expression
+// 	Conjuction   string
+// 	InferredType *Type
+// }
 
-func (i *Invariant) expressionNode()      {}
-func (i *Invariant) TokenLiteral() string { return i.Token.Literal }
-func (i *Invariant) Position() []int      { return i.Token.GetPosition() }
-func (i *Invariant) String() string {
-	var out bytes.Buffer
+// func (i *Invariant) expressionNode()      {}
+// func (i *Invariant) TokenLiteral() string { return i.Token.Literal }
+// func (i *Invariant) Position() []int      { return i.Token.GetPosition() }
+// func (i *Invariant) String() string {
+// 	var out bytes.Buffer
 
-	out.WriteString(i.TokenLiteral() + " assert ")
-	out.WriteString(i.Variable.String())
-	if i.Conjuction != "" {
-		out.WriteString(i.Conjuction)
-	}
-	if i.Comparison != "" {
-		out.WriteString(i.Comparison)
-	}
-	out.WriteString(i.Expression.String())
+// 	out.WriteString(i.TokenLiteral() + " assert ")
+// 	out.WriteString(i.Variable.String())
+// 	if i.Conjuction != "" {
+// 		out.WriteString(i.Conjuction)
+// 	}
+// 	if i.Comparison != "" {
+// 		out.WriteString(i.Comparison)
+// 	}
+// 	out.WriteString(i.Expression.String())
 
-	out.WriteString(";")
-	return out.String()
-}
-func (i *Invariant) Type() string {
-	return i.Variable.Type()
-}
-func (i *Invariant) SetType(ty *Type) {
-	//Skip
-}
+// 	out.WriteString(";")
+// 	return out.String()
+// }
+// func (i *Invariant) Type() string {
+// 	return i.Variable.Type()
+// }
+// func (i *Invariant) SetType(ty *Type) {
+// 	//Skip
+// }
 
 type ForStatement struct {
 	Token  Token

@@ -1290,10 +1290,11 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 
 	l.push(&ast.AssertionStatement{
 		Token:          token,
-		Constraints:    con,
+		Constraint:     con,
 		Temporal:       temporal,
 		TemporalFilter: temporalFilter,
 		TemporalN:      temporalN,
+		Assume:         false,
 	})
 }
 
@@ -1331,12 +1332,13 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 		con = e
 	}
 
-	l.push(&ast.AssumptionStatement{
+	l.push(&ast.AssertionStatement{
 		Token:          token,
-		Constraints:    con,
+		Constraint:     con,
 		Temporal:       temporal,
 		TemporalFilter: temporalFilter,
 		TemporalN:      temporalN,
+		Assume:         true,
 	})
 }
 
