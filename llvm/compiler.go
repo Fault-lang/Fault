@@ -1463,7 +1463,8 @@ func negate(e ast.Expression) ast.Expression {
 		}
 		return n
 	case *ast.PrefixExpression:
-		return negate(n.Right)
+		n.Right = negate(n.Right)
+		return n
 	}
 	return e
 }
