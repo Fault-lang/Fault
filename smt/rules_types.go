@@ -131,6 +131,9 @@ type invariant struct {
 
 func (i *invariant) ruleNode() {}
 func (i *invariant) String() string {
+	if i.left == nil { //Prefixes like !a
+		return fmt.Sprint(i.operator, i.right.String())
+	}
 	return fmt.Sprint(i.left.String(), i.operator, i.right.String())
 }
 func (i *invariant) Tag(k1 string, k2 string) {
