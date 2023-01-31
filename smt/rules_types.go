@@ -36,6 +36,25 @@ func (a *ands) Tag(k1 string, k2 string) {
 	}
 }
 
+type states struct {
+	rule
+	base     string
+	states   map[int][]string //
+	constant bool
+	tag      *branch
+}
+
+func (s *states) ruleNode() {}
+func (s *states) String() string {
+	return s.base
+}
+func (s *states) Tag(k1 string, k2 string) {
+	s.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type assrt struct {
 	rule
 	variable       *wrap
@@ -208,6 +227,27 @@ func (w *wrap) String() string {
 }
 func (w *wrap) Tag(k1 string, k2 string) {
 	w.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type stateGroup struct {
+	rule
+	wraps []*states
+	tag   *branch
+}
+
+func (sg *stateGroup) ruleNode() {}
+func (sg *stateGroup) String() string {
+	var out bytes.Buffer
+	for _, v := range sg.wraps {
+		out.WriteString(v.base)
+	}
+	return out.String()
+}
+func (sg *stateGroup) Tag(k1 string, k2 string) {
+	sg.tag = &branch{
 		branch: k1,
 		block:  k2,
 	}

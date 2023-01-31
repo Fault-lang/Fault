@@ -32,7 +32,7 @@ func TestSimpleAssert(t *testing.T) {
 
 	for _, v := range llvm.Asserts {
 
-		c := v.Constraints
+		c := v.Constraint
 		av := c.Left.(*ast.AssertVar)
 		if av.Instances[0] != "test1_hello" {
 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
@@ -67,7 +67,7 @@ func TestSimpleAssume(t *testing.T) {
 
 	for _, v := range llvm.Asserts {
 
-		c := v.Constraints
+		c := v.Constraint
 		av := c.Left.(*ast.AssertVar)
 		if av.Instances[0] != "test1_hello" {
 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])
@@ -98,7 +98,7 @@ func TestAssertWConjunc(t *testing.T) {
 
 	for _, v := range llvm.Asserts {
 
-		c := v.Constraints
+		c := v.Constraint
 		av := c.Left.(*ast.InfixExpression).Left.(*ast.AssertVar)
 		if av.Instances[0] != "test1_hello" {
 			t.Fatalf("assert assigned to wrong variable. got=%s", av.Instances[0])

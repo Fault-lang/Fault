@@ -202,7 +202,7 @@ func prepTest(path string, test string) (string, error) {
 	}
 	//fmt.Println(compiler.GetIR())
 	generator := NewGenerator()
-	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.Run(compiler.GetIR())
 	//fmt.Println(generator.SMT())
 	return generator.SMT(), nil
@@ -238,7 +238,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	}
 	//fmt.Println(compiler.GetIR())
 	generator := NewGenerator()
-	generator.LoadMeta(compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.Run(compiler.GetIR())
 	fmt.Println(generator.SMT())
 	return generator.SMT(), nil

@@ -21,7 +21,7 @@ type Generator struct {
 	Unknowns   []string
 	functions  map[string]*ir.Func
 	rawAsserts []*ast.AssertionStatement
-	rawAssumes []*ast.AssumptionStatement
+	rawAssumes []*ast.AssertionStatement
 	rawRules   [][]rule
 
 	// Generated SMT
@@ -41,6 +41,7 @@ type Generator struct {
 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
 	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
 
+	Rounds     int
 	RoundVars  [][][]string
 	RVarLookup map[string][][]int
 	Results    map[string][]*VarChange
@@ -61,7 +62,13 @@ func NewGenerator() *Generator {
 	}
 }
 
-func (g *Generator) LoadMeta(uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) {
+func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {
+	if runs == 0 {
+		g.Rounds = 1 //even if runs are zero we need to generate asserts for initialization
+	} else {
+		g.Rounds = int(runs)
+	}
+
 	g.Uncertains = uncertains
 	g.Unknowns = unknowns
 	g.rawAsserts = asserts
@@ -110,6 +117,15 @@ func (g *Generator) lookupVarRounds(base string, num string) [][]int {
 		}
 	}
 	panic(fmt.Errorf("state %s of variable %s is missing", num, base))
+}
+
+func (g *Generator) varRounds(base string, num string) map[int][]string {
+	ir := make(map[int][]string)
+	states := g.lookupVarRounds(base, num)
+	for _, s := range states {
+		ir[s[1]] = append(ir[s[1]], fmt.Sprintf("%s_%d", base, s[0]))
+	}
+	return ir
 }
 
 func (g *Generator) GetForks() []Fork {

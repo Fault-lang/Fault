@@ -49,20 +49,20 @@ func TestGenerateAssertRules(t *testing.T) {
 	}
 
 	left := &invariant{
-		left:        &wrap{value: "x", constant: true},
-		right:       &wrap{value: "y", constant: true},
+		left:     &wrap{value: "x", constant: true},
+		right:    &wrap{value: "y", constant: true},
 		operator: "&&",
 	}
 
 	right := &invariant{
-		left:        &wrap{value: "z", constant: true},
-		right:       &wrap{value: "a", constant: true},
+		left:     &wrap{value: "z", constant: true},
+		right:    &wrap{value: "a", constant: true},
 		operator: "||",
 	}
 
 	ru2 := &invariant{
-		left:        left,
-		right:       right,
+		left:     left,
+		right:    right,
 		operator: "&&",
 	}
 
@@ -76,6 +76,40 @@ func TestGenerateAssertRules(t *testing.T) {
 		t.Fatalf("assert generation failed. got=%s want=(&& (&& x y) (|| z a))", r2[0])
 	}
 }
+
+// func TestInvariants(t *testing.T) {
+// 	g := NewGenerator()
+// 	g.RVarLookup["x"] = [][]int{{0, 0, 0}, {1, 0, 2}, {2, 1, 0}, {3, 1, 2}, {4, 2, 0}, {5, 2, 2}}
+// 	g.RVarLookup["y"] = [][]int{{0, 0, 1}, {1, 1, 1}, {2, 1, 2}}
+// 	g.RVarLookup["z"] = [][]int{{0, 0, 3}, {1, 2, 3}}
+// 	g.RoundVars = [][][]string{
+// 		{{"x", "0"}, {"y", "0"}, {"x", "1"}, {"z", "0"}},
+// 		{{"x", "2"}, {"y", "1"}, {"x", "3"}},
+// 		{{"x", "4"}, {"y", "2"}, {"x", "5"}, {"z", "1"}},
+// 	}
+// 	base := &ast.AssertionStatement{
+// 		Assume: false,
+// 	}
+
+// 	assert1 := &ast.InvariantClause{
+// 		Left: &ast.InfixExpression{
+// 			Left:     &ast.AssertVar{Instances: []string{"x"}},
+// 			Operator: "<",
+// 			Right:    &ast.IntegerLiteral{Value: 2},
+// 		},
+// 		Operator: "&&",
+// 		Right: &ast.InfixExpression{
+// 			Left:     &ast.AssertVar{Instances: []string{"y"}},
+// 			Operator: ">",
+// 			Right:    &ast.IntegerLiteral{Value: 4},
+// 		},
+// 	}
+// 	base.Constraint = assert1
+// 	got1 := g.parseAssert(base)
+// 	if got1[0] == "" {
+// 		t.Fatal()
+// 	}
+// }
 
 func TestCaptureState(t *testing.T) {
 	test1 := "test_constant"

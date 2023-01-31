@@ -166,7 +166,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 
 		return node, err
 	case *ast.AssertionStatement:
-		n, err := c.inferFunction(node.Constraints)
+		n, err := c.inferFunction(node.Constraint)
 		valtype := typeable(n)
 		if err != nil {
 			return node, err
@@ -176,16 +176,6 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		return node, err
 
-	case *ast.AssumptionStatement:
-		n, err := c.inferFunction(node.Constraints)
-		valtype := typeable(n)
-		if err != nil {
-			return node, err
-		}
-		if valtype.Type != "BOOL" {
-			return nil, fmt.Errorf("assume statement not testing a Boolean expression. got=%s", valtype.Type)
-		}
-		return node, err
 	case *ast.ForStatement:
 		return node, err
 	case *ast.StartStatement:

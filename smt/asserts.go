@@ -36,7 +36,7 @@ import (
 // 	}
 // }
 
-func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.Expression, stmt ast.Statement) []*assrt {
+func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.Expression, stmt *ast.AssertionStatement) []*assrt {
 	var ident []string
 	var assrt []*assrt
 	switch v := exp.(type) {
@@ -355,18 +355,12 @@ func (g *Generator) whenNode(when *wrap) ([]string, [][][]string) {
 // 	return rules
 // }
 
-func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt ast.Statement) *assrt {
+func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt *ast.AssertionStatement) *assrt {
 	var temporalFilter string
 	var temporalN int
 
-	switch st := stmt.(type) {
-	case *ast.AssertionStatement:
-		temporalFilter = st.TemporalFilter
-		temporalN = st.TemporalN
-	case *ast.AssumptionStatement:
-		temporalFilter = st.TemporalFilter
-		temporalN = st.TemporalN
-	}
+	temporalFilter = stmt.TemporalFilter
+	temporalN = stmt.TemporalN
 
 	s, a, c := captureState(ident)
 	w := &wrap{value: ident,

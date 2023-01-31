@@ -202,6 +202,16 @@ func MaxInt16(nums []int16) int16 {
 	return temp
 }
 
+func PairCombinations(left []string, right []string) [][]string{
+	var ret [][]string
+	for _, l := range left{
+		for _, r := range right{
+			ret = append(ret, []string{l,r})
+		}
+	}
+	return ret
+}
+
 func Combinations(l [][]string, n int) [][][]string {
 	if len(l) <= n {
 		return [][][]string{l}

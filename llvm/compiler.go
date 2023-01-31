@@ -40,7 +40,7 @@ type Compiler struct {
 	// 1-index -> Parallel Group
 
 	hasRunBlock bool
-	runRound    int16
+	RunRound    int16
 
 	currentSpec      string
 	specs            map[string]*spec
@@ -66,9 +66,9 @@ type Compiler struct {
 	specGlobals    map[string]*ir.Global
 	sysGlobals     []*ir.Param
 	RawAsserts     []*ast.AssertionStatement
-	RawAssumes     []*ast.AssumptionStatement
+	RawAssumes     []*ast.AssertionStatement
 	Asserts        []*ast.AssertionStatement
-	Assumes        []*ast.AssumptionStatement
+	Assumes        []*ast.AssertionStatement
 	Uncertains     map[string][]float64
 	Unknowns       []string
 	Components     map[string]*StateFunc
@@ -89,7 +89,7 @@ func NewCompiler() *Compiler {
 		structPropOrder:  make(map[string][]string),
 
 		hasRunBlock:   false,
-		runRound:      0,
+		RunRound:      0,
 		builtIns:      make(map[string]*ir.Func),
 		specStructs:   make(map[string]*preprocess.SpecRecord),
 		specFunctions: make(map[string]value.Value),
@@ -128,7 +128,7 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 	return
 }
 
-func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionStatement, []*ast.AssumptionStatement) {
+func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
@@ -204,19 +204,19 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.PrefixExpression:
 		c.compilePrefix(v)
 
-	case *ast.AssumptionStatement:
-		// Need to do these after the run block so we move them
-		c.RawAssumes = append(c.RawAssumes, v)
-
 	case *ast.AssertionStatement:
-		c.RawAsserts = append(c.RawAsserts, v)
+		if v.Assume {
+			c.RawAssumes = append(c.RawAssumes, v)
+		} else {
+			c.RawAsserts = append(c.RawAsserts, v)
+		}
 
 	case *ast.ForStatement:
 		c.contextFuncName = "__run"
 		for i := int64(0); i < v.Rounds.Value; i++ {
-			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.runRound)), c.markers[0])
+			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			c.compileBlock(v.Body)
-			c.runRound = c.runRound + 1
+			c.RunRound = c.RunRound + 1
 			c.stateCheck()
 		}
 
@@ -351,7 +351,7 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 }
 
 func (c *Compiler) compileInstance(node *ast.StructInstance) {
-	if c.runRound > 0 { // Initialize things only once
+	if c.RunRound > 0 { // Initialize things only once
 		return
 	}
 	if c.contextFuncName == "__run" {
@@ -989,33 +989,32 @@ func (c *Compiler) compileConditional(n ast.Node) value.Value {
 	return c.compileValue(n)
 }
 
-func (c *Compiler) compileAssert(assert ast.Node) {
+func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	var l, r ast.Expression
-	switch a := assert.(type) {
-	case *ast.AssertionStatement:
-		if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
-			l = negate(a.Constraints.Left)
-			r = negate(a.Constraints.Right)
-			a.Constraints.Operator = OP_NEGATE[a.Constraints.Operator]
-		} else {
-			l = a.Constraints.Left
-			r = a.Constraints.Right
-			a.TemporalFilter, a.TemporalN = negateTemporal(a.TemporalFilter, a.TemporalN)
-			if a.TemporalN < 0 {
-				pos := a.Position()
-				panic(fmt.Sprintf("temporal logic not value, filter searching for fewer than 0 states: line %d col %d", pos[0], pos[1]))
-			}
-		}
-		a.Constraints.Left = c.convertAssertVariables(l)
-		a.Constraints.Right = c.convertAssertVariables(r)
-		c.Asserts = append(c.Asserts, a)
-	case *ast.AssumptionStatement:
-		a.Constraints.Left = c.convertAssertVariables(a.Constraints.Left)
-		a.Constraints.Right = c.convertAssertVariables(a.Constraints.Right)
+	if a.Assume {
+		a.Constraint.Left = c.convertAssertVariables(l)
+		a.Constraint.Right = c.convertAssertVariables(r)
 		c.Assumes = append(c.Assumes, a)
-	default:
-		panic("statement must be an assert or an assumption.")
+		return
 	}
+
+	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
+		l = negate(a.Constraint.Left)
+		r = negate(a.Constraint.Right)
+		a.Constraint.Operator = OP_NEGATE[a.Constraint.Operator]
+	} else {
+		l = a.Constraint.Left
+		r = a.Constraint.Right
+		a.TemporalFilter, a.TemporalN = negateTemporal(a.TemporalFilter, a.TemporalN)
+		if a.TemporalN < 0 {
+			pos := a.Position()
+			panic(fmt.Sprintf("temporal logic not value, filter searching for fewer than 0 states: line %d col %d", pos[0], pos[1]))
+		}
+	}
+	a.Constraint.Left = c.convertAssertVariables(l)
+	a.Constraint.Right = c.convertAssertVariables(r)
+	c.Asserts = append(c.Asserts, a)
+
 }
 
 func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
@@ -1119,7 +1118,7 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		fname = fname + "__state"
 	}
 
-	if c.runRound == 0 { //initialize
+	if c.RunRound == 0 { //initialize
 		params := c.generateParameters(rawId, branch, component)
 		if component {
 			params = c.includeGlobalParams(params)

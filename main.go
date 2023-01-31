@@ -82,9 +82,9 @@ func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 	return compiler
 }
 
-func smt2(ir string, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssumptionStatement) *smt.Generator {
+func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) *smt.Generator {
 	generator := smt.NewGenerator()
-	generator.LoadMeta(uncertains, unknowns, asserts, assumes)
+	generator.LoadMeta(runs, uncertains, unknowns, asserts, assumes)
 	generator.Run(ir)
 	return generator
 }
@@ -146,7 +146,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		generator := smt2(compiler.GetIR(), uncertains, unknowns, compiler.Asserts, compiler.Assumes)
+		generator := smt2(compiler.GetIR(), compiler.RunRound, uncertains, unknowns, compiler.Asserts, compiler.Assumes)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
@@ -163,7 +163,7 @@ func run(filepath string, mode string, input string, reach bool) {
 		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 		mc.Format(data)
 	case "ll":
-		generator := smt2(d, uncertains, unknowns, nil, nil)
+		generator := smt2(d, 0, uncertains, unknowns, nil, nil)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return

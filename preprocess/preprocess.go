@@ -401,18 +401,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		p.scope = ""
 		return node, err
 	case *ast.AssertionStatement:
-		pro, err = p.walk(node.Constraints)
+		pro, err = p.walk(node.Constraint)
 		if err != nil {
 			return node, err
 		}
-		node.Constraints = pro.(*ast.InvariantClause)
-		return node, err
-	case *ast.AssumptionStatement:
-		pro, err = p.walk(node.Constraints)
-		if err != nil {
-			return node, err
-		}
-		node.Constraints = pro.(*ast.InvariantClause)
+		node.Constraint = pro.(*ast.InvariantClause)
 		return node, err
 	case *ast.InvariantClause:
 		l, err := p.walk(node.Left)
