@@ -624,6 +624,10 @@ func smtlibOperators(op string) string {
 		return "="
 	case "!=": //Invalid in SMTLib
 		return "="
+	case "||":
+		return "or"
+	case "&&":
+		return "and"
 	default:
 		return op
 	}

@@ -145,25 +145,7 @@ func TestCompoundAssertOr(t *testing.T) {
 	(assert (= test1_t_foo_value_3 (- test1_t_foo_value_2 2.0)))
 	(assert (= test1_t_foo_value_4 (- test1_t_foo_value_3 2.0)))
 	(assert (= test1_t_foo_value_5 (- test1_t_foo_value_4 2.0)))
-	(assert 
-		(and 
-			(or 
-				(<= test1_t_foo_value_0 0)
-				(<= test1_t_foo_value_1 0)
-				(<= test1_t_foo_value_2 0)
-				(<= test1_t_foo_value_3 0)
-				(<= test1_t_foo_value_4 0)
-				(<= test1_t_foo_value_5 0))
-			(or
-				(> test1_t_foo_value_0 10)
-				(> test1_t_foo_value_1 10)
-				(> test1_t_foo_value_2 10)
-				(> test1_t_foo_value_3 10)
-				(> test1_t_foo_value_4 10)
-				(> test1_t_foo_value_5 10)
-			)
-		)
-	)`
+	(assert (or (and (<= test1_t_foo_value_5 0) (> test1_t_foo_value_5 10)) (and (<= test1_t_foo_value_0 0) (> test1_t_foo_value_0 10)) (and (<= test1_t_foo_value_1 0) (> test1_t_foo_value_1 10)) (and (<= test1_t_foo_value_2 0) (> test1_t_foo_value_2 10)) (and (<= test1_t_foo_value_3 0) (> test1_t_foo_value_3 10)) (and (<= test1_t_foo_value_4 0) (> test1_t_foo_value_4 10))))`
 
 	smt, err := prepTest("", test)
 

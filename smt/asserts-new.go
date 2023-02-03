@@ -4,22 +4,65 @@ import (
 	"fault/ast"
 	"fault/util"
 	"fmt"
+	"strings"
 )
 
-func (g *Generator) parseAssert(a *ast.AssertionStatement) []string {
+func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 	stateRange := a.Constraint.Operator == "then"
+	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
+		panic("cannot mix temporal logic with when/then assertions")
+	}
+
 	left := g.parseInvariantNode(a.Constraint.Left, stateRange)
 	right := g.parseInvariantNode(a.Constraint.Right, stateRange)
-	
-	if stateRange && a.Assume{
 
+	op := smtlibOperators(a.Constraint.Operator)
+
+	if stateRange && a.Assume {
+		operator := "and"
+		sg := g.mergeInvariantInfix(left, right, operator)
+		return g.joinStates(sg, operator)
 	}
 
 	if stateRange {
-		
+		operator := "or"
+		sg := g.mergeInvariantInfix(left, right, operator)
+		return g.joinStates(sg, operator)
 	}
 
-	return []string{}
+	if (a.TemporalFilter != "" || a.Temporal != "") && a.Assume {
+		sg := g.mergeInvariantInfix(left, right, smtlibOperators(a.Constraint.Operator))
+		ir := g.flattenStates(sg)
+		return g.applyTemporalLogic(a.Temporal, ir, a.TemporalFilter, "or", "and")
+	}
+
+	if a.TemporalFilter != "" || a.Temporal != "" {
+		sg := g.mergeInvariantInfix(left, right, smtlibOperators(a.Constraint.Operator))
+		ir := g.flattenStates(sg)
+		return g.applyTemporalLogic(a.Temporal, ir, a.TemporalFilter, "and", "or")
+	}
+
+	if a.Assume {
+		operator := "and"
+
+		if operator == op { // (and (and ) (and )) is redundant
+			sg := &stateGroup{}
+			sg.wraps = append(left.wraps, right.wraps...)
+			return g.joinStates(sg, operator)
+		}
+
+		sg := g.mergeInvariantInfix(left, right, op)
+		return g.joinStates(sg, operator)
+	}
+
+	operator := "or"
+	if operator == op {
+		sg := &stateGroup{}
+		sg.wraps = append(left.wraps, right.wraps...)
+		return g.joinStates(sg, operator)
+	}
+	sg := g.mergeInvariantInfix(left, right, op)
+	return g.joinStates(sg, operator)
 }
 
 func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *stateGroup {
@@ -43,16 +86,16 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *sta
 		// return i
 
 	case *ast.AssertVar:
-		if len(e.Instances) == 1 {
-			st, _, c := captureState(e.Instances[0])
-			vr := g.varRounds(e.Instances[0], st)
-			return &stateGroup{wraps: []*states{{
-				base:     e.Instances[0],
-				states:   vr,
-				constant: c,
-			}}}
+		// if len(e.Instances) == 1 {
+		// 	st, _, c := captureState(e.Instances[0])
+		// 	vr := g.varRounds(e.Instances[0], st)
+		// 	return &stateGroup{wraps: []*states{{
+		// 		base:     e.Instances[0],
+		// 		states:   vr,
+		// 		constant: c,
+		// 	}}}
 
-		}
+		// }
 		var wg = &stateGroup{}
 		for _, v := range e.Instances {
 			st, _, c := captureState(v)
@@ -112,12 +155,16 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *sta
 
 	case *ast.Nil:
 	case *ast.IndexExpression:
-		vr := g.varRounds(e.IdString(), e.Index.String())
-		return &stateGroup{wraps: []*states{{
-			base:     e.IdString(),
-			states:   vr,
-			constant: true,
-		}}}
+		var wg = &stateGroup{}
+		for _, v := range e.Left.(*ast.AssertVar).Instances {
+			vr := g.varRounds(v, e.Index.String())
+			wg.wraps = append(wg.wraps, &states{base: v,
+				states:   vr,
+				constant: true,
+			})
+		}
+		return wg
+
 		// return &wrap{value: g.convertIndexExpr(e),
 		// 	state:    "",
 		// 	all:      false,
@@ -134,8 +181,10 @@ func (g *Generator) mergeInvariantPrefix(right []*states, operator string) *stat
 	var ret []*states
 	for _, r := range right {
 		states := make(map[int][]string)
-		for i, s := range r.states {
-			states[i] = append(states[i], fmt.Sprintf("(%s %s)", operator, s))
+		for i := 0; i < g.Rounds; i++ {
+			if s, ok := r.states[i]; ok {
+				states[i] = append(states[i], fmt.Sprintf("(%s %s)", operator, s))
+			}
 		}
 		r.states = states
 		ret = append(ret, r)
@@ -163,8 +212,22 @@ func (g *Generator) mergeByRound(left *states, right *states, operator string) *
 
 	st := make(map[int][]string)
 	if left.constant && right.constant {
-		combos := util.Combinations([][]string{left.states[0], right.states[0]}, 2)
-		st[0] = packageStateGraph(combos[0], operator)
+		combos := util.PairCombinations(left.states[0], right.states[0])
+		st[0] = packageStateGraph(combos, operator)
+		ret.states = st
+		return ret
+	}
+
+	if left.base == right.base {
+		//Pair based on same state
+		for i := 0; i < g.Rounds; i++ {
+			var pairs [][]string
+			for idx, s := range left.states[i] {
+				p := []string{s, right.states[i][idx]}
+				pairs = append(pairs, p)
+			}
+			st[i] = packageStateGraph(pairs, operator)
+		}
 		ret.states = st
 		return ret
 	}
@@ -209,9 +272,31 @@ func (g *Generator) mergeByRound(left *states, right *states, operator string) *
 
 func (g *Generator) balance(vr *states, con *states, operator string) map[int][]string {
 	ret := make(map[int][]string)
-	for i, v := range vr.states {
-		combos := util.PairCombinations(v, con.states[0])
-		ret[i] = packageStateGraph(combos, operator)
+	for i := 0; i < g.Rounds; i++ {
+		if v, ok := vr.states[i]; ok {
+			combos := util.PairCombinations(v, con.states[0])
+			ret[i] = packageStateGraph(combos, operator)
+		}
 	}
 	return ret
+}
+
+func (g *Generator) flattenStates(sg *stateGroup) []string {
+	var asserts []string
+	for _, w := range sg.wraps {
+		for i := 0; i < g.Rounds; i++ {
+			if s, ok := w.states[i]; ok {
+				asserts = append(asserts, s...)
+			}
+		}
+	}
+	return asserts
+}
+
+func (g *Generator) joinStates(sg *stateGroup, operator string) string {
+	asserts := g.flattenStates(sg)
+	if len(asserts) == 1 {
+		return asserts[0]
+	}
+	return g.writeAssertlessRule(operator, strings.Join(asserts, " "), "")
 }

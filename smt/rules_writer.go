@@ -165,7 +165,6 @@ func (g *Generator) writeInitRule(id string, t string, val string) string {
 func (g *Generator) generateRules() []string {
 	var rules []string
 	for _, v := range g.rawRules {
-		g.newRound()
 		for _, ru := range v {
 			rules = append(rules, g.writeRule(ru))
 		}

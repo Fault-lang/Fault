@@ -62,9 +62,7 @@ func (g *Generator) parseBlock(block *ir.Block) []rule {
 	}
 
 	//Make sure call stack is clear
-	stack := util.Copy(g.localCallstack)
-	g.localCallstack = []string{}
-	r1 := g.generateFromCallstack(stack)
+	r1 := g.executeCallstack()
 	rules = append(rules, r1...)
 
 	var r2 []rule
@@ -137,9 +135,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 
 func (g *Generator) parseAfterBlock(term *ir.Block) []rule {
 	a := g.parseBlock(term)
-	stack := util.Copy(g.localCallstack)
-	g.localCallstack = []string{}
-	a1 := g.generateFromCallstack(stack)
+	a1 := g.executeCallstack()
 	a = append(a, a1...)
 	return a
 }
@@ -156,8 +152,14 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstStore:
 			vname := inst.Dst.Ident()
 			if vname == "@__rounds" {
+				//Clear the callstack first
+				r := g.executeCallstack()
+				rules = append(rules, r...)
 				g.rawRules = append(g.rawRules, rules)
 				rules = []rule{}
+
+				//Initate new round
+				g.newRound()
 				continue
 			}
 
@@ -253,17 +255,13 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			if g.isSameParallelGroup(meta) {
 				g.localCallstack = append(g.localCallstack, callee)
 			} else if g.singleParallelStep(callee) {
-				stack := util.Copy(g.localCallstack)
-				g.localCallstack = []string{}
-				r := g.generateFromCallstack(stack)
+				r := g.executeCallstack()
 				rules = append(rules, r...)
 
 				r1 := g.generateFromCallstack([]string{callee})
 				rules = append(rules, r1...)
 			} else {
-				stack := util.Copy(g.localCallstack)
-				g.localCallstack = []string{}
-				r := g.generateFromCallstack(stack)
+				r := g.executeCallstack()
 				rules = append(rules, r...)
 
 				g.localCallstack = append(g.localCallstack, callee)
@@ -328,9 +326,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 			branchBlock := "true"
 			t = g.parseBlock(term)
 
-			stack := util.Copy(g.localCallstack)
-			g.localCallstack = []string{}
-			t1 := g.generateFromCallstack(stack)
+			t1 := g.executeCallstack()
 			t = append(t, t1...)
 
 			t = g.tagRules(t, branch, branchBlock)
@@ -340,9 +336,8 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 			branchBlock := "false"
 			f = g.parseBlock(term)
 
-			stack := util.Copy(g.localCallstack)
 			g.localCallstack = []string{}
-			f1 := g.generateFromCallstack(stack)
+			f1 := g.executeCallstack()
 			f = append(f, f1...)
 
 			f = g.tagRules(f, branch, branchBlock)
@@ -573,6 +568,13 @@ func (g *Generator) parseCompareOp(op string) string {
 	default:
 		return op
 	}
+}
+
+func (g *Generator) executeCallstack() []rule {
+	stack := util.Copy(g.localCallstack)
+	g.localCallstack = []string{}
+	r := g.generateFromCallstack(stack)
+	return r
 }
 
 func (g *Generator) peek(inst value.Value) string {

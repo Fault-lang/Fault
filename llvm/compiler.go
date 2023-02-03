@@ -992,8 +992,8 @@ func (c *Compiler) compileConditional(n ast.Node) value.Value {
 func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	var l, r ast.Expression
 	if a.Assume {
-		a.Constraint.Left = c.convertAssertVariables(l)
-		a.Constraint.Right = c.convertAssertVariables(r)
+		a.Constraint.Left = c.convertAssertVariables(a.Constraint.Left)
+		a.Constraint.Right = c.convertAssertVariables(a.Constraint.Right)
 		c.Assumes = append(c.Assumes, a)
 		return
 	}
@@ -1462,6 +1462,9 @@ func negate(e ast.Expression) ast.Expression {
 		}
 		return n
 	case *ast.PrefixExpression:
+		if n.Operator == "!" {
+			return n.Right
+		}
 		n.Right = negate(n.Right)
 		return n
 	}

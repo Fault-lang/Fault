@@ -170,21 +170,22 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	if len(g.rawAsserts) > 0 {
 		var asserts []string
 		for _, v := range g.rawAsserts {
-			a1, a2, op := g.parseAssert(v)
-			if op != "&&" && op != "||" {
-				var aa []string
-				for _, assrt := range a1 {
-					ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
-					aa = append(aa, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "and", "or"))
-				}
-				if len(a1) > 1 {
-					asserts = append(asserts, g.writeAssert("and", strings.Join(aa, " ")))
-				} else {
-					asserts = append(asserts, aa...)
-				}
-			} else {
-				asserts = append(asserts, g.generateCompound(a1, a2, op))
-			}
+			a := g.parseAssert(v)
+			// if op != "&&" && op != "||" {
+			// 	var aa []string
+			// 	for _, assrt := range a1 {
+			// 		ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
+			// 		aa = append(aa, g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "and", "or"))
+			// 	}
+			// 	if len(a1) > 1 {
+			// 		asserts = append(asserts, g.writeAssert("and", strings.Join(aa, " ")))
+			// 	} else {
+			// 		asserts = append(asserts, aa...)
+			// 	}
+			// } else {
+			// 	asserts = append(asserts, g.generateCompound(a1, a2, op))
+			// }
+			asserts = append(asserts, a)
 		}
 		if len(asserts) > 1 {
 			g.asserts = append(g.asserts, g.writeAssert("or", strings.Join(asserts, "")))
@@ -194,17 +195,20 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	}
 
 	for _, v := range g.rawAssumes {
-		a1, a2, op := g.parseAssert(v)
-		if op != "&&" && op != "||" {
-			for _, assrt := range a1 {
-				ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
-				assume := g.writeAssert("", g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "or", "and"))
-				g.asserts = append(g.asserts, assume)
-			}
-		} else {
-			assume := g.writeAssert("", g.generateCompound(a1, a2, op))
-			g.asserts = append(g.asserts, assume)
-		}
+		a := g.parseAssert(v)
+		// a1, a2, op := g.parseAssert(v)
+		// if op != "&&" && op != "||" {
+		// 	for _, assrt := range a1 {
+		// 		ir := g.generateAssertRules(assrt, assrt.temporalFilter, assrt.temporalN)
+		// 		assume := g.writeAssert("", g.applyTemporalLogic(v.Temporal, ir, assrt.temporalFilter, "or", "and"))
+		// 		g.asserts = append(g.asserts, assume)
+		// 	}
+		// } else {
+		// 	assume := g.writeAssert("", g.generateCompound(a1, a2, op))
+		// 	g.asserts = append(g.asserts, assume)
+		// }
+		assume := g.writeAssert("", a)
+		g.asserts = append(g.asserts, assume)
 	}
 }
 

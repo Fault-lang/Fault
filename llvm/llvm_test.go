@@ -417,8 +417,8 @@ func TestNegate(t *testing.T) {
 
 	n4 := negate(test4)
 
-	if n4.(*ast.Boolean).Value != true {
-		t.Fatalf("boolean has not been negated got=%s", n4.(*ast.Boolean).String())
+	if n4.(*ast.Boolean).Value != false {
+		t.Fatalf("boolean has not been negated got=%v", n4.(*ast.Boolean).Value)
 	}
 }
 

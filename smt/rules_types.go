@@ -403,8 +403,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		} else {
 			g.variables.storeLastState(base, n+1)
 		}
-		g.addVarToRound(base, int(n+1))
 		id := g.variables.advanceSSA(base)
+		g.addVarToRound(base, int(g.variables.ssa[base]))
 		g.AddNewVarChange(base, id, prev)
 		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
 	}
