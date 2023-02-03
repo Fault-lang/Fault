@@ -36,9 +36,13 @@ func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 		return g.applyTemporalLogic(a.Temporal, ir, a.TemporalFilter, "or", "and")
 	}
 
-	if a.TemporalFilter != "" || a.Temporal != "" {
-		sg := g.mergeInvariantInfix(left, right, smtlibOperators(a.Constraint.Operator))
-		ir := g.flattenStates(sg)
+	if a.TemporalFilter != "" {
+		ir := expandAssertStateGraph(g.flattenStates(left), g.flattenStates(right), smtlibOperators(a.Constraint.Operator), a.TemporalFilter, a.TemporalN)
+		return g.applyTemporalLogic(a.Temporal, ir, a.TemporalFilter, "and", "or")
+	}
+
+	if a.Temporal != "" {
+		ir := expandAssertStateGraph(g.flattenStates(left), g.flattenStates(right), smtlibOperators(a.Constraint.Operator), a.Temporal, a.TemporalN)
 		return g.applyTemporalLogic(a.Temporal, ir, a.TemporalFilter, "and", "or")
 	}
 
