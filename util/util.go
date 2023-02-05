@@ -36,13 +36,13 @@ func (s *StringSet) Len() int {
 
 func DiffStrSets(s1 *StringSet, s2 *StringSet) *StringSet {
 	s3 := NewStrSet()
-	for k, _ := range s1.base {
+	for k := range s1.base {
 		if !s2.In(k) {
 			s3.Add(k)
 		}
 	}
 
-	for k, _ := range s2.base {
+	for k := range s2.base {
 		if !s1.In(k) {
 			s3.Add(k)
 		}
