@@ -2,6 +2,7 @@ package smt
 
 import (
 	"bytes"
+	"fault/util"
 	"fmt"
 	"strings"
 
@@ -234,11 +235,20 @@ func (w *wrap) Tag(k1 string, k2 string) {
 
 type stateGroup struct {
 	rule
+	bases *util.StringSet
 	wraps []*states
 	tag   *branch
 }
 
+func NewStateGroup () *stateGroup {
+	sg := &stateGroup{}
+	sg.bases = util.NewStrSet()
+	return sg
+}
 func (sg *stateGroup) ruleNode() {}
+func (sg *stateGroup) AddWrap(w *states) {
+	sg.wraps = append(sg.wraps, w)
+}
 func (sg *stateGroup) String() string {
 	var out bytes.Buffer
 	for _, v := range sg.wraps {

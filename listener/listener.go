@@ -1276,13 +1276,42 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	case *ast.IntegerLiteral:
 		// Disregard, this is part of the temporal filter
-	case *ast.InfixExpression:
-
+	case *ast.Identifier:
 		con = &ast.InvariantClause{
 			Token:    e.Token,
-			Left:     e.Left,
-			Operator: e.Operator,
-			Right:    e.Right,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
+	case *ast.PrefixExpression:
+		if e.Operator == "!" {
+			e.Operator = "!="
+			con = &ast.InvariantClause{
+				Token:    e.Token,
+				Left:     e.Right,
+				Operator: e.Operator,
+				Right:    &ast.Boolean{Value: true},
+			}
+		} else {
+			panic("illegal prefix operator in assertion")
+		}
+	case *ast.InfixExpression:
+
+		if e.Operator == "==" {
+			con = &ast.InvariantClause{
+				Token:    e.Token,
+				Left:     &ast.Boolean{Value: true},
+				Operator: "==",
+				Right:    e,
+			}
+		} else {
+
+			con = &ast.InvariantClause{
+				Token:    e.Token,
+				Left:     e.Left,
+				Operator: e.Operator,
+				Right:    e.Right,
+			}
 		}
 	case *ast.InvariantClause:
 		con = e
@@ -1320,13 +1349,40 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	switch e := expr.(type) {
 	default:
 		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
-	case *ast.InfixExpression:
-
+	case *ast.Identifier:
 		con = &ast.InvariantClause{
 			Token:    e.Token,
-			Left:     e.Left,
-			Operator: e.Operator,
-			Right:    e.Right,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
+	case *ast.PrefixExpression:
+		if e.Operator == "!" {
+			e.Operator = "!="
+			con = &ast.InvariantClause{
+				Token:    e.Token,
+				Left:     e.Right,
+				Operator: e.Operator,
+				Right:    &ast.Boolean{Value: true},
+			}
+		} else {
+			panic("illegal prefix operator in assumption")
+		}
+	case *ast.InfixExpression:
+		if e.Operator == "!=" {
+			con = &ast.InvariantClause{
+				Token:    e.Token,
+				Left:     &ast.Boolean{Value: true},
+				Operator: "!=",
+				Right:    e,
+			}
+		} else {
+			con = &ast.InvariantClause{
+				Token:    e.Token,
+				Left:     e.Left,
+				Operator: e.Operator,
+				Right:    e.Right,
+			}
 		}
 	case *ast.InvariantClause:
 		con = e

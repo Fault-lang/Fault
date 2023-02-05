@@ -611,7 +611,14 @@ func packageStateGraph(x [][]string, op string) []string {
 		if len(a) == 1 {
 			product = append(product, a[0])
 		} else {
-			s := fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
+			var s string
+			if op == "=" && a[0] == "false" {
+				s = fmt.Sprintf("(%s %s)", "not", a[1])
+			} else if op == "=" && a[1] == "false" {
+				s = fmt.Sprintf("(%s %s)", "not", a[0])
+			} else {
+				s = fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
+			}
 			product = append(product, s)
 		}
 	}

@@ -216,8 +216,8 @@ func (c *Compiler) compile(node ast.Node) {
 		for i := int64(0); i < v.Rounds.Value; i++ {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			c.compileBlock(v.Body)
-			c.RunRound = c.RunRound + 1
 			c.stateCheck()
+			c.RunRound = c.RunRound + 1
 		}
 
 		c.contextFuncName = ""

@@ -12,6 +12,44 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
+type StringSet struct {
+	base map[string]bool
+}
+
+func NewStrSet() *StringSet {
+	return &StringSet{
+		base: make(map[string]bool),
+	}
+}
+
+func (s *StringSet) Add(str string) {
+	s.base[str] = true
+}
+
+func (s *StringSet) In(str string) bool {
+	return s.base[str]
+}
+
+func (s *StringSet) Len() int {
+	return len(s.base)
+}
+
+func DiffStrSets(s1 *StringSet, s2 *StringSet) *StringSet {
+	s3 := NewStrSet()
+	for k, _ := range s1.base {
+		if !s2.In(k) {
+			s3.Add(k)
+		}
+	}
+
+	for k, _ := range s2.base {
+		if !s1.In(k) {
+			s3.Add(k)
+		}
+	}
+	return s3
+}
+
 func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) ast.Token {
 	return ast.Token{
 		Type:    ast.TokenType(token),
@@ -202,11 +240,11 @@ func MaxInt16(nums []int16) int16 {
 	return temp
 }
 
-func PairCombinations(left []string, right []string) [][]string{
+func PairCombinations(left []string, right []string) [][]string {
 	var ret [][]string
-	for _, l := range left{
-		for _, r := range right{
-			ret = append(ret, []string{l,r})
+	for _, l := range left {
+		for _, r := range right {
+			ret = append(ret, []string{l, r})
 		}
 	}
 	return ret
