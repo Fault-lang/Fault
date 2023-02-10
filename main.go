@@ -98,7 +98,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string,
 	}
 	if !ok {
 		fmt.Println("Fault could not find a failure case.")
-		os.Exit(0)
+		return ex, nil
 	}
 	scenario, err := ex.Solve()
 	if err != nil {
@@ -159,9 +159,12 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.Mermaid()
 			return
 		}
-		mc.LoadMeta(generator.GetForks())
-		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
-		mc.Format(data)
+
+		if data != nil {
+			mc.LoadMeta(generator.GetForks())
+			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+			mc.Format(data)
+		}
 	case "ll":
 		generator := smt2(d, 0, uncertains, unknowns, nil, nil)
 		if mode == "smt" {
@@ -174,9 +177,11 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.Mermaid()
 			return
 		}
-		mc.LoadMeta(generator.GetForks())
-		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
-		mc.Format(data)
+		if data != nil {
+			mc.LoadMeta(generator.GetForks())
+			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+			mc.Format(data)
+		}
 	case "smt2":
 		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smt.VarChange))
 
@@ -184,8 +189,10 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.Mermaid()
 			return
 		}
-		fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
-		mc.Format(data)
+		if data != nil {
+			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+			mc.Format(data)
+		}
 	}
 }
 
