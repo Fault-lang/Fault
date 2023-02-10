@@ -39,6 +39,7 @@ func (a *ands) Tag(k1 string, k2 string) {
 
 type states struct {
 	rule
+	terminal bool
 	base     string
 	states   map[int][]string //
 	constant bool

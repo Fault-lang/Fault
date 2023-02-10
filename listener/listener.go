@@ -1297,21 +1297,11 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		}
 	case *ast.InfixExpression:
 
-		if e.Operator == "==" {
-			con = &ast.InvariantClause{
-				Token:    e.Token,
-				Left:     &ast.Boolean{Value: true},
-				Operator: "==",
-				Right:    e,
-			}
-		} else {
-
-			con = &ast.InvariantClause{
-				Token:    e.Token,
-				Left:     e.Left,
-				Operator: e.Operator,
-				Right:    e.Right,
-			}
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e.Left,
+			Operator: e.Operator,
+			Right:    e.Right,
 		}
 	case *ast.InvariantClause:
 		con = e

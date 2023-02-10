@@ -452,7 +452,7 @@ func TestAsserts(t *testing.T) {
 		t.Fatalf("assumption var name 1 not correct got=%s", str1)
 	}
 
-	str1a := spec[4].(*ast.AssertionStatement).Constraint.Left.(ast.Nameable).RawId()
+	str1a := spec[4].(*ast.AssertionStatement).Constraint.Right.(*ast.InfixExpression).Left.(ast.Nameable).RawId()
 	if len(str1a) != 3 || str1a[0] != "test1" || str1a[1] != "foo" || str1a[2] != "bar" {
 		t.Fatalf("assumption var name 2 not correct got=%s", str1a)
 	}
