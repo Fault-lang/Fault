@@ -31,6 +31,7 @@ RUN: 'run';
 SPEC: 'spec';
 STOCK: 'stock';
 THEN: 'then';
+WHEN: 'when';
 THIS: 'this';
 EVENTUALLY: 'eventually';
 EVENTUALLYALWAYS: 'eventually-always';

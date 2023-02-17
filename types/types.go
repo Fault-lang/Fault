@@ -890,6 +890,11 @@ func (c *Checker) calculateBase(s string) int32 {
 }
 
 func typeAdju(left *ast.Type, right *ast.Type, op string) (*ast.Type, error) {
+	if op == "then" {
+		return &ast.Type{Type: "BOOL",
+			Scope:      0,
+			Parameters: nil}, nil
+	}
 	if op == "=" && left == nil { //Allow variables local to functions
 		return right, nil
 	} else if left == nil || right == nil {

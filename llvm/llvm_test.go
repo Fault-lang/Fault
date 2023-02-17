@@ -27,7 +27,10 @@ func TestSimpleConst(t *testing.T) {
 			const b = false;
 			const c = "Hello World!";
 	`
-	expecting := `@test1_x = global double 2.0
+	expecting := `
+	@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test1_x = global double 2.0
 	@test1_y = global double 0x3FF3333333333333
 	@test1_a = global i1 true
 	@test1_b = global i1 false
@@ -89,11 +92,14 @@ func TestRunBlock(t *testing.T) {
 			};
 	`
 
-	expecting := `@test1_a = global double 0x4002666666666666
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test1_a = global double 0x4002666666666666
 	@test1_b = global double 2.0
 	
 	define void @__run() {
 	block-1:
+		store i16 0, i16* @__rounds
 		%test1_test_buzz_a = alloca double
 		store double 10.0, double* %test1_test_buzz_a
 		%test1_test_buzz_b = alloca double
@@ -101,15 +107,19 @@ func TestRunBlock(t *testing.T) {
 		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3227b3938f885317dea9c644434cb82dd !DIBasicType(tag: DW_TAG_string_type)
+		store i16 1, i16* @__rounds
 		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\387c9dfef940c096cf145af18149d3600 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 2, i16* @__rounds
 		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\370ad8bfb0509411d97738ac929bc3d01 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 3, i16* @__rounds
 		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !e57d2299cbd9024a113885402ef4e089 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 4, i16* @__rounds
 		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
 		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\340b3487db7f69f408810fb4cb8b544eb !DIBasicType(tag: DW_TAG_string_type)
@@ -197,11 +207,14 @@ func TestIfCond(t *testing.T) {
 			};
 	`
 
-	expecting := `@test1_a = global double 0x4002666666666666
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test1_a = global double 0x4002666666666666
 	@test1_b = global double 2.0
 	
 	define void @__run() {
 	block-5:
+		store i16 0, i16* @__rounds
 		%test1_test_buzz_a = alloca double
 		store double 10.0, double* %test1_test_buzz_a
 		%test1_test_buzz_b = alloca double
@@ -232,7 +245,7 @@ func TestIfCond(t *testing.T) {
 	block-9-false:
 		store double 10.0, double* %test1_test_buzz_a
 		br label %block-7-after
-	}	
+	}		
 	`
 
 	llvm, err := prepTest(test)
@@ -276,17 +289,24 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-	expecting := `@test1_a = global double 0x3DA3CA8CB153A753
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test1_a = global double 0x3DA3CA8CB153A753
 	@test1_b = global double 0x3DA3CA8CB153A753
 	
 	define void @__run() {
 	block-10:
+		store i16 0, i16* @__rounds
 		%test1_t_u_x = alloca double
 		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
 		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag: DW_TAG_string_type)
+		store i16 1, i16* @__rounds
 		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 2, i16* @__rounds
 		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 3, i16* @__rounds
 		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 4, i16* @__rounds
 		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag: DW_TAG_string_type)
 		ret void
 	}
@@ -574,75 +594,78 @@ func TestComponentIR(t *testing.T) {
 	};
 	`
 
-	expecting := `define void @__run() {
-		block-16:
-			%test_foo_x = alloca double
-			store double 8.0, double* %test_foo_x
-			%test_foo_initial = alloca i1
-			store i1 false, i1* %test_foo_initial
-			%test_foo_alarm = alloca i1
-			store i1 false, i1* %test_foo_alarm
-			store i1 true, i1* %test_foo_initial
-			call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-			call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-			ret void
-		}
-		
-		define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-		block-17:
-			%0 = load i1, i1* %test_foo_initial
-			%1 = icmp eq i1 %0, true
-			br i1 %1, label %block-19-true, label %block-18-after
-		
-		block-18-after:
-			%2 = load i1, i1* %test_foo_initial
-			%3 = icmp eq i1 %2, true
-			%4 = load double, double* %test_foo_x
-			%5 = fcmp ogt double %4, 10.0
-			%6 = and i1 %3, %5
-			br i1 %6, label %block-22-true, label %block-21-after
-		
-		block-19-true:
-			%7 = alloca [14 x i8]
-			store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
-			%8 = bitcast [14 x i8]* %7 to i8*
-			%9 = call i1 @advance(i8* %8)
-			br label %block-18-after
-		
-		block-21-after:
-			ret void
-		
-		block-22-true:
-			%10 = call i1 @stay()
-			br label %block-21-after
-		}
-		
-		define i1 @advance(i8* %toState) {
-		block-20:
-			ret i1 true
-		}
-		
-		define i1 @stay() {
-		block-23:
-			ret i1 true
-		}
-		
-		define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-		block-24:
-			%0 = load i1, i1* %test_foo_alarm
-			%1 = icmp eq i1 %0, true
-			br i1 %1, label %block-26-true, label %block-25-after
-		
-		block-25-after:
-			ret void
-		
-		block-26-true:
-			%2 = alloca [14 x i8]
-			store [14 x i8] c"test_foo_close", [14 x i8]* %2
-			%3 = bitcast [14 x i8]* %2 to i8*
-			%4 = call i1 @advance(i8* %3)
-			br label %block-25-after
-		}`
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	
+	define void @__run() {
+	block-16:
+		%test_foo_x = alloca double
+		store double 8.0, double* %test_foo_x
+		%test_foo_initial = alloca i1
+		store i1 false, i1* %test_foo_initial
+		%test_foo_alarm = alloca i1
+		store i1 false, i1* %test_foo_alarm
+		store i1 true, i1* %test_foo_initial
+		call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
+		call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
+		ret void
+	}
+	
+	define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
+	block-17:
+		%0 = load i1, i1* %test_foo_initial
+		%1 = icmp eq i1 %0, true
+		br i1 %1, label %block-19-true, label %block-18-after
+	
+	block-18-after:
+		%2 = load i1, i1* %test_foo_initial
+		%3 = icmp eq i1 %2, true
+		%4 = load double, double* %test_foo_x
+		%5 = fcmp ogt double %4, 10.0
+		%6 = and i1 %3, %5
+		br i1 %6, label %block-22-true, label %block-21-after
+	
+	block-19-true:
+		%7 = alloca [14 x i8]
+		store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
+		%8 = bitcast [14 x i8]* %7 to i8*
+		%9 = call i1 @advance(i8* %8)
+		br label %block-18-after
+	
+	block-21-after:
+		ret void
+	
+	block-22-true:
+		%10 = call i1 @stay()
+		br label %block-21-after
+	}
+	
+	define i1 @advance(i8* %toState) {
+	block-20:
+		ret i1 true
+	}
+	
+	define i1 @stay() {
+	block-23:
+		ret i1 true
+	}
+	
+	define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
+	block-24:
+		%0 = load i1, i1* %test_foo_alarm
+		%1 = icmp eq i1 %0, true
+		br i1 %1, label %block-26-true, label %block-25-after
+	
+	block-25-after:
+		ret void
+	
+	block-26-true:
+		%2 = alloca [14 x i8]
+		store [14 x i8] c"test_foo_close", [14 x i8]* %2
+		%3 = bitcast [14 x i8]* %2 to i8*
+		%4 = call i1 @advance(i8* %3)
+		br label %block-25-after
+	}`
 
 	llvm, err := prepTestSys(test)
 
@@ -755,7 +778,7 @@ func prepTestSys(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println(compiler.GetIR())
+	fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 

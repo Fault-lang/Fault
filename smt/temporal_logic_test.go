@@ -270,3 +270,47 @@ func TestTemporal2(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 }
+
+func TestTemporalSys(t *testing.T) {
+
+	test := `system test1;
+		component a = states{
+			foo: func{
+				advance(b.bar);
+			},
+			zoo: func{
+				advance(this.foo);
+			},
+		};
+
+		component b = states{
+			buzz: func{
+				advance(a.foo);
+			},
+			bar: func{
+				stay();
+			},
+		};
+
+		assert when a.zoo then !b.bar;
+
+		start{
+			b: buzz,
+			a: zoo,
+		};
+		`
+	expecting := `
+	`
+
+	smt, err := prepTestSys("", test, false)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	err = compareResults("TemporalSys", smt, string(expecting))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}

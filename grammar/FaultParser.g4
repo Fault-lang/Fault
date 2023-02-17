@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* startBlock* (assertion | assumption)? forStmt?
+    : sysClause importDecl* globalDecl* componentDecl+ (assertion | assumption)? startBlock forStmt?
     ;
 
 sysClause
@@ -182,11 +182,11 @@ assumption
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
     | ('nmt' | 'nft') integer
-    | 'then' expression
     ;
 
 invariant
-    : expression
+    : expression                            # invar
+    | 'when' expression 'then' expression   # stageInvariant
     ;
 
 assignment

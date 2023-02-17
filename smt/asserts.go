@@ -59,8 +59,8 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 		}
 		return assrt
 	case *ast.AssertVar:
-		for _, v := range v.Instances {
-			assrt = append(assrt, g.packageAssert(v, comp, constr, stmt))
+		for _, inst := range v.Instances {
+			assrt = append(assrt, g.packageAssert(inst, comp, constr, stmt))
 		}
 		return assrt
 	case *ast.IndexExpression:
@@ -85,8 +85,17 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 func (g *Generator) parseInvariant(ex ast.Expression) rule {
 	switch e := ex.(type) {
 	case *ast.InvariantClause:
+
 		left := g.parseInvariant(e.Left)
 		right := g.parseInvariant(e.Right)
+
+		if e.Operator == "then" {
+			return &invariant{
+				left:     left,
+				operator: "then",
+				right:    right,
+			}
+		}
 
 		i := &invariant{
 			left:     left,
@@ -171,6 +180,37 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 	return nil
 }
 
+func (g *Generator) generateThenRules(inv *invariant) []string {
+	var rounds [][]int
+	var base string
+	switch when := inv.left.(type) {
+	case *wrap:
+		base = when.value
+		rounds = g.lookupVarRounds(when.value, when.state)
+	}
+
+	var rules []string
+	switch then := inv.right.(type) {
+	case *wrap:
+		for _, r := range rounds {
+			values := g.RoundVars[r[1]][r[2]:]
+			var or []string
+			for _, v := range values {
+				if v[0] == then.value {
+					vname := strings.Join(v, "_")
+					or = append(or, fmt.Sprintf("(= %s %s)", vname, "true"))
+				}
+			}
+			wclause := fmt.Sprintf("%s_%d", base, r[0])
+			tclause := fmt.Sprintf("(or %s)", strings.Join(or, " "))
+
+			rules = append(rules, fmt.Sprintf("(and %s %s)", wclause, tclause))
+
+		}
+	}
+	return rules
+}
+
 func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt ast.Statement) *assrt {
 	var temporalFilter string
 	var temporalN int
@@ -247,6 +287,9 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	case *assrt:
 		return g.generateAssertRules(r.assertion, t, tn)
 	case *invariant:
+		if r.operator == "then" {
+			return g.generateThenRules(r)
+		}
 		i = r
 	case *wrap:
 		return g.wrapPerm(r)

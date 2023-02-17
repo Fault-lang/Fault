@@ -22,19 +22,22 @@ var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
 
 var OP_NEGATE = map[string]string{
-	"==": "!=",
-	">=": "<",
-	">":  "<=",
-	"<=": ">",
-	"!=": "==",
-	"<":  ">=",
-	"&&": "||",
-	"||": "&&",
+	"==":   "!=",
+	">=":   "<",
+	">":    "<=",
+	"<=":   ">",
+	"!=":   "==",
+	"<":    ">=",
+	"&&":   "||",
+	"||":   "&&",
+	"then": "then",
 	//"=": "!=",
 }
 
 type Compiler struct {
-	module *ir.Module
+	module  *ir.Module
+	markers []*ir.Global // 0-index -> Round
+	// 1-index -> Parallel Group
 
 	hasRunBlock bool
 	runRound    int16
@@ -94,7 +97,7 @@ func NewCompiler() *Compiler {
 		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
 	}
-	c.addGlobal()
+	c.setup()
 	return c
 }
 
@@ -211,6 +214,7 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ForStatement:
 		c.contextFuncName = "__run"
 		for i := int64(0); i < v.Rounds.Value; i++ {
+			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.runRound)), c.markers[0])
 			c.compileBlock(v.Body)
 			c.runRound = c.runRound + 1
 			c.stateCheck()
@@ -1459,7 +1463,8 @@ func negate(e ast.Expression) ast.Expression {
 		}
 		return n
 	case *ast.PrefixExpression:
-		return negate(n.Right)
+		n.Right = negate(n.Right)
+		return n
 	}
 	return e
 }
@@ -1567,7 +1572,12 @@ func (c *Compiler) GetIR() string {
 	return c.module.String()
 }
 
-func (c *Compiler) addGlobal() {
+func (c *Compiler) setup() {
+	//Initialize Markers
+	c.markers = []*ir.Global{
+		c.module.NewGlobalDef("__rounds", constant.NewInt(irtypes.I16, 0)),
+		c.module.NewGlobalDef("__parallelGroup", constant.NewCharArrayFromString("start")),
+	}
 	// run block
 	c.contextFunc = c.module.NewFunc("__run", irtypes.Void)
 	mainBlock := c.contextFunc.NewBlock(name.Block())

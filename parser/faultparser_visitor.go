@@ -137,8 +137,11 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#temporal.
 	VisitTemporal(ctx *TemporalContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#invariant.
-	VisitInvariant(ctx *InvariantContext) interface{}
+	// Visit a parse tree produced by FaultParser#invar.
+	VisitInvar(ctx *InvarContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stageInvariant.
+	VisitStageInvariant(ctx *StageInvariantContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#MiscAssign.
 	VisitMiscAssign(ctx *MiscAssignContext) interface{}

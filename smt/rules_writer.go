@@ -111,8 +111,8 @@ func (g *Generator) writeRule(ru rule) string {
 			s = g.writeRule(x)
 			ands = fmt.Sprintf("%s%s", ands, s)
 		}
-		if r.op == "or"{
-		return g.writeAssert(r.op, ands)
+		if r.op == "or" {
+			return g.writeAssert(r.op, ands)
 		}
 		return g.writeAssert("", ands)
 	default:
@@ -162,10 +162,13 @@ func (g *Generator) writeInitRule(id string, t string, val string) string {
 	return fmt.Sprintf("(assert (= %s %s))", id, val)
 }
 
-func (g *Generator) generateRules(raw []rule) []string {
+func (g *Generator) generateRules() []string {
 	var rules []string
-	for _, v := range raw {
-		rules = append(rules, g.writeRule(v))
+	for _, v := range g.rawRules {
+		g.newRound()
+		for _, ru := range v {
+			rules = append(rules, g.writeRule(ru))
+		}
 	}
 	return rules
 }

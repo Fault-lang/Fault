@@ -334,6 +334,7 @@ func (g *Generator) fetchIdent(id string, r rule) rule {
 			} else {
 				g.variables.storeLastState(id, n+1)
 			}
+			g.addVarToRound(id, int(n+1))
 			id = g.variables.advanceSSA(v.Ident())
 			wid := &wrap{value: id}
 			return wid

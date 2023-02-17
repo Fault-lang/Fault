@@ -154,6 +154,17 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 		case *ir.InstLoad:
 			g.loadsRule(inst)
 		case *ir.InstStore:
+			vname := inst.Dst.Ident()
+			if vname == "@__rounds" {
+				g.rawRules = append(g.rawRules, rules)
+				rules = []rule{}
+				continue
+			}
+
+			if vname == "@__parallelGroup" {
+				continue
+			}
+
 			switch inst.Src.Type().(type) {
 			case *irtypes.ArrayType:
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, inst.Dst.Ident())
@@ -430,6 +441,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	} else {
 		g.variables.storeLastState(base, n+1)
 	}
+	g.addVarToRound(base, int(n+1))
 	newState = g.variables.advanceSSA(base)
 	g.AddNewVarChange(base, newState, prev)
 
@@ -451,6 +463,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 		g.variables.storeLastState(base2, n2+1)
 	}
 
+	g.addVarToRound(base2, int(n2+1))
 	currentState := g.variables.advanceSSA(base2)
 	g.AddNewVarChange(base2, currentState, prev2)
 	if complex {
