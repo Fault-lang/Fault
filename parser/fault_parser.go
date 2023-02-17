@@ -383,7 +383,7 @@ func faultparserParserInit() {
 		441, 450, 458, 465, 467, 473, 480, 482, 488, 495, 497, 504, 515, 522, 532,
 		541, 547, 557, 567, 574, 581, 587, 596, 616, 618, 631, 641, 643, 648, 653,
 		661,
-	}
+    }
 	deserializer := antlr.NewATNDeserializer(nil)
 	staticData.atn = deserializer.Deserialize(staticData.serializedATN)
 	atn := staticData.atn
@@ -3661,7 +3661,7 @@ func (p *FaultParser) Constants() (localctx IConstantsContext) {
 		}
 	}()
 
-	p.SetState(273)
+	p.SetState(279)
 	p.GetErrorHandler().Sync(p)
 
 	switch p.GetTokenStream().LA(1) {
@@ -4689,7 +4689,7 @@ func (p *FaultParser) SfProperties() (localctx ISfPropertiesContext) {
 
 	p.SetState(319)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 23, p.GetParserRuleContext()) {
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 24, p.GetParserRuleContext()) {
 	case 1:
 		localctx = NewPropFuncContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
@@ -4914,7 +4914,7 @@ func (p *FaultParser) ComProperties() (localctx IComPropertiesContext) {
 
 	p.SetState(325)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 24, p.GetParserRuleContext()) {
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 25, p.GetParserRuleContext()) {
 	case 1:
 		localctx = NewStateFuncContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
@@ -5355,7 +5355,7 @@ func (p *FaultParser) StructProperties() (localctx IStructPropertiesContext) {
 
 	p.SetState(346)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 25, p.GetParserRuleContext()) {
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 26, p.GetParserRuleContext()) {
 	case 1:
 		localctx = NewPropIntContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
@@ -5732,7 +5732,7 @@ func (p *FaultParser) Block() (localctx IBlockContext) {
 	p.SetState(354)
 	p.GetErrorHandler().Sync(p)
 
-	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 26, p.GetParserRuleContext()) == 1 {
+	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 27, p.GetParserRuleContext()) == 1 {
 		{
 			p.SetState(353)
 			p.StatementList()
@@ -5899,7 +5899,7 @@ func (p *FaultParser) StatementList() (localctx IStatementListContext) {
 
 		p.SetState(361)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 27, p.GetParserRuleContext())
+		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 28, p.GetParserRuleContext())
 	}
 
 	return localctx
@@ -6094,7 +6094,7 @@ func (p *FaultParser) Statement() (localctx IStatementContext) {
 
 	p.SetState(370)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 28, p.GetParserRuleContext()) {
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 29, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -6296,7 +6296,7 @@ func (p *FaultParser) SimpleStmt() (localctx ISimpleStmtContext) {
 
 	p.SetState(376)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 29, p.GetParserRuleContext()) {
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -6761,7 +6761,7 @@ func (p *FaultParser) stateChange(_p int) (localctx IStateChangeContext) {
 	p.GetParserRuleContext().SetStop(p.GetTokenStream().LT(-1))
 	p.SetState(400)
 	p.GetErrorHandler().Sync(p)
-	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 32, p.GetParserRuleContext())
+	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 33, p.GetParserRuleContext())
 
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
@@ -6771,7 +6771,7 @@ func (p *FaultParser) stateChange(_p int) (localctx IStateChangeContext) {
 			_prevctx = localctx
 			p.SetState(398)
 			p.GetErrorHandler().Sync(p)
-			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 31, p.GetParserRuleContext()) {
+			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 32, p.GetParserRuleContext()) {
 			case 1:
 				localctx = NewBuiltinInfixContext(p, NewStateChangeContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_stateChange)
@@ -6811,7 +6811,7 @@ func (p *FaultParser) stateChange(_p int) (localctx IStateChangeContext) {
 		}
 		p.SetState(402)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 32, p.GetParserRuleContext())
+		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 33, p.GetParserRuleContext())
 	}
 
 	return localctx
@@ -7013,7 +7013,7 @@ func (p *FaultParser) AccessHistory() (localctx IAccessHistoryContext) {
 
 		p.SetState(410)
 		p.GetErrorHandler().Sync(p)
-		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 33, p.GetParserRuleContext())
+		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 34, p.GetParserRuleContext())
 	}
 
 	return localctx
@@ -8076,23 +8076,23 @@ func (p *FaultParser) Assignment() (localctx IAssignmentContext) {
 		}
 	}()
 
-	p.SetState(450)
+	p.SetState(452)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 39, p.GetParserRuleContext()) {
 	case 1:
 		localctx = NewMiscAssignContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(439)
+			p.SetState(441)
 			p.ExpressionList()
 		}
-		p.SetState(441)
+		p.SetState(443)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if (int64((_la-60)) & ^0x3f) == 0 && ((int64(1)<<(_la-60))&2078721) != 0 {
 			{
-				p.SetState(440)
+				p.SetState(442)
 				_la = p.GetTokenStream().LA(1)
 
 				if !((int64((_la-60)) & ^0x3f) == 0 && ((int64(1)<<(_la-60))&2078721) != 0) {
@@ -8105,11 +8105,11 @@ func (p *FaultParser) Assignment() (localctx IAssignmentContext) {
 
 		}
 		{
-			p.SetState(443)
+			p.SetState(445)
 			p.Match(FaultParserASSIGN)
 		}
 		{
-			p.SetState(444)
+			p.SetState(446)
 			p.ExpressionList()
 		}
 
@@ -8117,11 +8117,11 @@ func (p *FaultParser) Assignment() (localctx IAssignmentContext) {
 		localctx = NewFaultAssignContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(446)
+			p.SetState(448)
 			p.ExpressionList()
 		}
 		{
-			p.SetState(447)
+			p.SetState(449)
 			_la = p.GetTokenStream().LA(1)
 
 			if !(_la == FaultParserASSIGN_FLOW1 || _la == FaultParserASSIGN_FLOW2) {
@@ -8132,7 +8132,7 @@ func (p *FaultParser) Assignment() (localctx IAssignmentContext) {
 			}
 		}
 		{
-			p.SetState(448)
+			p.SetState(450)
 			p.ExpressionList()
 		}
 
@@ -8238,7 +8238,7 @@ func (p *FaultParser) EmptyStmt() (localctx IEmptyStmtContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(452)
+		p.SetState(454)
 		p.Match(FaultParserSEMI)
 	}
 
@@ -8439,52 +8439,52 @@ func (p *FaultParser) IfStmt() (localctx IIfStmtContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(454)
+		p.SetState(456)
 		p.Match(FaultParserIF)
 	}
-	p.SetState(458)
+	p.SetState(460)
 	p.GetErrorHandler().Sync(p)
 
 	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 40, p.GetParserRuleContext()) == 1 {
 		{
-			p.SetState(455)
+			p.SetState(457)
 			p.SimpleStmt()
 		}
 		{
-			p.SetState(456)
+			p.SetState(458)
 			p.Match(FaultParserSEMI)
 		}
 
 	}
 	{
-		p.SetState(460)
+		p.SetState(462)
 		p.expression(0)
 	}
 	{
-		p.SetState(461)
+		p.SetState(463)
 		p.Block()
 	}
-	p.SetState(467)
+	p.SetState(469)
 	p.GetErrorHandler().Sync(p)
 
 	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 42, p.GetParserRuleContext()) == 1 {
 		{
-			p.SetState(462)
+			p.SetState(464)
 			p.Match(FaultParserELSE)
 		}
-		p.SetState(465)
+		p.SetState(467)
 		p.GetErrorHandler().Sync(p)
 
 		switch p.GetTokenStream().LA(1) {
 		case FaultParserIF:
 			{
-				p.SetState(463)
+				p.SetState(465)
 				p.IfStmt()
 			}
 
 		case FaultParserLCURLY:
 			{
-				p.SetState(464)
+				p.SetState(466)
 				p.Block()
 			}
 
@@ -8691,52 +8691,52 @@ func (p *FaultParser) IfStmtRun() (localctx IIfStmtRunContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(469)
+		p.SetState(471)
 		p.Match(FaultParserIF)
 	}
-	p.SetState(473)
+	p.SetState(475)
 	p.GetErrorHandler().Sync(p)
 
 	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 43, p.GetParserRuleContext()) == 1 {
 		{
-			p.SetState(470)
+			p.SetState(472)
 			p.SimpleStmt()
 		}
 		{
-			p.SetState(471)
+			p.SetState(473)
 			p.Match(FaultParserSEMI)
 		}
 
 	}
 	{
-		p.SetState(475)
+		p.SetState(477)
 		p.expression(0)
 	}
 	{
-		p.SetState(476)
+		p.SetState(478)
 		p.RunBlock()
 	}
-	p.SetState(482)
+	p.SetState(484)
 	p.GetErrorHandler().Sync(p)
 
 	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 45, p.GetParserRuleContext()) == 1 {
 		{
-			p.SetState(477)
+			p.SetState(479)
 			p.Match(FaultParserELSE)
 		}
-		p.SetState(480)
+		p.SetState(482)
 		p.GetErrorHandler().Sync(p)
 
 		switch p.GetTokenStream().LA(1) {
 		case FaultParserIF:
 			{
-				p.SetState(478)
+				p.SetState(480)
 				p.IfStmtRun()
 			}
 
 		case FaultParserLCURLY:
 			{
-				p.SetState(479)
+				p.SetState(481)
 				p.RunBlock()
 			}
 
@@ -8944,53 +8944,53 @@ func (p *FaultParser) IfStmtState() (localctx IIfStmtStateContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(484)
+		p.SetState(486)
 		p.Match(FaultParserIF)
 	}
-	p.SetState(488)
+	p.SetState(490)
 	p.GetErrorHandler().Sync(p)
 
 	if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 46, p.GetParserRuleContext()) == 1 {
 		{
-			p.SetState(485)
+			p.SetState(487)
 			p.SimpleStmt()
 		}
 		{
-			p.SetState(486)
+			p.SetState(488)
 			p.Match(FaultParserSEMI)
 		}
 
 	}
 	{
-		p.SetState(490)
+		p.SetState(492)
 		p.expression(0)
 	}
 	{
-		p.SetState(491)
+		p.SetState(493)
 		p.StateBlock()
 	}
-	p.SetState(497)
+	p.SetState(499)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == FaultParserELSE {
 		{
-			p.SetState(492)
+			p.SetState(494)
 			p.Match(FaultParserELSE)
 		}
-		p.SetState(495)
+		p.SetState(497)
 		p.GetErrorHandler().Sync(p)
 
 		switch p.GetTokenStream().LA(1) {
 		case FaultParserIF:
 			{
-				p.SetState(493)
+				p.SetState(495)
 				p.IfStmtState()
 			}
 
 		case FaultParserLCURLY:
 			{
-				p.SetState(494)
+				p.SetState(496)
 				p.StateBlock()
 			}
 
@@ -9153,28 +9153,28 @@ func (p *FaultParser) ForStmt() (localctx IForStmtContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(499)
+		p.SetState(501)
 		p.Match(FaultParserFOR)
 	}
 	{
-		p.SetState(500)
+		p.SetState(502)
 		p.Rounds()
 	}
 	{
-		p.SetState(501)
+		p.SetState(503)
 		p.Match(FaultParserRUN)
 	}
 	{
-		p.SetState(502)
+		p.SetState(504)
 		p.RunBlock()
 	}
-	p.SetState(504)
+	p.SetState(506)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == FaultParserSEMI {
 		{
-			p.SetState(503)
+			p.SetState(505)
 			p.Eos()
 		}
 
@@ -9292,7 +9292,7 @@ func (p *FaultParser) Rounds() (localctx IRoundsContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(506)
+		p.SetState(508)
 		p.Integer()
 	}
 
@@ -9415,7 +9415,7 @@ func (p *FaultParser) ParamCall() (localctx IParamCallContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(508)
+		p.SetState(510)
 		_la = p.GetTokenStream().LA(1)
 
 		if !(_la == FaultParserTHIS || _la == FaultParserIDENT) {
@@ -9426,30 +9426,30 @@ func (p *FaultParser) ParamCall() (localctx IParamCallContext) {
 		}
 	}
 	{
-		p.SetState(509)
+		p.SetState(511)
 		p.Match(FaultParserDOT)
 	}
 	{
-		p.SetState(510)
+		p.SetState(512)
 		p.Match(FaultParserIDENT)
 	}
-	p.SetState(515)
+	p.SetState(517)
 	p.GetErrorHandler().Sync(p)
 	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 50, p.GetParserRuleContext())
 
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			{
-				p.SetState(511)
+				p.SetState(513)
 				p.Match(FaultParserDOT)
 			}
 			{
-				p.SetState(512)
+				p.SetState(514)
 				p.Match(FaultParserIDENT)
 			}
 
 		}
-		p.SetState(517)
+		p.SetState(519)
 		p.GetErrorHandler().Sync(p)
 		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 50, p.GetParserRuleContext())
 	}
@@ -9600,25 +9600,25 @@ func (p *FaultParser) StateBlock() (localctx IStateBlockContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(518)
+		p.SetState(520)
 		p.Match(FaultParserLCURLY)
 	}
-	p.SetState(522)
+	p.SetState(524)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&17661981362176) != 0 {
 		{
-			p.SetState(519)
+			p.SetState(521)
 			p.StateStep()
 		}
 
-		p.SetState(524)
+		p.SetState(526)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
-		p.SetState(525)
+		p.SetState(527)
 		p.Match(FaultParserRCURLY)
 	}
 
@@ -9932,7 +9932,7 @@ func (p *FaultParser) StateStep() (localctx IStateStepContext) {
 		}
 	}()
 
-	p.SetState(541)
+	p.SetState(543)
 	p.GetErrorHandler().Sync(p)
 
 	switch p.GetTokenStream().LA(1) {
@@ -9940,29 +9940,29 @@ func (p *FaultParser) StateStep() (localctx IStateStepContext) {
 		localctx = NewStateStepExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(527)
+			p.SetState(529)
 			p.ParamCall()
 		}
-		p.SetState(532)
+		p.SetState(534)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == FaultParserPIPE {
 			{
-				p.SetState(528)
+				p.SetState(530)
 				p.Match(FaultParserPIPE)
 			}
 			{
-				p.SetState(529)
+				p.SetState(531)
 				p.ParamCall()
 			}
 
-			p.SetState(534)
+			p.SetState(536)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
-			p.SetState(535)
+			p.SetState(537)
 			p.Eos()
 		}
 
@@ -9970,11 +9970,11 @@ func (p *FaultParser) StateStep() (localctx IStateStepContext) {
 		localctx = NewStateChainContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(537)
+			p.SetState(539)
 			p.stateChange(0)
 		}
 		{
-			p.SetState(538)
+			p.SetState(540)
 			p.Eos()
 		}
 
@@ -9982,7 +9982,7 @@ func (p *FaultParser) StateStep() (localctx IStateStepContext) {
 		localctx = NewStateExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(540)
+			p.SetState(542)
 			p.IfStmtState()
 		}
 
@@ -10137,27 +10137,27 @@ func (p *FaultParser) RunBlock() (localctx IRunBlockContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(543)
+		p.SetState(545)
 		p.Match(FaultParserLCURLY)
 	}
-	p.SetState(547)
+	p.SetState(549)
 	p.GetErrorHandler().Sync(p)
 	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 54, p.GetParserRuleContext())
 
 	for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 		if _alt == 1 {
 			{
-				p.SetState(544)
+				p.SetState(546)
 				p.RunStep()
 			}
 
 		}
-		p.SetState(549)
+		p.SetState(551)
 		p.GetErrorHandler().Sync(p)
 		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 54, p.GetParserRuleContext())
 	}
 	{
-		p.SetState(550)
+		p.SetState(552)
 		p.Match(FaultParserRCURLY)
 	}
 
@@ -10519,36 +10519,36 @@ func (p *FaultParser) RunStep() (localctx IRunStepContext) {
 		}
 	}()
 
-	p.SetState(574)
+	p.SetState(576)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 57, p.GetParserRuleContext()) {
 	case 1:
 		localctx = NewRunStepExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(552)
+			p.SetState(554)
 			p.ParamCall()
 		}
-		p.SetState(557)
+		p.SetState(559)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == FaultParserPIPE {
 			{
-				p.SetState(553)
+				p.SetState(555)
 				p.Match(FaultParserPIPE)
 			}
 			{
-				p.SetState(554)
+				p.SetState(556)
 				p.ParamCall()
 			}
 
-			p.SetState(559)
+			p.SetState(561)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
-			p.SetState(560)
+			p.SetState(562)
 			p.Eos()
 		}
 
@@ -10556,35 +10556,35 @@ func (p *FaultParser) RunStep() (localctx IRunStepContext) {
 		localctx = NewRunInitContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(562)
+			p.SetState(564)
 			p.Match(FaultParserIDENT)
 		}
 		{
-			p.SetState(563)
+			p.SetState(565)
 			p.Match(FaultParserASSIGN)
 		}
 		{
-			p.SetState(564)
+			p.SetState(566)
 			p.Match(FaultParserNEW)
 		}
-		p.SetState(567)
+		p.SetState(569)
 		p.GetErrorHandler().Sync(p)
 		switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 56, p.GetParserRuleContext()) {
 		case 1:
 			{
-				p.SetState(565)
+				p.SetState(567)
 				p.ParamCall()
 			}
 
 		case 2:
 			{
-				p.SetState(566)
+				p.SetState(568)
 				p.Match(FaultParserIDENT)
 			}
 
 		}
 		{
-			p.SetState(569)
+			p.SetState(571)
 			p.Eos()
 		}
 
@@ -10592,11 +10592,11 @@ func (p *FaultParser) RunStep() (localctx IRunStepContext) {
 		localctx = NewRunExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(570)
+			p.SetState(572)
 			p.SimpleStmt()
 		}
 		{
-			p.SetState(571)
+			p.SetState(573)
 			p.Eos()
 		}
 
@@ -10604,7 +10604,7 @@ func (p *FaultParser) RunStep() (localctx IRunStepContext) {
 		localctx = NewRunExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
-			p.SetState(573)
+			p.SetState(575)
 			p.IfStmtRun()
 		}
 
@@ -10735,7 +10735,7 @@ func (p *FaultParser) FaultType() (localctx IFaultTypeContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(576)
+		p.SetState(578)
 		_la = p.GetTokenStream().LA(1)
 
 		if !((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&17454747090944) != 0) {
@@ -10916,44 +10916,44 @@ func (p *FaultParser) Solvable() (localctx ISolvableContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(578)
+		p.SetState(580)
 		p.FaultType()
 	}
 	{
-		p.SetState(579)
+		p.SetState(581)
 		p.Match(FaultParserLPAREN)
 	}
-	p.SetState(581)
+	p.SetState(583)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&2269392941367312) != 0 || (int64((_la-72)) & ^0x3f) == 0 && ((int64(1)<<(_la-72))&32257) != 0 {
 		{
-			p.SetState(580)
+			p.SetState(582)
 			p.Operand()
 		}
 
 	}
-	p.SetState(587)
+	p.SetState(589)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == FaultParserCOMMA {
 		{
-			p.SetState(583)
+			p.SetState(585)
 			p.Match(FaultParserCOMMA)
 		}
 		{
-			p.SetState(584)
+			p.SetState(586)
 			p.Operand()
 		}
 
-		p.SetState(589)
+		p.SetState(591)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
-		p.SetState(590)
+		p.SetState(592)
 		p.Match(FaultParserRPAREN)
 	}
 
@@ -11371,7 +11371,7 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(596)
+	p.SetState(598)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 60, p.GetParserRuleContext()) {
 	case 1:
@@ -11380,7 +11380,7 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 		_prevctx = localctx
 
 		{
-			p.SetState(593)
+			p.SetState(595)
 			p.Operand()
 		}
 
@@ -11389,7 +11389,7 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 		p.SetParserRuleContext(localctx)
 		_prevctx = localctx
 		{
-			p.SetState(594)
+			p.SetState(596)
 			p.Solvable()
 		}
 
@@ -11398,13 +11398,13 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 		p.SetParserRuleContext(localctx)
 		_prevctx = localctx
 		{
-			p.SetState(595)
+			p.SetState(597)
 			p.Prefix()
 		}
 
 	}
 	p.GetParserRuleContext().SetStop(p.GetTokenStream().LT(-1))
-	p.SetState(618)
+	p.SetState(620)
 	p.GetErrorHandler().Sync(p)
 	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 62, p.GetParserRuleContext())
 
@@ -11414,36 +11414,36 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 				p.TriggerExitRuleEvent()
 			}
 			_prevctx = localctx
-			p.SetState(616)
+			p.SetState(618)
 			p.GetErrorHandler().Sync(p)
 			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 61, p.GetParserRuleContext()) {
 			case 1:
 				localctx = NewLrExprContext(p, NewExpressionContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_expression)
-				p.SetState(598)
+				p.SetState(600)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 6)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
 				}
 				{
-					p.SetState(599)
+					p.SetState(601)
 					p.Match(FaultParserEXPO)
 				}
 				{
-					p.SetState(600)
+					p.SetState(602)
 					p.expression(7)
 				}
 
 			case 2:
 				localctx = NewLrExprContext(p, NewExpressionContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_expression)
-				p.SetState(601)
+				p.SetState(603)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 5)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
 				}
 				{
-					p.SetState(602)
+					p.SetState(604)
 					_la = p.GetTokenStream().LA(1)
 
 					if !((int64((_la-60)) & ^0x3f) == 0 && ((int64(1)<<(_la-60))&2064385) != 0) {
@@ -11454,20 +11454,20 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 					}
 				}
 				{
-					p.SetState(603)
+					p.SetState(605)
 					p.expression(6)
 				}
 
 			case 3:
 				localctx = NewLrExprContext(p, NewExpressionContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_expression)
-				p.SetState(604)
+				p.SetState(606)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 4)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
 				}
 				{
-					p.SetState(605)
+					p.SetState(607)
 					_la = p.GetTokenStream().LA(1)
 
 					if !((int64((_la-71)) & ^0x3f) == 0 && ((int64(1)<<(_la-71))&7) != 0) {
@@ -11478,20 +11478,20 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 					}
 				}
 				{
-					p.SetState(606)
+					p.SetState(608)
 					p.expression(5)
 				}
 
 			case 4:
 				localctx = NewLrExprContext(p, NewExpressionContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_expression)
-				p.SetState(607)
+				p.SetState(609)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 3)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 3)", ""))
 				}
 				{
-					p.SetState(608)
+					p.SetState(610)
 					_la = p.GetTokenStream().LA(1)
 
 					if !((int64((_la-63)) & ^0x3f) == 0 && ((int64(1)<<(_la-63))&63) != 0) {
@@ -11502,48 +11502,48 @@ func (p *FaultParser) expression(_p int) (localctx IExpressionContext) {
 					}
 				}
 				{
-					p.SetState(609)
+					p.SetState(611)
 					p.expression(4)
 				}
 
 			case 5:
 				localctx = NewLrExprContext(p, NewExpressionContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_expression)
-				p.SetState(610)
+				p.SetState(612)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 2)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 2)", ""))
 				}
 				{
-					p.SetState(611)
+					p.SetState(613)
 					p.Match(FaultParserAND)
 				}
 				{
-					p.SetState(612)
+					p.SetState(614)
 					p.expression(3)
 				}
 
 			case 6:
 				localctx = NewLrExprContext(p, NewExpressionContext(p, _parentctx, _parentState))
 				p.PushNewRecursionContext(localctx, _startState, FaultParserRULE_expression)
-				p.SetState(613)
+				p.SetState(615)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 1)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 1)", ""))
 				}
 				{
-					p.SetState(614)
+					p.SetState(616)
 					p.Match(FaultParserOR)
 				}
 				{
-					p.SetState(615)
+					p.SetState(617)
 					p.expression(2)
 				}
 
 			}
 
 		}
-		p.SetState(620)
+		p.SetState(622)
 		p.GetErrorHandler().Sync(p)
 		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 62, p.GetParserRuleContext())
 	}
@@ -11762,63 +11762,63 @@ func (p *FaultParser) Operand() (localctx IOperandContext) {
 		}
 	}()
 
-	p.SetState(631)
+	p.SetState(633)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 63, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(621)
+			p.SetState(623)
 			p.Nil_()
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(622)
+			p.SetState(624)
 			p.Numeric()
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(623)
+			p.SetState(625)
 			p.String_()
 		}
 
 	case 4:
 		p.EnterOuterAlt(localctx, 4)
 		{
-			p.SetState(624)
+			p.SetState(626)
 			p.Bool_()
 		}
 
 	case 5:
 		p.EnterOuterAlt(localctx, 5)
 		{
-			p.SetState(625)
+			p.SetState(627)
 			p.OperandName()
 		}
 
 	case 6:
 		p.EnterOuterAlt(localctx, 6)
 		{
-			p.SetState(626)
+			p.SetState(628)
 			p.AccessHistory()
 		}
 
 	case 7:
 		p.EnterOuterAlt(localctx, 7)
 		{
-			p.SetState(627)
+			p.SetState(629)
 			p.Match(FaultParserLPAREN)
 		}
 		{
-			p.SetState(628)
+			p.SetState(630)
 			p.expression(0)
 		}
 		{
-			p.SetState(629)
+			p.SetState(631)
 			p.Match(FaultParserRPAREN)
 		}
 
@@ -12144,14 +12144,14 @@ func (p *FaultParser) OperandName() (localctx IOperandNameContext) {
 		}
 	}()
 
-	p.SetState(643)
+	p.SetState(645)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 65, p.GetParserRuleContext()) {
 	case 1:
 		localctx = NewOpNameContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(633)
+			p.SetState(635)
 			p.Match(FaultParserIDENT)
 		}
 
@@ -12159,7 +12159,7 @@ func (p *FaultParser) OperandName() (localctx IOperandNameContext) {
 		localctx = NewOpParamContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(634)
+			p.SetState(636)
 			p.ParamCall()
 		}
 
@@ -12167,7 +12167,7 @@ func (p *FaultParser) OperandName() (localctx IOperandNameContext) {
 		localctx = NewOpThisContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(635)
+			p.SetState(637)
 			p.Match(FaultParserTHIS)
 		}
 
@@ -12175,7 +12175,7 @@ func (p *FaultParser) OperandName() (localctx IOperandNameContext) {
 		localctx = NewOpClockContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
-			p.SetState(636)
+			p.SetState(638)
 			p.Match(FaultParserCLOCK)
 		}
 
@@ -12183,23 +12183,23 @@ func (p *FaultParser) OperandName() (localctx IOperandNameContext) {
 		localctx = NewOpInstanceContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
-			p.SetState(637)
+			p.SetState(639)
 			p.Match(FaultParserNEW)
 		}
 		{
-			p.SetState(638)
+			p.SetState(640)
 			p.Match(FaultParserIDENT)
 		}
-		p.SetState(641)
+		p.SetState(643)
 		p.GetErrorHandler().Sync(p)
 
 		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 64, p.GetParserRuleContext()) == 1 {
 			{
-				p.SetState(639)
+				p.SetState(641)
 				p.Match(FaultParserDOT)
 			}
 			{
-				p.SetState(640)
+				p.SetState(642)
 				p.Match(FaultParserIDENT)
 			}
 
@@ -12342,7 +12342,7 @@ func (p *FaultParser) Prefix() (localctx IPrefixContext) {
 		}
 	}()
 
-	p.SetState(648)
+	p.SetState(650)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 66, p.GetParserRuleContext()) {
 	case 1:
@@ -12351,7 +12351,7 @@ func (p *FaultParser) Prefix() (localctx IPrefixContext) {
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(646)
+			p.SetState(648)
 			_la = p.GetTokenStream().LA(1)
 
 			if !((int64((_la-60)) & ^0x3f) == 0 && ((int64(1)<<(_la-60))&47109) != 0) {
@@ -12362,7 +12362,7 @@ func (p *FaultParser) Prefix() (localctx IPrefixContext) {
 			}
 		}
 		{
-			p.SetState(647)
+			p.SetState(649)
 			p.expression(0)
 		}
 
@@ -12510,28 +12510,28 @@ func (p *FaultParser) Numeric() (localctx INumericContext) {
 		}
 	}()
 
-	p.SetState(653)
+	p.SetState(655)
 	p.GetErrorHandler().Sync(p)
 
 	switch p.GetTokenStream().LA(1) {
 	case FaultParserDECIMAL_LIT, FaultParserOCTAL_LIT, FaultParserHEX_LIT:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(650)
+			p.SetState(652)
 			p.Integer()
 		}
 
 	case FaultParserMINUS:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(651)
+			p.SetState(653)
 			p.Negative()
 		}
 
 	case FaultParserFLOAT_LIT:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(652)
+			p.SetState(654)
 			p.Float_()
 		}
 
@@ -12648,7 +12648,7 @@ func (p *FaultParser) Integer() (localctx IIntegerContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(655)
+		p.SetState(657)
 		_la = p.GetTokenStream().LA(1)
 
 		if !((int64((_la-81)) & ^0x3f) == 0 && ((int64(1)<<(_la-81))&7) != 0) {
@@ -12789,28 +12789,28 @@ func (p *FaultParser) Negative() (localctx INegativeContext) {
 		}
 	}()
 
-	p.SetState(661)
+	p.SetState(663)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 68, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
-		{
-			p.SetState(657)
-			p.Match(FaultParserMINUS)
-		}
-		{
-			p.SetState(658)
-			p.Integer()
-		}
-
-	case 2:
-		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(659)
 			p.Match(FaultParserMINUS)
 		}
 		{
 			p.SetState(660)
+			p.Integer()
+		}
+
+	case 2:
+		p.EnterOuterAlt(localctx, 2)
+		{
+			p.SetState(661)
+			p.Match(FaultParserMINUS)
+		}
+		{
+			p.SetState(662)
 			p.Float_()
 		}
 
@@ -12916,7 +12916,7 @@ func (p *FaultParser) Float_() (localctx IFloat_Context) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(663)
+		p.SetState(665)
 		p.Match(FaultParserFLOAT_LIT)
 	}
 
@@ -13025,7 +13025,7 @@ func (p *FaultParser) String_() (localctx IString_Context) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(665)
+		p.SetState(667)
 		_la = p.GetTokenStream().LA(1)
 
 		if !(_la == FaultParserRAW_STRING_LIT || _la == FaultParserINTERPRETED_STRING_LIT) {
@@ -13141,7 +13141,7 @@ func (p *FaultParser) Bool_() (localctx IBool_Context) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(667)
+		p.SetState(669)
 		_la = p.GetTokenStream().LA(1)
 
 		if !(_la == FaultParserTRUE || _la == FaultParserFALSE) {
@@ -13268,11 +13268,11 @@ func (p *FaultParser) FunctionLit() (localctx IFunctionLitContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(669)
+		p.SetState(671)
 		p.Match(FaultParserFUNC)
 	}
 	{
-		p.SetState(670)
+		p.SetState(672)
 		p.Block()
 	}
 
@@ -13392,11 +13392,11 @@ func (p *FaultParser) StateLit() (localctx IStateLitContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(672)
+		p.SetState(674)
 		p.Match(FaultParserFUNC)
 	}
 	{
-		p.SetState(673)
+		p.SetState(675)
 		p.StateBlock()
 	}
 
@@ -13500,7 +13500,7 @@ func (p *FaultParser) Eos() (localctx IEosContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(675)
+		p.SetState(677)
 		p.Match(FaultParserSEMI)
 	}
 
