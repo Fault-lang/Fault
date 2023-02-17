@@ -636,6 +636,22 @@ func (s *SysSpecContext) SysClause() ISysClauseContext {
 	return t.(ISysClauseContext)
 }
 
+func (s *SysSpecContext) StartBlock() IStartBlockContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IStartBlockContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IStartBlockContext)
+}
+
 func (s *SysSpecContext) AllImportDecl() []IImportDeclContext {
 	children := s.GetChildren()
 	len := 0
@@ -910,17 +926,17 @@ func (p *FaultParser) SysSpec() (localctx ISysSpecContext) {
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 	}
-	p.SetState(142)
+	p.SetState(140)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	for _la == FaultParserCOMPONENT {
+	for ok := true; ok; ok = _la == FaultParserCOMPONENT {
 		{
 			p.SetState(139)
 			p.ComponentDecl()
 		}
 
-		p.SetState(144)
+		p.SetState(142)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 	}
