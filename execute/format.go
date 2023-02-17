@@ -13,13 +13,15 @@ import (
 */
 
 func (mc *ModelChecker) Mermaid() {
-	var out bytes.Buffer
-	out.WriteString("flowchart LR\n")
-	for k, l := range mc.Results {
-		out.WriteString(mc.writeObjects(k, l))
-		out.WriteString("\n")
+	if len(mc.Results) > 0 {
+		var out bytes.Buffer
+		out.WriteString("flowchart LR\n")
+		for k, l := range mc.Results {
+			out.WriteString(mc.writeObjects(k, l))
+			out.WriteString("\n")
+		}
+		fmt.Println(out.String())
 	}
-	fmt.Println(out.String())
 }
 
 func (mc *ModelChecker) writeObjects(k string, objects []*smt.VarChange) string {
