@@ -56,7 +56,12 @@ There are A LOT of assumptions there, so the pre-alpha development of Fault prio
 
 But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
 
-### Current Status (12/30/2022)
+### Current Status (2/15/2023)
+Pretty substantial rewrite of assert and assumption rule generation. First ditched assumptions as a unique AST node and added an assume flag to AssertionStatements so they could be treated the same. Then modified the order of rules involving infixs and found several logic bugs from the old approach.
+
+Along the way, made changes to LLVM IR generation that allow rounds to be tracked so that Fault knows when two states of different variables coexist in time. Will eventually use the same approach to get rid of LLVM IR metadata for tracking concurrency, which will eliminate the issues with some of LLVM optimization passes removing metadata.
+
+#### (12/30/2022)
 Taking another stab at the interface question and display of results. Settled on using mermaid to visualize the solutions received from the solver which is much more useful than what I was trying otherwise. This reintroduces the dotviz generation from way back with the prototype so I've also included generated mermaid viz for the state machine and the active stock-flow subsystems.
 
 #### (11/30/2022)
