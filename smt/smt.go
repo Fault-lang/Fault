@@ -158,6 +158,32 @@ func (g *Generator) newConstants(globals []*ir.Global) []string {
 	return r
 }
 
+func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
+	for _, v := range asserts {
+		a := g.parseAssert(v)
+		rule := g.writeAssert("", a)
+		g.asserts = append(g.asserts, rule)
+	}
+}
+
+func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
+	var arule []string
+	for _, v := range asserts {
+		a := g.parseAssert(v)
+		arule = append(arule, a)
+	}
+
+	if len(arule) == 0 {
+		return
+	}
+
+	if len(arule) > 1 {
+		g.asserts = append(g.asserts, g.writeAssert("or", strings.Join(arule, "")))
+	} else {
+		g.asserts = append(g.asserts, g.writeAssert("", arule[0]))
+	}
+}
+
 func (g *Generator) sortFuncs(funcs []*ir.Func) {
 	//Iterate through all the function blocks and store them by
 	// function call name.
@@ -181,24 +207,9 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.rules = append(g.rules, g.generateRules()...)
 
-	if len(g.rawAsserts) > 0 {
-		var asserts []string
-		for _, v := range g.rawAsserts {
-			a := g.parseAssert(v)
-			asserts = append(asserts, a)
-		}
-		if len(asserts) > 1 {
-			g.asserts = append(g.asserts, g.writeAssert("or", strings.Join(asserts, "")))
-		} else {
-			g.asserts = append(g.asserts, g.writeAssert("", asserts[0]))
-		}
-	}
+	g.newAsserts(g.rawAsserts)
+	g.newAssumes(g.rawAssumes)
 
-	for _, v := range g.rawAssumes {
-		a := g.parseAssert(v)
-		assume := g.writeAssert("", a)
-		g.asserts = append(g.asserts, assume)
-	}
 }
 
 func (g *Generator) generateFromCallstack(callstack []string) []rule {
