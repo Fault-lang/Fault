@@ -88,16 +88,26 @@ func (g *Generator) newRound() {
 	g.RoundVars = append(g.RoundVars, [][]string{})
 }
 
+func (g *Generator) initVarRound(base string, num int) {
+	g.RoundVars = [][][]string{{{base, fmt.Sprint(num)}}}
+}
+
+func (g *Generator) currentRound() int {
+	return len(g.RoundVars) - 1
+}
+
 func (g *Generator) addVarToRound(base string, num int) {
-	idx := len(g.RoundVars) - 1
-	if idx == -1 {
-		idx = 0
-		g.RoundVars = [][][]string{{{base, fmt.Sprint(num)}}}
-	} else {
-		g.RoundVars[idx] = append(g.RoundVars[idx], []string{base, fmt.Sprint(num)})
+	if g.currentRound() == -1 {
+		g.initVarRound(base, num)
+		g.addVarToRoundLookup(base, num, 0, len(g.RoundVars[g.currentRound()])-1)
+		return
 	}
 
-	idx2 := len(g.RoundVars[idx]) - 1
+	g.RoundVars[g.currentRound()] = append(g.RoundVars[g.currentRound()], []string{base, fmt.Sprint(num)})
+	g.addVarToRoundLookup(base, num, g.currentRound(), len(g.RoundVars[g.currentRound()])-1)
+}
+
+func (g *Generator) addVarToRoundLookup(base string, num int, idx int, idx2 int) {
 	g.RVarLookup[base] = append(g.RVarLookup[base], []int{num, idx, idx2})
 }
 
@@ -111,12 +121,16 @@ func (g *Generator) lookupVarRounds(base string, num string) [][]int {
 		panic(err)
 	}
 
+	return g.lookupVarSpecificState(base, state)
+}
+
+func (g *Generator) lookupVarSpecificState(base string, state int) [][]int {
 	for _, b := range g.RVarLookup[base] {
 		if b[0] == state {
 			return [][]int{b}
 		}
 	}
-	panic(fmt.Errorf("state %s of variable %s is missing", num, base))
+	panic(fmt.Errorf("state %d of variable %s is missing", state, base))
 }
 
 func (g *Generator) varRounds(base string, num string) map[int][]string {
