@@ -55,7 +55,7 @@ func TestTagRules(t *testing.T) {
 	}
 }
 
-func TestParseCond(t *testing.T) {
+func TestcreateCondRule(t *testing.T) {
 	g := NewGenerator()
 	cond := &infix{
 		x: &wrap{
@@ -68,10 +68,10 @@ func TestParseCond(t *testing.T) {
 		},
 		op: ">",
 	}
-	inst := g.parseCond(cond)
+	inst := g.createCondRule(cond)
 
 	if inst.(*infix).y.(*wrap).value != "y" {
-		t.Fatalf("parseCond returns the wrong value. got=%s", inst.(*infix).String())
+		t.Fatalf("createCondRule returns the wrong value. got=%s", inst.(*infix).String())
 	}
 
 	cond2 := &infix{
@@ -85,10 +85,10 @@ func TestParseCond(t *testing.T) {
 		},
 		op: "true",
 	}
-	inst2 := g.parseCond(cond2)
+	inst2 := g.createCondRule(cond2)
 
 	if inst2.(*infix).y.(*wrap).value != "True" {
-		t.Fatalf("parseCond returns the wrong value. got=%s", inst2.(*infix).String())
+		t.Fatalf("createCondRule returns the wrong value. got=%s", inst2.(*infix).String())
 	}
 }
 

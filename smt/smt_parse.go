@@ -176,34 +176,34 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			}
 		case *ir.InstFAdd:
 			var r rule
-			r = g.parseInfix(inst.Ident(),
+			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "+")
 			g.tempRule(inst, r)
 		case *ir.InstFSub:
 			var r rule
-			r = g.parseInfix(inst.Ident(),
+			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "-")
 			g.tempRule(inst, r)
 		case *ir.InstFMul:
 			var r rule
-			r = g.parseInfix(inst.Ident(),
+			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "*")
 			g.tempRule(inst, r)
 		case *ir.InstFDiv:
 			var r rule
-			r = g.parseInfix(inst.Ident(),
+			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "/")
 			g.tempRule(inst, r)
 		case *ir.InstFRem:
 			//Cannot be implemented because SMT solvers do poorly with modulo
 		case *ir.InstFCmp:
 			var r rule
-			op, y := g.parseCompare(inst.Pred.String())
+			op, y := g.createCompareRule(inst.Pred.String())
 			if op == "true" || op == "false" {
-				r = g.parseInfix(inst.Ident(),
+				r = g.createInfixRule(inst.Ident(),
 					inst.X.Ident(), y.(*wrap).value, op)
 			} else {
-				r = g.parseInfix(inst.Ident(),
+				r = g.createInfixRule(inst.Ident(),
 					inst.X.Ident(), inst.Y.Ident(), op)
 			}
 
@@ -219,12 +219,12 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			rules = append(rules, r)
 		case *ir.InstICmp:
 			var r rule
-			op, y := g.parseCompare(inst.Pred.String())
+			op, y := g.createCompareRule(inst.Pred.String())
 			if op == "true" || op == "false" {
-				r = g.parseInfix(inst.Ident(),
+				r = g.createInfixRule(inst.Ident(),
 					inst.X.Ident(), y.(*wrap).value, op)
 			} else {
-				r = g.parseInfix(inst.Ident(),
+				r = g.createInfixRule(inst.Ident(),
 					inst.X.Ident(), inst.Y.Ident(), op)
 			}
 
@@ -443,7 +443,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	if complex {
 		g.declareVar(newState, "Bool")
 	}
-	r1 := g.parseRule(newState, "true", "Bool", "=")
+	r1 := g.createRule(newState, "true", "Bool", "=")
 
 	if g.currentFunction[len(g.currentFunction)-7:] != "__state" {
 		panic("calling advance from outside the state chart")
@@ -464,7 +464,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 	if complex {
 		g.declareVar(currentState, "Bool")
 	}
-	r2 := g.parseRule(currentState, "false", "Bool", "=")
+	r2 := g.createRule(currentState, "false", "Bool", "=")
 	return []rule{r1, r2}
 }
 
@@ -482,27 +482,27 @@ func (g *Generator) isBranchClosed(t []rule, f []rule) bool {
 	return false
 }
 
-func (g *Generator) parseRule(id string, val string, ty string, op string) rule {
+func (g *Generator) createRule(id string, val string, ty string, op string) rule {
 	wid := &wrap{value: id}
 	wval := &wrap{value: val}
 	return &infix{x: wid, ty: ty, y: wval, op: op}
 }
 
-func (g *Generator) parseInfix(id string, x string, y string, op string) rule {
+func (g *Generator) createInfixRule(id string, x string, y string, op string) rule {
 	x = g.convertInfixVar(x)
 	y = g.convertInfixVar(y)
 
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-	g.variables.ref[refname] = g.parseRule(x, y, "", op)
+	g.variables.ref[refname] = g.createRule(x, y, "", op)
 	return g.variables.ref[refname]
 }
 
-func (g *Generator) parseCond(cond rule) rule {
+func (g *Generator) createCondRule(cond rule) rule {
 	switch inst := cond.(type) {
 	case *wrap:
 		return inst
 	case *infix:
-		op, y := g.parseCompare(inst.op)
+		op, y := g.createCompareRule(inst.op)
 		inst.op = op
 		if op == "true" || op == "false" {
 			inst.y = y
@@ -513,15 +513,15 @@ func (g *Generator) parseCond(cond rule) rule {
 	}
 }
 
-func (g *Generator) parseMultiCond(id string, x rule, y rule, op string) rule {
+func (g *Generator) createMultiCondRule(id string, x rule, y rule, op string) rule {
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 	g.variables.ref[refname] = &infix{x: x, ty: "Bool", y: y, op: op}
 	return g.variables.ref[refname]
 }
 
-func (g *Generator) parseCompare(op string) (string, rule) {
+func (g *Generator) createCompareRule(op string) (string, rule) {
 	var y *wrap
-	op = g.parseCompareOp(op)
+	op = g.compareRuleOp(op)
 	switch op {
 	case "false":
 		y = &wrap{value: "False"}
@@ -531,7 +531,7 @@ func (g *Generator) parseCompare(op string) (string, rule) {
 	return op, y
 }
 
-func (g *Generator) parseCompareOp(op string) string {
+func (g *Generator) compareRuleOp(op string) string {
 	switch op {
 	case "false":
 		return "false"

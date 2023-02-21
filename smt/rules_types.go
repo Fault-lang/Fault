@@ -241,7 +241,7 @@ type stateGroup struct {
 	tag   *branch
 }
 
-func NewStateGroup () *stateGroup {
+func NewStateGroup() *stateGroup {
 	sg := &stateGroup{}
 	sg.bases = util.NewStrSet()
 	return sg
@@ -363,7 +363,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				v = fmt.Sprintf("%s_%d", v, n)
 			}
 			g.AddNewVarChange(base, id, prev)
-			rules = append(rules, g.parseRule(id, v, ty, ""))
+			rules = append(rules, g.createRule(id, v, ty, ""))
 		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
 			case *infix:
@@ -417,7 +417,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		id := g.variables.advanceSSA(base)
 		g.addVarToRound(base, int(g.variables.ssa[base]))
 		g.AddNewVarChange(base, id, prev)
-		rules = append(rules, g.parseRule(id, inst.Src.Ident(), ty, ""))
+		rules = append(rules, g.createRule(id, inst.Src.Ident(), ty, ""))
 	}
 	return rules
 }
@@ -430,7 +430,7 @@ func (g *Generator) xorRule(inst *ir.InstXor) rule {
 		x = g.variables.convertIdent(g.currentFunction, x)
 		xRule = &wrap{value: x}
 	}
-	return g.parseMultiCond(id, xRule, &wrap{}, "not")
+	return g.createMultiCondRule(id, xRule, &wrap{}, "not")
 }
 
 func (g *Generator) andRule(inst *ir.InstAnd) rule {
@@ -449,7 +449,7 @@ func (g *Generator) andRule(inst *ir.InstAnd) rule {
 		y = g.variables.convertIdent(g.currentFunction, y)
 		yRule = &wrap{value: y}
 	}
-	return g.parseMultiCond(id, xRule, yRule, "and")
+	return g.createMultiCondRule(id, xRule, yRule, "and")
 }
 
 func (g *Generator) orRule(inst *ir.InstOr) rule {
@@ -467,7 +467,7 @@ func (g *Generator) orRule(inst *ir.InstOr) rule {
 		y = g.variables.convertIdent(g.currentFunction, y)
 		yRule = &wrap{value: y}
 	}
-	return g.parseMultiCond(id, xRule, yRule, "or")
+	return g.createMultiCondRule(id, xRule, yRule, "or")
 }
 
 func (g *Generator) stateRules(key string, sc *stateChange) rule {
