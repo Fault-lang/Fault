@@ -1,8 +1,7 @@
 package smt
 
 import (
-	"bytes"
-	"fault/util"
+	"fault/smt/rules"
 	"fmt"
 	"strings"
 
@@ -10,306 +9,6 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/value"
 )
-
-type rule interface {
-	ruleNode()
-	String() string
-}
-
-type ands struct {
-	rule
-	x   []rule
-	tag *branch
-}
-
-func (a *ands) ruleNode() {}
-func (a *ands) String() string {
-	var out bytes.Buffer
-	for _, r := range a.x {
-		out.WriteString(r.String())
-	}
-	return out.String()
-}
-func (a *ands) Tag(k1 string, k2 string) {
-	a.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type states struct {
-	rule
-	terminal bool
-	base     string
-	states   map[int][]string //
-	constant bool
-	tag      *branch
-}
-
-func (s *states) ruleNode() {}
-func (s *states) String() string {
-	return s.base
-}
-func (s *states) Tag(k1 string, k2 string) {
-	s.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type assrt struct {
-	rule
-	variable       *wrap
-	conjunction    string
-	assertion      rule
-	tag            *branch
-	temporalFilter string
-	temporalN      int
-}
-
-func (a *assrt) ruleNode() {}
-func (a *assrt) String() string {
-	return a.variable.String() + a.conjunction + a.assertion.String()
-}
-func (a *assrt) Tag(k1 string, k2 string) {
-	a.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type choices struct {
-	rule
-	x   []*ands
-	op  string
-	tag *branch
-}
-
-func (c *choices) ruleNode() {}
-func (c *choices) String() string {
-	var out bytes.Buffer
-	for i, ru := range c.x {
-		out.WriteString(fmt.Sprintf("branch-%d: ", i))
-		for _, r := range ru.x {
-			out.WriteString(r.String())
-		}
-	}
-	return out.String()
-}
-func (c *choices) Tag(k1 string, k2 string) {
-	c.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type infix struct {
-	rule
-	x   rule
-	y   rule
-	ty  string
-	op  string
-	tag *branch
-}
-
-func (i *infix) ruleNode() {}
-func (i *infix) String() string {
-	return fmt.Sprintf("%s %s %s", i.x.String(), i.op, i.y.String())
-}
-func (i *infix) Tag(k1 string, k2 string) {
-	i.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type ite struct {
-	rule
-	cond rule
-	t    []rule
-	f    []rule
-	tag  *branch
-}
-
-func (it *ite) ruleNode() {}
-func (it *ite) String() string {
-	return fmt.Sprintf("if %s then %s else %s", it.cond.String(), it.t, it.f)
-}
-func (ite *ite) Tag(k1 string, k2 string) {
-	ite.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type invariant struct {
-	rule
-	left     rule
-	operator string
-	right    rule
-	tag      *branch
-}
-
-func (i *invariant) ruleNode() {}
-func (i *invariant) String() string {
-	if i.left == nil { //Prefixes like !a
-		return fmt.Sprint(i.operator, i.right.String())
-	}
-	return fmt.Sprint(i.left.String(), i.operator, i.right.String())
-}
-func (i *invariant) Tag(k1 string, k2 string) {
-	i.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type phi struct {
-	baseVar  string
-	nums     []int16
-	endState string
-	tag      *branch
-}
-
-func (p *phi) ruleNode() {}
-func (p *phi) String() string {
-	var out bytes.Buffer
-	for _, n := range p.nums {
-		r := fmt.Sprintf("%s = %s_%d || ", p.endState, p.baseVar, n)
-		out.WriteString(r)
-	}
-	return out.String()
-}
-func (p *phi) Tag(k1 string, k2 string) {
-	p.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type stateChange struct {
-	rule
-	ands []value.Value
-	ors  []value.Value
-	tag  *branch
-}
-
-func (sc *stateChange) ruleNode() {}
-func (sc *stateChange) String() string {
-	var out bytes.Buffer
-	for _, n := range sc.ands {
-		r := fmt.Sprintf("and %s ", n)
-		out.WriteString(r)
-	}
-	for _, n := range sc.ors {
-		r := fmt.Sprintf("or %s ", n)
-		out.WriteString(r)
-	}
-	return out.String()
-}
-func (sc *stateChange) Tag(k1 string, k2 string) {
-	sc.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type wrap struct { //wrapper for constant values to be used in infix as rules
-	rule
-	value    string
-	state    string //invariant only for one state
-	all      bool   // invariant for all states
-	constant bool   // this is a constant
-	tag      *branch
-}
-
-func (w *wrap) ruleNode() {}
-func (w *wrap) String() string {
-	return w.value
-}
-func (w *wrap) Tag(k1 string, k2 string) {
-	w.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type stateGroup struct {
-	rule
-	bases *util.StringSet
-	wraps []*states
-	tag   *branch
-}
-
-func NewStateGroup() *stateGroup {
-	sg := &stateGroup{}
-	sg.bases = util.NewStrSet()
-	return sg
-}
-func (sg *stateGroup) ruleNode() {}
-func (sg *stateGroup) AddWrap(w *states) {
-	sg.wraps = append(sg.wraps, w)
-}
-func (sg *stateGroup) String() string {
-	var out bytes.Buffer
-	for _, v := range sg.wraps {
-		out.WriteString(v.base)
-	}
-	return out.String()
-}
-func (sg *stateGroup) Tag(k1 string, k2 string) {
-	sg.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type wrapGroup struct {
-	rule
-	wraps []*wrap
-	tag   *branch
-}
-
-func (wg *wrapGroup) ruleNode() {}
-func (wg *wrapGroup) String() string {
-	var out bytes.Buffer
-	for _, v := range wg.wraps {
-		out.WriteString(v.value)
-	}
-	return out.String()
-}
-func (wg *wrapGroup) Tag(k1 string, k2 string) {
-	wg.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type vwrap struct {
-	rule
-	value value.Value
-	tag   *branch
-}
-
-func (vw *vwrap) ruleNode() {}
-func (vw *vwrap) String() string {
-	return vw.value.String()
-}
-func (vw *vwrap) Tag(k1 string, k2 string) {
-	vw.tag = &branch{
-		branch: k1,
-		block:  k2,
-	}
-}
-
-type branch struct {
-	branch string
-	block  string
-}
-
-func (b *branch) String() string {
-	return b.branch + "." + b.block
-}
 
 ////////////////////////////////////
 // General rule store and load logic
@@ -340,8 +39,8 @@ func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	g.variables.loads[refname] = inst.Src
 }
 
-func (g *Generator) storeRule(inst *ir.InstStore) []rule {
-	var rules []rule
+func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
+	var ru []rules.Rule
 	base := g.variables.formatIdent(inst.Dst.Ident())
 	if g.variables.isTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
@@ -363,12 +62,12 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				v = fmt.Sprintf("%s_%d", v, n)
 			}
 			g.AddNewVarChange(base, id, prev)
-			rules = append(rules, g.createRule(id, v, ty, ""))
+			ru = append(ru, g.createRule(id, v, ty, ""))
 		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
-			case *infix:
-				r.x = g.tempToIdent(r.x)
-				r.y = g.tempToIdent(r.y)
+			case *rules.Infix:
+				r.X = g.tempToIdent(r.X)
+				r.Y = g.tempToIdent(r.Y)
 				n := g.variables.ssa[base]
 				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
@@ -379,13 +78,13 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				id := g.variables.advanceSSA(base)
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
-				wid := &wrap{value: id}
-				if g.variables.isBolean(r.y.String()) {
-					rules = append(rules, &infix{x: wid, ty: "Bool", y: r, op: "="})
-				} else if g.isASolvable(r.x.String()) {
-					rules = append(rules, &infix{x: wid, ty: "Real", y: r, op: "="})
+				wid := &rules.Wrap{Value: id}
+				if g.variables.isBolean(r.Y.String()) {
+					ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
+				} else if g.isASolvable(r.X.String()) {
+					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
 				} else {
-					rules = append(rules, &infix{x: wid, ty: "Real", y: r})
+					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r})
 				}
 			default:
 				n := g.variables.ssa[base]
@@ -399,8 +98,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 				id := g.variables.advanceSSA(base)
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
-				wid := &wrap{value: id}
-				rules = append(rules, &infix{x: wid, ty: ty, y: r})
+				wid := &rules.Wrap{Value: id}
+				ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
 			}
 		} else {
 			panic(fmt.Sprintf("smt generation error, value for %s not found", base))
@@ -417,23 +116,23 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rule {
 		id := g.variables.advanceSSA(base)
 		g.addVarToRound(base, int(g.variables.ssa[base]))
 		g.AddNewVarChange(base, id, prev)
-		rules = append(rules, g.createRule(id, inst.Src.Ident(), ty, ""))
+		ru = append(ru, g.createRule(id, inst.Src.Ident(), ty, ""))
 	}
-	return rules
+	return ru
 }
 
-func (g *Generator) xorRule(inst *ir.InstXor) rule {
+func (g *Generator) xorRule(inst *ir.InstXor) rules.Rule {
 	id := inst.Ident()
 	x := inst.X.Ident()
 	xRule := g.variables.lookupCondPart(g.currentFunction, x)
 	if xRule == nil {
 		x = g.variables.convertIdent(g.currentFunction, x)
-		xRule = &wrap{value: x}
+		xRule = &rules.Wrap{Value: x}
 	}
-	return g.createMultiCondRule(id, xRule, &wrap{}, "not")
+	return g.createMultiCondRule(id, xRule, &rules.Wrap{}, "not")
 }
 
-func (g *Generator) andRule(inst *ir.InstAnd) rule {
+func (g *Generator) andRule(inst *ir.InstAnd) rules.Rule {
 	id := inst.Ident()
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
@@ -441,71 +140,71 @@ func (g *Generator) andRule(inst *ir.InstAnd) rule {
 	xRule := g.variables.lookupCondPart(g.currentFunction, x)
 	if xRule == nil {
 		x = g.variables.convertIdent(g.currentFunction, x)
-		xRule = &wrap{value: x}
+		xRule = &rules.Wrap{Value: x}
 	}
 
 	yRule := g.variables.lookupCondPart(g.currentFunction, y)
 	if yRule == nil {
 		y = g.variables.convertIdent(g.currentFunction, y)
-		yRule = &wrap{value: y}
+		yRule = &rules.Wrap{Value: y}
 	}
 	return g.createMultiCondRule(id, xRule, yRule, "and")
 }
 
-func (g *Generator) orRule(inst *ir.InstOr) rule {
+func (g *Generator) orRule(inst *ir.InstOr) rules.Rule {
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
 	id := inst.Ident()
 	xRule := g.variables.lookupCondPart(g.currentFunction, x)
 	if xRule == nil {
 		x = g.variables.convertIdent(g.currentFunction, x)
-		xRule = &wrap{value: x}
+		xRule = &rules.Wrap{Value: x}
 	}
 
 	yRule := g.variables.lookupCondPart(g.currentFunction, y)
 	if yRule == nil {
 		y = g.variables.convertIdent(g.currentFunction, y)
-		yRule = &wrap{value: y}
+		yRule = &rules.Wrap{Value: y}
 	}
 	return g.createMultiCondRule(id, xRule, yRule, "or")
 }
 
-func (g *Generator) stateRules(key string, sc *stateChange) rule {
-	if len(sc.ors) == 0 {
-		and := g.andStateRule(key, sc.ands)
-		a := &ands{
-			x: and,
+func (g *Generator) stateRules(key string, sc *rules.StateChange) rules.Rule {
+	if len(sc.Ors) == 0 {
+		and := g.andStateRule(key, sc.Ands)
+		a := &rules.Ands{
+			X: and,
 		}
 
-		c := &choices{
-			x:  []*ands{a},
-			op: "and",
+		c := &rules.Choices{
+			X:  []*rules.Ands{a},
+			Op: "and",
 		}
 		return c
 	}
 
-	and := g.andStateRule(key, sc.ands)
-	ors := g.orStateRule(key, sc.ors)
+	and := g.andStateRule(key, sc.Ands)
+	ors := g.orStateRule(key, sc.Ors)
 
-	if len(sc.ands) != 0 {
+	if len(sc.Ands) != 0 {
 		ors["joined_ands"] = and
 	}
 
 	x := g.syncStateRules(ors)
 
-	r := &choices{
-		x:  x,
-		op: "or",
+	r := &rules.Choices{
+		X:  x,
+		Op: "or",
 	}
 
 	return r
 
 }
 
-func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[string][]rule {
+func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[string][]rules.Rule {
 	g.inPhiState.In()
 
-	and := make(map[string][]rule)
+	and := make(map[string][]rules.Rule)
 	for _, b := range choiceV {
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, b.Ident())
 		and[refname] = g.parseBuiltIn(b.(*ir.InstCall), true)
@@ -516,10 +215,10 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[strin
 	return and
 }
 
-func (g *Generator) andStateRule(andK string, andV []value.Value) []rule {
+func (g *Generator) andStateRule(andK string, andV []value.Value) []rules.Rule {
 	g.inPhiState.In()
 
-	var ands []rule
+	var ands []rules.Rule
 	for _, b := range andV {
 		a := g.parseBuiltIn(b.(*ir.InstCall), true)
 		ands = append(ands, a...)
@@ -530,15 +229,15 @@ func (g *Generator) andStateRule(andK string, andV []value.Value) []rule {
 	return ands
 }
 
-func (g *Generator) syncStateRules(branches map[string][]rule) []*ands {
+func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.Ands {
 	g.inPhiState.In()
 	g.newFork()
 
-	var e []rule
+	var e []rules.Rule
 	var keys []string
-	ends := make(map[string][]rule)
+	ends := make(map[string][]rules.Rule)
 	phis := make(map[string]int16)
-	var x []*ands
+	var x []*rules.Ands
 
 	for k, v := range branches {
 		keys = append(keys, k)
@@ -550,8 +249,8 @@ func (g *Generator) syncStateRules(branches map[string][]rule) []*ands {
 	syncs := g.capCondSyncRules(keys)
 	for k, v := range syncs {
 		e2 := append(ends[k], v...)
-		a := &ands{
-			x: e2,
+		a := &rules.Ands{
+			X: e2,
 		}
 		x = append(x, a)
 	}
@@ -559,7 +258,7 @@ func (g *Generator) syncStateRules(branches map[string][]rule) []*ands {
 	return x
 }
 
-func (g *Generator) tempRule(inst value.Value, r rule) {
+func (g *Generator) tempRule(inst value.Value, r rules.Rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()
 	if g.variables.isTemp(id) {

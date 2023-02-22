@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fault/smt/rules"
 	"fmt"
 	"strings"
 )
@@ -29,44 +30,44 @@ func (g *Generator) writeAssert(op string, stmt string) string {
 	return fmt.Sprintf("(assert (%s %s))", op, stmt)
 }
 
-func (g *Generator) writeBranchRule(r *infix) string {
-	y := g.unpackRule(r.y)
-	x := g.unpackRule(r.x)
+func (g *Generator) writeBranchRule(r *rules.Infix) string {
+	y := g.unpackRule(r.Y)
+	x := g.unpackRule(r.X)
 
-	return fmt.Sprintf("(%s %s %s)", r.op, x, y)
+	return fmt.Sprintf("(%s %s %s)", r.Op, x, y)
 }
 
-func (g *Generator) writeRule(ru rule) string {
+func (g *Generator) writeRule(ru rules.Rule) string {
 	switch r := ru.(type) {
-	case *infix:
-		y := g.unpackRule(r.y)
-		x := g.unpackRule(r.x)
+	case *rules.Infix:
+		y := g.unpackRule(r.Y)
+		x := g.unpackRule(r.X)
 
 		if y == "0x3DA3CA8CB153A753" { //An uncertain or unknown value
-			g.declareVar(x, r.ty)
+			g.declareVar(x, r.Ty)
 			return ""
 		}
 
-		if r.op == "or" {
+		if r.Op == "or" {
 			stmt := fmt.Sprintf("%s%s", x, y)
 			return g.writeAssert("or", stmt)
 		}
 
-		if r.op != "" && r.op != "=" {
-			return g.writeAssertlessRule(r.op, x, y)
+		if r.Op != "" && r.Op != "=" {
+			return g.writeAssertlessRule(r.Op, x, y)
 		}
 
-		return g.writeInitRule(x, r.ty, y)
-	case *ite:
-		cond := g.writeCond(r.cond.(*infix))
+		return g.writeInitRule(x, r.Ty, y)
+	case *rules.Ite:
+		cond := g.writeCond(r.Cond.(*rules.Infix))
 		var tRule, fRule string
 		var tEnds, fEnds []string
-		for _, t := range r.t {
-			tEnds = append(tEnds, g.writeBranchRule(t.(*infix)))
+		for _, t := range r.T {
+			tEnds = append(tEnds, g.writeBranchRule(t.(*rules.Infix)))
 		}
 
-		for _, f := range r.f {
-			fEnds = append(fEnds, g.writeBranchRule(f.(*infix)))
+		for _, f := range r.F {
+			fEnds = append(fEnds, g.writeBranchRule(f.(*rules.Infix)))
 		}
 
 		if len(tEnds) > 1 {
@@ -85,18 +86,18 @@ func (g *Generator) writeRule(ru rule) string {
 
 		br := g.writeBranch("ite", cond, tRule, fRule)
 		return g.writeAssert("", br)
-	case *wrap:
-		return r.value
-	case *phi:
-		g.declareVar(r.endState, g.variables.lookupType(r.baseVar, nil))
-		ends := g.formatEnds(r.baseVar, r.nums, r.endState)
+	case *rules.Wrap:
+		return r.Value
+	case *rules.Phi:
+		g.declareVar(r.EndState, g.variables.lookupType(r.BaseVar, nil))
+		ends := g.formatEnds(r.BaseVar, r.Nums, r.EndState)
 		return g.writeAssert("or", ends)
-	case *ands:
+	case *rules.Ands:
 		var ands string
-		for _, x := range r.x {
+		for _, x := range r.X {
 			var s string
 			switch x := x.(type) {
-			case *infix:
+			case *rules.Infix:
 				s = g.writeBranchRule(x)
 			default:
 				s = g.writeRule(x)
@@ -104,15 +105,15 @@ func (g *Generator) writeRule(ru rule) string {
 			ands = fmt.Sprintf("%s%s", ands, s)
 		}
 		return g.writeAssertlessRule("and", ands, "")
-	case *choices:
+	case *rules.Choices:
 		var ands string
 		var s string
-		for _, x := range r.x {
+		for _, x := range r.X {
 			s = g.writeRule(x)
 			ands = fmt.Sprintf("%s%s", ands, s)
 		}
-		if r.op == "or" {
-			return g.writeAssert(r.op, ands)
+		if r.Op == "or" {
+			return g.writeAssert(r.Op, ands)
 		}
 		return g.writeAssert("", ands)
 	default:
@@ -120,35 +121,35 @@ func (g *Generator) writeRule(ru rule) string {
 	}
 }
 
-func (g *Generator) writeCond(r *infix) string {
-	y := g.unpackCondRule(r.y)
-	x := g.unpackCondRule(r.x)
+func (g *Generator) writeCond(r *rules.Infix) string {
+	y := g.unpackCondRule(r.Y)
+	x := g.unpackCondRule(r.X)
 
-	return g.writeAssertlessRule(r.op, x, y)
+	return g.writeAssertlessRule(r.Op, x, y)
 }
 
-func (g *Generator) unpackCondRule(x rule) string {
+func (g *Generator) unpackCondRule(x rules.Rule) string {
 	switch r := x.(type) {
-	case *wrap:
-		return r.value
-	case *infix:
-		x := g.unpackCondRule(r.x)
-		y := g.unpackCondRule(r.y)
-		return g.writeAssertlessRule(r.op, x, y)
+	case *rules.Wrap:
+		return r.Value
+	case *rules.Infix:
+		x := g.unpackCondRule(r.X)
+		y := g.unpackCondRule(r.Y)
+		return g.writeAssertlessRule(r.Op, x, y)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))
 	}
 }
 
-func (g *Generator) unpackRule(x rule) string {
+func (g *Generator) unpackRule(x rules.Rule) string {
 	switch r := x.(type) {
-	case *wrap:
-		return r.value
-	case *infix:
+	case *rules.Wrap:
+		return r.Value
+	case *rules.Infix:
 		return g.writeRule(r)
-	case *ands:
+	case *rules.Ands:
 		return g.writeRule(r)
-	case *choices:
+	case *rules.Choices:
 		return g.writeRule(r)
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", r))

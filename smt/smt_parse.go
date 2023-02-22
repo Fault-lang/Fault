@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fault/smt/rules"
 	"fault/util"
 	"fmt"
 	"strings"
@@ -10,8 +11,8 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
-	var r []rule
+func (g *Generator) parseRunBlock(fns []*ir.Func) []rules.Rule {
+	var r []rules.Rule
 	for _, f := range fns {
 		fname := f.Ident()
 
@@ -24,11 +25,11 @@ func (g *Generator) parseRunBlock(fns []*ir.Func) []rule {
 	return r
 }
 
-func (g *Generator) parseFunction(f *ir.Func) []rule {
-	var rules []rule
+func (g *Generator) parseFunction(f *ir.Func) []rules.Rule {
+	var ru []rules.Rule
 
 	if g.isBuiltIn(f.Ident()) {
-		return rules
+		return ru
 	}
 
 	oldfunc := g.currentFunction
@@ -37,50 +38,50 @@ func (g *Generator) parseFunction(f *ir.Func) []rule {
 	for _, block := range f.Blocks {
 		if !g.returnVoid.Check() {
 			r := g.parseBlock(block)
-			rules = append(rules, r...)
+			ru = append(ru, r...)
 		}
 	}
 
 	g.returnVoid.Out()
 
 	g.currentFunction = oldfunc
-	return rules
+	return ru
 }
 
-func (g *Generator) parseBlock(block *ir.Block) []rule {
-	var rules []rule
+func (g *Generator) parseBlock(block *ir.Block) []rules.Rule {
+	var ru []rules.Rule
 	oldBlock := g.currentBlock
 	g.currentBlock = block.Ident()
 
 	// For each non-branching instruction of the basic block.
 	r := g.parseInstruct(block)
-	rules = append(rules, r...)
+	ru = append(ru, r...)
 
 	for k, v := range g.storedChoice {
 		r0 := g.stateRules(k, v)
-		rules = append(rules, r0)
+		ru = append(ru, r0)
 	}
 
 	//Make sure call stack is clear
 	r1 := g.executeCallstack()
-	rules = append(rules, r1...)
+	ru = append(ru, r1...)
 
-	var r2 []rule
+	var r2 []rules.Rule
 	switch term := block.Term.(type) {
 	case *ir.TermCondBr:
 		r2 = g.parseTermCon(term)
 	case *ir.TermRet:
 		g.returnVoid.In()
 	}
-	rules = append(rules, r2...)
+	ru = append(ru, r2...)
 
 	g.currentBlock = oldBlock
-	return rules
+	return ru
 }
 
-func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
-	var rules []rule
-	var cond rule
+func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
+	var ru []rules.Rule
+	var cond rules.Rule
 	var phis map[string]int16
 
 	g.inPhiState.In()
@@ -92,7 +93,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		}
 	} else if g.variables.isBolean(id) ||
 		g.variables.isNumeric(id) {
-		cond = &wrap{value: id}
+		cond = &rules.Wrap{Value: id}
 	}
 	g.inPhiState.Out()
 
@@ -101,9 +102,9 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 	t, f, a := g.parseTerms(term.Succs())
 
 	if !g.isBranchClosed(t, f) {
-		var tEnds, fEnds []rule
-		rules = append(rules, t...)
-		rules = append(rules, f...)
+		var tEnds, fEnds []rules.Rule
+		ru = append(ru, t...)
+		ru = append(ru, f...)
 
 		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
 		g.newFork()
@@ -118,7 +119,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 		tEnds = append(tEnds, syncs["true"]...)
 		fEnds = append(fEnds, syncs["false"]...)
 
-		rules = append(rules, &ite{cond: cond, t: tEnds, f: fEnds})
+		ru = append(ru, &rules.Ite{Cond: cond, T: tEnds, F: fEnds})
 		g.inPhiState.Out()
 	}
 
@@ -127,21 +128,21 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rule {
 
 	if a != nil {
 		after := g.parseAfterBlock(a)
-		rules = append(rules, after...)
+		ru = append(ru, after...)
 	}
 
-	return rules
+	return ru
 }
 
-func (g *Generator) parseAfterBlock(term *ir.Block) []rule {
+func (g *Generator) parseAfterBlock(term *ir.Block) []rules.Rule {
 	a := g.parseBlock(term)
 	a1 := g.executeCallstack()
 	a = append(a, a1...)
 	return a
 }
 
-func (g *Generator) parseInstruct(block *ir.Block) []rule {
-	var rules []rule
+func (g *Generator) parseInstruct(block *ir.Block) []rules.Rule {
+	var ru []rules.Rule
 	for _, inst := range block.Insts {
 		// Type switch on instruction to find call instructions.
 		switch inst := inst.(type) {
@@ -154,9 +155,9 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			if vname == "@__rounds" {
 				//Clear the callstack first
 				r := g.executeCallstack()
-				rules = append(rules, r...)
-				g.rawRules = append(g.rawRules, rules)
-				rules = []rule{}
+				ru = append(ru, r...)
+				g.rawRules = append(g.rawRules, ru)
+				ru = []rules.Rule{}
 
 				//Initate new round
 				g.newRound()
@@ -172,36 +173,36 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, inst.Dst.Ident())
 				g.variables.loads[refname] = inst.Src
 			default:
-				rules = append(rules, g.storeRule(inst)...)
+				ru = append(ru, g.storeRule(inst)...)
 			}
 		case *ir.InstFAdd:
-			var r rule
+			var r rules.Rule
 			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "+")
 			g.tempRule(inst, r)
 		case *ir.InstFSub:
-			var r rule
+			var r rules.Rule
 			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "-")
 			g.tempRule(inst, r)
 		case *ir.InstFMul:
-			var r rule
+			var r rules.Rule
 			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "*")
 			g.tempRule(inst, r)
 		case *ir.InstFDiv:
-			var r rule
+			var r rules.Rule
 			r = g.createInfixRule(inst.Ident(),
 				inst.X.Ident(), inst.Y.Ident(), "/")
 			g.tempRule(inst, r)
 		case *ir.InstFRem:
 			//Cannot be implemented because SMT solvers do poorly with modulo
 		case *ir.InstFCmp:
-			var r rule
+			var r rules.Rule
 			op, y := g.createCompareRule(inst.Pred.String())
 			if op == "true" || op == "false" {
 				r = g.createInfixRule(inst.Ident(),
-					inst.X.Ident(), y.(*wrap).value, op)
+					inst.X.Ident(), y.(*rules.Wrap).Value, op)
 			} else {
 				r = g.createInfixRule(inst.Ident(),
 					inst.X.Ident(), inst.Y.Ident(), op)
@@ -216,13 +217,13 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 				continue
 			}
 
-			rules = append(rules, r)
+			ru = append(ru, r)
 		case *ir.InstICmp:
-			var r rule
+			var r rules.Rule
 			op, y := g.createCompareRule(inst.Pred.String())
 			if op == "true" || op == "false" {
 				r = g.createInfixRule(inst.Ident(),
-					inst.X.Ident(), y.(*wrap).value, op)
+					inst.X.Ident(), y.(*rules.Wrap).Value, op)
 			} else {
 				r = g.createInfixRule(inst.Ident(),
 					inst.X.Ident(), inst.Y.Ident(), op)
@@ -235,7 +236,7 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 				continue
 			}
 
-			rules = append(rules, r)
+			ru = append(ru, r)
 		case *ir.InstCall:
 			callee := inst.Callee.Ident()
 			if g.isBuiltIn(callee) {
@@ -247,7 +248,7 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 					g.variables.loads[refname] = inst
 				} else {
 					r := g.parseBuiltIn(inst, false)
-					rules = append(rules, r...)
+					ru = append(ru, r...)
 				}
 				continue
 			}
@@ -256,13 +257,13 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 				g.localCallstack = append(g.localCallstack, callee)
 			} else if g.singleParallelStep(callee) {
 				r := g.executeCallstack()
-				rules = append(rules, r...)
+				ru = append(ru, r...)
 
 				r1 := g.generateFromCallstack([]string{callee})
-				rules = append(rules, r1...)
+				ru = append(ru, r1...)
 			} else {
 				r := g.executeCallstack()
-				rules = append(rules, r...)
+				ru = append(ru, r...)
 
 				g.localCallstack = append(g.localCallstack, callee)
 			}
@@ -273,9 +274,9 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			g.tempRule(inst, r)
 		case *ir.InstAnd:
 			if g.isStateChangeChain(inst) {
-				sc := &stateChange{
-					ors:  []value.Value{},
-					ands: []value.Value{},
+				sc := &rules.StateChange{
+					Ors:  []value.Value{},
+					Ands: []value.Value{},
 				}
 				andAd, _ := g.parseChoice(inst, sc)
 				id := inst.Ident()
@@ -289,9 +290,9 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 			}
 		case *ir.InstOr:
 			if g.isStateChangeChain(inst) {
-				sc := &stateChange{
-					ors:  []value.Value{},
-					ands: []value.Value{},
+				sc := &rules.StateChange{
+					Ors:  []value.Value{},
+					Ands: []value.Value{},
 				}
 				orAd, _ := g.parseChoice(inst, sc)
 				id := inst.Ident()
@@ -310,11 +311,11 @@ func (g *Generator) parseInstruct(block *ir.Block) []rule {
 
 		}
 	}
-	return rules
+	return ru
 }
 
-func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
-	var t, f []rule
+func (g *Generator) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, *ir.Block) {
+	var t, f []rules.Rule
 	var a *ir.Block
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
@@ -329,7 +330,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 			t1 := g.executeCallstack()
 			t = append(t, t1...)
 
-			t = g.tagRules(t, branch, branchBlock)
+			t = rules.TagRules(t, branch, branchBlock)
 			g.inPhiState.Out()
 		case "false":
 			g.inPhiState.In()
@@ -340,7 +341,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 			f1 := g.executeCallstack()
 			f = append(f, f1...)
 
-			f = g.tagRules(f, branch, branchBlock)
+			f = rules.TagRules(f, branch, branchBlock)
 			g.inPhiState.Out()
 		case "after":
 			a = term
@@ -352,7 +353,7 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rule, []rule, *ir.Block) {
 	return t, f, a
 }
 
-func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChange, []value.Value) {
+func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (*rules.StateChange, []value.Value) {
 	var ret []value.Value
 	switch branch := branch.(type) {
 	case *ir.InstCall:
@@ -362,11 +363,11 @@ func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChan
 		vx := g.variables.loads[refnamex]
 		if g.peek(vx) != "infix" {
 			sc, ret = g.parseChoice(vx, sc)
-			sc.ors = append(sc.ors, ret...)
+			sc.Ors = append(sc.Ors, ret...)
 		} else {
 			sc2 := g.storedChoice[refnamex]
-			sc.ands = append(sc.ands, sc2.ands...)
-			sc.ors = append(sc.ors, sc2.ors...)
+			sc.Ands = append(sc.Ands, sc2.Ands...)
+			sc.Ors = append(sc.Ors, sc2.Ors...)
 		}
 		delete(g.storedChoice, refnamex)
 
@@ -374,11 +375,11 @@ func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChan
 		vy := g.variables.loads[refnamey]
 		if g.peek(vy) != "infix" {
 			sc, ret = g.parseChoice(vy, sc)
-			sc.ors = append(sc.ors, ret...)
+			sc.Ors = append(sc.Ors, ret...)
 		} else {
 			sc2 := g.storedChoice[refnamey]
-			sc.ands = append(sc.ands, sc2.ands...)
-			sc.ors = append(sc.ors, sc2.ors...)
+			sc.Ands = append(sc.Ands, sc2.Ands...)
+			sc.Ors = append(sc.Ors, sc2.Ors...)
 		}
 		delete(g.storedChoice, refnamey)
 
@@ -388,11 +389,11 @@ func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChan
 		vx := g.variables.loads[refnamex]
 		if g.peek(vx) != "infix" {
 			sc, ret = g.parseChoice(vx, sc)
-			sc.ands = append(sc.ands, ret...)
+			sc.Ands = append(sc.Ands, ret...)
 		} else {
 			sc2 := g.storedChoice[refnamex]
-			sc.ands = append(sc.ands, sc2.ands...)
-			sc.ors = append(sc.ors, sc2.ors...)
+			sc.Ands = append(sc.Ands, sc2.Ands...)
+			sc.Ors = append(sc.Ors, sc2.Ors...)
 		}
 		delete(g.storedChoice, refnamex)
 
@@ -400,11 +401,11 @@ func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChan
 		vy := g.variables.loads[refnamey]
 		if g.peek(vy) != "infix" {
 			sc, ret = g.parseChoice(vy, sc)
-			sc.ands = append(sc.ands, ret...)
+			sc.Ands = append(sc.Ands, ret...)
 		} else {
 			sc2 := g.storedChoice[refnamey]
-			sc.ands = append(sc.ands, sc2.ands...)
-			sc.ors = append(sc.ors, sc2.ors...)
+			sc.Ands = append(sc.Ands, sc2.Ands...)
+			sc.Ors = append(sc.Ors, sc2.Ors...)
 		}
 		delete(g.storedChoice, refnamey)
 
@@ -413,10 +414,10 @@ func (g *Generator) parseChoice(branch value.Value, sc *stateChange) (*stateChan
 	return sc, ret
 }
 
-func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
+func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	p := call.Args
 	if len(p) == 0 {
-		return []rule{}
+		return []rules.Rule{}
 	}
 
 	bc, ok := p[0].(*ir.InstBitCast)
@@ -465,7 +466,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rule {
 		g.declareVar(currentState, "Bool")
 	}
 	r2 := g.createRule(currentState, "false", "Bool", "=")
-	return []rule{r1, r2}
+	return []rules.Rule{r1, r2}
 }
 
 func (g *Generator) isBuiltIn(c string) bool {
@@ -475,20 +476,20 @@ func (g *Generator) isBuiltIn(c string) bool {
 	return false
 }
 
-func (g *Generator) isBranchClosed(t []rule, f []rule) bool {
+func (g *Generator) isBranchClosed(t []rules.Rule, f []rules.Rule) bool {
 	if len(t) == 0 && len(f) == 0 {
 		return true
 	}
 	return false
 }
 
-func (g *Generator) createRule(id string, val string, ty string, op string) rule {
-	wid := &wrap{value: id}
-	wval := &wrap{value: val}
-	return &infix{x: wid, ty: ty, y: wval, op: op}
+func (g *Generator) createRule(id string, val string, ty string, op string) rules.Rule {
+	wid := &rules.Wrap{Value: id}
+	wval := &rules.Wrap{Value: val}
+	return &rules.Infix{X: wid, Ty: ty, Y: wval, Op: op}
 }
 
-func (g *Generator) createInfixRule(id string, x string, y string, op string) rule {
+func (g *Generator) createInfixRule(id string, x string, y string, op string) rules.Rule {
 	x = g.convertInfixVar(x)
 	y = g.convertInfixVar(y)
 
@@ -497,15 +498,15 @@ func (g *Generator) createInfixRule(id string, x string, y string, op string) ru
 	return g.variables.ref[refname]
 }
 
-func (g *Generator) createCondRule(cond rule) rule {
+func (g *Generator) createCondRule(cond rules.Rule) rules.Rule {
 	switch inst := cond.(type) {
-	case *wrap:
+	case *rules.Wrap:
 		return inst
-	case *infix:
-		op, y := g.createCompareRule(inst.op)
-		inst.op = op
+	case *rules.Infix:
+		op, y := g.createCompareRule(inst.Op)
+		inst.Op = op
 		if op == "true" || op == "false" {
-			inst.y = y
+			inst.Y = y
 		}
 		return inst
 	default:
@@ -513,20 +514,20 @@ func (g *Generator) createCondRule(cond rule) rule {
 	}
 }
 
-func (g *Generator) createMultiCondRule(id string, x rule, y rule, op string) rule {
+func (g *Generator) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-	g.variables.ref[refname] = &infix{x: x, ty: "Bool", y: y, op: op}
+	g.variables.ref[refname] = &rules.Infix{X: x, Ty: "Bool", Y: y, Op: op}
 	return g.variables.ref[refname]
 }
 
-func (g *Generator) createCompareRule(op string) (string, rule) {
-	var y *wrap
+func (g *Generator) createCompareRule(op string) (string, rules.Rule) {
+	var y *rules.Wrap
 	op = g.compareRuleOp(op)
 	switch op {
 	case "false":
-		y = &wrap{value: "False"}
+		y = &rules.Wrap{Value: "False"}
 	case "true":
-		y = &wrap{value: "True"}
+		y = &rules.Wrap{Value: "True"}
 	}
 	return op, y
 }
@@ -570,7 +571,7 @@ func (g *Generator) compareRuleOp(op string) string {
 	}
 }
 
-func (g *Generator) executeCallstack() []rule {
+func (g *Generator) executeCallstack() []rules.Rule {
 	stack := util.Copy(g.localCallstack)
 	g.localCallstack = []string{}
 	r := g.generateFromCallstack(stack)

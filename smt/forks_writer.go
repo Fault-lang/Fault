@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fault/smt/rules"
 	"fault/util"
 	"fmt"
 	"sort"
@@ -91,7 +92,7 @@ func (g *Generator) getCurrentFork() Fork {
 	return g.forks[len(g.forks)-1]
 }
 
-func (g *Generator) buildForkChoice(rules []rule, b string) {
+func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 	var stateChanges []string
 	fork := g.getCurrentFork()
 	for _, ru := range rules {
@@ -120,41 +121,41 @@ func (g *Generator) buildForkChoice(rules []rule, b string) {
 	g.forks[len(g.forks)-1] = fork
 }
 
-func (g *Generator) allStateChangesInRule(ru rule) []string {
+func (g *Generator) allStateChangesInRule(ru rules.Rule) []string {
 	var wg []string
 	switch r := ru.(type) {
-	case *infix:
-		ch := g.allStateChangesInRule(r.x)
+	case *rules.Infix:
+		ch := g.allStateChangesInRule(r.X)
 		wg = append(wg, ch...)
-		ch = g.allStateChangesInRule(r.y)
+		ch = g.allStateChangesInRule(r.Y)
 		wg = append(wg, ch...)
 
-	case *ite:
-		for _, w := range r.t {
+	case *rules.Ite:
+		for _, w := range r.T {
 			ch := g.allStateChangesInRule(w)
 			wg = append(wg, ch...)
 		}
 
-		for _, w := range r.f {
+		for _, w := range r.F {
 			ch := g.allStateChangesInRule(w)
 			wg = append(wg, ch...)
 		}
-	case *wrapGroup:
-		for _, w := range r.wraps {
+	case *rules.WrapGroup:
+		for _, w := range r.Wraps {
 			ch := g.allStateChangesInRule(w)
 			wg = append(wg, ch...)
 		}
-	case *wrap:
-		if !g.variables.isNumeric(r.value) && !g.variables.isBolean(r.value) { // Wraps might be static values
-			return []string{r.value}
+	case *rules.Wrap:
+		if !g.variables.isNumeric(r.Value) && !g.variables.isBolean(r.Value) { // Wraps might be static values
+			return []string{r.Value}
 		}
-	case *ands:
-		for _, w := range r.x {
+	case *rules.Ands:
+		for _, w := range r.X {
 			ch := g.allStateChangesInRule(w)
 			wg = append(wg, ch...)
 		}
-	case *choices:
-		for _, w := range r.x {
+	case *rules.Choices:
+		for _, w := range r.X {
 			ch := g.allStateChangesInRule(w)
 			wg = append(wg, ch...)
 		}
@@ -184,14 +185,14 @@ func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
-func (g *Generator) runParallel(perm [][]string) []rule {
-	var rules []rule
+func (g *Generator) runParallel(perm [][]string) []rules.Rule {
+	var ru []rules.Rule
 	g.branchId = g.branchId + 1
 	branch := fmt.Sprint("branch_", g.branchId)
 	g.newFork()
 	for i, calls := range perm {
 		branchBlock := fmt.Sprint("option_", i)
-		var opts [][]rule
+		var opts [][]rules.Rule
 		varState := g.variables.saveState()
 		for _, c := range calls {
 			g.parallelRunStart = true
@@ -199,7 +200,7 @@ func (g *Generator) runParallel(perm [][]string) []rule {
 			v := g.functions[c]
 			raw := g.parseFunction(v)
 			g.inPhiState.In()
-			raw = g.tagRules(raw, branch, branchBlock)
+			raw = rules.TagRules(raw, branch, branchBlock)
 			opts = append(opts, raw)
 		}
 		//Flat the rules
@@ -208,15 +209,15 @@ func (g *Generator) runParallel(perm [][]string) []rule {
 		// sort them into fork choices
 		g.buildForkChoice(raw, "")
 		g.variables.loadState(varState)
-		rules = append(rules, raw...)
+		ru = append(ru, raw...)
 	}
 
-	rules = append(rules, g.capParallel()...)
-	return rules
+	ru = append(ru, g.capParallel()...)
+	return ru
 }
 
-func (g *Generator) parallelRules(r [][]rule) []rule {
-	var rules []rule
+func (g *Generator) parallelRules(r [][]rules.Rule) []rules.Rule {
+	var rules []rules.Rule
 	for _, op := range r {
 		rules = append(rules, op...) // Flatten
 	}
@@ -258,13 +259,13 @@ func (g *Generator) updateParallelGroup(meta ir.Metadata) {
 	}
 }
 
-func (g *Generator) capParallel() []rule {
+func (g *Generator) capParallel() []rules.Rule {
 	// Take all the end variables for the all the branches
 	// and cap them with a phi value
 	// writes OR nodes to end each parallel run
 
 	fork := g.getCurrentFork()
-	var rules []rule
+	var ru []rules.Rule
 	for k, v := range fork {
 		id := g.variables.advanceSSA(k)
 		g.addVarToRound(k, int(g.variables.ssa[k]))
@@ -274,13 +275,13 @@ func (g *Generator) capParallel() []rule {
 			nums = append(nums, c.getEnd())
 		}
 
-		rule := &phi{
-			baseVar:  k,
-			endState: id,
-			nums:     nums,
+		rule := &rules.Phi{
+			BaseVar:  k,
+			EndState: id,
+			Nums:     nums,
 		}
 		g.VarChangePhi(k, id, nums)
-		rules = append(rules, rule)
+		ru = append(ru, rule)
 
 		base, i := g.variables.getVarBase(id)
 		n := int16(i)
@@ -291,29 +292,29 @@ func (g *Generator) capParallel() []rule {
 		}
 
 	}
-	return rules
+	return ru
 }
 
-func (g *Generator) capRule(k string, nums []int16, id string) []rule {
-	var e []rule
+func (g *Generator) capRule(k string, nums []int16, id string) []rules.Rule {
+	var e []rules.Rule
 	for _, v := range nums {
 		id2 := fmt.Sprint(k, "_", v)
 		g.AddNewVarChange(k, id, id2)
 		ty := g.variables.lookupType(k, nil)
 		if ty == "Bool" {
-			r := &infix{
-				x:  &wrap{value: id},
-				y:  &wrap{value: id2},
-				op: "=",
-				ty: "Bool",
+			r := &rules.Infix{
+				X:  &rules.Wrap{Value: id},
+				Y:  &rules.Wrap{Value: id2},
+				Op: "=",
+				Ty: "Bool",
 			}
 			e = append(e, r)
 		} else {
-			r := &infix{
-				x:  &wrap{value: id},
-				y:  &wrap{value: id2},
-				op: "=",
-				ty: "Real",
+			r := &rules.Infix{
+				X:  &rules.Wrap{Value: id},
+				Y:  &rules.Wrap{Value: id2},
+				Op: "=",
+				Ty: "Real",
 			}
 			e = append(e, r)
 		}
@@ -321,9 +322,9 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rule {
 	return e
 }
 
-func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string]int16) {
+func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[string]int16) {
 	fork := g.getCurrentFork()
-	var rules []rule
+	var rules []rules.Rule
 	for k, v := range fork {
 		// Because we're looking at all the variables in
 		// the true branch THEN all the variables in the
@@ -349,12 +350,12 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rule, map[string
 	return rules, phis
 }
 
-func (g *Generator) capCondSyncRules(branches []string) map[string][]rule {
+func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule {
 	// For cases where variables changed in one branch are not
 	// present in the other, add a rule
-	ends := make(map[string][]rule)
+	ends := make(map[string][]rules.Rule)
 	for _, b := range branches {
-		var e []rule
+		var e []rules.Rule
 		fork := g.getCurrentFork()
 		for k, c := range fork {
 			if len(c) == 1 && c[0].Branch == b {
@@ -378,54 +379,6 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rule {
 		}
 	}
 	return ends
-}
-
-func (g *Generator) tagRules(rules []rule, branch string, block string) []rule {
-	var tagged []rule
-	for i := 0; i < len(rules); i++ {
-		tagged = append(tagged, g.tagRule(rules[i], branch, block))
-	}
-	return tagged
-}
-
-func (g *Generator) tagRule(ru rule, branch string, block string) rule {
-	switch r := ru.(type) {
-	case *infix:
-		r.x = g.tagRule(r.x, branch, block)
-		r.y = g.tagRule(r.y, branch, block)
-		r.Tag(branch, block)
-		return r
-	case *ite:
-		r.cond = g.tagRule(r.cond, branch, block)
-		r.t = g.tagRules(r.t, branch, block)
-		r.f = g.tagRules(r.f, branch, block)
-		r.Tag(branch, block)
-		return r
-	case *wrap:
-		r.Tag(branch, block)
-		return r
-	case *vwrap:
-		r.Tag(branch, block)
-		return r
-	case *phi:
-		r.Tag(branch, block)
-		return r
-	case *ands:
-		r.x = g.tagRules(r.x, branch, block)
-		r.Tag(branch, block)
-		return r
-	case *choices:
-		var tagged []*ands
-		for _, v := range r.x {
-			r2 := g.tagRule(v, branch, block)
-			tagged = append(tagged, r2.(*ands))
-		}
-		r.x = tagged
-		r.Tag(branch, block)
-		return r
-	default:
-		panic(fmt.Sprintf("%T is not a valid rule type", ru))
-	}
 }
 
 func (g *Generator) formatEnds(k string, nums []int16, id string) string {

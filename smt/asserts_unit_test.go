@@ -2,6 +2,7 @@ package smt
 
 import (
 	"fault/ast"
+	"fault/smt/rules"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func TestGenerateAsserts(t *testing.T) {
 
 func TestGenerateAssertRules(t *testing.T) {
 	g := NewGenerator()
-	ru := &wrap{value: "test", constant: true}
+	ru := &rules.Wrap{Value: "test", Constant: true}
 	stmt := &ast.AssertionStatement{TemporalFilter: "", TemporalN: 0}
 	r := g.generateAssertRules(ru, stmt.TemporalFilter, stmt.TemporalN)
 	if len(r) != 1 {
@@ -48,22 +49,22 @@ func TestGenerateAssertRules(t *testing.T) {
 		t.Fatalf("assert generation failed. got=%s want=test", r[0])
 	}
 
-	left := &invariant{
-		left:     &wrap{value: "x", constant: true},
-		right:    &wrap{value: "y", constant: true},
-		operator: "&&",
+	left := &rules.Invariant{
+		Left:     &rules.Wrap{Value: "x", Constant: true},
+		Right:    &rules.Wrap{Value: "y", Constant: true},
+		Operator: "&&",
 	}
 
-	right := &invariant{
-		left:     &wrap{value: "z", constant: true},
-		right:    &wrap{value: "a", constant: true},
-		operator: "||",
+	right := &rules.Invariant{
+		Left:     &rules.Wrap{Value: "z", Constant: true},
+		Right:    &rules.Wrap{Value: "a", Constant: true},
+		Operator: "||",
 	}
 
-	ru2 := &invariant{
-		left:     left,
-		right:    right,
-		operator: "&&",
+	ru2 := &rules.Invariant{
+		Left:     left,
+		Right:    right,
+		Operator: "&&",
 	}
 
 	r2 := g.generateAssertRules(ru2, stmt.TemporalFilter, stmt.TemporalN)

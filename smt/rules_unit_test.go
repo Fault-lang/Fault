@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fault/smt/rules"
 	"testing"
 
 	"github.com/llir/llvm/ir"
@@ -17,39 +18,39 @@ func TestFetchIdent(t *testing.T) {
 	store := b.NewStore(val, alloc)
 	g.variables.loads["@__run-%1"] = store.Dst
 	g.variables.ssa["test_this_var"] = 0
-	g.variables.ref["@__run-%2"] = &infix{
-		x: &wrap{
-			value: "x",
-			all:   true,
+	g.variables.ref["@__run-%2"] = &rules.Infix{
+		X: &rules.Wrap{
+			Value: "x",
+			All:   true,
 		},
-		y: &wrap{
-			value: "y",
-			all:   true,
+		Y: &rules.Wrap{
+			Value: "y",
+			All:   true,
 		},
-		op: ">",
+		Op: ">",
 	}
 
-	test1 := g.fetchIdent("%1", &wrap{
-		value: "x",
-		all:   true,
+	test1 := g.fetchIdent("%1", &rules.Wrap{
+		Value: "x",
+		All:   true,
 	})
 
-	test2 := g.fetchIdent("%2", &wrap{
-		value: "x",
-		all:   true,
+	test2 := g.fetchIdent("%2", &rules.Wrap{
+		Value: "x",
+		All:   true,
 	})
 
-	if test1.(*wrap).value != "%test_this_var_0" {
+	if test1.(*rules.Wrap).Value != "%test_this_var_0" {
 		t.Fatalf("fetchIdent returned the wrong result. got=%s", test1.String())
 	}
 
-	if test2.(*infix).x.String() != "x" || test2.(*infix).y.String() != "y" {
+	if test2.(*rules.Infix).X.String() != "x" || test2.(*rules.Infix).Y.String() != "y" {
 		t.Fatalf("fetchIdent returned the wrong result. got=%s", test2.String())
 	}
 
 	test3 := g.tempToIdent(g.variables.ref["@__run-%2"])
 
-	if test3.(*infix).x.String() != "x" || test3.(*infix).y.String() != "y" {
+	if test3.(*rules.Infix).X.String() != "x" || test3.(*rules.Infix).Y.String() != "y" {
 		t.Fatalf("tempToIdent returned the wrong result. got=%s", test3.String())
 	}
 }
@@ -68,16 +69,16 @@ func TestStoreRule(t *testing.T) {
 
 	g.variables.loads["@__run-%1"] = store.Dst
 	g.variables.ssa["test_this_var"] = 0
-	g.variables.ref["@__run-%2"] = &infix{
-		x: &wrap{
-			value: "x",
-			all:   true,
+	g.variables.ref["@__run-%2"] = &rules.Infix{
+		X: &rules.Wrap{
+			Value: "x",
+			All:   true,
 		},
-		y: &wrap{
-			value: "y",
-			all:   true,
+		Y: &rules.Wrap{
+			Value: "y",
+			All:   true,
 		},
-		op: ">",
+		Op: ">",
 	}
 
 	test1 := g.storeRule(store)
@@ -88,11 +89,11 @@ func TestStoreRule(t *testing.T) {
 	if len(test2) != 1 {
 		t.Fatalf("storeRule did not store new rule. got=%d", len(test2))
 	}
-	if test2[0].(*infix).x.String() != "test_this_var2_0" {
-		t.Fatalf("storeRule malformed rule got=%s", test2[0].(*infix).x.String())
+	if test2[0].(*rules.Infix).X.String() != "test_this_var2_0" {
+		t.Fatalf("storeRule malformed rule got=%s", test2[0].(*rules.Infix).X.String())
 	}
 
-	if test2[0].(*infix).y.String() != "0" {
-		t.Fatalf("storeRule malformed rule got=%s", test2[0].(*infix).y.String())
+	if test2[0].(*rules.Infix).Y.String() != "0" {
+		t.Fatalf("storeRule malformed rule got=%s", test2[0].(*rules.Infix).Y.String())
 	}
 }

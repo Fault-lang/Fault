@@ -2,6 +2,7 @@ package smt
 
 import (
 	"fault/llvm"
+	"fault/smt/rules"
 	"fmt"
 	"strconv"
 	"strings"
@@ -39,7 +40,7 @@ func (g *Generator) VarChangePhi(base string, end string, nums []int16) {
 
 type variables struct {
 	ssa   map[string]int16
-	ref   map[string]rule
+	ref   map[string]rules.Rule
 	loads map[string]value.Value
 	phis  map[string][][]int16
 	types map[string]string
@@ -48,7 +49,7 @@ type variables struct {
 func NewVariables() *variables {
 	return &variables{
 		ssa:   make(map[string]int16),
-		ref:   make(map[string]rule),
+		ref:   make(map[string]rules.Rule),
 		loads: make(map[string]value.Value),
 		phis:  make(map[string][][]int16),
 		types: make(map[string]string),
@@ -192,7 +193,7 @@ func (v *variables) lookupType(id string, value value.Value) string {
 	panic(fmt.Sprintf("smt generation error, value for %s not found", id))
 }
 
-func (g *variables) lookupCondPart(f string, val string) rule {
+func (g *variables) lookupCondPart(f string, val string) rules.Rule {
 	if g.isTemp(val) {
 		refname := fmt.Sprintf("%s-%s", f, val)
 		if v, ok := g.ref[refname]; ok {
@@ -312,19 +313,19 @@ func (g *variables) storeLastState(id string, n int16) {
 // Some functions specific to variable names in rules
 ////////////////////////
 
-func (g *Generator) tempToIdent(ru rule) rule {
+func (g *Generator) tempToIdent(ru rules.Rule) rules.Rule {
 	switch r := ru.(type) {
-	case *wrap:
-		return g.fetchIdent(r.value, r)
-	case *infix:
-		r.x = g.tempToIdent(r.x)
-		r.y = g.tempToIdent(r.y)
+	case *rules.Wrap:
+		return g.fetchIdent(r.Value, r)
+	case *rules.Infix:
+		r.X = g.tempToIdent(r.X)
+		r.Y = g.tempToIdent(r.Y)
 		return r
 	}
 	return ru
 }
 
-func (g *Generator) fetchIdent(id string, r rule) rule {
+func (g *Generator) fetchIdent(id string, r rules.Rule) rules.Rule {
 	if g.variables.isTemp(id) {
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 		if v, ok := g.variables.loads[refname]; ok {
@@ -336,13 +337,13 @@ func (g *Generator) fetchIdent(id string, r rule) rule {
 			}
 			g.addVarToRound(id, int(n+1))
 			id = g.variables.advanceSSA(v.Ident())
-			wid := &wrap{value: id}
+			wid := &rules.Wrap{Value: id}
 			return wid
 		} else if ref, ok := g.variables.ref[refname]; ok {
 			switch r := ref.(type) {
-			case *infix:
-				r.x = g.tempToIdent(r.x)
-				r.y = g.tempToIdent(r.y)
+			case *rules.Infix:
+				r.X = g.tempToIdent(r.X)
+				r.Y = g.tempToIdent(r.Y)
 				return r
 			}
 		} else {

@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"fault/ast"
+	"fault/smt/rules"
 	"fmt"
 	"strconv"
 	"strings"
@@ -22,7 +23,7 @@ type Generator struct {
 	functions  map[string]*ir.Func
 	rawAsserts []*ast.AssertionStatement
 	rawAssumes []*ast.AssertionStatement
-	rawRules   [][]rule
+	rawRules   [][]rules.Rule
 
 	// Generated SMT
 	inits     []string
@@ -31,11 +32,11 @@ type Generator struct {
 	asserts   []string
 
 	variables      *variables
-	blocks         map[string][]rule
+	blocks         map[string][]rules.Rule
 	localCallstack []string
 
 	forks            []Fork
-	storedChoice     map[string]*stateChange
+	storedChoice     map[string]*rules.StateChange
 	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping string
 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
@@ -51,8 +52,8 @@ func NewGenerator() *Generator {
 	return &Generator{
 		variables:       NewVariables(),
 		functions:       make(map[string]*ir.Func),
-		blocks:          make(map[string][]rule),
-		storedChoice:    make(map[string]*stateChange),
+		blocks:          make(map[string][]rules.Rule),
+		storedChoice:    make(map[string]*rules.StateChange),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      NewPhiState(),
@@ -212,9 +213,9 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 }
 
-func (g *Generator) generateFromCallstack(callstack []string) []rule {
+func (g *Generator) generateFromCallstack(callstack []string) []rules.Rule {
 	if len(callstack) == 0 {
-		return []rule{}
+		return []rules.Rule{}
 	}
 
 	if len(callstack) > 1 {

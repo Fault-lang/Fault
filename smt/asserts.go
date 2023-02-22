@@ -3,6 +3,7 @@ package smt
 import (
 	"fault/ast"
 	"fault/llvm"
+	"fault/smt/rules"
 	"fault/util"
 	"fmt"
 	"sort"
@@ -37,7 +38,7 @@ func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 	}
 
 	//If left and right are asserts on the same variable
-	dset := util.DiffStrSets(left.bases, right.bases)
+	dset := util.DiffStrSets(left.Bases, right.Bases)
 	if dset.Len() == 0 && (a.Temporal != "" || a.TemporalFilter != "") {
 		sg := g.mergeInvariantInfix(left, right, smtlibOperators(a.Constraint.Operator))
 		ir := g.flattenStates(sg)
@@ -52,8 +53,8 @@ func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 		operator := "and"
 
 		if operator == op { // (and (and ) (and )) is redundant
-			sg := NewStateGroup()
-			sg.wraps = append(left.wraps, right.wraps...)
+			sg := rules.NewStateGroup()
+			sg.Wraps = append(left.Wraps, right.Wraps...)
 			return g.joinStates(sg, operator)
 		}
 
@@ -63,15 +64,15 @@ func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 
 	operator := "or"
 	if operator == op {
-		sg := NewStateGroup()
-		sg.wraps = append(left.wraps, right.wraps...)
+		sg := rules.NewStateGroup()
+		sg.Wraps = append(left.Wraps, right.Wraps...)
 		return g.joinStates(sg, operator)
 	}
 	sg := g.mergeInvariantInfix(left, right, op)
 	return g.joinStates(sg, operator)
 }
 
-func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *stateGroup {
+func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rules.StateGroup {
 	switch e := exp.(type) {
 	case *ast.InfixExpression:
 		operator := smtlibOperators(e.Operator)
@@ -81,55 +82,55 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *sta
 		return g.mergeInvariantInfix(left, right, operator)
 
 	case *ast.AssertVar:
-		var wg = NewStateGroup()
+		var wg = rules.NewStateGroup()
 		for _, v := range e.Instances {
-			wg.bases.Add(v)
+			wg.Bases.Add(v)
 			st, _, c := captureState(v)
 			vr := g.varRounds(v, st)
-			wg.AddWrap(&states{base: v,
-				terminal: true,
-				states:   vr,
-				constant: c,
+			wg.AddWrap(&rules.States{Base: v,
+				Terminal: true,
+				States:   vr,
+				Constant: c,
 			})
 		}
 		return wg
 	case *ast.IntegerLiteral:
 		s := make(map[int][]string)
 		s[0] = []string{fmt.Sprint(e.Value)}
-		sg := NewStateGroup()
-		sg.AddWrap(&states{
-			base:     "__int",
-			states:   s,
-			constant: true})
+		sg := rules.NewStateGroup()
+		sg.AddWrap(&rules.States{
+			Base:     "__int",
+			States:   s,
+			Constant: true})
 		return sg
 	case *ast.FloatLiteral:
 		s := make(map[int][]string)
 		s[0] = []string{fmt.Sprint(e.Value)}
-		sg := NewStateGroup()
-		sg.AddWrap(&states{
-			base:     "__float",
-			states:   s,
-			constant: true,
+		sg := rules.NewStateGroup()
+		sg.AddWrap(&rules.States{
+			Base:     "__float",
+			States:   s,
+			Constant: true,
 		})
 		return sg
 	case *ast.Boolean:
 		s := make(map[int][]string)
 		s[0] = []string{fmt.Sprint(e.Value)}
-		sg := NewStateGroup()
-		sg.AddWrap(&states{
-			base:     "__bool",
-			states:   s,
-			constant: true,
+		sg := rules.NewStateGroup()
+		sg.AddWrap(&rules.States{
+			Base:     "__bool",
+			States:   s,
+			Constant: true,
 		})
 		return sg
 	case *ast.StringLiteral:
 		s := make(map[int][]string)
 		s[0] = []string{fmt.Sprint(e.Value)}
-		sg := NewStateGroup()
-		sg.AddWrap(&states{
-			base:     "__string",
-			states:   s,
-			constant: true,
+		sg := rules.NewStateGroup()
+		sg.AddWrap(&rules.States{
+			Base:     "__string",
+			States:   s,
+			Constant: true,
 		})
 		return sg
 	case *ast.PrefixExpression:
@@ -141,21 +142,21 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *sta
 			operator = smtlibOperators(e.Operator)
 		}
 
-		if r, ok := right.(*states); ok {
-			return g.mergeInvariantPrefix([]*states{r}, operator)
+		if r, ok := right.(*rules.States); ok {
+			return g.mergeInvariantPrefix([]*rules.States{r}, operator)
 		} else {
-			return g.mergeInvariantPrefix(right.(*stateGroup).wraps, operator)
+			return g.mergeInvariantPrefix(right.(*rules.StateGroup).Wraps, operator)
 		}
 
 	case *ast.Nil:
 	case *ast.IndexExpression:
-		var wg = NewStateGroup()
+		var wg = rules.NewStateGroup()
 		for _, v := range e.Left.(*ast.AssertVar).Instances {
-			wg.bases.Add(v)
+			wg.Bases.Add(v)
 			vr := g.varRounds(v, e.Index.String())
-			wg.AddWrap(&states{base: v,
-				states:   vr,
-				constant: true,
+			wg.AddWrap(&rules.States{Base: v,
+				States:   vr,
+				Constant: true,
 			})
 		}
 		return wg
@@ -166,25 +167,25 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *sta
 	return nil
 }
 
-func (g *Generator) mergeInvariantPrefix(right []*states, operator string) *stateGroup {
-	sg := NewStateGroup()
+func (g *Generator) mergeInvariantPrefix(right []*rules.States, operator string) *rules.StateGroup {
+	sg := rules.NewStateGroup()
 	for _, r := range right {
 		states := make(map[int][]string)
 		for i := 0; i <= g.Rounds; i++ {
-			if s, ok := r.states[i]; ok {
+			if s, ok := r.States[i]; ok {
 				states[i] = append(states[i], fmt.Sprintf("(%s %s)", operator, s))
 			}
 		}
-		r.states = states
+		r.States = states
 		sg.AddWrap(r)
 	}
 	return sg
 }
 
-func (g *Generator) mergeInvariantInfix(left *stateGroup, right *stateGroup, operator string) *stateGroup {
-	sg := NewStateGroup()
-	for _, l := range left.wraps {
-		for _, r := range right.wraps {
+func (g *Generator) mergeInvariantInfix(left *rules.StateGroup, right *rules.StateGroup, operator string) *rules.StateGroup {
+	sg := rules.NewStateGroup()
+	for _, l := range left.Wraps {
+		for _, r := range right.Wraps {
 			state := g.mergeByRound(l, r, operator)
 			sg.AddWrap(state)
 		}
@@ -201,32 +202,32 @@ func (g *Generator) mergePairs(l string, r string, leftLead bool) []string {
 	return []string{r, l}
 }
 
-func (g *Generator) mergeByRound(left *states, right *states, operator string) *states {
-	ret := &states{}
+func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operator string) *rules.States {
+	ret := &rules.States{}
 
 	st := make(map[int][]string)
-	if left.constant && right.constant {
-		combos := util.PairCombinations(left.states[0], right.states[0])
+	if left.Constant && right.Constant {
+		combos := util.PairCombinations(left.States[0], right.States[0])
 		st[0] = packageStateGraph(combos, operator)
-		ret.states = st
+		ret.States = st
 		return ret
 	}
 
-	if left.base == right.base &&
-		(left.base != "" && right.base != "") {
-		ret.base = left.base
+	if left.Base == right.Base &&
+		(left.Base != "" && right.Base != "") {
+		ret.Base = left.Base
 
 		var long map[int][]string
 		var short map[int][]string
 		var leftLead bool
 
-		if len(left.states) >= len(right.states) {
-			long = left.states
-			short = right.states
+		if len(left.States) >= len(right.States) {
+			long = left.States
+			short = right.States
 			leftLead = true
 		} else {
-			long = right.states
-			short = left.states
+			long = right.States
+			short = left.States
 			leftLead = false
 		}
 
@@ -253,30 +254,30 @@ func (g *Generator) mergeByRound(left *states, right *states, operator string) *
 			}
 			st[i] = packageStateGraph(pairs, operator)
 		}
-		ret.states = st
+		ret.States = st
 		return ret
 	}
 
-	if left.constant {
-		ret.base = right.base
+	if left.Constant {
+		ret.Base = right.Base
 		st := g.balance(right, left, operator)
-		ret.states = st
+		ret.States = st
 		return ret
 	}
 
-	if right.constant {
-		ret.base = left.base
+	if right.Constant {
+		ret.Base = left.Base
 		st := g.balance(left, right, operator)
-		ret.states = st
+		ret.States = st
 		return ret
 	}
 
-	if left.terminal && right.terminal {
-		combos := g.termCombos(left.base, right.base)
+	if left.Terminal && right.Terminal {
+		combos := g.termCombos(left.Base, right.Base)
 		for i, c := range combos {
 			st[i] = packageStateGraph(c, operator)
 		}
-		ret.states = st
+		ret.States = st
 		return ret
 	}
 
@@ -284,23 +285,23 @@ func (g *Generator) mergeByRound(left *states, right *states, operator string) *
 	for i := 0; i <= g.Rounds; i++ {
 		var l, r []string
 		var okleft, okright bool
-		if l, okleft = left.states[i]; !okleft {
+		if l, okleft = left.States[i]; !okleft {
 			if llast == nil {
-				if invalidBase(left.base) {
+				if invalidBase(left.Base) {
 					panic("assert left variable base name is invalid")
 				}
-				l = []string{fmt.Sprintf("%s_%s", left.base, "0")}
+				l = []string{fmt.Sprintf("%s_%s", left.Base, "0")}
 			} else {
 				l = llast
 			}
 		}
 
-		if r, okright = right.states[i]; !okright {
+		if r, okright = right.States[i]; !okright {
 			if rlast == nil {
-				if invalidBase(right.base) {
+				if invalidBase(right.Base) {
 					panic("assert left variable base name is invalid")
 				}
-				r = []string{fmt.Sprintf("%s_%s", right.base, "0")}
+				r = []string{fmt.Sprintf("%s_%s", right.Base, "0")}
 			} else {
 				r = rlast
 			}
@@ -311,7 +312,7 @@ func (g *Generator) mergeByRound(left *states, right *states, operator string) *
 		llast = l[len(l)-1:]
 		rlast = r[len(r)-1:]
 	}
-	ret.states = st
+	ret.States = st
 	return ret
 }
 
@@ -344,22 +345,22 @@ func (g *Generator) termCombos(lbase string, rbase string) map[int][][]string {
 	return combos
 }
 
-func (g *Generator) balance(vr *states, con *states, operator string) map[int][]string {
+func (g *Generator) balance(vr *rules.States, con *rules.States, operator string) map[int][]string {
 	ret := make(map[int][]string)
 	for i := 0; i <= g.Rounds; i++ {
-		if v, ok := vr.states[i]; ok {
-			combos := util.PairCombinations(v, con.states[0])
+		if v, ok := vr.States[i]; ok {
+			combos := util.PairCombinations(v, con.States[0])
 			ret[i] = packageStateGraph(combos, operator)
 		}
 	}
 	return ret
 }
 
-func (g *Generator) flattenStates(sg *stateGroup) []string {
+func (g *Generator) flattenStates(sg *rules.StateGroup) []string {
 	var asserts []string
-	for _, w := range sg.wraps {
+	for _, w := range sg.Wraps {
 		for i := 0; i <= g.Rounds; i++ {
-			if s, ok := w.states[i]; ok {
+			if s, ok := w.States[i]; ok {
 				asserts = append(asserts, s...)
 			}
 		}
@@ -367,7 +368,7 @@ func (g *Generator) flattenStates(sg *stateGroup) []string {
 	return asserts
 }
 
-func (g *Generator) joinStates(sg *stateGroup, operator string) string {
+func (g *Generator) joinStates(sg *rules.StateGroup, operator string) string {
 	asserts := g.flattenStates(sg)
 	if len(asserts) == 1 {
 		return asserts[0]
@@ -391,9 +392,9 @@ func invalidBase(base string) bool {
 	return false
 }
 
-func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.Expression, stmt *ast.AssertionStatement) []*assrt {
+func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.Expression, stmt *ast.AssertionStatement) []*rules.Assrt {
 	var ident []string
-	var assrt []*assrt
+	var assrt []*rules.Assrt
 	switch v := exp.(type) {
 	case *ast.InfixExpression:
 		ident = g.findIdent(v)
@@ -443,7 +444,7 @@ func (g *Generator) generateAsserts(exp ast.Expression, comp string, constr ast.
 	}
 }
 
-func (g *Generator) parseInvariant(ex ast.Expression) rule {
+func (g *Generator) parseInvariant(ex ast.Expression) rules.Rule {
 	switch e := ex.(type) {
 	case *ast.InvariantClause:
 
@@ -451,99 +452,99 @@ func (g *Generator) parseInvariant(ex ast.Expression) rule {
 		right := g.parseInvariant(e.Right)
 
 		if e.Operator == "then" {
-			return &invariant{
-				left:     left,
-				operator: "then",
-				right:    right,
+			return &rules.Invariant{
+				Left:     left,
+				Operator: "then",
+				Right:    right,
 			}
 		}
 
-		i := &invariant{
-			left:     left,
-			operator: smtlibOperators(e.Operator),
-			right:    right,
+		i := &rules.Invariant{
+			Left:     left,
+			Operator: smtlibOperators(e.Operator),
+			Right:    right,
 		}
 		if e.Operator == "!=" { //Not valid in SMTLib
-			return &invariant{operator: "not",
-				right: i}
+			return &rules.Invariant{Operator: "not",
+				Right: i}
 		}
 		return i
 
 	case *ast.InfixExpression:
 		left := g.parseInvariant(e.Left)
 		right := g.parseInvariant(e.Right)
-		i := &invariant{
-			left:     left,
-			operator: smtlibOperators(e.Operator),
-			right:    right,
+		i := &rules.Invariant{
+			Left:     left,
+			Operator: smtlibOperators(e.Operator),
+			Right:    right,
 		}
 		if e.Operator == "!=" { //Not valid in SMTLib
-			return &invariant{operator: "not",
-				right: i}
+			return &rules.Invariant{Operator: "not",
+				Right: i}
 		}
 		return i
 
 	case *ast.AssertVar:
 		if len(e.Instances) == 1 {
 			s, a, c := captureState(e.Instances[0])
-			return &wrap{value: e.Instances[0],
-				state:    s,
-				all:      a,
-				constant: c,
+			return &rules.Wrap{Value: e.Instances[0],
+				State:    s,
+				All:      a,
+				Constant: c,
 			}
 		}
-		var wg = &wrapGroup{}
+		var wg = &rules.WrapGroup{}
 		for _, v := range e.Instances {
 			s, a, c := captureState(v)
-			wg.wraps = append(wg.wraps, &wrap{value: v,
-				state:    s,
-				all:      a,
-				constant: c,
+			wg.Wraps = append(wg.Wraps, &rules.Wrap{Value: v,
+				State:    s,
+				All:      a,
+				Constant: c,
 			})
 		}
 		return wg
 	case *ast.IntegerLiteral:
-		return &wrap{value: fmt.Sprint(e.Value),
-			state:    "",
-			all:      false,
-			constant: true,
+		return &rules.Wrap{Value: fmt.Sprint(e.Value),
+			State:    "",
+			All:      false,
+			Constant: true,
 		}
 	case *ast.FloatLiteral:
-		return &wrap{value: fmt.Sprint(e.Value),
-			state:    "",
-			all:      false,
-			constant: true,
+		return &rules.Wrap{Value: fmt.Sprint(e.Value),
+			State:    "",
+			All:      false,
+			Constant: true,
 		}
 	case *ast.Boolean:
-		return &wrap{value: fmt.Sprint(e.Value),
-			state:    "",
-			all:      false,
-			constant: true,
+		return &rules.Wrap{Value: fmt.Sprint(e.Value),
+			State:    "",
+			All:      false,
+			Constant: true,
 		}
 	case *ast.StringLiteral:
-		return &wrap{value: e.Value,
-			state:    "",
-			all:      false,
-			constant: true,
+		return &rules.Wrap{Value: e.Value,
+			State:    "",
+			All:      false,
+			Constant: true,
 		}
 	case *ast.PrefixExpression:
 		right := g.parseInvariant(e.Right)
-		i := &invariant{
-			left:     nil,
-			operator: smtlibOperators(e.Operator),
-			right:    right,
+		i := &rules.Invariant{
+			Left:     nil,
+			Operator: smtlibOperators(e.Operator),
+			Right:    right,
 		}
 		if e.Operator == "!" { //Not valid in SMTLib
-			return &invariant{operator: "not",
-				right: i}
+			return &rules.Invariant{Operator: "not",
+				Right: i}
 		}
 		return i
 	case *ast.Nil:
 	case *ast.IndexExpression:
-		return &wrap{value: g.convertIndexExpr(e),
-			state:    "",
-			all:      false,
-			constant: true,
+		return &rules.Wrap{Value: g.convertIndexExpr(e),
+			State:    "",
+			All:      false,
+			Constant: true,
 		}
 	default:
 		pos := e.Position()
@@ -557,9 +558,9 @@ type thenStates struct {
 	values       [][][]string
 }
 
-func (g *Generator) generateThenRules(inv *invariant) []string {
-	when := g.whenInfixNode(inv.left)
-	//then := g.thenInfixNode(inv.right)
+func (g *Generator) generateThenRules(inv *rules.Invariant) []string {
+	when := g.whenInfixNode(inv.Left)
+	//then := g.thenInfixNode(inv.Right)
 	fmt.Println(when)
 	//fmt.Println(then)
 	return []string{}
@@ -570,24 +571,24 @@ func (g *Generator) generateThenRules(inv *invariant) []string {
 // Generate all permutations of variables in the assert,
 // in the round, in between variable state change
 
-func (g *Generator) whenInfixNode(ru rule) map[string]*thenStates {
+func (g *Generator) whenInfixNode(ru rules.Rule) map[string]*thenStates {
 	ret := make(map[string]*thenStates)
 	switch r := ru.(type) {
-	case *invariant:
-		left := g.whenInfixNode(r.left)
+	case *rules.Invariant:
+		left := g.whenInfixNode(r.Left)
 		for k, v := range left {
 			ret[k] = v
 		}
 
-		right := g.whenInfixNode(r.right)
+		right := g.whenInfixNode(r.Right)
 		for k, v := range right {
 			ret[k] = v
 		}
 
 		return ret
-	case *wrap:
+	case *rules.Wrap:
 		roundClause, values := g.whenNode(r)
-		ret[r.value] = &thenStates{
+		ret[r.Value] = &thenStates{
 			roundClauses: roundClause,
 			values:       values,
 		}
@@ -596,11 +597,11 @@ func (g *Generator) whenInfixNode(ru rule) map[string]*thenStates {
 	return ret
 }
 
-func (g *Generator) whenNode(when *wrap) ([]string, [][][]string) {
+func (g *Generator) whenNode(when *rules.Wrap) ([]string, [][][]string) {
 	var roundClauses []string
 	var values [][][]string
-	base := when.value
-	rounds := g.lookupVarRounds(when.value, when.state)
+	base := when.Value
+	rounds := g.lookupVarRounds(when.Value, when.State)
 	for _, r := range rounds {
 		roundClauses = append(roundClauses, fmt.Sprintf("(= %s_%d %s)", base, r[0], "true"))
 		values = append(values, g.RoundVars[r[1]][r[2]:])
@@ -608,7 +609,7 @@ func (g *Generator) whenNode(when *wrap) ([]string, [][][]string) {
 	return roundClauses, values
 }
 
-func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt *ast.AssertionStatement) *assrt {
+func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression, stmt *ast.AssertionStatement) *rules.Assrt {
 	var temporalFilter string
 	var temporalN int
 
@@ -616,17 +617,17 @@ func (g *Generator) packageAssert(ident string, comp string, expr ast.Expression
 	temporalN = stmt.TemporalN
 
 	s, a, c := captureState(ident)
-	w := &wrap{value: ident,
-		state:    s,
-		all:      a,
-		constant: c,
+	w := &rules.Wrap{Value: ident,
+		State:    s,
+		All:      a,
+		Constant: c,
 	}
-	return &assrt{
-		variable:       w,
-		conjunction:    comp,
-		assertion:      g.parseInvariant(expr),
-		temporalFilter: temporalFilter,
-		temporalN:      temporalN}
+	return &rules.Assrt{
+		Variable:       w,
+		Conjunction:    comp,
+		Assertion:      g.parseInvariant(expr),
+		TemporalFilter: temporalFilter,
+		TemporalN:      temporalN}
 }
 
 func (g *Generator) convertIndexExpr(idx *ast.IndexExpression) string {
@@ -654,7 +655,7 @@ func (g *Generator) findIdent(n ast.Node) []string {
 	}
 }
 
-func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
+func (g *Generator) generateAssertRules(ru rules.Rule, t string, tn int) []string {
 	// assert x == true;
 	// negated: x != true;
 	// (assert (or (= x0 false) (= x1 false) (= x2 false)))
@@ -673,20 +674,20 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	// What states overlap in the same round? :/
 	// Actually does this matter?
 	// (assert (or (<= x0 y0) (<= x1 y1) (<= x2 y2)))
-	var i *invariant
+	var i *rules.Invariant
 	switch r := ru.(type) {
-	case *assrt:
-		return g.generateAssertRules(r.assertion, t, tn)
-	case *invariant:
-		if r.operator == "then" {
+	case *rules.Assrt:
+		return g.generateAssertRules(r.Assertion, t, tn)
+	case *rules.Invariant:
+		if r.Operator == "then" {
 			return g.generateThenRules(r)
 		}
 		i = r
-	case *wrap:
+	case *rules.Wrap:
 		return g.wrapPerm(r)
-	case *wrapGroup:
+	case *rules.WrapGroup:
 		var wg []string
-		for _, v := range r.wraps {
+		for _, v := range r.Wraps {
 			wg = append(wg, g.wrapPerm(v)...)
 		}
 		return wg
@@ -695,19 +696,19 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	}
 
 	var left, right []string
-	switch l := i.left.(type) {
-	case *invariant:
+	switch l := i.Left.(type) {
+	case *rules.Invariant:
 		left = g.generateAssertRules(l, t, tn)
-	case *wrap:
+	case *rules.Wrap:
 		left = g.wrapPerm(l)
 	default:
 		left = nil
 	}
 
-	switch r := i.right.(type) {
-	case *invariant:
+	switch r := i.Right.(type) {
+	case *rules.Invariant:
 		right = g.generateAssertRules(r, t, tn)
-	case *wrap:
+	case *rules.Wrap:
 		right = g.wrapPerm(r)
 	default:
 		right = nil
@@ -716,12 +717,12 @@ func (g *Generator) generateAssertRules(ru rule, t string, tn int) []string {
 	if left == nil { // Typically (not (some rule))
 		var ret []string
 		for _, r := range right {
-			ret = append(ret, fmt.Sprintf("(%s %s)", i.operator, r))
+			ret = append(ret, fmt.Sprintf("(%s %s)", i.Operator, r))
 		}
 		return ret
 	}
 
-	return expandAssertStateGraph(left, right, i.operator, t, tn)
+	return expandAssertStateGraph(left, right, i.Operator, t, tn)
 }
 
 func (g *Generator) filterOutTempStates(v string, i int16) bool {
@@ -747,24 +748,24 @@ func (g *Generator) filterOutTempStates(v string, i int16) bool {
 	return false
 }
 
-func (g *Generator) wrapPerm(w *wrap) []string {
-	if w.constant {
-		return []string{w.value}
-	} else if w.state != "" {
-		state := fmt.Sprint(w.value, "_", w.state)
+func (g *Generator) wrapPerm(w *rules.Wrap) []string {
+	if w.Constant {
+		return []string{w.Value}
+	} else if w.State != "" {
+		state := fmt.Sprint(w.Value, "_", w.State)
 		return []string{state}
 	}
-	if w.all {
+	if w.All {
 		var states []string
-		end := g.variables.ssa[w.value]
+		end := g.variables.ssa[w.Value]
 		for i := 0; i < int(end+1); i++ {
-			if !g.filterOutTempStates(w.value, int16(i)) {
-				states = append(states, fmt.Sprint(w.value, "_", i))
+			if !g.filterOutTempStates(w.Value, int16(i)) {
+				states = append(states, fmt.Sprint(w.Value, "_", i))
 			}
 		}
 		return states
 	}
-	panic(fmt.Sprintf("Inproperly formatted metadata for value %s in assert", w.value))
+	panic(fmt.Sprintf("Inproperly formatted metadata for value %s in assert", w.Value))
 }
 
 func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalFilter string, temporalN int) []string {
