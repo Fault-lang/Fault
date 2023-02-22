@@ -101,7 +101,7 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 
 	seenVar := make(map[string]bool)
 	for _, s := range stateChanges {
-		base, i := g.variables.getVarBase(s)
+		base, i := g.variables.GetVarBase(s)
 		n := int16(i)
 		// Have we seen this variable in a previous branch of
 		// this fork?
@@ -146,7 +146,7 @@ func (g *Generator) allStateChangesInRule(ru rules.Rule) []string {
 			wg = append(wg, ch...)
 		}
 	case *rules.Wrap:
-		if !g.variables.isNumeric(r.Value) && !g.variables.isBolean(r.Value) { // Wraps might be static values
+		if !g.variables.IsNumeric(r.Value) && !g.variables.IsBoolean(r.Value) { // Wraps might be static values
 			return []string{r.Value}
 		}
 	case *rules.Ands:
@@ -193,7 +193,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 	for i, calls := range perm {
 		branchBlock := fmt.Sprint("option_", i)
 		var opts [][]rules.Rule
-		varState := g.variables.saveState()
+		varState := g.variables.SaveState()
 		for _, c := range calls {
 			g.parallelRunStart = true
 			g.inPhiState.Out() //Don't behave like we're in Phi inside the function
@@ -208,7 +208,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 		// Pull all the variables out of the rules and
 		// sort them into fork choices
 		g.buildForkChoice(raw, "")
-		g.variables.loadState(varState)
+		g.variables.LoadState(varState)
 		ru = append(ru, raw...)
 	}
 
@@ -267,8 +267,8 @@ func (g *Generator) capParallel() []rules.Rule {
 	fork := g.getCurrentFork()
 	var ru []rules.Rule
 	for k, v := range fork {
-		id := g.variables.advanceSSA(k)
-		g.addVarToRound(k, int(g.variables.ssa[k]))
+		id := g.variables.AdvanceSSA(k)
+		g.addVarToRound(k, int(g.variables.SSA[k]))
 
 		var nums []int16
 		for _, c := range v {
@@ -283,12 +283,12 @@ func (g *Generator) capParallel() []rules.Rule {
 		g.VarChangePhi(k, id, nums)
 		ru = append(ru, rule)
 
-		base, i := g.variables.getVarBase(id)
+		base, i := g.variables.GetVarBase(id)
 		n := int16(i)
 		if g.inPhiState.Level() == 1 {
-			g.variables.newPhi(base, n)
+			g.variables.NewPhi(base, n)
 		} else {
-			g.variables.storeLastState(base, n)
+			g.variables.StoreLastState(base, n)
 		}
 
 	}
@@ -300,7 +300,7 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rules.Rule {
 	for _, v := range nums {
 		id2 := fmt.Sprint(k, "_", v)
 		g.AddNewVarChange(k, id, id2)
-		ty := g.variables.lookupType(k, nil)
+		ty := g.variables.LookupType(k, nil)
 		if ty == "Bool" {
 			r := &rules.Infix{
 				X:  &rules.Wrap{Value: id},
@@ -332,9 +332,9 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[
 		// when we produce the phi value for the first time
 		var id string
 		if phi, ok := phis[k]; !ok {
-			id = g.variables.advanceSSA(k)
-			g.declareVar(id, g.variables.lookupType(k, nil))
-			_, i := g.variables.getVarBase(id)
+			id = g.variables.AdvanceSSA(k)
+			g.declareVar(id, g.variables.LookupType(k, nil))
+			_, i := g.variables.GetVarBase(id)
 			g.addVarToRound(k, i)
 			phis[k] = int16(i)
 		} else {
@@ -359,14 +359,14 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 		fork := g.getCurrentFork()
 		for k, c := range fork {
 			if len(c) == 1 && c[0].Branch == b {
-				start := g.variables.getStartState(k)
-				id := g.variables.getSSA(k)
+				start := g.variables.GetStartState(k)
+				id := g.variables.GetSSA(k)
 				e = append(e, g.capRule(k, []int16{start}, id)...)
-				n := g.variables.ssa[k]
+				n := g.variables.SSA[k]
 				if g.inPhiState.Level() == 1 {
-					g.variables.newPhi(k, n)
+					g.variables.NewPhi(k, n)
 				} else {
-					g.variables.storeLastState(k, n)
+					g.variables.StoreLastState(k, n)
 				}
 			}
 		}

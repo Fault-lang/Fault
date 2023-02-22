@@ -55,25 +55,25 @@ func TestParseTerms(t *testing.T) {
 	alloc.SetName("test_this_var")
 	val := constant.NewFloat(irtypes.Double, 2)
 	store := b.NewStore(val, alloc)
-	g.variables.ssa["test_this_var"] = 0
+	g.variables.SSA["test_this_var"] = 0
 
 	alloc2 := b.NewAlloca(irtypes.Double)
 	alloc2.SetName("test_this_var2")
 	val2 := constant.NewFloat(irtypes.Double, 3)
 	store2 := b.NewStore(val2, alloc2)
-	g.variables.ssa["test_this_var2"] = 0
+	g.variables.SSA["test_this_var2"] = 0
 
 	terms := ir.NewBlock("test-true")
 	terms.NewFCmp(enum.FPredOGT, store.Src, store2.Src)
 	g.parseTerms([]*ir.Block{terms})
-	if len(g.variables.ref) != 1 {
+	if len(g.variables.Ref) != 1 {
 		t.Fatal("parse terms failed to save a rule.")
 	}
-	if g.variables.ref["@__run-%0"].(*rules.Infix).X.(*rules.Wrap).Value != "2.0" {
-		t.Fatalf("parse terms produced the wrong x value. got=%s", g.variables.ref["%0"].(*rules.Infix).X.(*rules.Wrap).Value)
+	if g.variables.Ref["@__run-%0"].(*rules.Infix).X.(*rules.Wrap).Value != "2.0" {
+		t.Fatalf("parse terms produced the wrong x value. got=%s", g.variables.Ref["%0"].(*rules.Infix).X.(*rules.Wrap).Value)
 	}
 
-	if g.variables.ref["@__run-%0"].(*rules.Infix).Y.(*rules.Wrap).Value != "3.0" {
-		t.Fatalf("parse terms produced the wrong y value. got=%s", g.variables.ref["%0"].(*rules.Infix).Y.(*rules.Wrap).Value)
+	if g.variables.Ref["@__run-%0"].(*rules.Infix).Y.(*rules.Wrap).Value != "3.0" {
+		t.Fatalf("parse terms produced the wrong y value. got=%s", g.variables.Ref["%0"].(*rules.Infix).Y.(*rules.Wrap).Value)
 	}
 }

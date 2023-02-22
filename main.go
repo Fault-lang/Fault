@@ -9,6 +9,7 @@ import (
 	"fault/preprocess"
 	"fault/reachability"
 	"fault/smt"
+	smtvar "fault/smt/variables"
 	"fault/types"
 	"fault/util"
 	"fault/visualize"
@@ -89,7 +90,7 @@ func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []str
 	return generator
 }
 
-func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smt.VarChange) (*execute.ModelChecker, map[string]execute.Scenario) {
+func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smtvar.VarChange) (*execute.ModelChecker, map[string]execute.Scenario) {
 	ex := execute.NewModelChecker()
 	ex.LoadModel(smt, uncertains, unknowns, results)
 	ok, err := ex.Check()
@@ -183,7 +184,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.Format(data)
 		}
 	case "smt2":
-		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smt.VarChange))
+		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange))
 
 		if mode == "visualize" {
 			mc.Mermaid()

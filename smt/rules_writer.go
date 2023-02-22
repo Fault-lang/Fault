@@ -89,7 +89,7 @@ func (g *Generator) writeRule(ru rules.Rule) string {
 	case *rules.Wrap:
 		return r.Value
 	case *rules.Phi:
-		g.declareVar(r.EndState, g.variables.lookupType(r.BaseVar, nil))
+		g.declareVar(r.EndState, g.variables.LookupType(r.BaseVar, nil))
 		ends := g.formatEnds(r.BaseVar, r.Nums, r.EndState)
 		return g.writeAssert("or", ends)
 	case *rules.Ands:

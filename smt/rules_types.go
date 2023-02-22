@@ -17,9 +17,9 @@ import (
 func (g *Generator) constantRule(id string, c constant.Constant) string {
 	switch val := c.(type) {
 	case *constant.Float:
-		ty := g.variables.lookupType(id, val)
-		id = g.variables.advanceSSA(id)
-		g.addVarToRound(id, int(g.variables.ssa[id]))
+		ty := g.variables.LookupType(id, val)
+		id = g.variables.AdvanceSSA(id)
+		g.addVarToRound(id, int(g.variables.SSA[id]))
 		if g.isASolvable(id) {
 			g.declareVar(id, ty)
 		} else {
@@ -36,50 +36,50 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	id := inst.Ident()
 	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-	g.variables.loads[refname] = inst.Src
+	g.variables.Loads[refname] = inst.Src
 }
 
 func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 	var ru []rules.Rule
-	base := g.variables.formatIdent(inst.Dst.Ident())
-	if g.variables.isTemp(inst.Src.Ident()) {
+	base := g.variables.FormatIdent(inst.Dst.Ident())
+	if g.variables.IsTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
-		if val, ok := g.variables.loads[refname]; ok {
-			ty := g.variables.lookupType(refname, val)
-			n := g.variables.ssa[base]
+		if val, ok := g.variables.Loads[refname]; ok {
+			ty := g.variables.LookupType(refname, val)
+			n := g.variables.SSA[base]
 			prev := fmt.Sprintf("%s_%d", base, n)
 			if !g.inPhiState.Check() {
-				g.variables.newPhi(base, n+1)
+				g.variables.NewPhi(base, n+1)
 			} else {
-				g.variables.storeLastState(base, n+1)
+				g.variables.StoreLastState(base, n+1)
 			}
-			id := g.variables.advanceSSA(base)
+			id := g.variables.AdvanceSSA(base)
 			g.addVarToRound(base, int(n+1))
-			v := g.variables.formatValue(val)
-			if !g.variables.isBolean(v) && !g.variables.isNumeric(v) {
-				v = g.variables.formatIdent(v)
+			v := g.variables.FormatValue(val)
+			if !g.variables.IsBoolean(v) && !g.variables.IsNumeric(v) {
+				v = g.variables.FormatIdent(v)
 				v = fmt.Sprintf("%s_%d", v, n)
 			}
 			g.AddNewVarChange(base, id, prev)
 			ru = append(ru, g.createRule(id, v, ty, ""))
-		} else if ref, ok := g.variables.ref[refname]; ok {
+		} else if ref, ok := g.variables.Ref[refname]; ok {
 			switch r := ref.(type) {
 			case *rules.Infix:
 				r.X = g.tempToIdent(r.X)
 				r.Y = g.tempToIdent(r.Y)
-				n := g.variables.ssa[base]
+				n := g.variables.SSA[base]
 				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
-					g.variables.newPhi(base, n+1)
+					g.variables.NewPhi(base, n+1)
 				} else {
-					g.variables.storeLastState(base, n+1)
+					g.variables.StoreLastState(base, n+1)
 				}
-				id := g.variables.advanceSSA(base)
+				id := g.variables.AdvanceSSA(base)
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 				wid := &rules.Wrap{Value: id}
-				if g.variables.isBolean(r.Y.String()) {
+				if g.variables.IsBoolean(r.Y.String()) {
 					ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
 				} else if g.isASolvable(r.X.String()) {
 					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
@@ -87,15 +87,15 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r})
 				}
 			default:
-				n := g.variables.ssa[base]
+				n := g.variables.SSA[base]
 				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
-					g.variables.newPhi(base, n+1)
+					g.variables.NewPhi(base, n+1)
 				} else {
-					g.variables.storeLastState(base, n+1)
+					g.variables.StoreLastState(base, n+1)
 				}
-				ty := g.variables.lookupType(base, nil)
-				id := g.variables.advanceSSA(base)
+				ty := g.variables.LookupType(base, nil)
+				id := g.variables.AdvanceSSA(base)
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 				wid := &rules.Wrap{Value: id}
@@ -105,16 +105,16 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 			panic(fmt.Sprintf("smt generation error, value for %s not found", base))
 		}
 	} else {
-		ty := g.variables.lookupType(base, inst.Src)
-		n := g.variables.ssa[base]
+		ty := g.variables.LookupType(base, inst.Src)
+		n := g.variables.SSA[base]
 		prev := fmt.Sprintf("%s_%d", base, n)
 		if !g.inPhiState.Check() {
-			g.variables.newPhi(base, n+1)
+			g.variables.NewPhi(base, n+1)
 		} else {
-			g.variables.storeLastState(base, n+1)
+			g.variables.StoreLastState(base, n+1)
 		}
-		id := g.variables.advanceSSA(base)
-		g.addVarToRound(base, int(g.variables.ssa[base]))
+		id := g.variables.AdvanceSSA(base)
+		g.addVarToRound(base, int(g.variables.SSA[base]))
 		g.AddNewVarChange(base, id, prev)
 		ru = append(ru, g.createRule(id, inst.Src.Ident(), ty, ""))
 	}
@@ -124,9 +124,9 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 func (g *Generator) xorRule(inst *ir.InstXor) rules.Rule {
 	id := inst.Ident()
 	x := inst.X.Ident()
-	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.currentFunction, x)
 	if xRule == nil {
-		x = g.variables.convertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.currentFunction, x)
 		xRule = &rules.Wrap{Value: x}
 	}
 	return g.createMultiCondRule(id, xRule, &rules.Wrap{}, "not")
@@ -137,15 +137,15 @@ func (g *Generator) andRule(inst *ir.InstAnd) rules.Rule {
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
 
-	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.currentFunction, x)
 	if xRule == nil {
-		x = g.variables.convertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.currentFunction, x)
 		xRule = &rules.Wrap{Value: x}
 	}
 
-	yRule := g.variables.lookupCondPart(g.currentFunction, y)
+	yRule := g.variables.LookupCondPart(g.currentFunction, y)
 	if yRule == nil {
-		y = g.variables.convertIdent(g.currentFunction, y)
+		y = g.variables.ConvertIdent(g.currentFunction, y)
 		yRule = &rules.Wrap{Value: y}
 	}
 	return g.createMultiCondRule(id, xRule, yRule, "and")
@@ -155,15 +155,15 @@ func (g *Generator) orRule(inst *ir.InstOr) rules.Rule {
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
 	id := inst.Ident()
-	xRule := g.variables.lookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.currentFunction, x)
 	if xRule == nil {
-		x = g.variables.convertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.currentFunction, x)
 		xRule = &rules.Wrap{Value: x}
 	}
 
-	yRule := g.variables.lookupCondPart(g.currentFunction, y)
+	yRule := g.variables.LookupCondPart(g.currentFunction, y)
 	if yRule == nil {
-		y = g.variables.convertIdent(g.currentFunction, y)
+		y = g.variables.ConvertIdent(g.currentFunction, y)
 		yRule = &rules.Wrap{Value: y}
 	}
 	return g.createMultiCondRule(id, xRule, yRule, "or")
@@ -261,8 +261,8 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 func (g *Generator) tempRule(inst value.Value, r rules.Rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()
-	if g.variables.isTemp(id) {
+	if g.variables.IsTemp(id) {
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-		g.variables.ref[refname] = r
+		g.variables.Ref[refname] = r
 	}
 }

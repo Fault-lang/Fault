@@ -1,297 +1,285 @@
 package smt
 
-import (
-	"bytes"
-	"fault/ast"
-	"fault/smt/rules"
-	"fmt"
-	"strconv"
-	"strings"
+// type Generator struct {
+// 	currentFunction string
+// 	currentBlock    string
+// 	branchId        int
 
-	"github.com/llir/llvm/asm"
-	"github.com/llir/llvm/ir"
-)
+// 	// Raw input
+// 	Uncertains map[string][]float64
+// 	Unknowns   []string
+// 	functions  map[string]*ir.Func
+// 	rawAsserts []*ast.AssertionStatement
+// 	rawAssumes []*ast.AssertionStatement
+// 	rawRules   [][]rules.Rule
 
-type Generator struct {
-	currentFunction string
-	currentBlock    string
-	branchId        int
+// 	// Generated SMT
+// 	inits     []string
+// 	constants []string
+// 	rules     []string
+// 	asserts   []string
 
-	// Raw input
-	Uncertains map[string][]float64
-	Unknowns   []string
-	functions  map[string]*ir.Func
-	rawAsserts []*ast.AssertionStatement
-	rawAssumes []*ast.AssertionStatement
-	rawRules   [][]rules.Rule
+// 	variables      *variables
+// 	blocks         map[string][]rules.Rule
+// 	localCallstack []string
 
-	// Generated SMT
-	inits     []string
-	constants []string
-	rules     []string
-	asserts   []string
+// 	forks            []Fork
+// 	storedChoice     map[string]*rules.StateChange
+// 	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
+// 	parallelGrouping string
+// 	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
+// 	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
 
-	variables      *variables
-	blocks         map[string][]rules.Rule
-	localCallstack []string
+// 	Rounds     int
+// 	RoundVars  [][][]string
+// 	RVarLookup map[string][][]int
+// 	Results    map[string][]*VarChange
+// }
 
-	forks            []Fork
-	storedChoice     map[string]*rules.StateChange
-	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
-	parallelGrouping string
-	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
-	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
+// func NewGenerator() *Generator {
+// 	return &Generator{
+// 		variables:       NewVariables(),
+// 		functions:       make(map[string]*ir.Func),
+// 		blocks:          make(map[string][]rules.Rule),
+// 		storedChoice:    make(map[string]*rules.StateChange),
+// 		currentFunction: "@__run",
+// 		Uncertains:      make(map[string][]float64),
+// 		inPhiState:      NewPhiState(),
+// 		returnVoid:      NewPhiState(),
+// 		Results:         make(map[string][]*VarChange),
+// 		RVarLookup:      make(map[string][][]int),
+// 	}
+// }
 
-	Rounds     int
-	RoundVars  [][][]string
-	RVarLookup map[string][][]int
-	Results    map[string][]*VarChange
-}
+// func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {
+// 	if runs == 0 {
+// 		g.Rounds = 1 //even if runs are zero we need to generate asserts for initialization
+// 	} else {
+// 		g.Rounds = int(runs)
+// 	}
 
-func NewGenerator() *Generator {
-	return &Generator{
-		variables:       NewVariables(),
-		functions:       make(map[string]*ir.Func),
-		blocks:          make(map[string][]rules.Rule),
-		storedChoice:    make(map[string]*rules.StateChange),
-		currentFunction: "@__run",
-		Uncertains:      make(map[string][]float64),
-		inPhiState:      NewPhiState(),
-		returnVoid:      NewPhiState(),
-		Results:         make(map[string][]*VarChange),
-		RVarLookup:      make(map[string][][]int),
-	}
-}
+// 	g.Uncertains = uncertains
+// 	g.Unknowns = unknowns
+// 	g.rawAsserts = asserts
+// 	g.rawAssumes = assumes
+// }
 
-func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {
-	if runs == 0 {
-		g.Rounds = 1 //even if runs are zero we need to generate asserts for initialization
-	} else {
-		g.Rounds = int(runs)
-	}
+// func (g *Generator) Run(llopt string) {
+// 	m, err := asm.ParseString("", llopt) //"/" because ParseString has a path variable
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	g.newCallgraph(m)
 
-	g.Uncertains = uncertains
-	g.Unknowns = unknowns
-	g.rawAsserts = asserts
-	g.rawAssumes = assumes
-}
+// }
 
-func (g *Generator) Run(llopt string) {
-	m, err := asm.ParseString("", llopt) //"/" because ParseString has a path variable
-	if err != nil {
-		panic(err)
-	}
-	g.newCallgraph(m)
+// func (g *Generator) newRound() {
+// 	g.RoundVars = append(g.RoundVars, [][]string{})
+// }
 
-}
+// func (g *Generator) initVarRound(base string, num int) {
+// 	g.RoundVars = [][][]string{{{base, fmt.Sprint(num)}}}
+// }
 
-func (g *Generator) newRound() {
-	g.RoundVars = append(g.RoundVars, [][]string{})
-}
+// func (g *Generator) currentRound() int {
+// 	return len(g.RoundVars) - 1
+// }
 
-func (g *Generator) initVarRound(base string, num int) {
-	g.RoundVars = [][][]string{{{base, fmt.Sprint(num)}}}
-}
+// func (g *Generator) addVarToRound(base string, num int) {
+// 	if g.currentRound() == -1 {
+// 		g.initVarRound(base, num)
+// 		g.addVarToRoundLookup(base, num, 0, len(g.RoundVars[g.currentRound()])-1)
+// 		return
+// 	}
 
-func (g *Generator) currentRound() int {
-	return len(g.RoundVars) - 1
-}
+// 	g.RoundVars[g.currentRound()] = append(g.RoundVars[g.currentRound()], []string{base, fmt.Sprint(num)})
+// 	g.addVarToRoundLookup(base, num, g.currentRound(), len(g.RoundVars[g.currentRound()])-1)
+// }
 
-func (g *Generator) addVarToRound(base string, num int) {
-	if g.currentRound() == -1 {
-		g.initVarRound(base, num)
-		g.addVarToRoundLookup(base, num, 0, len(g.RoundVars[g.currentRound()])-1)
-		return
-	}
+// func (g *Generator) addVarToRoundLookup(base string, num int, idx int, idx2 int) {
+// 	g.RVarLookup[base] = append(g.RVarLookup[base], []int{num, idx, idx2})
+// }
 
-	g.RoundVars[g.currentRound()] = append(g.RoundVars[g.currentRound()], []string{base, fmt.Sprint(num)})
-	g.addVarToRoundLookup(base, num, g.currentRound(), len(g.RoundVars[g.currentRound()])-1)
-}
+// func (g *Generator) lookupVarRounds(base string, num string) [][]int {
+// 	if num == "" {
+// 		return g.RVarLookup[base]
+// 	}
 
-func (g *Generator) addVarToRoundLookup(base string, num int, idx int, idx2 int) {
-	g.RVarLookup[base] = append(g.RVarLookup[base], []int{num, idx, idx2})
-}
+// 	state, err := strconv.Atoi(num)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-func (g *Generator) lookupVarRounds(base string, num string) [][]int {
-	if num == "" {
-		return g.RVarLookup[base]
-	}
+// 	return g.lookupVarSpecificState(base, state)
+// }
 
-	state, err := strconv.Atoi(num)
-	if err != nil {
-		panic(err)
-	}
+// func (g *Generator) lookupVarSpecificState(base string, state int) [][]int {
+// 	for _, b := range g.RVarLookup[base] {
+// 		if b[0] == state {
+// 			return [][]int{b}
+// 		}
+// 	}
+// 	panic(fmt.Errorf("state %d of variable %s is missing", state, base))
+// }
 
-	return g.lookupVarSpecificState(base, state)
-}
+// func (g *Generator) varRounds(base string, num string) map[int][]string {
+// 	ir := make(map[int][]string)
+// 	states := g.lookupVarRounds(base, num)
+// 	for _, s := range states {
+// 		ir[s[1]] = append(ir[s[1]], fmt.Sprintf("%s_%d", base, s[0]))
+// 	}
+// 	return ir
+// }
 
-func (g *Generator) lookupVarSpecificState(base string, state int) [][]int {
-	for _, b := range g.RVarLookup[base] {
-		if b[0] == state {
-			return [][]int{b}
-		}
-	}
-	panic(fmt.Errorf("state %d of variable %s is missing", state, base))
-}
+// func (g *Generator) GetForks() []Fork {
+// 	return g.forks
+// }
 
-func (g *Generator) varRounds(base string, num string) map[int][]string {
-	ir := make(map[int][]string)
-	states := g.lookupVarRounds(base, num)
-	for _, s := range states {
-		ir[s[1]] = append(ir[s[1]], fmt.Sprintf("%s_%d", base, s[0]))
-	}
-	return ir
-}
+// func (g *Generator) newConstants(globals []*ir.Global) []string {
+// 	// Constants cannot be changed and therefore don't increment
+// 	// in SSA. So instead of return a *rule we can skip directly
+// 	// to a set of strings
+// 	r := []string{}
+// 	for _, gl := range globals {
+// 		id := g.variables.FormatIdent(gl.GlobalIdent.Ident())
+// 		r = append(r, g.constantRule(id, gl.Init))
+// 	}
+// 	return r
+// }
 
-func (g *Generator) GetForks() []Fork {
-	return g.forks
-}
+// func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
+// 	for _, v := range asserts {
+// 		a := g.parseAssert(v)
+// 		rule := g.writeAssert("", a)
+// 		g.asserts = append(g.asserts, rule)
+// 	}
+// }
 
-func (g *Generator) newConstants(globals []*ir.Global) []string {
-	// Constants cannot be changed and therefore don't increment
-	// in SSA. So instead of return a *rule we can skip directly
-	// to a set of strings
-	r := []string{}
-	for _, gl := range globals {
-		id := g.variables.formatIdent(gl.GlobalIdent.Ident())
-		r = append(r, g.constantRule(id, gl.Init))
-	}
-	return r
-}
+// func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
+// 	var arule []string
+// 	for _, v := range asserts {
+// 		a := g.parseAssert(v)
+// 		arule = append(arule, a)
+// 	}
 
-func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
-	for _, v := range asserts {
-		a := g.parseAssert(v)
-		rule := g.writeAssert("", a)
-		g.asserts = append(g.asserts, rule)
-	}
-}
+// 	if len(arule) == 0 {
+// 		return
+// 	}
 
-func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
-	var arule []string
-	for _, v := range asserts {
-		a := g.parseAssert(v)
-		arule = append(arule, a)
-	}
+// 	if len(arule) > 1 {
+// 		g.asserts = append(g.asserts, g.writeAssert("or", strings.Join(arule, "")))
+// 	} else {
+// 		g.asserts = append(g.asserts, g.writeAssert("", arule[0]))
+// 	}
+// }
 
-	if len(arule) == 0 {
-		return
-	}
+// func (g *Generator) sortFuncs(funcs []*ir.Func) {
+// 	//Iterate through all the function blocks and store them by
+// 	// function call name.
+// 	for _, f := range funcs {
+// 		// Get function name.
+// 		fname := f.Ident()
 
-	if len(arule) > 1 {
-		g.asserts = append(g.asserts, g.writeAssert("or", strings.Join(arule, "")))
-	} else {
-		g.asserts = append(g.asserts, g.writeAssert("", arule[0]))
-	}
-}
+// 		if fname != "@__run" {
+// 			g.functions[f.Ident()] = f
+// 			continue
+// 		}
+// 	}
+// }
 
-func (g *Generator) sortFuncs(funcs []*ir.Func) {
-	//Iterate through all the function blocks and store them by
-	// function call name.
-	for _, f := range funcs {
-		// Get function name.
-		fname := f.Ident()
+// func (g *Generator) newCallgraph(m *ir.Module) {
+// 	g.constants = g.newConstants(m.Globals)
+// 	g.sortFuncs(m.Funcs)
 
-		if fname != "@__run" {
-			g.functions[f.Ident()] = f
-			continue
-		}
-	}
-}
+// 	run := g.parseRunBlock(m.Funcs)
+// 	g.rawRules = append(g.rawRules, run)
 
-func (g *Generator) newCallgraph(m *ir.Module) {
-	g.constants = g.newConstants(m.Globals)
-	g.sortFuncs(m.Funcs)
+// 	g.rules = append(g.rules, g.generateRules()...)
 
-	run := g.parseRunBlock(m.Funcs)
-	g.rawRules = append(g.rawRules, run)
+// 	g.newAsserts(g.rawAsserts)
+// 	g.newAssumes(g.rawAssumes)
 
-	g.rules = append(g.rules, g.generateRules()...)
+// }
 
-	g.newAsserts(g.rawAsserts)
-	g.newAssumes(g.rawAssumes)
+// func (g *Generator) generateFromCallstack(callstack []string) []rules.Rule {
+// 	if len(callstack) == 0 {
+// 		return []rules.Rule{}
+// 	}
 
-}
+// 	if len(callstack) > 1 {
+// 		//Generate parallel runs
 
-func (g *Generator) generateFromCallstack(callstack []string) []rules.Rule {
-	if len(callstack) == 0 {
-		return []rules.Rule{}
-	}
+// 		perm := g.parallelPermutations(callstack)
+// 		return g.runParallel(perm)
+// 	} else {
+// 		fname := callstack[0]
+// 		v := g.functions[fname]
+// 		return g.parseFunction(v)
+// 	}
+// }
 
-	if len(callstack) > 1 {
-		//Generate parallel runs
+// ////////////////////////
+// // Generating SMT
+// ///////////////////////
 
-		perm := g.parallelPermutations(callstack)
-		return g.runParallel(perm)
-	} else {
-		fname := callstack[0]
-		v := g.functions[fname]
-		return g.parseFunction(v)
-	}
-}
+// func (g *Generator) SMT() string {
+// 	var out bytes.Buffer
 
-////////////////////////
-// Generating SMT
-///////////////////////
+// 	out.WriteString(strings.Join(g.inits, "\n"))
+// 	out.WriteString(strings.Join(g.constants, "\n"))
+// 	out.WriteString(strings.Join(g.rules, "\n"))
+// 	out.WriteString(strings.Join(g.asserts, "\n"))
 
-func (g *Generator) SMT() string {
-	var out bytes.Buffer
+// 	return out.String()
+// }
 
-	out.WriteString(strings.Join(g.inits, "\n"))
-	out.WriteString(strings.Join(g.constants, "\n"))
-	out.WriteString(strings.Join(g.rules, "\n"))
-	out.WriteString(strings.Join(g.asserts, "\n"))
+// ////////////////////////
+// // Temporal Logic
+// ///////////////////////
 
-	return out.String()
-}
+// func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter string, on string, off string) string {
+// 	switch temp {
+// 	case "eventually":
+// 		if len(ir) > 1 {
+// 			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
+// 			return or
+// 		}
+// 		return ir[0]
+// 	case "always":
+// 		if len(ir) > 1 {
+// 			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+// 			return or
+// 		}
+// 		return ir[0]
+// 	case "eventually-always":
+// 		if len(ir) > 1 {
+// 			or := g.eventuallyAlways(ir)
+// 			return or
+// 		}
+// 		return ir[0]
+// 	default:
+// 		if len(ir) > 1 {
+// 			var op string
+// 			switch temporalFilter {
+// 			case "nft":
+// 				op = "or"
+// 			case "nmt":
+// 				op = "or"
+// 			default:
+// 				op = off
+// 			}
+// 			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
+// 			return or
+// 		}
+// 		return ir[0]
+// 	}
+// }
 
-////////////////////////
-// Temporal Logic
-///////////////////////
-
-func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter string, on string, off string) string {
-	switch temp {
-	case "eventually":
-		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
-			return or
-		}
-		return ir[0]
-	case "always":
-		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
-			return or
-		}
-		return ir[0]
-	case "eventually-always":
-		if len(ir) > 1 {
-			or := g.eventuallyAlways(ir)
-			return or
-		}
-		return ir[0]
-	default:
-		if len(ir) > 1 {
-			var op string
-			switch temporalFilter {
-			case "nft":
-				op = "or"
-			case "nmt":
-				op = "or"
-			default:
-				op = off
-			}
-			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
-			return or
-		}
-		return ir[0]
-	}
-}
-
-func (g *Generator) eventuallyAlways(ir []string) string {
-	var progression []string
-	for i := range ir {
-		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
-		progression = append(progression, s)
-	}
-	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
-}
+// func (g *Generator) eventuallyAlways(ir []string) string {
+// 	var progression []string
+// 	for i := range ir {
+// 		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
+// 		progression = append(progression, s)
+// 	}
+// 	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
+// }

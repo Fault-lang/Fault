@@ -15,15 +15,15 @@ func TestConvertIdent(t *testing.T) {
 	alloc.SetName("test_this_var")
 	val := constant.NewInt(irtypes.I32, 0)
 	store := b.NewStore(val, alloc)
-	g.variables.loads["@__run-%1"] = store.Dst
-	g.variables.ssa["test_this_var"] = 0
+	g.variables.Loads["@__run-%1"] = store.Dst
+	g.variables.SSA["test_this_var"] = 0
 
-	if g.variables.convertIdent("@__run", "%test_this_var") != "test_this_var_0" {
-		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("@__run", "%test_this_var"))
+	if g.variables.ConvertIdent("@__run", "%test_this_var") != "test_this_var_0" {
+		t.Fatalf("ConvertIdent returned the wrong value. got=%s", g.variables.ConvertIdent("@__run", "%test_this_var"))
 	}
 
-	if g.variables.convertIdent("@__run", "%1") != "test_this_var_0" {
-		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("@__run", "%1"))
+	if g.variables.ConvertIdent("@__run", "%1") != "test_this_var_0" {
+		t.Fatalf("ConvertIdent returned the wrong value. got=%s", g.variables.ConvertIdent("@__run", "%1"))
 	}
 
 }
@@ -35,9 +35,9 @@ func TestNewConstants(t *testing.T) {
 		ir.NewGlobalDef("test2", constant.NewFloat(irtypes.Double, 20)),
 		ir.NewGlobalDef("test3", constant.NewFloat(irtypes.Double, 30)),
 	}
-	g.variables.ssa["test1"] = 0
-	g.variables.ssa["test2"] = 2
-	g.variables.ssa["test3"] = 5
+	g.variables.SSA["test1"] = 0
+	g.variables.SSA["test2"] = 2
+	g.variables.SSA["test3"] = 5
 
 	results := g.newConstants(globals)
 
