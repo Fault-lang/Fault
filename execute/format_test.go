@@ -1,7 +1,7 @@
 package execute
 
 import (
-	"fault/smt"
+	"fault/smt/forks"
 	"testing"
 )
 
@@ -16,8 +16,8 @@ func TestPhis(t *testing.T) {
 		weights: map[int16]float64{},
 	}
 
-	phis := []smt.Fork{{
-		"test_value": []*smt.Choice{
+	phis := []forks.Fork{{
+		"test_value": []*forks.Choice{
 			{
 				Base:   "test_value",
 				Values: []int16{1},
@@ -27,7 +27,7 @@ func TestPhis(t *testing.T) {
 				Values: []int16{3},
 			},
 		},
-		"test_value_foo": []*smt.Choice{
+		"test_value_foo": []*forks.Choice{
 			{
 				Base:   "test_value_foo",
 				Values: []int16{1, 3, 4},
@@ -72,8 +72,8 @@ func TestMultiPhis(t *testing.T) {
 		weights: map[int16]float64{},
 	}
 
-	phis := []smt.Fork{{
-		"test_value": []*smt.Choice{
+	phis := []forks.Fork{{
+		"test_value": []*forks.Choice{
 			{
 				Base:   "test_value",
 				Values: []int16{1, 2},
@@ -84,7 +84,7 @@ func TestMultiPhis(t *testing.T) {
 			},
 		}},
 		{
-			"test_value": []*smt.Choice{
+			"test_value": []*forks.Choice{
 				{
 					Base:   "test_value",
 					Values: []int16{5, 6},

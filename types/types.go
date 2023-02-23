@@ -373,7 +373,7 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 		return node, nil
 	case *ast.Identifier:
 		if node.InferredType == nil {
-			t, err := c.lookupType(node)
+			t, err := c.LookupType(node)
 			if err != nil {
 				return nil, err
 			}
@@ -382,7 +382,7 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 		return node, nil
 	case *ast.Instance:
 		if node.InferredType == nil {
-			t, err := c.lookupType(node)
+			t, err := c.LookupType(node)
 			node.InferredType = t
 			if err != nil {
 				return nil, err
@@ -391,7 +391,7 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 		return node, nil
 	case *ast.StructInstance:
 		if node.InferredType == nil {
-			t, err := c.lookupType(node)
+			t, err := c.LookupType(node)
 			node.InferredType = t
 			if err != nil {
 				return nil, err
@@ -400,7 +400,7 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 		return node, nil
 	case *ast.ParameterCall:
 		if node.InferredType == nil {
-			t, err := c.lookupType(node)
+			t, err := c.LookupType(node)
 			node.InferredType = t
 			if err != nil {
 				return nil, err
@@ -435,7 +435,7 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	}
 }
 
-func (c *Checker) lookupType(node ast.Node) (*ast.Type, error) {
+func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	var err error
 	pos := node.Position()
 
@@ -554,7 +554,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		}
 
 		if node.Token.Type == "ASSIGN" { //In case of temp values
-			ty, _ := c.lookupType(node.Left)
+			ty, _ := c.LookupType(node.Left)
 			if ty != nil && !isConvertible(ty, right) {
 				return node, fmt.Errorf("cannot redeclare variable %s is type %s got %s", node.Left.String(), ty.Type, right.Type)
 			}
@@ -912,13 +912,13 @@ func isConvertible(t1 *ast.Type, t2 *ast.Type) bool {
 	if t1.Type == t2.Type {
 		return true
 	}
-	if isNumeric(t1) && isNumeric(t2) {
+	if IsNumeric(t1) && IsNumeric(t2) {
 		return true
 	}
 	return false
 }
 
-func isNumeric(t *ast.Type) bool {
+func IsNumeric(t *ast.Type) bool {
 	switch t.Type {
 	case "INT":
 		return true

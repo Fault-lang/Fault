@@ -2,7 +2,7 @@ package execute
 
 import (
 	"bytes"
-	"fault/smt"
+	"fault/smt/variables"
 	"fmt"
 	"strings"
 )
@@ -24,7 +24,7 @@ func (mc *ModelChecker) Mermaid() {
 	}
 }
 
-func (mc *ModelChecker) writeObjects(k string, objects []*smt.VarChange) string {
+func (mc *ModelChecker) writeObjects(k string, objects []*variables.VarChange) string {
 	var objs []string
 	for _, o := range objects {
 		if o.Parent != "" {
@@ -38,7 +38,7 @@ func (mc *ModelChecker) writeObjects(k string, objects []*smt.VarChange) string 
 	return strings.Join(objs, "\n")
 }
 
-func (mc *ModelChecker) writeObject(o *smt.VarChange) string {
+func (mc *ModelChecker) writeObject(o *variables.VarChange) string {
 	value, ok := mc.ResultValues[o.Parent]
 	if ok {
 		return fmt.Sprintf("\t% s--> |%s| %s", o.Parent, value, o.Id)

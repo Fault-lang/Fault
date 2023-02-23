@@ -1,73 +1,67 @@
-package smt
+package rules
 
 import (
 	"testing"
 
-	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
 )
 
-func TestConvertIdent(t *testing.T) {
-	g := NewGenerator()
-	b := ir.NewBlock("test")
-	alloc := b.NewAlloca(irtypes.I32)
-	alloc.SetName("test_this_var")
-	val := constant.NewInt(irtypes.I32, 0)
-	store := b.NewStore(val, alloc)
-	g.variables.loads["@__run-%1"] = store.Dst
-	g.variables.ssa["test_this_var"] = 0
-
-	if g.variables.convertIdent("@__run", "%test_this_var") != "test_this_var_0" {
-		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("@__run", "%test_this_var"))
+func TestTagRules(t *testing.T) {
+	rules := []Rule{&Wrap{Value: "x"}, &Infix{
+		X: &Wrap{
+			Value: "x",
+			All:   true,
+		},
+		Y: &Wrap{
+			Value: "y",
+			All:   true,
+		},
+		Op: ">",
+	}, &Ite{
+		Cond: &Wrap{
+			Value: "x",
+			All:   true,
+		},
+		T: []Rule{&Wrap{
+			Value: "x",
+			All:   true,
+		}},
+		F: []Rule{&Wrap{
+			Value: "y",
+			All:   true,
+		}},
+	}, &Vwrap{
+		Value: constant.NewInt(irtypes.I32, 0),
+	}}
+	r := TagRules(rules, "foo", "bar")
+	if r[0].(*Wrap).tag.branch != "foo" || r[0].(*Wrap).tag.block != "bar" {
+		t.Fatalf("tag not set correctly for rule %s. got=%s", rules[0], r[0].(*Wrap).tag.String())
 	}
 
-	if g.variables.convertIdent("@__run", "%1") != "test_this_var_0" {
-		t.Fatalf("convertIdent returned the wrong value. got=%s", g.variables.convertIdent("@__run", "%1"))
+	if r[1].(*Infix).tag.branch != "foo" || r[1].(*Infix).tag.block != "bar" {
+		t.Fatalf("tag not set correctly for rule %s. got=%s", rules[1], r[1].(*Infix).tag.String())
 	}
 
-}
-
-func TestNewConstants(t *testing.T) {
-	g := NewGenerator()
-	globals := []*ir.Global{
-		ir.NewGlobalDef("test1", constant.NewFloat(irtypes.Double, 10)),
-		ir.NewGlobalDef("test2", constant.NewFloat(irtypes.Double, 20)),
-		ir.NewGlobalDef("test3", constant.NewFloat(irtypes.Double, 30)),
-	}
-	g.variables.ssa["test1"] = 0
-	g.variables.ssa["test2"] = 2
-	g.variables.ssa["test3"] = 5
-
-	results := g.newConstants(globals)
-
-	if len(results) != 3 {
-		t.Fatalf("newConstants returned an incorrect number of results. got=%d", len(results))
+	if r[2].(*Ite).tag.branch != "foo" || r[2].(*Ite).tag.block != "bar" {
+		t.Fatalf("tag not set correctly for rule %s. got=%s", rules[2], r[2].(*Ite).tag.String())
 	}
 
-	if results[0] != "(assert (= test1_1 10.0))" {
-		t.Fatalf("newConstants returned an incorrect value at index 0. got=%s", results[0])
-	}
-
-	if results[1] != "(assert (= test2_3 20.0))" {
-		t.Fatalf("newConstants returned an incorrect value at index 1. got=%s", results[1])
-	}
-
-	if results[2] != "(assert (= test3_6 30.0))" {
-		t.Fatalf("newConstants returned an incorrect value at index 2. got=%s", results[2])
+	if r[3].(*Vwrap).tag.branch != "foo" || r[3].(*Vwrap).tag.block != "bar" {
+		t.Fatalf("tag not set correctly for rule %s. got=%s", rules[3], r[3].(*Vwrap).tag.String())
 	}
 }
 
 func TestAssrtType(t *testing.T) {
-	a := &assrt{
-		variable: &wrap{
-			value: "x",
-			all:   true,
+	a := &Assrt{
+		Variable: &Wrap{
+			Value: "x",
+			All:   true,
 		},
-		conjunction: "&&",
-		assertion: &wrap{
-			value: "y",
-			all:   true,
+		Conjunction: "&&",
+		Assertion: &Wrap{
+			Value: "y",
+			All:   true,
 		},
 	}
 
@@ -83,16 +77,16 @@ func TestAssrtType(t *testing.T) {
 }
 
 func TestInfixType(t *testing.T) {
-	i := &infix{
-		x: &wrap{
-			value: "x",
-			all:   true,
+	i := &Infix{
+		X: &Wrap{
+			Value: "x",
+			All:   true,
 		},
-		y: &wrap{
-			value: "y",
-			all:   true,
+		Y: &Wrap{
+			Value: "y",
+			All:   true,
 		},
-		op: ">",
+		Op: ">",
 	}
 
 	i.Tag("test", "me")
@@ -107,27 +101,27 @@ func TestInfixType(t *testing.T) {
 }
 
 func TestIfeType(t *testing.T) {
-	cond := &infix{
-		x: &wrap{
-			value: "x",
-			all:   true,
+	cond := &Infix{
+		X: &Wrap{
+			Value: "x",
+			All:   true,
 		},
-		y: &wrap{
-			value: "y",
-			all:   true,
+		Y: &Wrap{
+			Value: "y",
+			All:   true,
 		},
-		op: ">",
+		Op: ">",
 	}
 
-	i := &ite{
-		cond: cond,
-		t: []rule{&wrap{
-			value: "x",
-			all:   true,
+	i := &Ite{
+		Cond: cond,
+		T: []Rule{&Wrap{
+			Value: "x",
+			All:   true,
 		}},
-		f: []rule{&wrap{
-			value: "y",
-			all:   true,
+		F: []Rule{&Wrap{
+			Value: "y",
+			All:   true,
 		}},
 	}
 
@@ -143,15 +137,15 @@ func TestIfeType(t *testing.T) {
 }
 
 func TestInvariantType(t *testing.T) {
-	i := &invariant{
-		left: &wrap{
-			value: "x",
-			all:   true,
+	i := &Invariant{
+		Left: &Wrap{
+			Value: "x",
+			All:   true,
 		},
-		operator: "&&",
-		right: &wrap{
-			value: "y",
-			all:   true,
+		Operator: "&&",
+		Right: &Wrap{
+			Value: "y",
+			All:   true,
 		},
 	}
 
@@ -167,9 +161,9 @@ func TestInvariantType(t *testing.T) {
 }
 
 func TestWrapType(t *testing.T) {
-	w := &wrap{
-		value: "x",
-		all:   true,
+	w := &Wrap{
+		Value: "x",
+		All:   true,
 	}
 
 	w.Tag("test", "me")
@@ -185,8 +179,8 @@ func TestWrapType(t *testing.T) {
 
 func TestVWrapType(t *testing.T) {
 	val := constant.NewInt(irtypes.I32, 0)
-	w := &vwrap{
-		value: val,
+	w := &Vwrap{
+		Value: val,
 	}
 
 	w.Tag("test", "me")
@@ -201,16 +195,16 @@ func TestVWrapType(t *testing.T) {
 }
 
 func TestWrapGroupType(t *testing.T) {
-	wg := &wrapGroup{
-		wraps: []*wrap{{
-			value: "x",
-			all:   true,
+	wg := &WrapGroup{
+		Wraps: []*Wrap{{
+			Value: "x",
+			All:   true,
 		}, {
-			value: "y",
-			all:   true,
+			Value: "y",
+			All:   true,
 		}, {
-			value: "z",
-			all:   true,
+			Value: "z",
+			All:   true,
 		}}}
 
 	wg.Tag("test", "me")
