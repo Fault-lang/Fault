@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fault/execute/parser"
-	"fault/smt"
+	"fault/smt/forks"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
@@ -73,12 +73,12 @@ func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, u
 	mc.Results = results
 }
 
-func (mc *ModelChecker) LoadMeta(forks []smt.Fork) {
+func (mc *ModelChecker) LoadMeta(frks []forks.Fork) {
 	// Load metadata that helps the results display nicely
 	tree := make(map[string][]*Branch)
-	for _, f := range forks {
+	for _, f := range frks {
 		for k, c := range f {
-			ends := smt.GetForkEndPoints(c)
+			ends := forks.GetForkEndPoints(c)
 			phi := util.MaxInt16(ends)
 			var branches []*Branch
 			for _, v := range c {

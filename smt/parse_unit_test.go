@@ -10,7 +10,7 @@ import (
 	irtypes "github.com/llir/llvm/ir/types"
 )
 
-func TestcreateCondRule(t *testing.T) {
+func TestCreateCondRule(t *testing.T) {
 	g := NewGenerator()
 	cond := &rules.Infix{
 		X: &rules.Wrap{

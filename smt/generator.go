@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"fault/ast"
+	"fault/smt/forks"
 	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -39,12 +41,12 @@ type Generator struct {
 	blocks         map[string][]rules.Rule
 	localCallstack []string
 
-	forks            []Fork
+	forks            []forks.Fork
 	storedChoice     map[string]*rules.StateChange
-	inPhiState       *PhiState //Flag, are we in a conditional or parallel?
+	inPhiState       *forks.PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping string
-	parallelRunStart bool      //Flag, make sure all branches with parallel runs begin from the same point
-	returnVoid       *PhiState //Flag, escape parseFunc before moving to next block
+	parallelRunStart bool            //Flag, make sure all branches with parallel runs begin from the same point
+	returnVoid       *forks.PhiState //Flag, escape parseFunc before moving to next block
 
 	Rounds     int
 	RoundVars  [][][]string
@@ -60,8 +62,8 @@ func NewGenerator() *Generator {
 		storedChoice:    make(map[string]*rules.StateChange),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
-		inPhiState:      NewPhiState(),
-		returnVoid:      NewPhiState(),
+		inPhiState:      forks.NewPhiState(),
+		returnVoid:      forks.NewPhiState(),
 		Results:         make(map[string][]*variables.VarChange),
 		RVarLookup:      make(map[string][][]int),
 	}
@@ -147,8 +149,62 @@ func (g *Generator) varRounds(base string, num string) map[int][]string {
 	return ir
 }
 
-func (g *Generator) GetForks() []Fork {
+func (g *Generator) newFork() {
+	if len(g.forks) == 0 {
+		g.forks = append(g.forks, forks.Fork{})
+		return
+	}
+
+	if g.inPhiState.Check() {
+		g.forks = append(g.forks[0:len(g.forks)-1], forks.Fork{})
+	} else {
+		g.forks = append(g.forks, forks.Fork{})
+	}
+}
+
+func (g *Generator) GetForks() []forks.Fork {
 	return g.forks
+}
+
+func (g *Generator) getCurrentFork() forks.Fork {
+	return g.forks[len(g.forks)-1]
+}
+
+func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
+	var stateChanges []string
+	fork := g.getCurrentFork()
+	for _, ru := range rules {
+		stateChanges = append(stateChanges, g.allStateChangesInRule(ru)...)
+	}
+
+	seenVar := make(map[string]bool)
+	for _, s := range stateChanges {
+		base, i := g.variables.GetVarBase(s)
+		n := int16(i)
+		// Have we seen this variable in a previous branch of
+		// this fork?
+		if _, ok := fork[base]; ok {
+			if seenVar[base] && // Have we seen this variable before?
+				fork[base][len(fork[base])-1].Branch == b { // in this branch?
+				fork[base][len(fork[base])-1] = fork[base][len(fork[base])-1].AddChoiceValue(n)
+			} else {
+				seenVar[base] = true
+				fork[base] = append(fork[base], g.newChoice(base, n, b))
+			}
+		} else {
+			seenVar[base] = true
+			fork[base] = []*forks.Choice{g.newChoice(base, n, b)}
+		}
+	}
+	g.forks[len(g.forks)-1] = fork
+}
+
+func (g *Generator) newChoice(base string, n int16, b string) *forks.Choice {
+	return &forks.Choice{
+		Base:   base,
+		Branch: b,
+		Values: []int16{n},
+	}
 }
 
 func (g *Generator) newConstants(globals []*ir.Global) []string {
@@ -964,6 +1020,476 @@ func (g *Generator) isASolvable(id string) bool {
 	return false
 }
 
+func (g *Generator) allStateChangesInRule(ru rules.Rule) []string {
+	var wg []string
+	switch r := ru.(type) {
+	case *rules.Infix:
+		ch := g.allStateChangesInRule(r.X)
+		wg = append(wg, ch...)
+		ch = g.allStateChangesInRule(r.Y)
+		wg = append(wg, ch...)
+
+	case *rules.Ite:
+		for _, w := range r.T {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
+		}
+
+		for _, w := range r.F {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
+		}
+	case *rules.WrapGroup:
+		for _, w := range r.Wraps {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
+		}
+	case *rules.Wrap:
+		if !g.variables.IsNumeric(r.Value) && !g.variables.IsBoolean(r.Value) { // Wraps might be static values
+			return []string{r.Value}
+		}
+	case *rules.Ands:
+		for _, w := range r.X {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
+		}
+	case *rules.Choices:
+		for _, w := range r.X {
+			ch := g.allStateChangesInRule(w)
+			wg = append(wg, ch...)
+		}
+	}
+	return wg
+}
+
+////////////////////////
+// Rules to String
+///////////////////////
+
+func (g *Generator) writeAssertlessRule(op string, x string, y string) string {
+	if y != "" {
+		return fmt.Sprintf("(%s %s %s)", op, x, y)
+	} else {
+		return fmt.Sprintf("(%s %s)", op, x)
+	}
+}
+
+func (g *Generator) writeBranch(ty string, cond string, t string, f string) string {
+	return fmt.Sprintf("(%s %s %s %s)", ty, cond, t, f)
+}
+
+func (g *Generator) declareVar(id string, t string) {
+	def := fmt.Sprintf("(declare-fun %s () %s)", id, t)
+	g.inits = append(g.inits, def)
+}
+
+func (g *Generator) writeAssert(op string, stmt string) string {
+	if op == "" {
+		return fmt.Sprintf("(assert %s)", stmt)
+	}
+	return fmt.Sprintf("(assert (%s %s))", op, stmt)
+}
+
+func (g *Generator) writeBranchRule(r *rules.Infix) string {
+	y := g.unpackRule(r.Y)
+	x := g.unpackRule(r.X)
+
+	return fmt.Sprintf("(%s %s %s)", r.Op, x, y)
+}
+
+func (g *Generator) writeRule(ru rules.Rule) string {
+	switch r := ru.(type) {
+	case *rules.Infix:
+		y := g.unpackRule(r.Y)
+		x := g.unpackRule(r.X)
+
+		if y == "0x3DA3CA8CB153A753" { //An uncertain or unknown value
+			g.declareVar(x, r.Ty)
+			return ""
+		}
+
+		if r.Op == "or" {
+			stmt := fmt.Sprintf("%s%s", x, y)
+			return g.writeAssert("or", stmt)
+		}
+
+		if r.Op != "" && r.Op != "=" {
+			return g.writeAssertlessRule(r.Op, x, y)
+		}
+
+		return g.writeInitRule(x, r.Ty, y)
+	case *rules.Ite:
+		cond := g.writeCond(r.Cond.(*rules.Infix))
+		var tRule, fRule string
+		var tEnds, fEnds []string
+		for _, t := range r.T {
+			tEnds = append(tEnds, g.writeBranchRule(t.(*rules.Infix)))
+		}
+
+		for _, f := range r.F {
+			fEnds = append(fEnds, g.writeBranchRule(f.(*rules.Infix)))
+		}
+
+		if len(tEnds) > 1 {
+			stmt := strings.Join(tEnds, " ")
+			tRule = g.writeAssertlessRule("and", stmt, "")
+		} else if len(tEnds) == 1 {
+			tRule = tEnds[0]
+		}
+
+		if len(fEnds) > 1 {
+			stmt := strings.Join(fEnds, " ")
+			fRule = g.writeAssertlessRule("and", stmt, "")
+		} else if len(fEnds) == 1 {
+			fRule = fEnds[0]
+		}
+
+		br := g.writeBranch("ite", cond, tRule, fRule)
+		return g.writeAssert("", br)
+	case *rules.Wrap:
+		return r.Value
+	case *rules.Phi:
+		g.declareVar(r.EndState, g.variables.LookupType(r.BaseVar, nil))
+		ends := g.formatEnds(r.BaseVar, r.Nums, r.EndState)
+		return g.writeAssert("or", ends)
+	case *rules.Ands:
+		var ands string
+		for _, x := range r.X {
+			var s string
+			switch x := x.(type) {
+			case *rules.Infix:
+				s = g.writeBranchRule(x)
+			default:
+				s = g.writeRule(x)
+			}
+			ands = fmt.Sprintf("%s%s", ands, s)
+		}
+		return g.writeAssertlessRule("and", ands, "")
+	case *rules.Choices:
+		var ands string
+		var s string
+		for _, x := range r.X {
+			s = g.writeRule(x)
+			ands = fmt.Sprintf("%s%s", ands, s)
+		}
+		if r.Op == "or" {
+			return g.writeAssert(r.Op, ands)
+		}
+		return g.writeAssert("", ands)
+	default:
+		panic(fmt.Sprintf("%T is not a valid rule type", r))
+	}
+}
+
+func (g *Generator) writeCond(r *rules.Infix) string {
+	y := g.unpackCondRule(r.Y)
+	x := g.unpackCondRule(r.X)
+
+	return g.writeAssertlessRule(r.Op, x, y)
+}
+
+func (g *Generator) unpackCondRule(x rules.Rule) string {
+	switch r := x.(type) {
+	case *rules.Wrap:
+		return r.Value
+	case *rules.Infix:
+		x := g.unpackCondRule(r.X)
+		y := g.unpackCondRule(r.Y)
+		return g.writeAssertlessRule(r.Op, x, y)
+	default:
+		panic(fmt.Sprintf("%T is not a valid rule type", r))
+	}
+}
+
+func (g *Generator) unpackRule(x rules.Rule) string {
+	switch r := x.(type) {
+	case *rules.Wrap:
+		return r.Value
+	case *rules.Infix:
+		return g.writeRule(r)
+	case *rules.Ands:
+		return g.writeRule(r)
+	case *rules.Choices:
+		return g.writeRule(r)
+	default:
+		panic(fmt.Sprintf("%T is not a valid rule type", r))
+	}
+}
+
+func (g *Generator) writeInitRule(id string, t string, val string) string {
+	// Initialize: x = Int("x")
+	g.declareVar(id, t)
+	// Set rule: s.add(x == 2)
+	return fmt.Sprintf("(assert (= %s %s))", id, val)
+}
+
+func (g *Generator) generateRules() []string {
+	var rules []string
+	for _, v := range g.rawRules {
+		for _, ru := range v {
+			rules = append(rules, g.writeRule(ru))
+		}
+	}
+	return rules
+}
+
+////////////////////////////////////
+// General rule store and load logic
+///////////////////////////////////
+
+func (g *Generator) constantRule(id string, c constant.Constant) string {
+	switch val := c.(type) {
+	case *constant.Float:
+		ty := g.variables.LookupType(id, val)
+		id = g.variables.AdvanceSSA(id)
+		g.addVarToRound(id, int(g.variables.SSA[id]))
+		if g.isASolvable(id) {
+			g.declareVar(id, ty)
+		} else {
+			v := val.X.String()
+			if strings.Contains(v, ".") {
+				return g.writeInitRule(id, ty, v)
+			}
+			return g.writeInitRule(id, ty, v+".0")
+		}
+	}
+	return ""
+}
+
+func (g *Generator) loadsRule(inst *ir.InstLoad) {
+	id := inst.Ident()
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.Loads[refname] = inst.Src
+}
+
+func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
+	var ru []rules.Rule
+	base := g.variables.FormatIdent(inst.Dst.Ident())
+	if g.variables.IsTemp(inst.Src.Ident()) {
+		srcId := inst.Src.Ident()
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
+		if val, ok := g.variables.Loads[refname]; ok {
+			ty := g.variables.LookupType(refname, val)
+			n := g.variables.SSA[base]
+			prev := fmt.Sprintf("%s_%d", base, n)
+			if !g.inPhiState.Check() {
+				g.variables.NewPhi(base, n+1)
+			} else {
+				g.variables.StoreLastState(base, n+1)
+			}
+			id := g.variables.AdvanceSSA(base)
+			g.addVarToRound(base, int(n+1))
+			v := g.variables.FormatValue(val)
+			if !g.variables.IsBoolean(v) && !g.variables.IsNumeric(v) {
+				v = g.variables.FormatIdent(v)
+				v = fmt.Sprintf("%s_%d", v, n)
+			}
+			g.AddNewVarChange(base, id, prev)
+			ru = append(ru, g.createRule(id, v, ty, ""))
+		} else if ref, ok := g.variables.Ref[refname]; ok {
+			switch r := ref.(type) {
+			case *rules.Infix:
+				r.X = g.tempToIdent(r.X)
+				r.Y = g.tempToIdent(r.Y)
+				n := g.variables.SSA[base]
+				prev := fmt.Sprintf("%s_%d", base, n)
+				if !g.inPhiState.Check() {
+					g.variables.NewPhi(base, n+1)
+				} else {
+					g.variables.StoreLastState(base, n+1)
+				}
+				id := g.variables.AdvanceSSA(base)
+				g.addVarToRound(base, int(n+1))
+				g.AddNewVarChange(base, id, prev)
+				wid := &rules.Wrap{Value: id}
+				if g.variables.IsBoolean(r.Y.String()) {
+					ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
+				} else if g.isASolvable(r.X.String()) {
+					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+				} else {
+					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r})
+				}
+			default:
+				n := g.variables.SSA[base]
+				prev := fmt.Sprintf("%s_%d", base, n)
+				if !g.inPhiState.Check() {
+					g.variables.NewPhi(base, n+1)
+				} else {
+					g.variables.StoreLastState(base, n+1)
+				}
+				ty := g.variables.LookupType(base, nil)
+				id := g.variables.AdvanceSSA(base)
+				g.addVarToRound(base, int(n+1))
+				g.AddNewVarChange(base, id, prev)
+				wid := &rules.Wrap{Value: id}
+				ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
+			}
+		} else {
+			panic(fmt.Sprintf("smt generation error, value for %s not found", base))
+		}
+	} else {
+		ty := g.variables.LookupType(base, inst.Src)
+		n := g.variables.SSA[base]
+		prev := fmt.Sprintf("%s_%d", base, n)
+		if !g.inPhiState.Check() {
+			g.variables.NewPhi(base, n+1)
+		} else {
+			g.variables.StoreLastState(base, n+1)
+		}
+		id := g.variables.AdvanceSSA(base)
+		g.addVarToRound(base, int(g.variables.SSA[base]))
+		g.AddNewVarChange(base, id, prev)
+		ru = append(ru, g.createRule(id, inst.Src.Ident(), ty, ""))
+	}
+	return ru
+}
+
+func (g *Generator) xorRule(inst *ir.InstXor) rules.Rule {
+	id := inst.Ident()
+	x := inst.X.Ident()
+	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	if xRule == nil {
+		x = g.variables.ConvertIdent(g.currentFunction, x)
+		xRule = &rules.Wrap{Value: x}
+	}
+	return g.createMultiCondRule(id, xRule, &rules.Wrap{}, "not")
+}
+
+func (g *Generator) andRule(inst *ir.InstAnd) rules.Rule {
+	id := inst.Ident()
+	x := inst.X.Ident()
+	y := inst.Y.Ident()
+
+	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	if xRule == nil {
+		x = g.variables.ConvertIdent(g.currentFunction, x)
+		xRule = &rules.Wrap{Value: x}
+	}
+
+	yRule := g.variables.LookupCondPart(g.currentFunction, y)
+	if yRule == nil {
+		y = g.variables.ConvertIdent(g.currentFunction, y)
+		yRule = &rules.Wrap{Value: y}
+	}
+	return g.createMultiCondRule(id, xRule, yRule, "and")
+}
+
+func (g *Generator) orRule(inst *ir.InstOr) rules.Rule {
+	x := inst.X.Ident()
+	y := inst.Y.Ident()
+	id := inst.Ident()
+	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	if xRule == nil {
+		x = g.variables.ConvertIdent(g.currentFunction, x)
+		xRule = &rules.Wrap{Value: x}
+	}
+
+	yRule := g.variables.LookupCondPart(g.currentFunction, y)
+	if yRule == nil {
+		y = g.variables.ConvertIdent(g.currentFunction, y)
+		yRule = &rules.Wrap{Value: y}
+	}
+	return g.createMultiCondRule(id, xRule, yRule, "or")
+}
+
+func (g *Generator) stateRules(key string, sc *rules.StateChange) rules.Rule {
+	if len(sc.Ors) == 0 {
+		and := g.andStateRule(key, sc.Ands)
+		a := &rules.Ands{
+			X: and,
+		}
+
+		c := &rules.Choices{
+			X:  []*rules.Ands{a},
+			Op: "and",
+		}
+		return c
+	}
+
+	and := g.andStateRule(key, sc.Ands)
+	ors := g.orStateRule(key, sc.Ors)
+
+	if len(sc.Ands) != 0 {
+		ors["joined_ands"] = and
+	}
+
+	x := g.syncStateRules(ors)
+
+	r := &rules.Choices{
+		X:  x,
+		Op: "or",
+	}
+
+	return r
+
+}
+
+func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[string][]rules.Rule {
+	g.inPhiState.In()
+
+	and := make(map[string][]rules.Rule)
+	for _, b := range choiceV {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, b.Ident())
+		and[refname] = g.parseBuiltIn(b.(*ir.InstCall), true)
+	}
+	delete(g.storedChoice, choiceK)
+
+	g.inPhiState.Out()
+	return and
+}
+
+func (g *Generator) andStateRule(andK string, andV []value.Value) []rules.Rule {
+	g.inPhiState.In()
+
+	var ands []rules.Rule
+	for _, b := range andV {
+		a := g.parseBuiltIn(b.(*ir.InstCall), true)
+		ands = append(ands, a...)
+	}
+	delete(g.storedChoice, andK)
+
+	g.inPhiState.Out()
+	return ands
+}
+
+func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.Ands {
+	g.inPhiState.In()
+	g.newFork()
+
+	var e []rules.Rule
+	var keys []string
+	ends := make(map[string][]rules.Rule)
+	phis := make(map[string]int16)
+	var x []*rules.Ands
+
+	for k, v := range branches {
+		keys = append(keys, k)
+		g.buildForkChoice(v, k)
+		e, phis = g.capCond(k, phis)
+		ends[k] = append(v, e...)
+	}
+
+	syncs := g.capCondSyncRules(keys)
+	for k, v := range syncs {
+		e2 := append(ends[k], v...)
+		a := &rules.Ands{
+			X: e2,
+		}
+		x = append(x, a)
+	}
+	g.inPhiState.Out()
+	return x
+}
+
+func (g *Generator) tempRule(inst value.Value, r rules.Rule) {
+	// If infix rule is stored in a temp variable
+	id := inst.Ident()
+	if g.variables.IsTemp(id) {
+		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		g.variables.Ref[refname] = r
+	}
+}
+
 ////////////////////////
 // Generating SMT
 ///////////////////////
@@ -977,6 +1503,234 @@ func (g *Generator) SMT() string {
 	out.WriteString(strings.Join(g.asserts, "\n"))
 
 	return out.String()
+}
+
+///////////////////////////////
+// Logic Behind Parallel Runs
+//////////////////////////////
+
+func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
+	var rc func([]string, int)
+	rc = func(a []string, k int) {
+		if k == len(a) {
+			permuts = append(permuts, append([]string{}, a...))
+		} else {
+			for i := k; i < len(p); i++ {
+				a[k], a[i] = a[i], a[k]
+				rc(a, k+1)
+				a[k], a[i] = a[i], a[k]
+			}
+		}
+	}
+	rc(p, 0)
+
+	return permuts
+}
+
+func (g *Generator) runParallel(perm [][]string) []rules.Rule {
+	var ru []rules.Rule
+	g.branchId = g.branchId + 1
+	branch := fmt.Sprint("branch_", g.branchId)
+	g.newFork()
+	for i, calls := range perm {
+		branchBlock := fmt.Sprint("option_", i)
+		var opts [][]rules.Rule
+		varState := g.variables.SaveState()
+		for _, c := range calls {
+			g.parallelRunStart = true
+			g.inPhiState.Out() //Don't behave like we're in Phi inside the function
+			v := g.functions[c]
+			raw := g.parseFunction(v)
+			g.inPhiState.In()
+			raw = rules.TagRules(raw, branch, branchBlock)
+			opts = append(opts, raw)
+		}
+		//Flat the rules
+		raw := g.parallelRules(opts)
+		// Pull all the variables out of the rules and
+		// sort them into fork choices
+		g.buildForkChoice(raw, "")
+		g.variables.LoadState(varState)
+		ru = append(ru, raw...)
+	}
+
+	ru = append(ru, g.capParallel()...)
+	return ru
+}
+
+func (g *Generator) parallelRules(r [][]rules.Rule) []rules.Rule {
+	var rules []rules.Rule
+	for _, op := range r {
+		rules = append(rules, op...) // Flatten
+	}
+	return rules
+}
+
+func (g *Generator) isSameParallelGroup(meta ir.Metadata) bool {
+	for _, v := range meta {
+
+		if v.Name == g.parallelGrouping {
+			return true
+		}
+
+		if g.parallelGrouping == "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (g *Generator) singleParallelStep(callee string) bool {
+	if len(g.localCallstack) == 0 {
+		return false
+	}
+
+	if callee == g.localCallstack[len(g.localCallstack)-1] {
+		return true
+	}
+
+	return false
+}
+
+func (g *Generator) updateParallelGroup(meta ir.Metadata) {
+	for _, v := range meta {
+		if v.Name[0:5] != "round-" {
+			g.parallelGrouping = v.Name
+		}
+	}
+}
+
+func (g *Generator) capParallel() []rules.Rule {
+	// Take all the end variables for the all the branches
+	// and cap them with a phi value
+	// writes OR nodes to end each parallel run
+
+	fork := g.getCurrentFork()
+	var ru []rules.Rule
+	for k, v := range fork {
+		id := g.variables.AdvanceSSA(k)
+		g.addVarToRound(k, int(g.variables.SSA[k]))
+
+		var nums []int16
+		for _, c := range v {
+			nums = append(nums, c.GetEnd())
+		}
+
+		rule := &rules.Phi{
+			BaseVar:  k,
+			EndState: id,
+			Nums:     nums,
+		}
+		g.VarChangePhi(k, id, nums)
+		ru = append(ru, rule)
+
+		base, i := g.variables.GetVarBase(id)
+		n := int16(i)
+		if g.inPhiState.Level() == 1 {
+			g.variables.NewPhi(base, n)
+		} else {
+			g.variables.StoreLastState(base, n)
+		}
+
+	}
+	return ru
+}
+
+func (g *Generator) capRule(k string, nums []int16, id string) []rules.Rule {
+	var e []rules.Rule
+	for _, v := range nums {
+		id2 := fmt.Sprint(k, "_", v)
+		g.AddNewVarChange(k, id, id2)
+		ty := g.variables.LookupType(k, nil)
+		if ty == "Bool" {
+			r := &rules.Infix{
+				X:  &rules.Wrap{Value: id},
+				Y:  &rules.Wrap{Value: id2},
+				Op: "=",
+				Ty: "Bool",
+			}
+			e = append(e, r)
+		} else {
+			r := &rules.Infix{
+				X:  &rules.Wrap{Value: id},
+				Y:  &rules.Wrap{Value: id2},
+				Op: "=",
+				Ty: "Real",
+			}
+			e = append(e, r)
+		}
+	}
+	return e
+}
+
+func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[string]int16) {
+	fork := g.getCurrentFork()
+	var rules []rules.Rule
+	for k, v := range fork {
+		// Because we're looking at all the variables in
+		// the true branch THEN all the variables in the
+		// false branch, we only increment the variable
+		// when we produce the phi value for the first time
+		var id string
+		if phi, ok := phis[k]; !ok {
+			id = g.variables.AdvanceSSA(k)
+			g.declareVar(id, g.variables.LookupType(k, nil))
+			_, i := g.variables.GetVarBase(id)
+			g.addVarToRound(k, i)
+			phis[k] = int16(i)
+		} else {
+			id = fmt.Sprintf("%s_%d", k, phi)
+		}
+
+		for _, c := range v {
+			if c.Branch == b {
+				rules = append(rules, g.capRule(k, []int16{c.GetEnd()}, id)...)
+			}
+		}
+	}
+	return rules, phis
+}
+
+func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule {
+	// For cases where variables changed in one branch are not
+	// present in the other, add a rule
+	ends := make(map[string][]rules.Rule)
+	for _, b := range branches {
+		var e []rules.Rule
+		fork := g.getCurrentFork()
+		for k, c := range fork {
+			if len(c) == 1 && c[0].Branch == b {
+				start := g.variables.GetStartState(k)
+				id := g.variables.GetSSA(k)
+				e = append(e, g.capRule(k, []int16{start}, id)...)
+				n := g.variables.SSA[k]
+				if g.inPhiState.Level() == 1 {
+					g.variables.NewPhi(k, n)
+				} else {
+					g.variables.StoreLastState(k, n)
+				}
+			}
+		}
+		for _, notB := range util.Intersection(branches, []string{b}, true) {
+			if _, ok := ends[notB]; !ok {
+				ends[notB] = e
+			} else {
+				ends[notB] = append(ends[notB], e...)
+			}
+		}
+	}
+	return ends
+}
+
+func (g *Generator) formatEnds(k string, nums []int16, id string) string {
+	var e []string
+	for _, v := range nums {
+		v := fmt.Sprint(k, "_", strconv.Itoa(int(v)))
+		r := g.writeAssertlessRule("=", id, v)
+		e = append(e, r)
+	}
+	return strings.Join(e, " ")
 }
 
 ////////////////////////
