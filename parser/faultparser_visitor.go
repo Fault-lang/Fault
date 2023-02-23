@@ -17,6 +17,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#globalDecl.
 	VisitGlobalDecl(ctx *GlobalDeclContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#swap.
+	VisitSwap(ctx *SwapContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#componentDecl.
 	VisitComponentDecl(ctx *ComponentDeclContext) interface{}
 

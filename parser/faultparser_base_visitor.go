@@ -20,6 +20,10 @@ func (v *BaseFaultParserVisitor) VisitGlobalDecl(ctx *GlobalDeclContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitSwap(ctx *SwapContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitComponentDecl(ctx *ComponentDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }

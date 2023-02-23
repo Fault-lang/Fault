@@ -17,6 +17,9 @@ type FaultParserListener interface {
 	// EnterGlobalDecl is called when entering the globalDecl production.
 	EnterGlobalDecl(c *GlobalDeclContext)
 
+	// EnterSwap is called when entering the swap production.
+	EnterSwap(c *SwapContext)
+
 	// EnterComponentDecl is called when entering the componentDecl production.
 	EnterComponentDecl(c *ComponentDeclContext)
 
@@ -268,6 +271,9 @@ type FaultParserListener interface {
 
 	// ExitGlobalDecl is called when exiting the globalDecl production.
 	ExitGlobalDecl(c *GlobalDeclContext)
+
+	// ExitSwap is called when exiting the swap production.
+	ExitSwap(c *SwapContext)
 
 	// ExitComponentDecl is called when exiting the componentDecl production.
 	ExitComponentDecl(c *ComponentDeclContext)

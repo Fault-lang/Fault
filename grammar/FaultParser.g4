@@ -17,7 +17,11 @@ sysClause
     ;
 
 globalDecl
-    : 'global' IDENT '=' operand eos
+    : 'global' IDENT '=' operand eos (swap eos)?
+    ;
+
+swap
+    : operand '=' (functionLit | numeric | string_ | bool_ | operandName | prefix | solvable)
     ;
 
 componentDecl
@@ -227,7 +231,7 @@ stateBlock
     ;
 
 stateStep
-    : paramCall ('|' paramCall)* eos              #stateStepExpr
+    : paramCall ('|' paramCall)? eos              #stateStepExpr
     | stateChange eos                                #stateChain
     | ifStmtState                                 #stateExpr
     ;

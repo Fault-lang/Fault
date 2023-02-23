@@ -39,6 +39,12 @@ func (s *BaseFaultParserListener) EnterGlobalDecl(ctx *GlobalDeclContext) {}
 // ExitGlobalDecl is called when production globalDecl is exited.
 func (s *BaseFaultParserListener) ExitGlobalDecl(ctx *GlobalDeclContext) {}
 
+// EnterSwap is called when production swap is entered.
+func (s *BaseFaultParserListener) EnterSwap(ctx *SwapContext) {}
+
+// ExitSwap is called when production swap is exited.
+func (s *BaseFaultParserListener) ExitSwap(ctx *SwapContext) {}
+
 // EnterComponentDecl is called when production componentDecl is entered.
 func (s *BaseFaultParserListener) EnterComponentDecl(ctx *ComponentDeclContext) {}
 
