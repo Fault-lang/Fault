@@ -240,3 +240,24 @@ func TestNewConstants(t *testing.T) {
 		t.Fatalf("newConstants returned an incorrect value at index 2. got=%s", results[2])
 	}
 }
+
+func TestCaptureState(t *testing.T) {
+	test1 := "test_constant"
+	name, a, c := captureState(test1)
+	if name != "" || a || !c {
+		t.Fatal("captureState failed on a constant")
+	}
+
+	test2 := "test_this_var"
+	name2, a2, c2 := captureState(test2)
+	if name2 != "" || !a2 || c2 {
+		t.Fatalf("captureState failed on a general state variablegot=%s %v %v", name2, a2, c2)
+	}
+
+	test3 := "test_this_var_2"
+	name3, a3, c3 := captureState(test3)
+	if name3 != "2" || a3 || c3 {
+		t.Fatalf("captureState failed on a specific state variable. got=%s %v %v", name3, a3, c3)
+	}
+
+}
