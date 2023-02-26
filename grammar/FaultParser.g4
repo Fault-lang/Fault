@@ -242,7 +242,7 @@ runBlock
 
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
-    | IDENT '=' 'new' (paramCall | IDENT) eos      #runInit
+    | IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)?     #runInit
     | simpleStmt eos                              #runExpr
     | ifStmtRun                                     #runExpr
     ;

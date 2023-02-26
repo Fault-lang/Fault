@@ -18,7 +18,7 @@ import (
 
 type FaultListener struct {
 	*parser.BaseFaultParserListener
-	stack                []interface{}
+	stack                []ast.Node
 	AST                  *ast.Spec
 	structscope          string
 	scope                string
@@ -42,14 +42,22 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
-func (l *FaultListener) push(n interface{}) {
+func (l *FaultListener) push(n ast.Node) {
 	l.stack = append(l.stack, n)
 }
 
-func (l *FaultListener) pop() interface{} {
-	var s interface{}
+func (l *FaultListener) pushN(n []ast.Node) {
+	l.stack = append(l.stack, n...)
+}
+
+func (l *FaultListener) pop() ast.Node {
+	var s ast.Node
 	s, l.stack = l.stack[len(l.stack)-1], l.stack[:len(l.stack)-1]
 	return s
+}
+
+func (l *FaultListener) peek() ast.Node {
+	return l.stack[len(l.stack)-1]
 }
 
 func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
@@ -86,11 +94,11 @@ func (l *FaultListener) ExitSpecClause(c *parser.SpecClauseContext) {
 func (l *FaultListener) ExitImportDecl(c *parser.ImportDeclContext) {
 	items := len(c.AllImportSpec())
 
-	var itemList []interface{}
+	var itemList []ast.Node
 	for i := 0; i < items; i++ {
 		right := l.pop()
 
-		var temp []interface{}
+		var temp []ast.Node
 		temp = append(temp, right)
 
 		itemList = append(temp, itemList...)
@@ -165,7 +173,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 	}
 	items = len(identlist.AllOperandName())
 
-	var val interface{}
+	var val ast.Node
 	if (c.GetChildCount() - items) > 0 {
 		val = l.pop()
 		if val == nil {
@@ -177,7 +185,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 		val = &ast.Unknown{Token: token2, Name: nil}
 	}
 
-	var itemList []interface{}
+	var itemList []ast.Node
 	for i := 0; i < items; i++ {
 		left := l.pop()
 		ident, ok := left.(*ast.Identifier)
@@ -193,7 +201,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
 		}
-		var temp []interface{}
+		var temp []ast.Node
 		temp = append(temp, &ast.ConstantStatement{
 			Token: token,
 			Name:  ident,
@@ -351,7 +359,7 @@ func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
 }
 
 func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
-	var val interface{}
+	var val ast.Node
 	var keyValuePair bool
 	if c.GetChildCount() != 1 {
 		val = l.pop()
@@ -1477,7 +1485,7 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 	return p
 }
 
-func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
+func (l *FaultListener) intOrFloatOk(v ast.Node) (float64, error) {
 	switch val := v.(type) {
 	case *ast.FloatLiteral:
 		return val.Value, nil
@@ -1530,10 +1538,32 @@ func (l *FaultListener) ExitSysClause(c *parser.SysClauseContext) {
 	)
 }
 
+func (l *FaultListener) getSwaps() []ast.Node {
+	var swaps []ast.Node
+	loop := true
+
+	for loop {
+		peek := l.peek()
+		if swap, ok := peek.(*ast.InfixExpression); ok && swap.TokenLiteral() == "SWAP" {
+			l.pop()
+			swaps = append(swaps, swap)
+		} else {
+			loop = false
+		}
+	}
+	return swaps
+}
+
 func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
 
+	swaps := l.getSwaps()
+
 	instance := l.pop()
+
+	if swaps != nil {
+		l.pushN(swaps)
+	}
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
@@ -1561,6 +1591,20 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 		Value: instance.(ast.Expression),
 	})
 
+}
+
+func (l *FaultListener) ExitSwap(c *parser.SwapContext) {
+	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
+
+	right := l.pop()
+	left := l.pop()
+
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "=",
+		Right:    right.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
@@ -1629,7 +1673,12 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 
 func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
 	idents := c.AllIDENT()
-	l.push([]string{idents[0].GetText(), idents[1].GetText()})
+	start := &ast.InfixExpression{
+		Left:     &ast.StringLiteral{Value: idents[0].GetText()},
+		Operator: ":",
+		Right:    &ast.StringLiteral{Value: idents[1].GetText()},
+	}
+	l.push(start)
 
 }
 
@@ -1638,8 +1687,8 @@ func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
 	var pairs [][]string
 	for i := 0; i < len(c.AllStartPair()); i++ {
 		p := l.pop()
-		pair := p.([]string)
-		pairs = append(pairs, pair)
+		pair := p.(*ast.InfixExpression)
+		pairs = append(pairs, []string{pair.Left.String(), pair.Right.String()})
 	}
 
 	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
