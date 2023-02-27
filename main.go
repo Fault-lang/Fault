@@ -56,7 +56,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	ty := types.NewTypeChecker(pre.Specs)
 	_, err := ty.Check(tree)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("typechecker failed: %s", err)
 	}
 
 	var visual string
@@ -78,7 +78,7 @@ func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns)
 	err := compiler.Compile(lstnr.AST)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("LLVM IR generation failed: %s", err)
 	}
 	return compiler
 }
@@ -95,7 +95,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string,
 	ex.LoadModel(smt, uncertains, unknowns, results)
 	ok, err := ex.Check()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("model checker has failed: %s", err)
 	}
 	if !ok {
 		fmt.Println("Fault could not find a failure case.")
@@ -103,7 +103,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string,
 	}
 	scenario, err := ex.Solve()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error found fetching solution from solver: %s", err)
 	}
 	data := ex.Filter(scenario)
 	return ex, data
