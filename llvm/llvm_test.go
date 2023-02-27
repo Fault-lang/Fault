@@ -70,13 +70,13 @@ func TestRunBlock(t *testing.T) {
 			def foo = flow{
 				buzz: new bar,
 				fizz: func{
-					a + buzz.a -> buzz.b;
+					buzz.b <- a + buzz.a;
 				},
 				fizz2: func{
-					buzz.a - b -> buzz.b;
+					buzz.b <- buzz.a - b;
 				},
 				fizz3: func{
-					buzz.b + b -> buzz.a;
+					buzz.a <- buzz.b + b;
 				},
 			};
 
@@ -132,7 +132,7 @@ func TestRunBlock(t *testing.T) {
 		%1 = load double, double* @test1_a
 		%2 = load double, double* %test1_test_buzz_a
 		%3 = fadd double %1, %2
-		%4 = fsub double %0, %3
+		%4 = fadd double %0, %3
 		store double %4, double* %test1_test_buzz_b
 		ret void
 	}
@@ -143,7 +143,7 @@ func TestRunBlock(t *testing.T) {
 		%1 = load double, double* %test1_test_buzz_a
 		%2 = load double, double* @test1_b
 		%3 = fsub double %1, %2
-		%4 = fsub double %0, %3
+		%4 = fadd double %0, %3
 		store double %4, double* %test1_test_buzz_b
 		ret void
 	}
@@ -154,7 +154,7 @@ func TestRunBlock(t *testing.T) {
 		%1 = load double, double* %test1_test_buzz_b
 		%2 = load double, double* @test1_b
 		%3 = fadd double %1, %2
-		%4 = fsub double %0, %3
+		%4 = fadd double %0, %3
 		store double %4, double* %test1_test_buzz_a
 		ret void
 	}		
@@ -778,7 +778,7 @@ func prepTestSys(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(compiler.GetIR())
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 

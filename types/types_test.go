@@ -97,6 +97,10 @@ func TestStructTypeError(t *testing.T) {
 
 	actual := "stock is the store of values, stock test1_fizz should be a flow"
 
+	if err == nil {
+		t.Fatalf("Type checking failed to catch invalid expression. Error is nil")
+	}
+
 	if err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
 	}
@@ -129,8 +133,8 @@ func TestInstanceError(t *testing.T) {
 func TestComplex(t *testing.T) {
 	test := `spec test1;
 			def test = stock{
-				x: func{(2.1*8)+2.3/(5-2);}
-			}
+				x: func{(2.1*8)+2.3/(5-2);},
+			};
 	`
 	checker, err := prepTest(test)
 
