@@ -558,3 +558,11 @@ func TestIntersection(t *testing.T) {
 		t.Fatalf("intersection delivered an incorrect result got=%s", t3)
 	}
 }
+
+func TestFromEnd(t *testing.T) {
+	test := "helloworld"
+
+	if FromEnd(test, 2) != "ld" {
+		t.Fatal("FromEnd produces wrong substring")
+	}
+}

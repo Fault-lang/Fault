@@ -117,9 +117,9 @@ func (mc *ModelChecker) Check() (bool, error) {
 		return false, err
 	}
 
-	if results == "sat" {
+	if util.FromEnd(results, 3) == "sat" {
 		return true, nil
-	} else if results == "unsat" {
+	} else if util.FromEnd(results, 5) == "unsat" {
 		return false, nil
 	} else {
 		return false, errors.New(results)
@@ -131,11 +131,9 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Remove extra output (ie "sat")
-	if results[0:1] != "(" {
-		newline := strings.Index(results, "\n")
-		results = results[newline:]
-	}
+	results = cleanExtraOutputs(results)
 
 	is := antlr.NewInputStream(results)
 	lexer := parser.NewSMTLIBv2Lexer(is)
@@ -192,4 +190,12 @@ func (mc *ModelChecker) stateAssessment(dist distuv.Normal, states Scenario) Sce
 		}*/
 	}
 	return weighted
+}
+
+func cleanExtraOutputs(results string) string {
+	for results[0:1] != "(" {
+		newline := strings.Index(results, "\n")
+		results = results[newline+1:]
+	}
+	return results
 }

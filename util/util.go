@@ -346,6 +346,10 @@ func Intersection(s1 []string, s2 []string, init bool) []string {
 	return s3
 }
 
+func FromEnd(str string, offset int) string {
+	return str[len(str)-offset:]
+}
+
 type ImportTrail []string
 
 func (i ImportTrail) BaseSpec() string {
