@@ -1497,6 +1497,7 @@ func (g *Generator) tempRule(inst value.Value, r rules.Rule) {
 func (g *Generator) SMT() string {
 	var out bytes.Buffer
 
+	out.WriteString("(set-logic QF_NRA)")
 	out.WriteString(strings.Join(g.inits, "\n"))
 	out.WriteString(strings.Join(g.constants, "\n"))
 	out.WriteString(strings.Join(g.rules, "\n"))

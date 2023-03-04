@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun simple_l_active_0 () Bool)
 (declare-fun simple_l_vault_value_0 () Real)
 (declare-fun simple_l_vault_value_2 () Real)

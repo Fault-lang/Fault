@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun mixed_a_option2_1 () Bool)
 (declare-fun mixed_a_choice_2 () Bool)
 (declare-fun mixed_a_option3_1 () Bool)

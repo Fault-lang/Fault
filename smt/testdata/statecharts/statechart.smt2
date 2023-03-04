@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun statechart_fl_vault_value_2 () Real)
 (declare-fun statechart_fl_vault_value_3 () Real)
 (declare-fun statechart_drain_open_2 () Bool)

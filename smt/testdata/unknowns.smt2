@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun unknowns_loop_data_a_0 () Real)
 (declare-fun unknowns_loop_data_b_0 () Real)
 (declare-fun unknowns_loop_data_c_0 () Real)

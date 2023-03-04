@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun booleans_l_vault_value_0 () Bool)
 (declare-fun booleans_l_vault_value_3 () Bool)
 (declare-fun booleans_l_vault_value_1 () Bool)

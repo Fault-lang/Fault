@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun multifile1_servers_pool_vm1_cpu_0 () Real)
 (declare-fun multifile1_servers_pool_vm1_memory_0 () Real)
 (declare-fun multifile1_servers_pool_vm2_cpu_0 () Real)

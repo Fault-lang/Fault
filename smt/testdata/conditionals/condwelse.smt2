@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun condwe_t_base_value_2 () Real)
 (declare-fun condwe_t_base_value_4 () Real)
 (declare-fun condwe_t_base_cond_0 () Real)
