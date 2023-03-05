@@ -924,6 +924,10 @@ func IsNumeric(t *ast.Type) bool {
 		return true
 	case "FLOAT":
 		return true
+	case "UNKNOWN":
+		return true
+	case "UNCERTAIN":
+		return true
 	}
 	return false
 }

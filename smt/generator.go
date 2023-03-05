@@ -1241,8 +1241,8 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 	switch val := c.(type) {
 	case *constant.Float:
 		ty := g.variables.LookupType(id, val)
+		g.addVarToRound(id, 0)
 		id = g.variables.AdvanceSSA(id)
-		g.addVarToRound(id, int(g.variables.SSA[id]))
 		if g.isASolvable(id) {
 			g.declareVar(id, ty)
 		} else {
