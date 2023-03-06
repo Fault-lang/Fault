@@ -149,19 +149,15 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 }
 
 func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario {
-	likelihood := make(map[string]Scenario)
-	if len(mc.Uncertains) != 0 {
-		for k, uncertain := range mc.Uncertains {
-			if results[k] != nil {
-				dist := distuv.Normal{
-					Mu:    uncertain[0],
-					Sigma: uncertain[1],
-				}
-
-				likelihood[k] = mc.stateAssessment(dist, results[k])
+	for k, uncertain := range mc.Uncertains {
+		if results[k] != nil {
+			dist := distuv.Normal{
+				Mu:    uncertain[0],
+				Sigma: uncertain[1],
 			}
+
+			results[k] = mc.stateAssessment(dist, results[k])
 		}
-		return likelihood
 	}
 	return results
 }
