@@ -68,7 +68,13 @@ if [ -z "$file" ]
 then
     echo "You must specify a spec file."
 else
-    filepath="${path}/${file}"
+    # Removing stray '='
+    mode=${mode/=/} 
+    input=${input/=/}
+    reach=${reach/=/}
+    filepath=${filepath/=/} 
+
+    filepath="${path}/${file}" 
 
     docker run -v $home:/host:ro fault-lang/fault-z3 -m=$mode -f=$filepath -i=$input -c=$reach
 fi
