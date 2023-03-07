@@ -65,34 +65,26 @@ func GenerateToken(token string, literal string, start antlr.Token, stop antlr.T
 func Filepath(filepath string) string {
 	if host, ok := os.LookupEnv("FAULT_HOST"); ok {
 		if strings.Contains(filepath, "~") {
-			path := strings.Split(filepath, "~")
-			if string(path[1][0]) == "/" {
-				filepath = path[1][1:]
-			} else {
-				filepath = path[1]
-			}
-			return strings.Join([]string{host, filepath}, "/")
+			return home(host, filepath)
 		}
 		for strings.Contains(filepath, "..") {
 			idx := strings.Index(filepath, "..")
 			if idx == 0 {
-				break
-			}
-			path := strings.Split(filepath[0:idx], "/")
-			if path[0] == "" { //Leading slashes
-				path = path[1:]
-			}
-			if path[len(path)-1] == "" { //Trailing slashes
-				path = path[0 : len(path)-1]
+				host = uplevel(host)
+				filepath = filepath[3:]
+				continue
 			}
 
-			var pathstr string
-			if len(path) > 1 {
-				pathstr = strings.Join(path[0:len(path)-1], "/")
-				filepath = strings.Join([]string{pathstr, filepath[idx+2:]}, "")
+			left := filepath[:idx]
+			right := filepath[idx+2:]
+			path := uplevel(left)
+
+			if path == "" {
+				filepath = right
 			} else {
-				filepath = filepath[idx+2:]
+				filepath = fmt.Sprintf("%s/%s", path, right)
 			}
+
 		}
 
 		if len(filepath) < len(host) || host != filepath[0:len(host)] {
@@ -101,11 +93,49 @@ func Filepath(filepath string) string {
 
 		if strings.Contains(filepath, "//") {
 			path := strings.Split(filepath, "//")
-			return strings.Join(path, "/")
+			filepath = strings.Join(path, "/")
 		}
 
 	}
 	return filepath
+}
+
+func home(host string, filepath string) string {
+	path := strings.Split(filepath, "~")
+	if string(path[1][0]) == "/" {
+		filepath = path[1][1:]
+	} else {
+		filepath = path[1]
+	}
+	return strings.Join([]string{host, filepath}, "/")
+}
+
+func uplevel(path string) string {
+	parts := strings.Split(path, "/")
+	parts = trimSlashes(parts)
+
+	if len(parts) > 0 {
+		return strings.Join(parts[0:len(parts)-1], "/")
+	}
+	return ""
+}
+
+func trimSlashes(parts []string) []string {
+	if len(parts) == 0 {
+		return parts
+	}
+
+	if parts[0] == "" { //Leading slashes
+		parts = parts[1:]
+		return trimSlashes(parts)
+	}
+
+	if parts[len(parts)-1] == "" { //Trailing slashes
+		parts = parts[0 : len(parts)-1]
+		return trimSlashes(parts)
+	}
+
+	return parts
 }
 
 func Preparse(pairs map[*ast.Identifier]ast.Expression) map[string]ast.Node {
