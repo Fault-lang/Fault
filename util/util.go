@@ -79,21 +79,31 @@ func Filepath(filepath string) string {
 				break
 			}
 			path := strings.Split(filepath[0:idx], "/")
+			if path[0] == "" { //Leading slashes
+				path = path[1:]
+			}
 			if path[len(path)-1] == "" { //Trailing slashes
 				path = path[0 : len(path)-1]
 			}
+
 			var pathstr string
 			if len(path) > 1 {
 				pathstr = strings.Join(path[0:len(path)-1], "/")
+				filepath = strings.Join([]string{pathstr, filepath[idx+2:]}, "")
 			} else {
-				pathstr = path[0]
+				filepath = filepath[idx+2:]
 			}
-			filepath = strings.Join([]string{pathstr, filepath[idx+2:]}, "")
 		}
 
 		if len(filepath) < len(host) || host != filepath[0:len(host)] {
-			return strings.Join([]string{host, filepath}, "/")
+			filepath = strings.Join([]string{host, filepath}, "/")
 		}
+
+		if strings.Contains(filepath, "//") {
+			path := strings.Split(filepath, "//")
+			return strings.Join(path, "/")
+		}
+
 	}
 	return filepath
 }
