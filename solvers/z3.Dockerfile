@@ -27,4 +27,4 @@ LABEL org.opencontainers.image.description="Fault using Z3Solver as its engine"
 # set entrypoint
 ENTRYPOINT [ "./fcompiler"]
 
-CMD [ "-mode=check", "-input=fspec",""]
+CMD [ "-m=check", "-i=fspec",""]

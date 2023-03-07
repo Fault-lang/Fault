@@ -70,5 +70,5 @@ then
 else
     filepath="${path}/${file}"
 
-    docker run -v $home:/host:ro fault-lang/fault-z3 -mode=$mode -filepath=$filepath -input=$input -complete=$reach
+    docker run -v $home:/host:ro fault-lang/fault-z3 -m=$mode -f=$filepath -i=$input -c=$reach
 fi
