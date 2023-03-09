@@ -70,14 +70,14 @@ func Filepath(filepath string) string {
 		for strings.Contains(filepath, "..") {
 			idx := strings.Index(filepath, "..")
 			if idx == 0 {
-				host = uplevel(host)
+				host = uplevel(host, true)
 				filepath = filepath[3:]
 				continue
 			}
 
 			left := filepath[:idx]
 			right := filepath[idx+2:]
-			path := uplevel(left)
+			path := uplevel(left, false)
 
 			if path == "" {
 				filepath = right
@@ -110,9 +110,9 @@ func home(host string, filepath string) string {
 	return strings.Join([]string{host, filepath}, "/")
 }
 
-func uplevel(path string) string {
+func uplevel(path string, host bool) string {
 	parts := strings.Split(path, "/")
-	parts = trimSlashes(parts)
+	parts = trimSlashes(parts, host)
 
 	if len(parts) > 0 {
 		return strings.Join(parts[0:len(parts)-1], "/")
@@ -120,19 +120,19 @@ func uplevel(path string) string {
 	return ""
 }
 
-func trimSlashes(parts []string) []string {
+func trimSlashes(parts []string, host bool) []string {
 	if len(parts) == 0 {
 		return parts
 	}
 
-	if parts[0] == "" { //Leading slashes
+	if parts[0] == "" && !host { //Leading slashes
 		parts = parts[1:]
-		return trimSlashes(parts)
+		return trimSlashes(parts, host)
 	}
 
 	if parts[len(parts)-1] == "" { //Trailing slashes
 		parts = parts[0 : len(parts)-1]
-		return trimSlashes(parts)
+		return trimSlashes(parts, host)
 	}
 
 	return parts

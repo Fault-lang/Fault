@@ -117,10 +117,10 @@ func (mc *ModelChecker) Check() (bool, error) {
 		return false, err
 	}
 
-	if util.FromEnd(results, 3) == "sat" {
-		return true, nil
-	} else if util.FromEnd(results, 5) == "unsat" {
+	if util.FromEnd(results, 5) == "unsat" {
 		return false, nil
+	} else if util.FromEnd(results, 3) == "sat" {
+		return true, nil
 	} else {
 		return false, errors.New(results)
 	}
