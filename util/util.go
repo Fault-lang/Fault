@@ -102,7 +102,7 @@ func Filepath(filepath string) string {
 
 func home(host string, filepath string) string {
 	path := strings.Split(filepath, "~")
-	if string(path[1][0]) == "/" {
+	if string(path[1][0]) == "/" || string(path[1][0]) == "\\" {
 		filepath = path[1][1:]
 	} else {
 		filepath = path[1]
@@ -111,11 +111,11 @@ func home(host string, filepath string) string {
 }
 
 func uplevel(path string, host bool) string {
-	parts := strings.Split(path, "/")
+	parts := ospath.SplitList(path)
 	parts = trimSlashes(parts, host)
 
 	if len(parts) > 0 {
-		return ospath.Join(parts[0:len(parts)-1]...)
+		return ospath.Join(parts[0 : len(parts)-1]...)
 	}
 	return ""
 }
