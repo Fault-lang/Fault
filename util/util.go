@@ -91,8 +91,9 @@ func Filepath(filepath string) string {
 			filepath = ospath.Join(host, filepath)
 		}
 
-		if strings.Contains(filepath, "//") {
-			path := strings.Split(filepath, "//")
+		dup := fmt.Sprintf("%s%s", string(ospath.Separator), string(ospath.Separator))
+		if strings.Contains(filepath, dup) {
+			path := strings.Split(filepath, dup)
 			filepath = ospath.Join(path...)
 		}
 
@@ -102,7 +103,7 @@ func Filepath(filepath string) string {
 
 func home(host string, filepath string) string {
 	path := strings.Split(filepath, "~")
-	if string(path[1][0]) == "/" || string(path[1][0]) == "\\" {
+	if string(path[1][0]) == string(ospath.Separator) {
 		filepath = path[1][1:]
 	} else {
 		filepath = path[1]
@@ -111,7 +112,7 @@ func home(host string, filepath string) string {
 }
 
 func uplevel(path string, host bool) string {
-	parts := ospath.SplitList(path)
+	parts := strings.Split(path, string(ospath.Separator))
 	parts = trimSlashes(parts, host)
 
 	if len(parts) > 0 {
