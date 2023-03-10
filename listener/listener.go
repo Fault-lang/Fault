@@ -42,6 +42,26 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
+func (l *FaultListener) validate() {
+	if l.testing { //will allow invalid specs during testing
+		return
+	}
+
+	if len(l.stack) < 2 {
+		fmt.Println("Malformed fspec or fsystem file. No model possible.")
+		os.Exit(1)
+	}
+
+	for _, v := range l.stack {
+		if _, ok := v.(*ast.DefStatement); ok {
+			return
+		}
+	}
+
+	fmt.Println("Malformed fspec or fsystem file. No model possible.")
+	os.Exit(1)
+}
+
 func (l *FaultListener) push(n interface{}) {
 	l.stack = append(l.stack, n)
 }
@@ -55,6 +75,7 @@ func (l *FaultListener) pop() interface{} {
 func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 	var spec = &ast.Spec{}
 	spec.Ext = "fspec"
+	l.validate()
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
@@ -1461,6 +1482,7 @@ func pathToIdent(path string) string {
 func (l *FaultListener) ExitSysSpec(c *parser.SysSpecContext) {
 	var spec = &ast.Spec{}
 	spec.Ext = "fsystem"
+	l.validate()
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
