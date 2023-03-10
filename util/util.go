@@ -387,6 +387,9 @@ func Intersection(s1 []string, s2 []string, init bool) []string {
 }
 
 func FromEnd(str string, offset int) string {
+	if len(str) < offset {
+		return str
+	}
 	return str[len(str)-offset:]
 }
 
