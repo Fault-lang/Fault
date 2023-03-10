@@ -144,8 +144,8 @@ func TestFilepath(t *testing.T) {
 
 	filepath7 := "/.."
 	filepath7a := Filepath(filepath7)
-	if filepath7a != "/host/" {
-		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath7a)
+	if filepath7a != "/host" {
+		t.Fatalf("filepath not correct. want=/host got=%s", filepath7a)
 	}
 
 	filepath8 := "/host/test.spec"

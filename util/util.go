@@ -4,7 +4,7 @@ import (
 	"fault/ast"
 	"fmt"
 	"os"
-	"path/filepath"
+	ospath "path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -82,18 +82,18 @@ func Filepath(filepath string) string {
 			if path == "" {
 				filepath = right
 			} else {
-				filepath = fmt.Sprintf("%s/%s", path, right)
+				filepath = ospath.Join(path, right)
 			}
 
 		}
 
 		if len(filepath) < len(host) || host != filepath[0:len(host)] {
-			filepath = strings.Join([]string{host, filepath}, "/")
+			filepath = ospath.Join(host, filepath)
 		}
 
 		if strings.Contains(filepath, "//") {
 			path := strings.Split(filepath, "//")
-			filepath = strings.Join(path, "/")
+			filepath = ospath.Join(path...)
 		}
 
 	}
@@ -107,7 +107,7 @@ func home(host string, filepath string) string {
 	} else {
 		filepath = path[1]
 	}
-	return strings.Join([]string{host, filepath}, "/")
+	return ospath.Join(host, filepath)
 }
 
 func uplevel(path string, host bool) string {
@@ -115,7 +115,7 @@ func uplevel(path string, host bool) string {
 	parts = trimSlashes(parts, host)
 
 	if len(parts) > 0 {
-		return strings.Join(parts[0:len(parts)-1], "/")
+		return ospath.Join(parts[0:len(parts)-1]...)
 	}
 	return ""
 }
@@ -359,7 +359,7 @@ func IsCompare(op string) bool {
 }
 
 func DetectMode(filename string) string {
-	switch filepath.Ext(filename) {
+	switch ospath.Ext(filename) {
 	case ".fspec":
 		return "fspec"
 	case ".fsystem":
