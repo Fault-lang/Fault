@@ -641,7 +641,7 @@ func prepTest(path string, test string) (string, error) {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
@@ -677,7 +677,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err

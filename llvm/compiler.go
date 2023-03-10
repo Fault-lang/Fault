@@ -40,6 +40,8 @@ type Compiler struct {
 	// 1-index -> Parallel Group
 
 	hasRunBlock bool
+	IsValid     bool
+	isTesting   bool
 	RunRound    int16
 
 	currentSpec      string
@@ -89,6 +91,7 @@ func NewCompiler() *Compiler {
 		structPropOrder:  make(map[string][]string),
 
 		hasRunBlock:   false,
+		IsValid:       false,
 		RunRound:      0,
 		builtIns:      make(map[string]*ir.Func),
 		specStructs:   make(map[string]*preprocess.SpecRecord),
@@ -101,10 +104,11 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string) {
+func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, test bool) {
 	c.specStructs = structs
 	c.Unknowns = unknowns
 	c.Uncertains = uncertains
+	c.isTesting = test
 }
 
 func (c *Compiler) Compile(root ast.Node) (err error) {
@@ -128,11 +132,32 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 	return
 }
 
+func (c *Compiler) validate(specfile *ast.Spec) {
+	if c.isTesting {
+		c.IsValid = true
+		return
+	}
+
+	for i := len(specfile.Statements) - 1; i >= 0; i-- {
+		n := specfile.Statements[i]
+		if _, ok := n.(*ast.ForStatement); ok {
+			c.IsValid = true
+			return
+		}
+		if _, ok := n.(*ast.StartStatement); ok {
+			c.IsValid = true
+			return
+		}
+	}
+}
+
 func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
 	}
+
+	c.validate(specfile)
 
 	switch decl := specfile.Statements[0].(type) {
 	case *ast.SpecDeclStatement:
@@ -163,7 +188,7 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	}
 
 	c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
-	if !isImport { //Don't compile if the spec is being imported
+	if !isImport && c.IsValid { //Don't compile if the spec is being imported
 		for _, fileNode := range specfile.Statements {
 			c.compile(fileNode)
 		}

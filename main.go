@@ -25,6 +25,11 @@ import (
 )
 
 func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*listener.FaultListener, *types.Checker, string) {
+	//Confirm that the filetype and file declaration match
+	if !validate_filetype(data, filetype) {
+		log.Fatalf("malformatted file: declaration does not match filetype.")
+	}
+
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
@@ -73,9 +78,19 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	return lstnr, ty, visual
 }
 
+func validate_filetype(data string, filetype string) bool {
+	if filetype == "fspec" && data[0:4] == "spec" {
+		return true
+	}
+	if filetype == "fsystem" && data[0:6] == "system" {
+		return true
+	}
+	return false
+}
+
 func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns)
+	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
 	err := compiler.Compile(lstnr.AST)
 	if err != nil {
 		log.Fatalf("LLVM IR generation failed: %s", err)
@@ -144,6 +159,17 @@ func run(filepath string, mode string, input string, reach bool) {
 
 		if mode == "ir" {
 			fmt.Println(compiler.GetIR())
+			return
+		}
+
+		if !compiler.IsValid && visual != "" {
+			fmt.Println(visual)
+			fmt.Printf("\n\n")
+			return
+		}
+
+		if !compiler.IsValid {
+			fmt.Println("Fault found nothing to run. Missing run block or start block.")
 			return
 		}
 
