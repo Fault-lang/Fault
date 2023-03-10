@@ -25,6 +25,11 @@ import (
 )
 
 func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*listener.FaultListener, *types.Checker, string) {
+	//Confirm that the filetype and file declaration match
+	if !validate_filetype(data, filetype) {
+		log.Fatalf("malformatted file: declaration does not match filetype.")
+	}
+
 	// Setup the input
 	is := antlr.NewInputStream(data)
 
@@ -71,6 +76,16 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 		r.Scan(tree)
 	}
 	return lstnr, ty, visual
+}
+
+func validate_filetype(data string, filetype string) bool {
+	if filetype == "fspec" && data[0:4] == "spec" {
+		return true
+	}
+	if filetype == "fsystem" && data[0:6] == "system" {
+		return true
+	}
+	return false
 }
 
 func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
