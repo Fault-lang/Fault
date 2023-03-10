@@ -75,7 +75,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 
 func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
 	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns)
+	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
 	err := compiler.Compile(lstnr.AST)
 	if err != nil {
 		log.Fatalf("LLVM IR generation failed: %s", err)
@@ -144,6 +144,17 @@ func run(filepath string, mode string, input string, reach bool) {
 
 		if mode == "ir" {
 			fmt.Println(compiler.GetIR())
+			return
+		}
+
+		if !compiler.IsValid && visual != "" {
+			fmt.Println(visual)
+			fmt.Printf("\n\n")
+			return
+		}
+
+		if !compiler.IsValid {
+			fmt.Println("Fault found nothing to run. Missing run block or start block.")
 			return
 		}
 

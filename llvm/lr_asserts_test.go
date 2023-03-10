@@ -209,7 +209,7 @@ func prepAssertTest(test string) (*Compiler, error) {
 		return nil, err
 	}
 	compiler := NewCompiler()
-	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return nil, err

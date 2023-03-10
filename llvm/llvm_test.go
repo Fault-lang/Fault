@@ -344,7 +344,7 @@ func TestUnknowns(t *testing.T) {
 func TestParamReset(t *testing.T) {
 	structs := make(map[string]*preprocess.SpecRecord)
 	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{})
+	c.LoadMeta(structs, make(map[string][]float64), []string{}, true)
 	s := NewCompiledSpec("test")
 	c.currentSpec = "test"
 	c.specs["test"] = s
@@ -745,7 +745,7 @@ func prepTest(test string) (string, error) {
 		return "", err
 	}
 	compiler := NewCompiler()
-	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
@@ -773,7 +773,7 @@ func prepTestSys(test string) (string, error) {
 		return "", err
 	}
 	compiler := NewCompiler()
-	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
