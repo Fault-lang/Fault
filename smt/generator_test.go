@@ -39,7 +39,8 @@ func TestEventually(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -88,7 +89,8 @@ func TestEventuallyAlways(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -144,7 +146,8 @@ func TestEventuallyAlways2(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -200,7 +203,8 @@ func TestTemporal(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -253,7 +257,7 @@ func TestTemporal2(t *testing.T) {
 			t.bar;
 		};
 	`
-	expecting := `
+	expecting := `(set-logic QF_NRA)
 	(declare-fun test1_a_0 () Real)
 (declare-fun test1_b_0 () Real)
 (declare-fun test1_t_u_x_0 () Real)
@@ -311,7 +315,8 @@ func TestTemporalSys(t *testing.T) {
 			a: zoo,
 		};
 		`
-	expecting := `(declare-fun test1_b_bar_2 () Bool)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_b_bar_2 () Bool)
 	(declare-fun test1_a_foo_2 () Bool)
 	(declare-fun test1_a_foo_4 () Bool)
 	(declare-fun test1_a_zoo_3 () Bool)
@@ -390,7 +395,8 @@ func TestTemporalSys2(t *testing.T) {
 
 		for 2 run{};
 		`
-	expecting := `(declare-fun test1_b_bar_2 () Bool)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_b_bar_2 () Bool)
 	(declare-fun test1_a_foo_2 () Bool)
 	(declare-fun test1_a_zoo_3 () Bool)
 	(declare-fun test1_a_foo_4 () Bool)
@@ -635,7 +641,7 @@ func prepTest(path string, test string) (string, error) {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err
@@ -671,7 +677,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 		return "", err
 	}
 	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return "", err

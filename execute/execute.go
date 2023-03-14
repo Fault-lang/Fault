@@ -117,10 +117,10 @@ func (mc *ModelChecker) Check() (bool, error) {
 		return false, err
 	}
 
-	if results == "sat" {
-		return true, nil
-	} else if results == "unsat" {
+	if util.FromEnd(results, 5) == "unsat" {
 		return false, nil
+	} else if util.FromEnd(results, 3) == "sat" {
+		return true, nil
 	} else {
 		return false, errors.New(results)
 	}
@@ -131,11 +131,9 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Remove extra output (ie "sat")
-	if results[0:1] != "(" {
-		newline := strings.Index(results, "\n")
-		results = results[newline:]
-	}
+	results = cleanExtraOutputs(results)
 
 	is := antlr.NewInputStream(results)
 	lexer := parser.NewSMTLIBv2Lexer(is)
@@ -151,19 +149,15 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 }
 
 func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario {
-	likelihood := make(map[string]Scenario)
-	if len(mc.Uncertains) != 0 {
-		for k, uncertain := range mc.Uncertains {
-			if results[k] != nil {
-				dist := distuv.Normal{
-					Mu:    uncertain[0],
-					Sigma: uncertain[1],
-				}
-
-				likelihood[k] = mc.stateAssessment(dist, results[k])
+	for k, uncertain := range mc.Uncertains {
+		if results[k] != nil {
+			dist := distuv.Normal{
+				Mu:    uncertain[0],
+				Sigma: uncertain[1],
 			}
+
+			results[k] = mc.stateAssessment(dist, results[k])
 		}
-		return likelihood
 	}
 	return results
 }
@@ -192,4 +186,12 @@ func (mc *ModelChecker) stateAssessment(dist distuv.Normal, states Scenario) Sce
 		}*/
 	}
 	return weighted
+}
+
+func cleanExtraOutputs(results string) string {
+	for results[0:1] != "(" {
+		newline := strings.Index(results, "\n")
+		results = results[newline+1:]
+	}
+	return results
 }

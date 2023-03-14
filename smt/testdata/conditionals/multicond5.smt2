@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun multicond_t_base_value_3 () Real)
 (declare-fun multicond_t_base_value_4 () Real)
 (declare-fun multicond_t_base_value_5 () Real)

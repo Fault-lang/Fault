@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun adand_a_option1_1 () Bool)
 (declare-fun adand_a_choice_2 () Bool)
 (declare-fun adand_a_option2_1 () Bool)

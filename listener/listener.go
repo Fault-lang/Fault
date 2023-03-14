@@ -42,6 +42,26 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
+func (l *FaultListener) validate() {
+	if l.testing { //will allow invalid specs during testing
+		return
+	}
+
+	if len(l.stack) < 2 {
+		fmt.Println("Malformed fspec or fsystem file. No model possible.")
+		os.Exit(1)
+	}
+
+	for _, v := range l.stack {
+		if _, ok := v.(*ast.DefStatement); ok {
+			return
+		}
+	}
+
+	fmt.Println("Malformed fspec or fsystem file. No model possible.")
+	os.Exit(1)
+}
+
 func (l *FaultListener) push(n ast.Node) {
 	l.stack = append(l.stack, n)
 }
@@ -63,6 +83,7 @@ func (l *FaultListener) peek() ast.Node {
 func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 	var spec = &ast.Spec{}
 	spec.Ext = "fspec"
+	l.validate()
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
@@ -485,67 +506,25 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 	operator := c.GetChild(1).(antlr.TerminalNode).GetText()
 	token := util.GenerateToken("ASSIGN", operator, c.GetStart(), c.GetStop())
 
-	var receiver ast.Expression
-	var sender ast.Expression
+	var valChange ast.Expression
 
 	right := l.pop()
 	left := l.pop()
 	if operator == "->" {
-		switch right.(type) {
-		case *ast.ParameterCall: // This is an in flow a -> param
-			receiver = right.(ast.Expression)
-		default: // This is an outflow para -> a
-			token2 := util.GenerateToken("MINUS", "-", c.GetStart(), c.GetStop())
-
-			sender = &ast.InfixExpression{
-				Token:    token2,
-				Left:     left.(ast.Expression),
-				Operator: "-",
-				Right:    right.(ast.Expression)}
-		}
-		if receiver == nil {
-			receiver = left.(ast.Expression)
-		} else {
-			token2 := util.GenerateToken("MINUS", "-", c.GetStart(), c.GetStop())
-
-			sender = &ast.InfixExpression{
-				Token:    token2,
-				Left:     right.(ast.Expression),
-				Operator: "-",
-				Right:    left.(ast.Expression)}
-		}
-
-		if sender == nil {
-			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type left %T type right %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left, right))
-		}
+		token2 := util.GenerateToken("MINUS", "-", c.GetStart(), c.GetStop())
+		valChange = &ast.InfixExpression{
+			Token:    token2,
+			Left:     left.(ast.Expression),
+			Operator: "-",
+			Right:    right.(ast.Expression)}
 	} else if operator == "<-" {
-		switch right.(type) {
-		case *ast.ParameterCall: // a <- param
-			receiver = right.(ast.Expression)
-		default: // para <- a
-			token2 := util.GenerateToken("ADD", "+", c.GetStart(), c.GetStop())
+		token2 := util.GenerateToken("ADD", "+", c.GetStart(), c.GetStop())
 
-			sender = &ast.InfixExpression{
-				Token:    token2,
-				Left:     left.(ast.Expression),
-				Operator: "+",
-				Right:    right.(ast.Expression)}
-		}
-		if receiver == nil {
-			receiver = left.(ast.Expression)
-		} else {
-			token2 := util.GenerateToken("ADD", "+", c.GetStart(), c.GetStop())
-
-			sender = &ast.InfixExpression{
-				Token:    token2,
-				Left:     right.(ast.Expression),
-				Operator: "+",
-				Right:    left.(ast.Expression)}
-		}
-
-		if sender == nil {
-			panic(fmt.Sprintf("malformed flow assignment: line %d col %d type left %T type right %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), left, right))
-		}
+		valChange = &ast.InfixExpression{
+			Token:    token2,
+			Left:     left.(ast.Expression),
+			Operator: "+",
+			Right:    right.(ast.Expression)}
 	} else {
 		panic(fmt.Sprintf("Invalid operator %s in expression", operator))
 	}
@@ -553,9 +532,9 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 	l.push(
 		&ast.InfixExpression{
 			Token:    token,
-			Left:     receiver,
-			Operator: "<-", // "->" converted automatically by swapping order
-			Right:    sender,
+			Left:     left.(ast.Expression),
+			Operator: "<-",
+			Right:    valChange,
 		})
 
 }
@@ -1511,6 +1490,7 @@ func pathToIdent(path string) string {
 func (l *FaultListener) ExitSysSpec(c *parser.SysSpecContext) {
 	var spec = &ast.Spec{}
 	spec.Ext = "fsystem"
+	l.validate()
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}

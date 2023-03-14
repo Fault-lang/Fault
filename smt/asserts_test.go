@@ -25,7 +25,8 @@ func TestSimpleAssert(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -74,7 +75,8 @@ func TestCompoundAssertAnd(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -133,7 +135,8 @@ func TestCompoundAssertOr(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -182,7 +185,8 @@ func TestMultiAssert(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -247,7 +251,8 @@ func TestAssertInfix(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -301,7 +306,8 @@ func TestMultiVar(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_fuzz_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
@@ -357,7 +363,8 @@ func TestSimpleAssume(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)
@@ -406,7 +413,8 @@ func TestSpecificStateAssume(t *testing.T) {
 		t.bar;
 	};
 	`
-	expecting := `(declare-fun test1_t_foo_value_0 () Real)
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
 	(declare-fun test1_t_foo_value_1 () Real)
 	(declare-fun test1_t_foo_value_2 () Real)
 	(declare-fun test1_t_foo_value_3 () Real)

@@ -151,7 +151,25 @@ func TestFilepath(t *testing.T) {
 	filepath8 := "/host/test.spec"
 	filepath8a := Filepath(filepath8)
 	if filepath8a != "/host/test.spec" {
-		t.Fatalf("filepath not correct. want=/host/ got=%s", filepath8a)
+		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath8a)
+	}
+
+	filepath9 := "foo/../test.spec"
+	filepath9a := Filepath(filepath9)
+	if filepath9a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath9a)
+	}
+
+	filepath10 := "/foo/../test.spec"
+	filepath10a := Filepath(filepath10)
+	if filepath10a != "/host/test.spec" {
+		t.Fatalf("filepath not correct. want=/host/test.spec got=%s", filepath10a)
+	}
+
+	filepath11 := "../test.spec"
+	filepath11a := Filepath(filepath11)
+	if filepath11a != "test.spec" {
+		t.Fatalf("filepath not correct. want=test.spec got=%s", filepath11a)
 	}
 
 	os.Setenv("FAULT_HOST", host)
@@ -556,5 +574,13 @@ func TestIntersection(t *testing.T) {
 	t3 := Intersection([]string{"b"}, []string{"a", "b", "c"}, true)
 	if t3[0] != "a" || t3[1] != "c" {
 		t.Fatalf("intersection delivered an incorrect result got=%s", t3)
+	}
+}
+
+func TestFromEnd(t *testing.T) {
+	test := "helloworld"
+
+	if FromEnd(test, 2) != "ld" {
+		t.Fatal("FromEnd produces wrong substring")
 	}
 }

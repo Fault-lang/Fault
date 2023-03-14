@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun trigger_fl_vault_value_2 () Real)
 (declare-fun trigger_fl_vault_value_3 () Real)
 (declare-fun trigger_fl_vault_value_5 () Real)

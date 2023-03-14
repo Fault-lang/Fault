@@ -1,3 +1,4 @@
+(set-logic QF_NRA)
 (declare-fun bathtub_drawn_water_level_0 () Real)
 (declare-fun bathtub_pipe_water_level_0 () Real)
 (declare-fun bathtub_drawn_water_level_1 () Real)
