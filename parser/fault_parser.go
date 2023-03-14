@@ -33,11 +33,11 @@ var faultparserParserStaticData struct {
 func faultparserParserInit() {
 	staticData := &faultparserParserStaticData
 	staticData.literalNames = []string{
-		"", "'all'", "'assert'", "'assume'", "'clock'", "'const'", "'def'",
-		"'else'", "'flow'", "'for'", "'func'", "'if'", "'import'", "'init'",
-		"'new'", "'return'", "'run'", "'spec'", "'stock'", "'then'", "'when'",
-		"'this'", "'eventually'", "'eventually-always'", "'always'", "'nmt'",
-		"'nft'", "'nil'", "'true'", "'false'", "'advance'", "'component'", "'global'",
+		"", "'all'", "'assert'", "'assume'", "'now'", "'const'", "'def'", "'else'",
+		"'flow'", "'for'", "'func'", "'if'", "'import'", "'init'", "'new'",
+		"'return'", "'run'", "'spec'", "'stock'", "'then'", "'when'", "'this'",
+		"'eventually'", "'eventually-always'", "'always'", "'nmt'", "'nft'",
+		"'nil'", "'true'", "'false'", "'advance'", "'component'", "'global'",
 		"'system'", "'start'", "'states'", "'stay'", "'string'", "'bool'", "'int'",
 		"'float'", "'natural'", "'uncertain'", "'unknown'", "", "'='", "'->'",
 		"'<-'", "':'", "','", "'.'", "'('", "')'", "'{'", "'}'", "'['", "']'",
@@ -191,7 +191,7 @@ func faultparserParserInit() {
 		162, 163, 5, 44, 0, 0, 163, 164, 5, 45, 0, 0, 164, 165, 3, 104, 52, 0,
 		165, 169, 3, 126, 63, 0, 166, 167, 3, 6, 3, 0, 167, 168, 3, 126, 63, 0,
 		168, 170, 1, 0, 0, 0, 169, 166, 1, 0, 0, 0, 169, 170, 1, 0, 0, 0, 170,
-		5, 1, 0, 0, 0, 171, 172, 3, 104, 52, 0, 172, 180, 5, 45, 0, 0, 173, 181,
+		5, 1, 0, 0, 0, 171, 172, 3, 88, 44, 0, 172, 180, 5, 45, 0, 0, 173, 181,
 		3, 122, 61, 0, 174, 181, 3, 110, 55, 0, 175, 181, 3, 118, 59, 0, 176, 181,
 		3, 120, 60, 0, 177, 181, 3, 106, 53, 0, 178, 181, 3, 108, 54, 0, 179, 181,
 		3, 100, 50, 0, 180, 173, 1, 0, 0, 0, 180, 174, 1, 0, 0, 0, 180, 175, 1,
@@ -1315,7 +1315,7 @@ func (p *FaultParser) GlobalDecl() (localctx IGlobalDeclContext) {
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&2269392941367312) != 0 || (int64((_la-72)) & ^0x3f) == 0 && ((int64(1)<<(_la-72))&32257) != 0 {
+	if _la == FaultParserTHIS || _la == FaultParserIDENT {
 		{
 			p.SetState(166)
 			p.Swap()
@@ -1368,10 +1368,10 @@ func NewSwapContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokin
 
 func (s *SwapContext) GetParser() antlr.Parser { return s.parser }
 
-func (s *SwapContext) Operand() IOperandContext {
+func (s *SwapContext) ParamCall() IParamCallContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IOperandContext); ok {
+		if _, ok := ctx.(IParamCallContext); ok {
 			t = ctx.(antlr.RuleContext)
 			break
 		}
@@ -1381,7 +1381,7 @@ func (s *SwapContext) Operand() IOperandContext {
 		return nil
 	}
 
-	return t.(IOperandContext)
+	return t.(IParamCallContext)
 }
 
 func (s *SwapContext) ASSIGN() antlr.TerminalNode {
@@ -1556,7 +1556,7 @@ func (p *FaultParser) Swap() (localctx ISwapContext) {
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(171)
-		p.Operand()
+		p.ParamCall()
 	}
 	{
 		p.SetState(172)

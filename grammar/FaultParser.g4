@@ -21,7 +21,7 @@ globalDecl
     ;
 
 swap
-    : operand '=' (functionLit | numeric | string_ | bool_ | operandName | prefix | solvable)
+    : paramCall '=' (functionLit | numeric | string_ | bool_ | operandName | prefix | solvable)
     ;
 
 componentDecl

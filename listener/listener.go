@@ -647,11 +647,15 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 	}
 	steps := c.AllRunStep()
 	for i := len(steps) - 1; i >= 0; i-- {
-		v := steps[i]
 		ex := l.pop()
+
+		if ex.TokenLiteral() == "SWAP" {
+			i++ //Swaps are the same step as the instance that initializes them
+		}
+
 		switch t := ex.(type) {
 		case *ast.Instance:
-			token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+			token2 := ex.GetToken()
 
 			s := &ast.ExpressionStatement{
 				Token:      token2,
@@ -661,7 +665,7 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 		case *ast.ParallelFunctions:
 			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 		case ast.Expression:
-			token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+			token2 := ex.GetToken()
 			n := l.packageCallsAsRunSteps(t)
 
 			s := &ast.ExpressionStatement{
@@ -722,6 +726,9 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
+	// Check for swaps
+	swaps := l.getSwaps()
+
 	ident := &ast.Identifier{Token: token2}
 	switch len(txt) {
 	case 1:
@@ -756,6 +763,8 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 			Name:  right,
 			Order: order,
 		})
+
+	l.pushN(swaps)
 }
 
 func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {

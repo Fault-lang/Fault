@@ -378,7 +378,7 @@ func TestThis(t *testing.T) {
 func TestClock(t *testing.T) {
 	test := `spec test1;
 			 def foo = flow{
-				bar: func{1+clock;},
+				bar: func{1+now;},
 			 };
 			`
 	_, spec := prepTest(test, nil)
@@ -416,7 +416,7 @@ func TestClockRun(t *testing.T) {
 				bar: func{1+this;},
 			 };
 			 for 1 run {
-				 clock;
+				 now;
 			 }
 			`
 	_, spec := prepTest(test, nil)
@@ -1654,7 +1654,7 @@ func TestUnknown(t *testing.T) {
 
 }
 
-func TestSysSpec(t *testing.T) {
+func TestSwap(t *testing.T) {
 	test := `system test1;
 
 			import "foo.fspec";
