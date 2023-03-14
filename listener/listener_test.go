@@ -1654,7 +1654,7 @@ func TestUnknown(t *testing.T) {
 
 }
 
-func TestSwap(t *testing.T) {
+func TestSysSpec(t *testing.T) {
 	test := `system test1;
 
 			import "foo.fspec";
@@ -1674,14 +1674,13 @@ func TestSwap(t *testing.T) {
 			for 1 run {
 				car = new f;
 				bot = new foo.bar;
-				car.test = bot;
 			}
 			`
 	_, sys := prepSysTest(test, nil)
 
 	decl, ok := sys.Statements[0].(*ast.SysDeclStatement)
 	if !ok {
-		t.Fatalf("sys.Statements[0] is not an SysDeclStatement. got=%T", sys.Statements[1])
+		t.Fatalf("sys.Statements[0] is not an SysDeclStatement. got=%T", sys.Statements[0])
 	}
 
 	if decl.Name.Value != "test1" {
@@ -1728,6 +1727,45 @@ func TestSwap(t *testing.T) {
 				t.Fatalf("state %s in component not wrapped with conditional got=%s", k, f.Body.Statements[0])
 			}
 		}
+	}
+}
+
+func TestSwap(t *testing.T) {
+	test := `system test1;
+
+			import "foo.fspec";
+
+			component c = states{
+				initial: func{
+					advance(this.next);
+				},
+				close: func{
+					advance(this.initial);
+				},
+				next: func{
+					stay();
+				},
+			 };
+			
+			for 1 run {
+				car = new f;
+				bot = new foo.bar;
+				car.test = bot;
+			}
+			`
+	_, sys := prepSysTest(test, nil)
+
+	forSt, ok := sys.Statements[3].(*ast.ForStatement)
+	if !ok {
+		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])
+	}
+
+	if len(forSt.Body.Statements) != 3 {
+		t.Fatalf("run block has the wrong number of statements. got=%d", len(forSt.Body.Statements))
+	}
+
+	if forSt.Body.Statements[2].TokenLiteral() != "SWAP" {
+		t.Fatalf("swap incorrect in AST. got=%s", forSt.Body.Statements[2].TokenLiteral())
 	}
 }
 
