@@ -466,6 +466,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Statements = statements
 		return node, err
 	case *ast.InfixExpression:
+		if node.TokenLiteral() == "SWAP" {
+			return p.walkSwap(node)
+		}
+
 		l, err := p.walk(node.Left)
 		if err != nil {
 			return node, err
@@ -1039,6 +1043,43 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	default:
 		return node, err
 	}
+}
+
+func (p *Processor) walkSwap(node *ast.InfixExpression) (ast.Node, error) {
+	left, err := p.swapNode(node.Left)
+	if err != nil {
+		return node, err
+	}
+
+	right, err := p.swapNode(node.Right)
+	if err != nil {
+		return node, err
+	}
+
+	node.Left = left.(ast.Expression)
+	node.Right = right.(ast.Expression)
+	return node, err
+}
+
+func (p *Processor) swapNode(node ast.Node) (ast.Node, error) {
+	var err error
+	if n, ok := node.(*ast.ParameterCall); ok {
+		if p.initialPass {
+			return n, err
+		}
+		if n.Value[0] == "this" {
+			return nil, fmt.Errorf("incorrect left side value %s", n.Value[0])
+		}
+
+		var rawid []string
+		rawid = p.buildIdContext(p.trail.CurrentSpec())
+
+		rawid = append(rawid, n.Value...)
+
+		n.ProcessedName = rawid
+		return n, err
+	}
+	return p.walk(node)
 }
 
 func alreadyNamed(n1 []string, n2 []string) bool {
