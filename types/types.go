@@ -24,13 +24,15 @@ var COMPARE = map[string]bool{
 type Checker struct {
 	SpecStructs map[string]*preprocess.SpecRecord
 	Constants   map[string]map[string]ast.Node
+	Instances   map[string][]string
 	inStock     string
 	temps       map[string]*ast.Type
 }
 
-func NewTypeChecker(specs map[string]*preprocess.SpecRecord) *Checker {
+func NewTypeChecker(specs map[string]*preprocess.SpecRecord, inst map[string][]string) *Checker {
 	return &Checker{
 		SpecStructs: specs,
+		Instances:   inst,
 		Constants:   make(map[string]map[string]ast.Node),
 		temps:       make(map[string]*ast.Type),
 	}
@@ -177,6 +179,15 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.ForStatement:
+		var st []ast.Statement
+		for _, v := range node.Body.Statements {
+			tnode, err = c.typecheck(v)
+			if err != nil {
+				return node, err
+			}
+			st = append(st, tnode.(ast.Statement))
+		}
+		node.Body.Statements = st
 		return node, err
 	case *ast.StartStatement:
 		return node, err
@@ -538,6 +549,10 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			}
 		}
 
+		if node.TokenLiteral() == "SWAP" {
+			return c.inferSwap(node)
+		}
+
 		var nl, nr ast.Node
 		if c.isValue(node.Right) {
 			nr, err = c.infer(node.Right)
@@ -768,6 +783,84 @@ func (c *Checker) inferUncertain(node *ast.Uncertain) []ast.Type {
 	return []ast.Type{
 		{Type: "MEAN", Scope: c.inferScope(node.Mean), Parameters: nil},
 		{Type: "SIGMA", Scope: c.inferScope(node.Sigma), Parameters: nil},
+	}
+}
+
+func (c *Checker) inferSwap(node *ast.InfixExpression) (ast.Expression, error) {
+	var left, right ast.Node
+	var err error
+
+	left, err = c.inferSwapNode(node.Left)
+	if err != nil {
+		return node, err
+	}
+
+	right, err = c.inferSwapNode(node.Right)
+	if err != nil {
+		return node, err
+	}
+
+	if left.Type() != right.Type() {
+		return node, fmt.Errorf("cannot redeclare variable %s is type %s got %s", node.Left.String(), left.Type(), right.Type())
+	}
+
+	if c.InstanceOf(left) != c.InstanceOf(right) {
+		return node, fmt.Errorf("cannot redeclare variable %s is instance of %s got %s", node.Left.String(), c.InstanceOf(left), c.InstanceOf(right))
+	}
+
+	node.Left = left.(ast.Expression)
+	node.Right = right.(ast.Expression)
+
+	return node, err
+}
+
+func (c *Checker) inferSwapNode(node ast.Expression) (ast.Node, error) {
+	switch n := node.(type) {
+	case *ast.ParameterCall:
+		rawid := n.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		p, err := spec.FetchVar(rawid, ty)
+		if err != nil {
+			n.InferredType = &ast.Type{Type: ty,
+				Scope:      0,
+				Parameters: nil}
+			return n, nil
+		}
+		return c.lookupReference(p)
+	case *ast.Identifier:
+		rawid := n.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		if ty != "" {
+			n.InferredType = &ast.Type{Type: ty,
+				Scope:      0,
+				Parameters: nil}
+			return n, nil
+		}
+		return c.lookupReference(n)
+	default:
+		return c.lookupReference(node)
+	}
+}
+
+func (c *Checker) InstanceOf(node ast.Node) string {
+	switch n := node.(type) {
+	case *ast.StructInstance:
+		return strings.Join(n.Parent, ".")
+
+	case *ast.ParameterCall:
+		key := n.IdString()
+		value := c.Instances[key]
+
+		return strings.Join(value, ".")
+	case *ast.Identifier:
+		key := n.IdString()
+		value := c.Instances[key]
+
+		return strings.Join(value, ".")
+	default:
+		return ""
 	}
 }
 

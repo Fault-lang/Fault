@@ -7,7 +7,7 @@ def s1 = stock{
 def f1 = flow{
     target: new s1,
     fn: func{
-        target <- 2;
+        target.v <- 2;
     },
 };
 

@@ -202,7 +202,7 @@ func prepAssertTest(test string) (*Compiler, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := types.NewTypeChecker(pre.Specs)
+	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
 	tree, err := ty.Check(tree)
 
 	if err != nil {
