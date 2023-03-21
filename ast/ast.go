@@ -552,6 +552,7 @@ type StructInstance struct {
 	Name          string
 	Parent        []string
 	ComplexScope  string
+	Swaps         []Node
 	ProcessedName []string
 }
 
@@ -636,6 +637,7 @@ type Instance struct {
 	Complex       bool //If stock does this stock contain another stock?
 	ComplexScope  string
 	Processed     *StructInstance
+	Swaps         []Node
 	ProcessedName []string
 	Order         []string
 }

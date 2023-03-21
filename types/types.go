@@ -24,12 +24,12 @@ var COMPARE = map[string]bool{
 type Checker struct {
 	SpecStructs map[string]*preprocess.SpecRecord
 	Constants   map[string]map[string]ast.Node
-	Instances   map[string][]string
+	Instances   map[string]*ast.StructInstance
 	inStock     string
 	temps       map[string]*ast.Type
 }
 
-func NewTypeChecker(specs map[string]*preprocess.SpecRecord, inst map[string][]string) *Checker {
+func NewTypeChecker(specs map[string]*preprocess.SpecRecord, inst map[string]*ast.StructInstance) *Checker {
 	return &Checker{
 		SpecStructs: specs,
 		Instances:   inst,
@@ -827,7 +827,16 @@ func (c *Checker) inferSwapNode(node ast.Expression) (ast.Node, error) {
 				Parameters: nil}
 			return n, nil
 		}
-		return c.lookupReference(p)
+
+		ref, err := c.lookupReference(p)
+		if err != nil {
+			return node, err
+		}
+		n.InferredType = &ast.Type{Type: ref.Type(),
+			Scope:      0,
+			Parameters: nil}
+		return n, nil
+
 	case *ast.Identifier:
 		rawid := n.RawId()
 		spec := c.SpecStructs[rawid[0]]
@@ -838,10 +847,39 @@ func (c *Checker) inferSwapNode(node ast.Expression) (ast.Node, error) {
 				Parameters: nil}
 			return n, nil
 		}
-		return c.lookupReference(n)
+
+		ref, err := c.lookupReference(n)
+		if err != nil {
+			return node, err
+		}
+		n.InferredType = &ast.Type{Type: ref.Type(),
+			Scope:      0,
+			Parameters: nil}
+		return n, nil
+
 	default:
 		return c.lookupReference(node)
 	}
+}
+
+func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, error) {
+	for _, s := range base.Swaps {
+		n, err := c.typecheck(s)
+		if err != nil {
+			return base, err
+		}
+
+		infix := n.(*ast.InfixExpression)
+		rawid := infix.Left.(ast.Nameable).RawId()
+		key := rawid[len(rawid)-1]
+		val, err := c.lookupReference(infix.Right)
+		val.(ast.Nameable).SetId(base.Properties[key].Value.(ast.Nameable).RawId())
+		if err != nil {
+			return base, err
+		}
+		base.Properties[key].Value = val
+	}
+	return base, nil
 }
 
 func (c *Checker) InstanceOf(node ast.Node) string {
@@ -851,14 +889,20 @@ func (c *Checker) InstanceOf(node ast.Node) string {
 
 	case *ast.ParameterCall:
 		key := n.IdString()
-		value := c.Instances[key]
+		value, ok := c.Instances[key]
+		if !ok {
+			return ""
+		}
 
-		return strings.Join(value, ".")
+		return strings.Join(value.Parent, ".")
 	case *ast.Identifier:
 		key := n.IdString()
-		value := c.Instances[key]
+		value, ok := c.Instances[key]
+		if !ok {
+			return ""
+		}
 
-		return strings.Join(value, ".")
+		return strings.Join(value.Parent, ".")
 	default:
 		return ""
 	}
@@ -874,6 +918,10 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if p == nil {
+			id := b.Id()
+			return c.lookupStruct(id, ty)
+		}
 		return c.lookupReference(p)
 	case *ast.Identifier:
 		// Check to see if this variable is referencing
@@ -882,6 +930,12 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		spec := c.SpecStructs[rawid[0]]
 		ty, _ := spec.GetStructType(rawid)
 		p, err := spec.FetchVar(rawid, ty)
+
+		if p == nil {
+			id := b.Id()
+			return c.lookupStruct(id, ty)
+		}
+
 		if _, ok := p.(*ast.Identifier); !ok {
 			return c.infer(p)
 		}
@@ -900,6 +954,17 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 			return c.inferFunction(base.(ast.Expression))
 		}
 	}
+}
+
+func (c *Checker) lookupStruct(id []string, ty string) (*ast.StructInstance, error) {
+	spec := c.SpecStructs[id[0]]
+	prop, err := spec.Fetch(id[1], ty)
+	if err != nil {
+		return nil, err
+	}
+	st := c.Instances[strings.Join(id, "_")]
+	st.Properties = util.WrapBranches(prop)
+	return st, err
 }
 
 func (c *Checker) lookupCallType(base ast.Node) (*ast.Type, error) {
@@ -956,8 +1021,18 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 		v.Value = b
 		ret[k] = v
 	}
+
 	base.Properties = ret
-	return base, err
+	rawid = base.RawId()
+	swappedBase, err := c.swapValues(base)
+	if err != nil {
+		return base, err
+	}
+	spec := c.SpecStructs[rawid[0]]
+	prop := util.ExtractBranches(swappedBase.Properties)
+	spec.Update(base.RawId(), prop)
+
+	return swappedBase, err
 }
 
 func (c *Checker) calculateBase(s string) int32 {

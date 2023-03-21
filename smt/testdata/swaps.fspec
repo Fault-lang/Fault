@@ -13,6 +13,7 @@ def f1 = flow{
 
 for 2 run {
     s2 = new s1;
+        s2.v = 20;
     f2 = new f1;
         f2.target = s2;
 }

@@ -915,7 +915,7 @@ func TestSwapError(t *testing.T) {
 
 	for 1 run {
 		f2 = new f1;
-		f2.x = 2.3;
+			f2.x = 2.3;
 	}
 	`
 
@@ -947,7 +947,7 @@ func TestSwapError2(t *testing.T) {
 
 	for 1 run {
 		f2 = new f1;
-		f2.x = new s2;
+			f2.x = new s2;
 	}
 	`
 

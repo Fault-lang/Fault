@@ -20,7 +20,7 @@ type Processor struct {
 	inState              string
 	inGlobal             bool
 	StructsPropertyOrder map[string][]string
-	Instances            map[string][]string
+	Instances            map[string]*ast.StructInstance
 }
 
 func NewProcesser() *Processor {
@@ -32,7 +32,7 @@ func NewProcesser() *Processor {
 		inFunc:               false,
 		inGlobal:             false,
 		StructsPropertyOrder: make(map[string][]string),
-		Instances:            make(map[string][]string),
+		Instances:            make(map[string]*ast.StructInstance),
 	}
 }
 
@@ -594,10 +594,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			key = strings.Join([]string{p.scope, node.Name}, "_")
 		}
 
+		var swaps []ast.Node
 		oldScope := p.scope
-		p.scope = key
+		p.scope = "" //Just so we can do swaps
+		for _, s := range node.Swaps {
 
-		p.Instances[node.IdString()] = []string{node.Value.Spec, node.Value.Value}
+			sw, err := p.walk(s)
+			if err != nil {
+				return node, err
+			}
+			swaps = append(swaps, sw)
+		}
+		p.scope = key
 
 		ty := p.structTypes[node.Value.Spec][node.Value.Value]
 		var properties map[string]ast.Node
@@ -627,6 +635,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				Parent:       []string{node.Value.Spec, node.Value.Value},
 				Properties:   make(map[string]*ast.StructProperty),
 				ComplexScope: node.ComplexScope,
+				Swaps:        swaps,
 				Order:        order}
 
 			pro.Token.Literal = "STOCK"
@@ -644,20 +653,21 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = inst.Parent
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				case *ast.Instance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = []string{inst.Value.Spec, inst.Value.Value}
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				default:
 					pro2, err = p.walk(v)
+					pro2.(ast.Nameable).SetId(name)
 				}
 
 				if err != nil {
 					return node, err
 				}
-
-				pro2.(ast.Nameable).SetId(name)
 
 				token := ast.Token{
 					Type:     ast.TokenType("STOCK"),
@@ -671,6 +681,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
+			p.Instances[node.IdString()] = pro
 
 			p.scope = oldScope
 			return pro, err
@@ -698,6 +709,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				Spec: p.trail.CurrentSpec(), Name: node.Name,
 				Parent:       []string{node.Value.Spec, node.Value.Value},
 				Properties:   make(map[string]*ast.StructProperty),
+				Swaps:        swaps,
 				ComplexScope: node.ComplexScope,
 				Order:        order}
 
@@ -715,21 +727,22 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = inst.Parent
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				case *ast.Instance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = []string{inst.Value.Spec, inst.Value.Value}
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 
 				default:
 					pro2, err = p.walk(v)
+					pro2.(ast.Nameable).SetId(name)
 				}
 
 				if err != nil {
 					return node, err
 				}
-
-				pro2.(ast.Nameable).SetId(name)
 
 				token := ast.Token{
 					Type:     ast.TokenType("FLOW"),
@@ -743,6 +756,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
+			p.Instances[node.IdString()] = pro
 
 			p.scope = oldScope
 			return pro, err

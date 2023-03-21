@@ -640,21 +640,29 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 }
 
 func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
+	var swaps, orphanSwaps []ast.Node
 	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
 	sl := &ast.BlockStatement{
 		Token: token,
 	}
+	orphanSwaps = l.getSwaps()
+
 	steps := c.AllRunStep()
 	for i := len(steps) - 1; i >= 0; i-- {
 		ex := l.pop()
 
-		if ex.TokenLiteral() == "SWAP" {
-			i++ //Swaps are the same step as the instance that initializes them
+		if sw, ok := ex.(*ast.InfixExpression); ok && sw.TokenLiteral() == "SWAP" {
+			i++
+			orphanSwaps = append(orphanSwaps, sw)
+			continue
 		}
 
 		switch t := ex.(type) {
 		case *ast.Instance:
+			swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
+			t.Swaps = append(t.Swaps, swaps...)
+
 			token2 := ex.GetToken()
 
 			s := &ast.ExpressionStatement{
@@ -721,13 +729,14 @@ func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
+	var swaps, orphanSwaps []ast.Node
 	txt := c.AllIDENT()
 	var right string
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
 	// Check for swaps
-	swaps := l.getSwaps()
+	orphanSwaps = l.getSwaps()
 
 	ident := &ast.Identifier{Token: token2}
 	switch len(txt) {
@@ -757,14 +766,30 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
 	order := l.StructsPropertyOrder[key]
 
+	swaps, orphanSwaps = l.filterSwaps(right, orphanSwaps)
+
+	l.pushN(orphanSwaps)
 	l.push(
 		&ast.Instance{
 			Value: ident,
 			Name:  right,
 			Order: order,
+			Swaps: swaps,
 		})
+}
 
-	l.pushN(swaps)
+func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
+	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
+
+	right := l.pop()
+	left := l.pop()
+
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "=",
+		Right:    right.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
@@ -1543,16 +1568,37 @@ func (l *FaultListener) getSwaps() []ast.Node {
 	return swaps
 }
 
+func (l *FaultListener) filterSwaps(id string, swaps []ast.Node) ([]ast.Node, []ast.Node) {
+	var filtered, orphaned []ast.Node
+	for _, s := range swaps {
+		if infx, ok := s.(*ast.InfixExpression); ok {
+			var id2 string
+			switch n := infx.Left.(type) {
+			case *ast.ParameterCall:
+				id2 = n.Value[0]
+			default:
+				panic(fmt.Sprintf("malformed swap got=%s", infx.String()))
+			}
+
+			if id == id2 {
+				filtered = append(filtered, s)
+			} else {
+				orphaned = append(orphaned, s)
+			}
+
+		}
+	}
+	return filtered, orphaned
+}
+
 func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
+	var swaps, orphanSwaps []ast.Node
+
 	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
 
-	swaps := l.getSwaps()
+	orphanSwaps = l.getSwaps()
 
 	instance := l.pop()
-
-	if swaps != nil {
-		l.pushN(swaps)
-	}
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
@@ -1566,12 +1612,14 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 	var importStruct string
 	switch parent := instance.(type) {
 	case *ast.Instance:
+		swaps, orphanSwaps = l.filterSwaps(ident.Value, orphanSwaps)
 		importSpec = parent.Value.Spec
 		importStruct = parent.Value.Value
 		parent.Name = ident.Value
 		key := strings.Join([]string{importSpec, importStruct}, "_")
 		order := l.StructsPropertyOrder[key]
 		parent.Order = order
+		parent.Swaps = swaps
 	}
 
 	l.push(&ast.DefStatement{
@@ -1579,6 +1627,8 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 		Name:  ident,
 		Value: instance.(ast.Expression),
 	})
+
+	l.pushN(orphanSwaps)
 
 }
 
