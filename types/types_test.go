@@ -1006,7 +1006,7 @@ func prepTest(test string) (*Checker, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := NewTypeChecker(pre.Specs, pre.Instances)
+	ty := NewTypeChecker(pre)
 	_, err := ty.Check(tree)
 	return ty, err
 }
@@ -1024,7 +1024,7 @@ func prepTestSys(test string) (*Checker, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := NewTypeChecker(pre.Specs, pre.Instances)
+	ty := NewTypeChecker(pre)
 	_, err := ty.Check(tree)
 	return ty, err
 }

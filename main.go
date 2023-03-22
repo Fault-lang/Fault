@@ -58,7 +58,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	lstnr.AST = tree
 
 	// Infer Types and Build Symbol Table
-	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
+	ty := types.NewTypeChecker(pre)
 	_, err := ty.Check(tree)
 	if err != nil {
 		log.Fatalf("typechecker failed: %s", err)

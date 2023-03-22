@@ -52,6 +52,12 @@ func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	return spec
 }
 
+func (p *Processor) Partial(spec string, node ast.Node) (ast.Node, error) {
+	p.initialPass = true
+	p.trail = p.trail.PushSpec(spec)
+	return p.walk(node)
+}
+
 func (p *Processor) buildIdContext(spec string) []string {
 	if p.inState != "" {
 		return []string{spec}
@@ -786,6 +792,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		parent := node.Parent
 		pname := strings.Join(parent[1:], "_")
 		ty := p.structTypes[parent[0]][pname]
+
 		var properties map[string]ast.Node
 		switch ty {
 		case "STOCK":

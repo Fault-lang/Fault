@@ -232,7 +232,7 @@ func prepTestSys(test string) (bool, []string) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
+	ty := types.NewTypeChecker(pre)
 	tree, err := ty.Check(tree)
 	if err != nil {
 		panic(err)

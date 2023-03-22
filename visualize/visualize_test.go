@@ -150,7 +150,7 @@ func prepTest(test string) *Visual {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
+	ty := types.NewTypeChecker(pre)
 	tree, _ = ty.Check(tree)
 
 	vis := NewVisual(tree)
@@ -171,7 +171,7 @@ func prepSysTest(test string, im bool) *Visual {
 	pre := preprocess.NewProcesser()
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
-	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
+	ty := types.NewTypeChecker(pre)
 	tree, _ = ty.Check(tree)
 
 	vis := NewVisual(tree)

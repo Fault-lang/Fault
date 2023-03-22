@@ -637,7 +637,7 @@ func prepTest(path string, test string) (string, error) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
+	ty := types.NewTypeChecker(pre)
 	tree, err := ty.Check(tree)
 	if err != nil {
 		return "", err
@@ -672,7 +672,7 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	tree := pre.Run(l.AST)
 
-	ty := types.NewTypeChecker(pre.Specs, pre.Instances)
+	ty := types.NewTypeChecker(pre)
 	tree, err := ty.Check(tree)
 
 	if err != nil {
