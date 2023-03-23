@@ -16,4 +16,5 @@ for 2 run {
         s2.v = 20;
     f2 = new f1;
         f2.target = s2;
+    f2.fn;
 }
