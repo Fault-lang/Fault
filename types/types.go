@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/barkimedes/go-deepcopy"
 )
 
 var COMPARE = map[string]bool{
@@ -878,6 +880,23 @@ func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, err
 		if err != nil {
 			return base, err
 		}
+
+		// Because part of what we're doing here is renaming
+		// these nodes. We need to do a deep copy to separate
+		// the swapped nodes from their original reference values
+		copyVal, err := deepcopy.Anything(val)
+		if err != nil {
+			return base, err
+		}
+
+		val = copyVal.(ast.Node)
+
+		switch v := val.(type) {
+		case *ast.StructInstance:
+			v.Name = key
+			val = v
+		}
+
 		base.Properties[key].Value = val
 		base = c.swapDeepNames(base)
 
@@ -887,9 +906,14 @@ func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, err
 
 func (c *Checker) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
 	rawid := val.RawId()
+	err := c.SpecStructs[rawid[0]].Update(rawid, util.ExtractBranches(val.Properties))
+	if err != nil {
+		panic(fmt.Sprintf("failed to update spec record on swap %s: %s", val.String(), err))
+	}
+
 	node, err := c.Preprocesser.Partial(rawid[0], val)
 	if err != nil {
-		panic(fmt.Sprintf("failed to update process ids on swap %s", val.String()))
+		panic(fmt.Sprintf("failed to update process ids on swap %s: %s", val.String(), err))
 	}
 	return node.(*ast.StructInstance)
 }
@@ -1042,7 +1066,7 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 	}
 	spec := c.SpecStructs[rawid[0]]
 	prop := util.ExtractBranches(swappedBase.Properties)
-	spec.Update(base.RawId(), prop)
+	spec.Update(swappedBase.RawId(), prop)
 
 	return swappedBase, err
 }

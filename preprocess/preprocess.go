@@ -801,9 +801,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				return node, err
 			}
 			spec.AddInstance(key, reference, ty)
-			properties, err = spec.FetchStock(key)
-			if err != nil {
-				return node, err
+
+			if len(node.Properties) > 0 {
+				properties = util.ExtractBranches(node.Properties)
+			} else {
+				properties, err = spec.FetchStock(key)
+				if err != nil {
+					return node, err
+				}
+
 			}
 
 			spec.Index("STOCK", key)
@@ -859,9 +865,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 
 			spec.AddInstance(key, reference, ty)
-			properties, err = spec.FetchFlow(key)
-			if err != nil {
-				return node, err
+			if len(node.Properties) > 0 {
+				properties = util.ExtractBranches(node.Properties)
+			} else {
+				properties, err = spec.FetchFlow(key)
+				if err != nil {
+					return node, err
+				}
 			}
 
 			spec.Index("FLOW", key)
