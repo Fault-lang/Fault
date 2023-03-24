@@ -5,6 +5,7 @@ import (
 	"fault/listener"
 	"fault/parser"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"fmt"
 	"io"
@@ -744,6 +745,10 @@ func prepTest(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
+
 	compiler := NewCompiler()
 	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
@@ -772,6 +777,10 @@ func prepTestSys(test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
+
 	compiler := NewCompiler()
 	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)

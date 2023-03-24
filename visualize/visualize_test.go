@@ -5,6 +5,7 @@ import (
 	"fault/listener"
 	"fault/parser"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"strings"
 	"testing"
@@ -152,6 +153,9 @@ func prepTest(test string) *Visual {
 
 	ty := types.NewTypeChecker(pre)
 	tree, _ = ty.Check(tree)
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
 
 	vis := NewVisual(tree)
 	vis.Build()

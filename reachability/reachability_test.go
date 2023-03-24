@@ -4,6 +4,7 @@ import (
 	"fault/listener"
 	"fault/parser"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"testing"
 
@@ -237,6 +238,10 @@ func prepTestSys(test string) (bool, []string) {
 	if err != nil {
 		panic(err)
 	}
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
+
 	tracer := NewTracer()
 	tracer.walk(tree)
 	return tracer.check()

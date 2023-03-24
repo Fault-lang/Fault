@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-
-	"github.com/barkimedes/go-deepcopy"
 )
 
 var COMPARE = map[string]bool{
@@ -53,6 +51,10 @@ func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {
 	}
 
 	return a, err
+}
+
+func (c *Checker) Reference(n ast.Node) (ast.Node, error) {
+	return c.lookupReference(n)
 }
 
 func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
@@ -867,40 +869,42 @@ func (c *Checker) inferSwapNode(node ast.Expression) (ast.Node, error) {
 }
 
 func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, error) {
+	var swaps []ast.Node
 	for _, s := range base.Swaps {
 		n, err := c.typecheck(s)
 		if err != nil {
 			return base, err
 		}
+		swaps = append(swaps, n)
+		// infix := n.(*ast.InfixExpression)
+		// rawid := infix.Left.(ast.Nameable).RawId()
+		// key := rawid[len(rawid)-1]
+		// val, err := c.lookupReference(infix.Right)
+		// if err != nil {
+		// 	return base, err
+		// }
 
-		infix := n.(*ast.InfixExpression)
-		rawid := infix.Left.(ast.Nameable).RawId()
-		key := rawid[len(rawid)-1]
-		val, err := c.lookupReference(infix.Right)
-		if err != nil {
-			return base, err
-		}
+		// // Because part of what we're doing here is renaming
+		// // these nodes. We need to do a deep copy to separate
+		// // the swapped nodes from their original reference values
+		// copyVal, err := deepcopy.Anything(val)
+		// if err != nil {
+		// 	return base, err
+		// }
 
-		// Because part of what we're doing here is renaming
-		// these nodes. We need to do a deep copy to separate
-		// the swapped nodes from their original reference values
-		copyVal, err := deepcopy.Anything(val)
-		if err != nil {
-			return base, err
-		}
+		// val = copyVal.(ast.Node)
 
-		val = copyVal.(ast.Node)
+		// switch v := val.(type) {
+		// case *ast.StructInstance:
+		// 	v.Name = key
+		// 	val = v
+		// }
 
-		switch v := val.(type) {
-		case *ast.StructInstance:
-			v.Name = key
-			val = v
-		}
-
-		base.Properties[key].Value = val
-		base = c.swapDeepNames(base)
+		// base.Properties[key].Value = val
+		// base = c.swapDeepNames(base)
 
 	}
+	base.Swaps = swaps
 	return base, nil
 }
 

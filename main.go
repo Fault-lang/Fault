@@ -10,6 +10,7 @@ import (
 	"fault/reachability"
 	"fault/smt"
 	smtvar "fault/smt/variables"
+	"fault/swaps"
 	"fault/types"
 	"fault/util"
 	"fault/visualize"
@@ -63,6 +64,9 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	if err != nil {
 		log.Fatalf("typechecker failed: %s", err)
 	}
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
 
 	var visual string
 	if visu {

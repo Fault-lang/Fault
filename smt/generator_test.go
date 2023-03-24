@@ -5,6 +5,7 @@ import (
 	"fault/llvm"
 	"fault/parser"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"fault/util"
 	"fmt"
@@ -471,7 +472,7 @@ func TestTestData(t *testing.T) {
 		"testdata/bathtub2.fspec",
 		"testdata/booleans.fspec",
 		"testdata/unknowns.fspec",
-		"testdata/swaps.fspec",
+		"testdata/swaps/swaps.fspec",
 	}
 	smt2s := []string{
 		"testdata/bathtub.smt2",
@@ -479,7 +480,7 @@ func TestTestData(t *testing.T) {
 		"testdata/bathtub2.smt2",
 		"testdata/booleans.smt2",
 		"testdata/unknowns.smt2",
-		"testdata/swaps.smt2",
+		"testdata/swaps/swaps.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)
@@ -642,6 +643,10 @@ func prepTest(path string, test string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
+
 	compiler := llvm.NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
@@ -678,6 +683,10 @@ func prepTestSys(filepath string, test string, imports bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	sw := swaps.NewPrecompiler(ty)
+	tree = sw.Swap(tree)
+
 	compiler := llvm.NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err = compiler.Compile(tree)
