@@ -42,6 +42,21 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
+func Execute(spec string, path string, specType bool) *FaultListener {
+	is := antlr.NewInputStream(spec)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := NewListener(path, true, false)
+	if specType {
+		antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	} else {
+		antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	}
+	return l
+}
+
 func (l *FaultListener) validate() {
 	if l.testing { //will allow invalid specs during testing
 		return

@@ -31,3 +31,4 @@ __debug_bin
 grammar/Makefile
 
 __pycache__
+dist/

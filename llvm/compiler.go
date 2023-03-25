@@ -104,6 +104,16 @@ func NewCompiler() *Compiler {
 	return c
 }
 
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string) *Compiler{
+	compiler := NewCompiler()
+	compiler.LoadMeta(specRec, uncertains, unknowns, true)
+	err := compiler.Compile(tree)
+	if err != nil {
+		panic(err)
+	}
+	return compiler
+}
+
 func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, test bool) {
 	c.specStructs = structs
 	c.Unknowns = unknowns

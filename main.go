@@ -5,7 +5,6 @@ import (
 	"fault/execute"
 	"fault/listener"
 	"fault/llvm"
-	"fault/parser"
 	"fault/preprocess"
 	"fault/reachability"
 	"fault/smt"
@@ -20,62 +19,64 @@ import (
 	gopath "path"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*listener.FaultListener, *types.Checker, string) {
+func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string) {
 	//Confirm that the filetype and file declaration match
 	if !validate_filetype(data, filetype) {
 		log.Fatalf("malformatted file: declaration does not match filetype.")
 	}
 
-	// Setup the input
-	is := antlr.NewInputStream(data)
+	lstnr := listener.Execute(data, path, (filetype == "fspec"))
+	// // Setup the input
+	// is := antlr.NewInputStream(data)
 
-	// Create the Lexer
-	lexer := parser.NewFaultLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(&listener.FaultErrorListener{Filename: file})
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	// // Create the Lexer
+	// lexer := parser.NewFaultLexer(is)
+	// lexer.RemoveErrorListeners()
+	// lexer.AddErrorListener(&listener.FaultErrorListener{Filename: file})
+	// stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
-	// Create the Parser
-	p := parser.NewFaultParser(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(&listener.FaultErrorListener{Filename: file})
+	// // Create the Parser
+	// p := parser.NewFaultParser(stream)
+	// p.RemoveErrorListeners()
+	// p.AddErrorListener(&listener.FaultErrorListener{Filename: file})
 
-	// Finally parse the expression
-	lstnr := listener.NewListener(path, false, false)
-	switch filetype {
-	case "fspec":
-		antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())
-	case "fsystem":
-		antlr.ParseTreeWalkerDefault.Walk(lstnr, p.SysSpec())
-	}
+	// // Finally parse the expression
+	// lstnr := listener.NewListener(path, false, false)
+	// switch filetype {
+	// case "fspec":
+	// 	antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())
+	// case "fsystem":
+	// 	antlr.ParseTreeWalkerDefault.Walk(lstnr, p.SysSpec())
+	// }
 
-	pre := preprocess.NewProcesser()
-	tree := pre.Run(lstnr.AST)
-	lstnr.AST = tree
+	pre := preprocess.Execute(lstnr)
+	// pre := preprocess.NewProcesser()
+	// tree := pre.Run(lstnr.AST)
+	// lstnr.AST = tree
 
 	// Infer Types and Build Symbol Table
-	ty := types.NewTypeChecker(pre.Specs)
-	_, err := ty.Check(tree)
-	if err != nil {
-		log.Fatalf("typechecker failed: %s", err)
-	}
+	ty := types.Execute(pre.Processed, pre.Specs)
+	// ty := types.NewTypeChecker(pre.Specs)
+	// _, err := ty.Check(tree)
+	// if err != nil {
+	// 	log.Fatalf("typechecker failed: %s", err)
+	// }
 
 	var visual string
 	if visu {
-		vis := visualize.NewVisual(tree)
+		vis := visualize.NewVisual(ty.Checked)
 		vis.Build()
 		visual = vis.Render()
 	}
 
 	if reach {
 		r := reachability.NewTracer()
-		r.Scan(tree)
+		r.Scan(ty.Checked)
 	}
-	return lstnr, ty, visual
+	return ty.Checked, lstnr, ty, visual
 }
 
 func validate_filetype(data string, filetype string) bool {
@@ -88,15 +89,15 @@ func validate_filetype(data string, filetype string) bool {
 	return false
 }
 
-func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
-	compiler := llvm.NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
-	err := compiler.Compile(lstnr.AST)
-	if err != nil {
-		log.Fatalf("LLVM IR generation failed: %s", err)
-	}
-	return compiler
-}
+// func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
+// 	compiler := llvm.NewCompiler()
+// 	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
+// 	err := compiler.Compile(lstnr.AST)
+// 	if err != nil {
+// 		log.Fatalf("LLVM IR generation failed: %s", err)
+// 	}
+// 	return compiler
+// }
 
 func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) *smt.Generator {
 	generator := smt.NewGenerator()
@@ -143,7 +144,7 @@ func run(filepath string, mode string, input string, reach bool) {
 
 	switch input {
 	case "fspec":
-		lstnr, ty, visual := parse(d, path, filepath, filetype, reach, mode == "visualize")
+		tree, lstnr, ty, visual := parse(d, path, filepath, filetype, reach, mode == "visualize")
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -153,7 +154,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		compiler := ll(lstnr, ty)
+		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns)
 		uncertains = compiler.Uncertains
 		unknowns = compiler.Unknowns
 
@@ -173,7 +174,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		generator := smt2(compiler.GetIR(), compiler.RunRound, uncertains, unknowns, compiler.Asserts, compiler.Assumes)
+		generator := smt.Execute(compiler)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
