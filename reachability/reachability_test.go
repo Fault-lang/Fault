@@ -2,12 +2,9 @@ package reachability
 
 import (
 	"fault/listener"
-	"fault/parser"
 	"fault/preprocess"
 	"fault/types"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSeenBefore(t *testing.T) {
@@ -220,24 +217,17 @@ func TestMultiPath(t *testing.T) {
 }
 
 func prepTestSys(test string) (bool, []string) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	pre := preprocess.NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	tree := pre.Run(l.AST)
+	var path string
 
-	ty := types.NewTypeChecker(pre.Specs)
-	tree, err := ty.Check(tree)
-	if err != nil {
-		panic(err)
-	}
+	l := listener.Execute(test, path, flags)
+	pre := preprocess.Execute(l)
+	ty := types.Execute(pre.Processed, pre.Specs)
 	tracer := NewTracer()
-	tracer.walk(tree)
+	tracer.walk(ty.Checked)
 	return tracer.check()
 }
