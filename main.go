@@ -28,7 +28,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 		log.Fatalf("malformatted file: declaration does not match filetype.")
 	}
 
-	lstnr := listener.Execute(data, path, (filetype == "fspec"))
+	lstnr := listener.Execute(data, path, (filetype == "fspec"), false)
 	// // Setup the input
 	// is := antlr.NewInputStream(data)
 

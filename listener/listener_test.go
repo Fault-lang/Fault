@@ -2,15 +2,14 @@ package listener
 
 import (
 	"fault/ast"
-	"fault/parser"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSpecDecl(t *testing.T) {
 	test := `spec test1;`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -30,7 +29,9 @@ func TestConstDecl(t *testing.T) {
 	test := `spec test1;
 			 const x = 5;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -50,7 +51,9 @@ func TestBoolean(t *testing.T) {
 	test := `spec test1;
 			 const x = false;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -70,7 +73,9 @@ func TestConstMultiDecl(t *testing.T) {
 	test := `spec test1;
 			 const x,y = 5;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -101,7 +106,9 @@ func TestStockDecl(t *testing.T) {
 				call: test2.lol,
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -156,7 +163,9 @@ func TestStockDeclFloat(t *testing.T) {
 				value: 10.0,
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -190,7 +199,9 @@ func TestFlowDecl(t *testing.T) {
 				bar: "here's a string",
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
@@ -224,7 +235,9 @@ func TestStockConnection(t *testing.T) {
 				bar: new fizz,
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.Instance)
@@ -257,7 +270,9 @@ func TestStructOrder(t *testing.T) {
 				st: new foo,
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	stock := spec.Statements[1].(*ast.DefStatement).Value.(*ast.StockLiteral)
 	if len(stock.Order) != 3 {
 		t.Fatalf("Struct has incorrect number of properties in order. got=%d", len(stock.Order))
@@ -289,7 +304,9 @@ func TestStockImport(t *testing.T) {
 				bar: new test2.fizz,
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.Instance)
@@ -312,7 +329,9 @@ func TestFunctionBlock(t *testing.T) {
 				bar: func{1+2;},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -339,7 +358,9 @@ func TestThis(t *testing.T) {
 				bar: func{1+this;},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -381,7 +402,9 @@ func TestClock(t *testing.T) {
 				bar: func{1+clock;},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -419,7 +442,9 @@ func TestClockRun(t *testing.T) {
 				 clock;
 			 }
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	run := spec.Statements[2].(*ast.ForStatement).Body.Statements
 	clock, ok := run[0].(*ast.ExpressionStatement).Expression.(*ast.Clock)
 	if !ok {
@@ -439,7 +464,9 @@ func TestPrefix(t *testing.T) {
 						},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -486,7 +513,9 @@ func TestSimpleConditional(t *testing.T) {
 				},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -535,7 +564,9 @@ func TestConditional(t *testing.T) {
 				},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -582,7 +613,9 @@ func TestElseIf(t *testing.T) {
 				},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -617,7 +650,9 @@ func TestInit(t *testing.T) {
 				},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -645,7 +680,9 @@ func TestImport(t *testing.T) {
 	test := `system test1;
 			 import "hello";
 			`
-	_, spec := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -670,7 +707,9 @@ func TestImportWIdent(t *testing.T) {
 	test := `system test1;
 			 import helloWorld "../../hello";
 			`
-	_, spec := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -696,7 +735,9 @@ func TestMultiImport(t *testing.T) {
 			 import("hello"
 			         x "world");
 			`
-	_, spec := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -733,7 +774,9 @@ func TestForStatement(t *testing.T) {
 	test := `spec test1;
 			 for 5 run{};
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -757,7 +800,9 @@ func TestRunBlock(t *testing.T) {
 				d.fn;
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -812,7 +857,9 @@ func TestRunIfBlock(t *testing.T) {
 				}
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -883,6 +930,7 @@ func TestSkipRun(t *testing.T) {
 			 `
 	flags := make(map[string]bool)
 	flags["skipRun"] = true
+	flags["specType"] = true
 
 	_, spec := prepTest(test, flags)
 	if spec == nil {
@@ -904,7 +952,9 @@ func TestRunInit(t *testing.T) {
 				d = new test2.foo;
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	if spec == nil {
 		t.Fatalf("prepTest() returned nil")
 	}
@@ -938,7 +988,9 @@ func TestIncr(t *testing.T) {
 				i++;
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	forSt, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
@@ -978,7 +1030,9 @@ func TestDecr(t *testing.T) {
 				i--;
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	forSt, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
@@ -1016,7 +1070,9 @@ func TestAssertion(t *testing.T) {
 	test := `spec test1;
 			 assert x > y;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -1040,7 +1096,9 @@ func TestAssertionCompound(t *testing.T) {
 	test := `spec test1;
 			 assert x > y && x > 1;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -1056,7 +1114,9 @@ func TestAssertionCompound2(t *testing.T) {
 	test := `spec test1;
 			 assert x > y || x > 1;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -1072,7 +1132,9 @@ func TestAssumption(t *testing.T) {
 	test := `spec test1;
 			 assume x == 5;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
@@ -1100,7 +1162,9 @@ func TestAssumptionCompound(t *testing.T) {
 	test := `spec test1;
 			 assume x == 5 || y > 1;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
@@ -1116,7 +1180,9 @@ func TestAssumptionCompound2(t *testing.T) {
 	test := `spec test1;
 			 assume x == 5 && y > 1;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssumptionStatement. got=%T", spec.Statements[1])
@@ -1132,7 +1198,9 @@ func TestTemporal(t *testing.T) {
 	test := `spec test1;
 			 assert x > y eventually;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -1160,7 +1228,9 @@ func TestTemporalFilter(t *testing.T) {
 	test := `spec test1;
 			 assert x > y nmt 3;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	assert, ok := spec.Statements[1].(*ast.AssertionStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not an AssertionStatement. got=%T", spec.Statements[1])
@@ -1196,7 +1266,9 @@ func TestFaultAssign(t *testing.T) {
 				},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -1236,7 +1308,9 @@ func TestMiscAssign(t *testing.T) {
 				},
 			 };
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	for _, v := range flow {
 		f, ok := v.(*ast.FunctionLiteral)
@@ -1272,7 +1346,9 @@ func TestNil(t *testing.T) {
 	test := `spec test1;
 			 const a = nil;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1290,7 +1366,9 @@ func TestAccessHistory(t *testing.T) {
 				b[1][2];
 			 }
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
@@ -1317,7 +1395,9 @@ func TestAccessHistory2(t *testing.T) {
 				b[a[2]];
 			}
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
@@ -1337,7 +1417,9 @@ func TestNegInt(t *testing.T) {
 	test := `spec test1;
 			 const a = -13;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1357,7 +1439,9 @@ func TestFloat(t *testing.T) {
 	test := `spec test1;
 			 const a = 1.2;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1377,7 +1461,9 @@ func TestNegFloat(t *testing.T) {
 	test := `spec test1;
 			 const a = -1.2;
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1398,7 +1484,9 @@ func TestDeclaredType(t *testing.T) {
 			 const a = natural(1);
 			 const b = uncertain(10, 2.3);
 			`
-	l, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	l, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1450,7 +1538,9 @@ func TestInstanceOrder(t *testing.T) {
 				car = new f;
 			}
 			`
-	_, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	_, spec := prepTest(test, flags)
 
 	fst, ok4 := spec.Statements[2].(*ast.ForStatement)
 	if !ok4 {
@@ -1484,7 +1574,9 @@ func TestUnknown(t *testing.T) {
 
 			 const b;
 			`
-	l, spec := prepTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	l, spec := prepTest(test, flags)
 	con, ok := spec.Statements[1].(*ast.ConstantStatement)
 	if !ok {
 		t.Fatalf("spec.Statements[1] is not a ConstantStatement. got=%T", spec.Statements[1])
@@ -1677,7 +1769,9 @@ func TestSysSpec(t *testing.T) {
 				car.test = bot;
 			}
 			`
-	_, sys := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
 
 	decl, ok := sys.Statements[0].(*ast.SysDeclStatement)
 	if !ok {
@@ -1738,7 +1832,9 @@ func TestSysGlobal(t *testing.T) {
 
 			global t = new foo.test;
 			`
-	_, sys := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
 
 	global, ok := sys.Statements[2].(*ast.DefStatement).Value.(*ast.Instance)
 	if !ok {
@@ -1785,7 +1881,9 @@ func TestSysStart(t *testing.T) {
 				test2:active,
 			};
 			`
-	_, sys := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
 
 	starts, ok := sys.Statements[3].(*ast.StartStatement)
 	if !ok {
@@ -1799,35 +1897,16 @@ func TestSysStart(t *testing.T) {
 }
 
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	var listener *FaultListener
-	if flags != nil && flags["skipRun"] {
-		listener = NewListener(path, true, true)
-	} else {
-		listener = NewListener(path, true, false)
+	var testRun bool
+	if flags["skipRun"] {
+		testRun = true
 	}
-	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
-	return listener, listener.AST
-}
 
-func prepSysTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	var listener *FaultListener
-	if flags != nil && flags["skipRun"] {
-		listener = NewListener(path, true, true)
-	} else {
-		listener = NewListener(path, true, false)
+	var specType bool
+	if flags["specType"] {
+		specType = true
 	}
-	antlr.ParseTreeWalkerDefault.Walk(listener, p.SysSpec())
+
+	listener := Execute(test, "", specType, testRun)
 	return listener, listener.AST
 }

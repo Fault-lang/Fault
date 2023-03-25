@@ -42,17 +42,24 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
-func Execute(spec string, path string, specType bool) *FaultListener {
+func Execute(spec string, path string, specType bool, testing bool) *FaultListener {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	l := NewListener(path, true, false)
+	var l *FaultListener
+
+	if testing {
+		l = NewListener(path, true, true)
+	} else {
+		l = NewListener(path, true, false)
+	}
+
 	if specType {
 		antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	} else {
-		antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+		antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
 	}
 	return l
 }
