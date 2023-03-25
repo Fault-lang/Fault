@@ -903,7 +903,12 @@ func TestComponents(t *testing.T) {
 // "ignore x=5" <-- syntax to remove scenarios from the model checker?
 
 func prepTest(test string, specType bool) (*Checker, error) {
-	l := listener.Execute(test, "", specType, false)
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l := listener.Execute(test, "", flags)
 
 	pre := preprocess.Execute(l)
 	ty := NewTypeChecker(pre.Specs)

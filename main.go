@@ -27,8 +27,11 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	if !validate_filetype(data, filetype) {
 		log.Fatalf("malformatted file: declaration does not match filetype.")
 	}
-
-	lstnr := listener.Execute(data, path, (filetype == "fspec"), false)
+	flags := make(map[string]bool)
+	flags["specType"] = (filetype == "fspec")
+	flags["testing"] = false
+	flags["skipRun"] = false
+	lstnr := listener.Execute(data, path, flags)
 	// // Setup the input
 	// is := antlr.NewInputStream(data)
 
@@ -154,7 +157,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns)
+		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
 		uncertains = compiler.Uncertains
 		unknowns = compiler.Unknowns
 

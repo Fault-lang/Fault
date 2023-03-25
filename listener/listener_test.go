@@ -1897,16 +1897,7 @@ func TestSysStart(t *testing.T) {
 }
 
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
-	var testRun bool
-	if flags["skipRun"] {
-		testRun = true
-	}
-
-	var specType bool
-	if flags["specType"] {
-		specType = true
-	}
-
-	listener := Execute(test, "", specType, testRun)
+	flags["testing"] = true
+	listener := Execute(test, "", flags)
 	return listener, listener.AST
 }

@@ -725,7 +725,10 @@ func TestInstanceFlatten(t *testing.T) {
 }
 
 func prepTest(test string, specType bool) *Processor {
-	l := listener.Execute(test, "", specType, false)
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	l := listener.Execute(test, "", flags)
 	pre := Execute(l)
 	return pre
 }

@@ -724,7 +724,12 @@ func stripAndEscape(str string) string {
 }
 
 func prepTest(test string, specType bool) (string, error) {
-	l := listener.Execute(test, "", specType, false)
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l := listener.Execute(test, "", flags)
 	pre := preprocess.Execute(l)
 	ty := types.Execute(pre.Processed, pre.Specs)
 	compiler := NewCompiler()
