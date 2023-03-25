@@ -3,7 +3,6 @@ package llvm
 import (
 	"fault/ast"
 	"fault/listener"
-	"fault/parser"
 	"fault/preprocess"
 	"fault/types"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
@@ -43,7 +41,7 @@ func TestSimpleConst(t *testing.T) {
 	
 `
 
-	llvm, err := prepTest(test)
+	llvm, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -161,7 +159,7 @@ func TestRunBlock(t *testing.T) {
 `
 	//Should fadd have variable names or the values in those variables?
 
-	llvm, err := prepTest(test)
+	llvm, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -248,7 +246,7 @@ func TestIfCond(t *testing.T) {
 	}		
 	`
 
-	llvm, err := prepTest(test)
+	llvm, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -322,7 +320,7 @@ func TestUnknowns(t *testing.T) {
 		ret void
 	}`
 
-	llvm, err := prepTest(test)
+	llvm, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -667,7 +665,7 @@ func TestComponentIR(t *testing.T) {
 		br label %block-25-after
 	}`
 
-	llvm, err := prepTestSys(test)
+	llvm, err := prepTest(test, false)
 
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
@@ -725,56 +723,13 @@ func stripAndEscape(str string) string {
 	return output.String()
 }
 
-func prepTest(test string) (string, error) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-	pre := preprocess.NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	tree := pre.Run(l.AST)
-
-	ty := types.NewTypeChecker(pre.Specs)
-	tree, err := ty.Check(tree)
-
-	if err != nil {
-		return "", err
-	}
+func prepTest(test string, specType bool) (string, error) {
+	l := listener.Execute(test, "", specType, false)
+	pre := preprocess.Execute(l)
+	ty := types.Execute(pre.Processed, pre.Specs)
 	compiler := NewCompiler()
-	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
-	err = compiler.Compile(tree)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Println(compiler.GetIR())
-	return compiler.GetIR(), err
-}
-
-func prepTestSys(test string) (string, error) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	pre := preprocess.NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	tree := pre.Run(l.AST)
-
-	ty := types.NewTypeChecker(pre.Specs)
-	tree, err := ty.Check(tree)
-	if err != nil {
-		return "", err
-	}
-	compiler := NewCompiler()
-	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
-	err = compiler.Compile(tree)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
+	err := compiler.Compile(ty.Checked)
 	if err != nil {
 		return "", err
 	}
