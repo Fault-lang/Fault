@@ -4,7 +4,7 @@ import (
 	"fault/ast"
 	"fmt"
 	"os"
-	"path/filepath"
+	ospath "path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -82,18 +82,19 @@ func Filepath(filepath string) string {
 			if path == "" {
 				filepath = right
 			} else {
-				filepath = fmt.Sprintf("%s/%s", path, right)
+				filepath = ospath.Join(path, right)
 			}
 
 		}
 
 		if len(filepath) < len(host) || host != filepath[0:len(host)] {
-			filepath = strings.Join([]string{host, filepath}, "/")
+			filepath = ospath.Join(host, filepath)
 		}
 
-		if strings.Contains(filepath, "//") {
-			path := strings.Split(filepath, "//")
-			filepath = strings.Join(path, "/")
+		dup := fmt.Sprintf("%s%s", string(ospath.Separator), string(ospath.Separator))
+		if strings.Contains(filepath, dup) {
+			path := strings.Split(filepath, dup)
+			filepath = ospath.Join(path...)
 		}
 
 	}
@@ -102,20 +103,20 @@ func Filepath(filepath string) string {
 
 func home(host string, filepath string) string {
 	path := strings.Split(filepath, "~")
-	if string(path[1][0]) == "/" {
+	if string(path[1][0]) == string(ospath.Separator) {
 		filepath = path[1][1:]
 	} else {
 		filepath = path[1]
 	}
-	return strings.Join([]string{host, filepath}, "/")
+	return ospath.Join(host, filepath)
 }
 
 func uplevel(path string, host bool) string {
-	parts := strings.Split(path, "/")
+	parts := strings.Split(path, string(ospath.Separator))
 	parts = trimSlashes(parts, host)
 
 	if len(parts) > 0 {
-		return strings.Join(parts[0:len(parts)-1], "/")
+		return ospath.Join(parts[0 : len(parts)-1]...)
 	}
 	return ""
 }
@@ -359,7 +360,7 @@ func IsCompare(op string) bool {
 }
 
 func DetectMode(filename string) string {
-	switch filepath.Ext(filename) {
+	switch ospath.Ext(filename) {
 	case ".fspec":
 		return "fspec"
 	case ".fsystem":
