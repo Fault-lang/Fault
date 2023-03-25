@@ -3,10 +3,7 @@ package preprocess
 import (
 	"fault/ast"
 	"fault/listener"
-	"fault/parser"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestConstants(t *testing.T) {
@@ -15,7 +12,7 @@ func TestConstants(t *testing.T) {
 	const y = 3.1;
 	const z = unknown(a);`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	consts := process.Specs["test1"]
 
@@ -76,7 +73,7 @@ func TestStructDef(t *testing.T) {
 			};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	variables := process.Specs["test1"]
 
@@ -123,7 +120,7 @@ func TestComponent(t *testing.T) {
 		foo: initial,
 	};`
 
-	process := prepSysTest(test)
+	process := prepTest(test, false)
 	variables := process.Specs["test"]
 	foo, _ := variables.FetchComponent("foo")
 	if foo == nil {
@@ -186,7 +183,7 @@ func TestInstances(t *testing.T) {
 	};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	variables := process.Specs["test1"]
 
@@ -242,7 +239,7 @@ func TestRunInstances(t *testing.T) {
 	}
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	variables := process.Specs["test1"]
 
@@ -311,7 +308,7 @@ func TestIds(t *testing.T) {
 	};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -391,7 +388,7 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -443,7 +440,7 @@ func TestAsserts(t *testing.T) {
 	assert foo.x > foo.y[1] && foo.y[2] < foo.z; 
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -492,7 +489,7 @@ func TestCollapseIf(t *testing.T) {
 			}
 	};
 	`
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -530,7 +527,7 @@ func TestCollapseIfElse(t *testing.T) {
 			}
 	};
 	`
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -568,7 +565,7 @@ func TestCollapseElse(t *testing.T) {
 			}
 	};
 	`
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -608,7 +605,7 @@ func TestCondCollapse(t *testing.T) {
 			}
 	};
 `
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
 	spec := tree.Statements
 
@@ -727,32 +724,8 @@ func TestInstanceFlatten(t *testing.T) {
 	}
 }
 
-func prepTest(test string) *Processor {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-	pre := NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	pre.Run(l.AST)
-	return pre
-}
-
-func prepSysTest(test string) *Processor {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	pre := NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	pre.Run(l.AST)
+func prepTest(test string, specType bool) *Processor {
+	l := listener.Execute(test, "", specType, false)
+	pre := Execute(l)
 	return pre
 }
