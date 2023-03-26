@@ -32,41 +32,10 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	flags["testing"] = false
 	flags["skipRun"] = false
 	lstnr := listener.Execute(data, path, flags)
-	// // Setup the input
-	// is := antlr.NewInputStream(data)
-
-	// // Create the Lexer
-	// lexer := parser.NewFaultLexer(is)
-	// lexer.RemoveErrorListeners()
-	// lexer.AddErrorListener(&listener.FaultErrorListener{Filename: file})
-	// stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	// // Create the Parser
-	// p := parser.NewFaultParser(stream)
-	// p.RemoveErrorListeners()
-	// p.AddErrorListener(&listener.FaultErrorListener{Filename: file})
-
-	// // Finally parse the expression
-	// lstnr := listener.NewListener(path, false, false)
-	// switch filetype {
-	// case "fspec":
-	// 	antlr.ParseTreeWalkerDefault.Walk(lstnr, p.Spec())
-	// case "fsystem":
-	// 	antlr.ParseTreeWalkerDefault.Walk(lstnr, p.SysSpec())
-	// }
 
 	pre := preprocess.Execute(lstnr)
-	// pre := preprocess.NewProcesser()
-	// tree := pre.Run(lstnr.AST)
-	// lstnr.AST = tree
 
-	// Infer Types and Build Symbol Table
 	ty := types.Execute(pre.Processed, pre.Specs)
-	// ty := types.NewTypeChecker(pre.Specs)
-	// _, err := ty.Check(tree)
-	// if err != nil {
-	// 	log.Fatalf("typechecker failed: %s", err)
-	// }
 
 	var visual string
 	if visu {
@@ -91,16 +60,6 @@ func validate_filetype(data string, filetype string) bool {
 	}
 	return false
 }
-
-// func ll(lstnr *listener.FaultListener, ty *types.Checker) *llvm.Compiler {
-// 	compiler := llvm.NewCompiler()
-// 	compiler.LoadMeta(ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
-// 	err := compiler.Compile(lstnr.AST)
-// 	if err != nil {
-// 		log.Fatalf("LLVM IR generation failed: %s", err)
-// 	}
-// 	return compiler
-// }
 
 func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) *smt.Generator {
 	generator := smt.NewGenerator()
@@ -260,6 +219,13 @@ func main() {
 			fmt.Printf("%s is not a valid mode\n", mode)
 			os.Exit(1)
 		}
+	}
+
+	//Check if solver is set
+	if (mode == "check" || mode == "visualize") &&
+		os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "" {
+		fmt.Println("no solver configured, defaulting to SMT output without model checking. Please set SOLVERCMD and SOLVERARG variables.")
+		mode = "smt"
 	}
 
 	if *inputCommand == "" {
