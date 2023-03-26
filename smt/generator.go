@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"fault/ast"
+	"fault/llvm"
 	"fault/smt/forks"
 	"fault/smt/rules"
 	"fault/smt/variables"
@@ -67,6 +68,13 @@ func NewGenerator() *Generator {
 		Results:         make(map[string][]*variables.VarChange),
 		RVarLookup:      make(map[string][][]int),
 	}
+}
+
+func Execute(compiler *llvm.Compiler) *Generator {
+	generator := NewGenerator()
+	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.Run(compiler.GetIR())
+	return generator
 }
 
 func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {

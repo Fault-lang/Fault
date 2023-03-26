@@ -3,11 +3,8 @@ package types
 import (
 	"fault/ast"
 	"fault/listener"
-	"fault/parser"
 	"fault/preprocess"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestAddOK(t *testing.T) {
@@ -21,7 +18,7 @@ func TestAddOK(t *testing.T) {
 				},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -74,7 +71,7 @@ func TestTypeError(t *testing.T) {
 				x: func{2+"2";},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 	if err == nil {
 		t.Fatalf("Type checking failed to catch int string mismatch.")
 	}
@@ -93,7 +90,7 @@ func TestStructTypeError(t *testing.T) {
 				},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "stock is the store of values, stock test1_fizz should be a flow"
 
@@ -120,7 +117,7 @@ func TestInstanceError(t *testing.T) {
 				},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "can't find node [test1 fizz buzz] line:9, col:5"
 
@@ -136,7 +133,7 @@ func TestComplex(t *testing.T) {
 				x: func{(2.1*8)+2.3/(5-2);},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -164,7 +161,7 @@ func TestScopes(t *testing.T) {
 			const a = .005;
 			const b = 103.40000;
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -229,7 +226,7 @@ func TestTypesInStruct(t *testing.T) {
 				},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -319,7 +316,7 @@ func TestNils(t *testing.T) {
 			y:func{4 + nil;},
 			z:func{nil + nil;},
 			};`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -396,7 +393,7 @@ func TestInConditionals(t *testing.T) {
 				},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -506,7 +503,7 @@ func TestComplexStruct(t *testing.T) {
 				},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -574,7 +571,7 @@ func TestReallyComplexStruct(t *testing.T) {
 				},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on valid expression. got=%s", err)
@@ -600,7 +597,7 @@ func TestInvalidAssert(t *testing.T) {
 
 			assert a + 5;
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
@@ -616,7 +613,7 @@ func TestInvalidAssert2(t *testing.T) {
 
 			assert 5 + a;
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "assert statement not testing a Boolean expression. got=FLOAT"
 
@@ -632,7 +629,7 @@ func TestInvalidAssert3(t *testing.T) {
 
 			assert true + a;
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "invalid expression: got=BOOL + FLOAT"
 
@@ -648,7 +645,7 @@ func TestValidAssert(t *testing.T) {
 			
 			assert a > 5;
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -662,7 +659,7 @@ func TestInvalidInfix(t *testing.T) {
 				a: func{ 2 + "world";},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "type mismatch: got=INT,STRING"
 
@@ -678,7 +675,7 @@ func TestInvalidInfix2(t *testing.T) {
 				a: func{"hello" + 4;},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "type mismatch: got=STRING,INT"
 
@@ -697,7 +694,7 @@ func TestRedeclareError(t *testing.T) {
 				},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "cannot redeclare variable a is type BOOL got FLOAT"
 
@@ -713,7 +710,7 @@ func TestValidCompoundAssert(t *testing.T) {
 			
 			assert a > 5 && b == 4 || c != "hello!";
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -729,7 +726,7 @@ func TestPrefix(t *testing.T) {
 				a: func{!2.3;},
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -763,7 +760,7 @@ func TestNatural(t *testing.T) {
 	test := `spec test1;
 			const a = natural(2);
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -782,7 +779,7 @@ func TestBoolean(t *testing.T) {
 	test := `spec test1;
 			const a = true;
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -801,7 +798,7 @@ func TestString(t *testing.T) {
 	test := `spec test1;
 			const a = "Hello!";
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -822,7 +819,7 @@ func TestIntPara(t *testing.T) {
 				value: 3,
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -843,7 +840,7 @@ func TestBooleanPara(t *testing.T) {
 				value: true,
 			};
 	`
-	checker, err := prepTest(test)
+	checker, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -867,7 +864,7 @@ func TestTempValues(t *testing.T) {
 				},
 			};
 	`
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -892,7 +889,7 @@ func TestComponents(t *testing.T) {
 		},
 	};
 	`
-	_, err := prepTestSys(test)
+	_, err := prepTest(test, false)
 
 	if err != nil {
 		t.Fatalf("Type checking failed on a valid expression. got=%s", err)
@@ -905,38 +902,16 @@ func TestComponents(t *testing.T) {
 // check float + float returns a the larger scope
 // "ignore x=5" <-- syntax to remove scenarios from the model checker?
 
-func prepTest(test string) (*Checker, error) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+func prepTest(test string, specType bool) (*Checker, error) {
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
+	l := listener.Execute(test, "", flags)
 
-	pre := preprocess.NewProcesser()
-	tree := pre.Run(l.AST)
-
+	pre := preprocess.Execute(l)
 	ty := NewTypeChecker(pre.Specs)
-	_, err := ty.Check(tree)
-	return ty, err
-}
-
-func prepTestSys(test string) (*Checker, error) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-
-	pre := preprocess.NewProcesser()
-	tree := pre.Run(l.AST)
-
-	ty := NewTypeChecker(pre.Specs)
-	_, err := ty.Check(tree)
+	_, err := ty.Check(pre.Processed)
 	return ty, err
 }

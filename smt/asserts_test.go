@@ -41,13 +41,9 @@ func TestSimpleAssert(t *testing.T) {
 	(assert (or (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_1 0)(<= test1_t_foo_value_2 0)(<= test1_t_foo_value_3 0)(<= test1_t_foo_value_4 0)(<= test1_t_foo_value_5 0)))
 `
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("SimpleAssert", smt, expecting)
+	err := compareResults("SimpleAssert", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -101,13 +97,9 @@ func TestCompoundAssertAnd(t *testing.T) {
 	(> test1_t_foo_value_4 10)
 	(> test1_t_foo_value_5 10)))`
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("CompoundAssert", smt, expecting)
+	err := compareResults("CompoundAssert", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -150,13 +142,9 @@ func TestCompoundAssertOr(t *testing.T) {
 	(assert (= test1_t_foo_value_5 (- test1_t_foo_value_4 2.0)))
 	(assert (or (and (<= test1_t_foo_value_5 0) (> test1_t_foo_value_5 10)) (and (<= test1_t_foo_value_0 0) (> test1_t_foo_value_0 10)) (and (<= test1_t_foo_value_1 0) (> test1_t_foo_value_1 10)) (and (<= test1_t_foo_value_2 0) (> test1_t_foo_value_2 10)) (and (<= test1_t_foo_value_3 0) (> test1_t_foo_value_3 10)) (and (<= test1_t_foo_value_4 0) (> test1_t_foo_value_4 10))))`
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("CompoundAssert", smt, expecting)
+	err := compareResults("CompoundAssert", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -217,13 +205,9 @@ func TestMultiAssert(t *testing.T) {
 		)
 	))`
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("CompoundAssert", smt, expecting)
+	err := compareResults("CompoundAssert", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -271,13 +255,9 @@ func TestAssertInfix(t *testing.T) {
 	(<= test1_t_foo_value_4 0)
 	(<= test1_t_foo_value_5 0)))`
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("AssertInfix", smt, expecting)
+	err := compareResults("AssertInfix", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -329,13 +309,9 @@ func TestMultiVar(t *testing.T) {
 	(<= test1_t_foo_value_5 test1_t_fuzz_0)))
 	`
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("MultiVar", smt, expecting)
+	err := compareResults("MultiVar", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -379,13 +355,9 @@ func TestSimpleAssume(t *testing.T) {
 	(assert (and (> test1_t_foo_value_0 0) (> test1_t_foo_value_1 0)(> test1_t_foo_value_2 0)(> test1_t_foo_value_3 0)(> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0)))
 `
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("SimpleAssume", smt, expecting)
+	err := compareResults("SimpleAssume", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -429,13 +401,9 @@ func TestSpecificStateAssume(t *testing.T) {
 	(assert (> test1_t_foo_value_1 0))
 `
 
-	smt, err := prepTest("", test)
+	smt := prepTest("", test, true, false)
 
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	err = compareResults("SpecificStateAssume", smt, expecting)
+	err := compareResults("SpecificStateAssume", smt, expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())

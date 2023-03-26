@@ -3,10 +3,7 @@ package preprocess
 import (
 	"fault/ast"
 	"fault/listener"
-	"fault/parser"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestConstants(t *testing.T) {
@@ -15,7 +12,7 @@ func TestConstants(t *testing.T) {
 	const y = 3.1;
 	const z = unknown(a);`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	consts := process.Specs["test1"]
 
@@ -76,7 +73,7 @@ func TestStructDef(t *testing.T) {
 			};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	variables := process.Specs["test1"]
 
@@ -123,7 +120,7 @@ func TestComponent(t *testing.T) {
 		foo: initial,
 	};`
 
-	process := prepSysTest(test)
+	process := prepTest(test, false)
 	variables := process.Specs["test"]
 	foo, _ := variables.FetchComponent("foo")
 	if foo == nil {
@@ -186,7 +183,7 @@ func TestInstances(t *testing.T) {
 	};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	variables := process.Specs["test1"]
 
@@ -242,7 +239,7 @@ func TestRunInstances(t *testing.T) {
 	}
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 
 	variables := process.Specs["test1"]
 
@@ -255,12 +252,12 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow f returns the wrong number of properties got=%d want=3", len(fl))
 	}
 
-	pc := process.Processed.(*ast.Spec).Statements[3].(*ast.ForStatement).Body.Statements[1].(*ast.ParallelFunctions).Expressions[0].(*ast.ParameterCall)
+	pc := process.Processed.Statements[3].(*ast.ForStatement).Body.Statements[1].(*ast.ParallelFunctions).Expressions[0].(*ast.ParameterCall)
 	if pc.IdString() != "test1_f_fizz" {
 		t.Fatalf("flow not correctly named in runblock got=%s", pc.IdString())
 	}
 
-	pairs := process.Processed.(*ast.Spec).Statements[2].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
+	pairs := process.Processed.Statements[2].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
 	var buzz *ast.StructInstance
 	for k, v := range pairs {
 		if k.Value == "buzz" {
@@ -277,7 +274,7 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow property value not correctly named in runblock got=%s", buzz.Properties["foo"].Value.(ast.Nameable).IdString())
 	}
 
-	run := process.Processed.(*ast.Spec).Statements[3].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
+	run := process.Processed.Statements[3].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
 	for k, v := range run.Properties {
 		if k == "fizz" {
 			foo := v.Value.(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression).Left.(*ast.ParameterCall).IdString()
@@ -311,9 +308,9 @@ func TestIds(t *testing.T) {
 	};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	str1 := spec[1].(*ast.DefStatement).Name.RawId()
 	if str1[0] != "test1" || str1[1] != "str" {
@@ -391,9 +388,9 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	str1 := spec[1].(*ast.ConstantStatement).Name.RawId()
 	if str1[0] != "test1" || str1[1] != "a" {
@@ -443,9 +440,9 @@ func TestAsserts(t *testing.T) {
 	assert foo.x > foo.y[1] && foo.y[2] < foo.z; 
 	`
 
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	str1 := spec[3].(*ast.AssertionStatement).Constraint.Left.(ast.Nameable).RawId()
 	if len(str1) != 2 || str1[0] != "test1" || str1[1] != "a" {
@@ -492,9 +489,9 @@ func TestCollapseIf(t *testing.T) {
 			}
 	};
 	`
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
@@ -530,9 +527,9 @@ func TestCollapseIfElse(t *testing.T) {
 			}
 	};
 	`
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
@@ -568,9 +565,9 @@ func TestCollapseElse(t *testing.T) {
 			}
 	};
 	`
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
@@ -608,9 +605,9 @@ func TestCondCollapse(t *testing.T) {
 			}
 	};
 `
-	process := prepTest(test)
+	process := prepTest(test, true)
 	tree := process.Processed
-	spec := tree.(*ast.Spec).Statements
+	spec := tree.Statements
 
 	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
@@ -727,32 +724,11 @@ func TestInstanceFlatten(t *testing.T) {
 	}
 }
 
-func prepTest(test string) *Processor {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-	pre := NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	pre.Run(l.AST)
-	return pre
-}
-
-func prepSysTest(test string) *Processor {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	pre := NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	pre.Run(l.AST)
+func prepTest(test string, specType bool) *Processor {
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	l := listener.Execute(test, "", flags)
+	pre := Execute(l)
 	return pre
 }

@@ -26,6 +26,7 @@ type Checker struct {
 	Constants   map[string]map[string]ast.Node
 	inStock     string
 	temps       map[string]*ast.Type
+	Checked     *ast.Spec
 }
 
 func NewTypeChecker(specs map[string]*preprocess.SpecRecord) *Checker {
@@ -34,6 +35,16 @@ func NewTypeChecker(specs map[string]*preprocess.SpecRecord) *Checker {
 		Constants:   make(map[string]map[string]ast.Node),
 		temps:       make(map[string]*ast.Type),
 	}
+}
+
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord) *Checker {
+	ty := NewTypeChecker(specRec)
+	tree, err := ty.Check(tree)
+	if err != nil {
+		panic(err)
+	}
+	ty.Checked = tree
+	return ty
 }
 
 func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {
