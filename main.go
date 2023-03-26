@@ -224,7 +224,7 @@ func main() {
 	//Check if solver is set
 	if (mode == "check" || mode == "visualize") &&
 		os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "" {
-		fmt.Println("no solver configured, defaulting to SMT output without model checking. Please set SOLVERCMD and SOLVERARG variables.")
+		fmt.Printf("\n no solver configured, defaulting to SMT output without model checking. Please set SOLVERCMD and SOLVERARG variables.\n\n")
 		mode = "smt"
 	}
 
