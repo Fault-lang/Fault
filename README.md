@@ -4,6 +4,20 @@ Fault is a modeling language for building system dynamic models and checking the
 ## Project Status
 Pre-alpha.
 
+## Install
+Fault can be built for source if you like, but the best way to install Fault is by [downloading the correct release for your machine](https://github.com/Fault-lang/Fault/releases).
+
+Once installed the model checker of Fault needs access to a SMT solver, otherwise Fault will default to generating SMT of models only. Microsoft's Z3 is the recommended solver at this time and [can be downloaded here](https://github.com/Z3Prover/z3/releases)
+
+Then in order for Fault to find your model check you need to set two configuration variables
+
+```
+export SOLVERCMD="z3"
+export SOLVERARG="-in"
+``` 
+
+For other install options please [see the Fault documentation](https://www.fault.tech)
+
 ## Why "Fault"?
 It is not possible to completely specify a system. All specifications must decide what parts of the system are in-scope and out-of-scope, and at what level of detail. Many formal specification approaches are designed to prove the system correct and it is very easy for an inexperienced practitioner to write a bad spec that gives a thumbs up to a flawed system.
 
@@ -15,48 +29,10 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [audio](https://anchor.fm/mwapl)
 - [transcripts](https://dev.to/bellmar/series/9711)
 
-## Getting Started
-_Fault is currently pre-alpha and not ready to develop real specs, but if you like pain and misery here's how to run the compiler..._
+### Current Status (3/29/2023)
+Been doing a lot of work on improving how Fault is packaged and ultimately released. The Dockerfiles will remain available, but going to be stepping away from Docker as the preferred way to installing Fault in favor of a traditional build and release pipeline.
 
-Fault is written in Go and can be run by downloading this repo and running this command:
-
-`make fault-z3`
-
-This will build Fault with Z3 as a solver backend. This will require you to have Docker installed. From there Fault specs can be run like so:
-
-`fault -f example.fspec`
-
-That will return the SMTLib2 output of the compiler. Please note that the compiler only supports part of the Fault grammar currently and the formatting to the results needs some work.
-
-You can output different stages of compilation by using the `-mode` flag. By default this is set to `-mode=check`, but can be changed to output either `ast`, `ir`, or `smt` which will stop compilation early and output either Fault's AST, LLVM IR, or SMTLib2 respectively.
-
-You can also start the compiler from the LLVM -> SMTLib2 stage by changing to `-input` flag to `-input=ll`. By default the compiler expects the input file to be a spec that fits the Fault grammar.
-
-## Todos
-_incomplete list. Items to be added as I think of them_
-
-| Task | Happy Path | Edge Cases | Fuzz |
-| :--: | :--: | :--: | :--: |
-| BNF Grammar | :white_check_mark: | :white_check_mark: | :white_check_mark:|
-| Lexer/Parser | :white_check_mark: | :white_check_mark: | |
-| Type checking | :white_check_mark: | | |
-| LLVM IR generation | :white_check_mark: | | |
-| LLVM optimization passes | | | |
-| SMTLib2 generation | :white_check_mark: | | |
-| Spec imports | :white_check_mark: | | |
-| Conditionals | :white_check_mark: | | |
-| Uncertain data types | :white_check_mark: | :white_check_mark: | |
-| Non-negative data types | | | |
-| Assertions | :white_check_mark: | :white_check_mark: | |
-
-### Development Strategy
-The assumption Fault is making is that since both system dynamic models and first order logic models represent things as state machines it should be possible for a language to take the imperative structure of system dynamic DSLs, compile them to the declarative structure of logic DSLs and create a model checker better suited for the day-to-day software work of professionals.
-
-There are A LOT of assumptions there, so the pre-alpha development of Fault prioritizes the quickest paths to verifying those assumptions over a comprehensive implementation of any one stage of the compiler. It makes no sense to spend weeks/months crafting a thoughtful and elegant type checker only to find out that SMT solvers cannot handle to level of complexity most of Fault's potential users would need to represent in order for Fault to be useful. SMT solvers tend to be very particular, with lots of quirky performance issues.
-
-But then that's part of the fun too. Developing Fault is an opportunity to learn more about how SMT solvers (specifically Z3) work.
-
-### Current Status (2/15/2023)
+#### (2/15/2023)
 Pretty substantial rewrite of assert and assumption rule generation. First ditched assumptions as a unique AST node and added an assume flag to AssertionStatements so they could be treated the same. Then modified the order of rules involving infixs and found several logic bugs from the old approach.
 
 Along the way, made changes to LLVM IR generation that allow rounds to be tracked so that Fault knows when two states of different variables coexist in time. Will eventually use the same approach to get rid of LLVM IR metadata for tracking concurrency, which will eliminate the issues with some of LLVM optimization passes removing metadata.
