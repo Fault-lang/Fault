@@ -9,7 +9,7 @@ Fault can be built for source if you like, but the best way to install Fault is 
 
 Once installed the model checker of Fault needs access to a SMT solver, otherwise Fault will default to generating SMT of models only. Microsoft's Z3 is the recommended solver at this time and [can be downloaded here](https://github.com/Z3Prover/z3/releases)
 
-Then in order for Fault to find your model check you need to set two configuration variables
+Then in order for Fault to find your solver you need to set two configuration variables
 
 ```
 export SOLVERCMD="z3"
