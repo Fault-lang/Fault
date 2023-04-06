@@ -916,7 +916,7 @@ func TestSwapError(t *testing.T) {
 	}
 	`
 
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "cannot redeclare variable f2.x is type STOCK got FLOAT"
 
@@ -948,7 +948,7 @@ func TestSwapError2(t *testing.T) {
 	}
 	`
 
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "cannot redeclare variable f2.x is instance of test.s1 got test.s2"
 
@@ -981,7 +981,7 @@ func TestSwapError3(t *testing.T) {
 	}
 	`
 
-	_, err := prepTest(test)
+	_, err := prepTest(test, true)
 
 	actual := "cannot redeclare variable f2.x is instance of test.s1 got test.s2"
 
@@ -999,26 +999,7 @@ func prepTest(test string, specType bool) (*Checker, error) {
 	l := listener.Execute(test, "", flags)
 
 	pre := preprocess.Execute(l)
-	ty := NewTypeChecker(pre.Specs)
-	_, err := ty.Check(pre.Processed)
-	_, err := ty.Check(tree)
-	return ty, err
-}
-
-func prepTestSys(test string) (*Checker, error) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-
-	pre := preprocess.NewProcesser()
-	tree := pre.Run(l.AST)
-
 	ty := NewTypeChecker(pre)
-	_, err := ty.Check(tree)
+	_, err := ty.Check(pre.Processed)
 	return ty, err
 }

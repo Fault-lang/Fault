@@ -36,7 +36,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 
 	pre := preprocess.Execute(lstnr)
 
-	ty := types.Execute(pre.Processed, pre.Specs)
+	ty := types.Execute(pre.Processed, pre)
 
 	sw := swaps.NewPrecompiler(ty)
 	tree = sw.Swap(tree)

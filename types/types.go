@@ -28,6 +28,7 @@ type Checker struct {
 	inStock     string
 	temps       map[string]*ast.Type
 	Checked     *ast.Spec
+	Preprocesser *preprocess.Processor
 }
 
 func NewTypeChecker(Processer *preprocess.Processor) *Checker {
@@ -40,8 +41,8 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	}
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord) *Checker {
-	ty := NewTypeChecker(specRec)
+func Execute(tree *ast.Spec, processor *preprocess.Processor) *Checker {
+	ty := NewTypeChecker(processor)
 	tree, err := ty.Check(tree)
 	if err != nil {
 		panic(err)

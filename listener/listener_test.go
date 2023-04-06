@@ -1847,7 +1847,10 @@ func TestSwap(t *testing.T) {
 					car.test = bot;
 			}
 			`
-	_, sys := prepSysTest(test, nil)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
+
 
 	forSt, ok := sys.Statements[3].(*ast.ForStatement)
 	if !ok {

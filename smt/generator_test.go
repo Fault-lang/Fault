@@ -4,7 +4,6 @@ import (
 	"fault/listener"
 	"fault/llvm"
 	"fault/preprocess"
-	"fault/swaps"
 	"fault/types"
 	"fault/util"
 	"fmt"
@@ -608,7 +607,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) string 
 
 	l := listener.Execute(test, path, flags)
 	pre := preprocess.Execute(l)
-	ty := types.Execute(pre.Processed, pre.Specs)
+	ty := types.Execute(pre.Processed, pre)
 	compiler := llvm.Execute(ty.Checked, ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 
 	//fmt.Println(compiler.GetIR())

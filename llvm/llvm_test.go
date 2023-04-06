@@ -4,7 +4,6 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/preprocess"
-	"fault/swaps"
 	"fault/types"
 	"fmt"
 	"io"
@@ -732,7 +731,7 @@ func prepTest(test string, specType bool) (string, error) {
 
 	l := listener.Execute(test, "", flags)
 	pre := preprocess.Execute(l)
-	ty := types.Execute(pre.Processed, pre.Specs)
+	ty := types.Execute(pre.Processed, pre)
 	compiler := NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 	err := compiler.Compile(ty.Checked)
