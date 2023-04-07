@@ -191,7 +191,7 @@ func main() {
 	var input string
 	var filepath string
 	var reach bool
-	modeCommand := flag.String("m", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
+	modeCommand := flag.String("m", "check", "stop compiler at certain milestones: ast, ir, smt, check, or visualize")
 	inputCommand := flag.String("i", "fspec", "format of the input file (default: fspec)")
 	fpCommand := flag.String("f", "", "path to file to compile")
 	reachCommand := flag.String("c", "false", "make sure the transitions to all defined states are specified in the model")
