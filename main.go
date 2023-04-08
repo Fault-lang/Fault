@@ -39,7 +39,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	ty := types.Execute(pre.Processed, pre)
 
 	sw := swaps.NewPrecompiler(ty)
-	tree = sw.Swap(tree)
+	tree := sw.Swap(ty.Checked)
 
 	var visual string
 	if visu {
@@ -52,7 +52,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 		r := reachability.NewTracer()
 		r.Scan(ty.Checked)
 	}
-	return ty.Checked, lstnr, ty, visual
+	return tree, lstnr, ty, visual
 }
 
 func validate_filetype(data string, filetype string) bool {
