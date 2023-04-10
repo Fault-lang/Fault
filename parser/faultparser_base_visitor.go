@@ -1,4 +1,4 @@
-// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
 
 package parser // FaultParser
 
@@ -248,11 +248,15 @@ func (v *BaseFaultParserVisitor) VisitRunBlock(ctx *RunBlockContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitInitBlock(ctx *InitBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BaseFaultParserVisitor) VisitRunInit(ctx *RunInitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

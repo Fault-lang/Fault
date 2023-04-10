@@ -215,7 +215,7 @@ ifStmtState
     ;
 
 forStmt
-    : 'for' rounds 'run' runBlock eos?
+    : 'for' rounds ('init' initBlock)? 'run' runBlock eos?
     ;
 
 rounds
@@ -240,9 +240,16 @@ runBlock
     : '{' runStep* '}'
     ;
 
+initBlock
+    : '{' initStep* '}'
+    ;
+
+initStep
+    : IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)?  #runInit                               
+    ;
+
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
-    | IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)?     #runInit
     | simpleStmt eos                              #runExpr
     | ifStmtRun                                     #runExpr
     ;

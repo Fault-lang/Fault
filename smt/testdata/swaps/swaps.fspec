@@ -11,10 +11,11 @@ def f1 = flow{
     },
 };
 
-for 2 run {
+for 2 init {
     s2 = new s1;
-        s2.v = 20;
+    s2.v = 20;
     f2 = new f1;
-        f2.target = s2;
-    f2.fn;
+    f2.target = s2;
+} run {
+        f2.fn;
 }

@@ -1,4 +1,4 @@
-// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
 
 package parser // FaultParser
 
@@ -188,11 +188,14 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#runBlock.
 	VisitRunBlock(ctx *RunBlockContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#runStepExpr.
-	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
+	// Visit a parse tree produced by FaultParser#initBlock.
+	VisitInitBlock(ctx *InitBlockContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#runInit.
 	VisitRunInit(ctx *RunInitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runStepExpr.
+	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#runExpr.
 	VisitRunExpr(ctx *RunExprContext) interface{}
