@@ -1304,6 +1304,7 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 
 	case *ast.IntegerLiteral:
 		rounds = x
+		block2 = &ast.BlockStatement{}
 
 	default:
 		panic(fmt.Sprintf("top of stack not a block statement or integer: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))

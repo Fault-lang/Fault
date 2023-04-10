@@ -446,6 +446,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Expression = pro.(ast.Expression)
 		return node, err
 	case *ast.ForStatement:
+		for i, v := range node.Inits.Statements {
+			pro, err = p.walk(v)
+			if err != nil {
+				return node, err
+			}
+			node.Inits.Statements[i] = pro.(ast.Statement)
+		}
 		for i, v := range node.Body.Statements {
 			pro, err = p.walk(v)
 			if err != nil {
@@ -488,6 +495,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		l, err := p.walk(node.Left)
 		if err != nil {
+			if node.Token.Type == "ASSIGN" {
+				return node, fmt.Errorf("illegal assignment %s", node.String())
+			}
 			return node, err
 		}
 

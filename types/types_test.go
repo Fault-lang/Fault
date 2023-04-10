@@ -910,10 +910,9 @@ func TestSwapError(t *testing.T) {
 		},
 	};
 
-	for 1 run {
-		f2 = new f1;
-			f2.x = 2.3;
-	}
+	for 1 init{f2 = new f1;
+		f2.x = 2.3;
+		} run {}
 	`
 
 	_, err := prepTest(test, true)
@@ -942,10 +941,9 @@ func TestSwapError2(t *testing.T) {
 		},
 	};
 
-	for 1 run {
-		f2 = new f1;
-			f2.x = new s2;
-	}
+	for 1 init{f2 = new f1;
+		f2.x = new s2;
+		} run {	}
 	`
 
 	_, err := prepTest(test, true)
@@ -974,10 +972,9 @@ func TestSwapError3(t *testing.T) {
 		},
 	};
 
-	for 1 run {
-		f2 = new f1;
+	for 1 init{f2 = new f1;
 		s = new s2;
-		f2.x = s;
+		f2.x = s;} run {
 	}
 	`
 

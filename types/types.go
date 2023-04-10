@@ -22,12 +22,12 @@ var COMPARE = map[string]bool{
 }
 
 type Checker struct {
-	SpecStructs map[string]*preprocess.SpecRecord
-	Constants   map[string]map[string]ast.Node
-	Instances   map[string]*ast.StructInstance
-	inStock     string
-	temps       map[string]*ast.Type
-	Checked     *ast.Spec
+	SpecStructs  map[string]*preprocess.SpecRecord
+	Constants    map[string]map[string]ast.Node
+	Instances    map[string]*ast.StructInstance
+	inStock      string
+	temps        map[string]*ast.Type
+	Checked      *ast.Spec
 	Preprocesser *preprocess.Processor
 }
 
@@ -196,15 +196,25 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.ForStatement:
-		var st []ast.Statement
+		var st1 []ast.Statement
+		var st2 []ast.Statement
+		for _, v := range node.Inits.Statements {
+			tnode, err = c.typecheck(v)
+			if err != nil {
+				return node, err
+			}
+			st1 = append(st1, tnode.(ast.Statement))
+		}
+		node.Inits.Statements = st1
+
 		for _, v := range node.Body.Statements {
 			tnode, err = c.typecheck(v)
 			if err != nil {
 				return node, err
 			}
-			st = append(st, tnode.(ast.Statement))
+			st2 = append(st2, tnode.(ast.Statement))
 		}
-		node.Body.Statements = st
+		node.Body.Statements = st2
 		return node, err
 	case *ast.StartStatement:
 		return node, err
