@@ -369,6 +369,7 @@ type ForStatement struct {
 	Token  Token
 	Rounds *IntegerLiteral
 	Body   *BlockStatement
+	Inits  *BlockStatement
 }
 
 func (fs *ForStatement) statementNode()       {}

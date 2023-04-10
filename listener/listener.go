@@ -42,13 +42,13 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
-func Execute(spec string, path string, flags map[string]bool/*specType bool, testing bool*/) *FaultListener {
+func Execute(spec string, path string, flags map[string]bool /*specType bool, testing bool*/) *FaultListener {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	
+
 	l := NewListener(path, flags["testing"], flags["skipRun"])
 
 	if flags["specType"] {
@@ -656,7 +656,7 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 	l.push(pc)
 }
 
-func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
+func (l *FaultListener) ExitInitBlock(c *parser.InitBlockContext) {
 	var swaps, orphanSwaps []ast.Node
 	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
@@ -665,7 +665,7 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 	}
 	orphanSwaps = l.getSwaps()
 
-	steps := c.AllRunStep()
+	steps := c.AllInitStep()
 	for i := len(steps) - 1; i >= 0; i-- {
 		ex := l.pop()
 
@@ -675,8 +675,7 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 			continue
 		}
 
-		switch t := ex.(type) {
-		case *ast.Instance:
+		if t, ok := ex.(*ast.Instance); ok {
 			swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
 			t.Swaps = append(t.Swaps, swaps...)
 
@@ -687,6 +686,23 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 				Expression: t,
 			}
 			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+		}
+	}
+	l.push(sl)
+}
+
+func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
+	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+
+	sl := &ast.BlockStatement{
+		Token: token,
+	}
+
+	steps := c.AllRunStep()
+	for i := len(steps) - 1; i >= 0; i-- {
+		ex := l.pop()
+
+		switch t := ex.(type) {
 		case *ast.ParallelFunctions:
 			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 		case ast.Expression:
@@ -1259,31 +1275,45 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	token := util.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
 
-	rg := l.pop()
-	lf := l.pop()
+	run := l.pop()
+	init := l.pop()
+	var rounds *ast.IntegerLiteral
+	var block2 *ast.BlockStatement
 
-	if rg == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+	if run == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
 
-	block, ok := rg.(*ast.BlockStatement)
+	block, ok := run.(*ast.BlockStatement)
 	if !ok {
-		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
 
-	if lf == nil {
-		panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	if init == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
 	}
 
-	rounds, ok := lf.(*ast.IntegerLiteral)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	switch x := init.(type) {
+	case *ast.BlockStatement:
+		num := l.pop()
+		rounds, ok = num.(*ast.IntegerLiteral)
+		if !ok {
+			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
+		}
+		block2 = x
+
+	case *ast.IntegerLiteral:
+		rounds = x
+
+	default:
+		panic(fmt.Sprintf("top of stack not a block statement or integer: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
 	}
 
 	forSt := &ast.ForStatement{
 		Token:  token,
 		Rounds: rounds,
 		Body:   block,
+		Inits:  block2,
 	}
 
 	if !l.skipRun {

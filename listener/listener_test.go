@@ -795,8 +795,7 @@ func TestForStatement(t *testing.T) {
 
 func TestRunBlock(t *testing.T) {
 	test := `spec test1;
-			 for 5 run{
-				d = new foo;
+			 for 5 init{d = new foo;} run{
 				d.fn;
 			 };
 			`
@@ -814,9 +813,9 @@ func TestRunBlock(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
 	}
 
-	inst, ok := forSt.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	inst, ok := forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if !ok {
-		t.Fatalf("forSt.Body.Statements[1] is not an ParallelFunctions. got=%T", forSt.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("forSt.Inits.Statements[0] is not an Instance. got=%T", forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 	if inst.Value.Spec != "test1" {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Value.Spec)
@@ -828,9 +827,9 @@ func TestRunBlock(t *testing.T) {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Name)
 	}
 
-	expr, ok := forSt.Body.Statements[1].(*ast.ParallelFunctions)
+	expr, ok := forSt.Body.Statements[0].(*ast.ParallelFunctions)
 	if !ok {
-		t.Fatalf("forSt.Body.Statements[1] is not an ParallelFunctions. got=%T", forSt.Body.Statements[1])
+		t.Fatalf("forSt.Body.Statements[0] is not an ParallelFunctions. got=%T", forSt.Body.Statements[0])
 	}
 
 	id, ok := expr.Expressions[0].(*ast.ParameterCall)
@@ -846,8 +845,7 @@ func TestRunBlock(t *testing.T) {
 
 func TestRunIfBlock(t *testing.T) {
 	test := `spec test1;
-			 for 5 run{
-				d = new foo;
+			 for 5 init{d = new foo;}run{
 				if true {
 					d.fn;
 				}else if false {
@@ -871,9 +869,9 @@ func TestRunIfBlock(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
 	}
 
-	ifblock, ok := forSt.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	ifblock, ok := forSt.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("forSt.Body.Statements[1] is not an IfExpression. got=%T", forSt.Body.Statements[1])
+		t.Fatalf("forSt.Body.Statements[0] is not an IfExpression. got=%T", forSt.Body.Statements[0])
 	}
 
 	expr, ok := ifblock.Consequence.Statements[0].(*ast.ParallelFunctions)
@@ -923,8 +921,7 @@ func TestRunIfBlock(t *testing.T) {
 func TestSkipRun(t *testing.T) {
 	test := `spec test1;
 			 const a = 5;
-			 for 5 run{
-				d = new foo;
+			 for 5 init{d = new foo;}run{
 				d.fn;
 			 };
 			 `
@@ -948,9 +945,7 @@ func TestSkipRun(t *testing.T) {
 
 func TestRunInit(t *testing.T) {
 	test := `spec test1;
-			 for 5 run{
-				d = new test2.foo;
-			 };
+			 for 5 init{d = new test2.foo;} run{};
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = true
@@ -966,9 +961,9 @@ func TestRunInit(t *testing.T) {
 		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
 	}
 
-	inst, ok := forSt.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	inst, ok := forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if !ok {
-		t.Fatalf("forSt.Body.Statements[1] is not an ParallelFunctions. got=%T", forSt.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("forSt.Inits.Statements[1] is not an Instance. got=%T", forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 	if inst.Value.Spec != "test2" {
 		t.Fatalf("instance has the wrong spec name. got=%s", inst.Value.Spec)
@@ -1534,9 +1529,7 @@ func TestInstanceOrder(t *testing.T) {
 			 };
 
 			
-			for 1 run {
-				car = new f;
-			}
+			for 1 init{car = new f;} run {}
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = true
@@ -1547,9 +1540,9 @@ func TestInstanceOrder(t *testing.T) {
 		t.Fatalf("spec.Statements[2] is not a ForStatement. got=%T", spec.Statements[2])
 	}
 
-	ins, ok5 := fst.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	ins, ok5 := fst.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if !ok5 {
-		t.Fatalf("ForStatement Statement is not an instance. got=%T", fst.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("ForStatement Statement is not an instance. got=%T", fst.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	order := ins.Order
@@ -1841,27 +1834,26 @@ func TestSwap(t *testing.T) {
 				},
 			 };
 			
-			for 1 run {
+			for 1 init{ 
 				bot = new foo.bar;
 				car = new f;
-					car.test = bot;
-			}
+				car.test = bot; 
+			}run {}
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = false
 	_, sys := prepTest(test, flags)
-
 
 	forSt, ok := sys.Statements[3].(*ast.ForStatement)
 	if !ok {
 		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])
 	}
 
-	if len(forSt.Body.Statements) != 2 {
+	if len(forSt.Inits.Statements) != 2 {
 		t.Fatalf("run block has the wrong number of statements. got=%d", len(forSt.Body.Statements))
 	}
 
-	inst := forSt.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	inst := forSt.Inits.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if inst.Swaps[0].TokenLiteral() != "SWAP" {
 		t.Fatalf("swap incorrect in AST. got=%s", inst.Swaps[0].TokenLiteral())
 	}
