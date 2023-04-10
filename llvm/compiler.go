@@ -248,8 +248,12 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.ForStatement:
 		c.contextFuncName = "__run"
+
 		for i := int64(0); i < v.Rounds.Value; i++ {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
+			if i == 0 {
+				c.compileBlock(v.Inits)
+			}
 			c.compileBlock(v.Body)
 			c.stateCheck()
 			c.RunRound = c.RunRound + 1

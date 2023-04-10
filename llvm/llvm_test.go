@@ -84,8 +84,7 @@ func TestRunBlock(t *testing.T) {
 				b: 20,
 			};
 
-			for 5 run{
-				test = new foo;
+			for 5 init{test = new foo;} run{
 				test.fizz | test.fizz2;
 				test.fizz3;
 			};
@@ -200,8 +199,7 @@ func TestIfCond(t *testing.T) {
 				b: 20,
 			};
 
-			for 1 run{
-				test = new foo;
+			for 1 init{test = new foo;} run{
 				test.fizz;
 			};
 	`
@@ -282,8 +280,7 @@ func TestUnknowns(t *testing.T) {
 				 },
 			 };
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -741,7 +738,7 @@ func prepTest(test string, specType bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(compiler.GetIR())
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 
