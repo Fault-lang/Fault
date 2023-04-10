@@ -17,7 +17,7 @@ sysClause
     ;
 
 globalDecl
-    : 'global' IDENT '=' operand eos (swap eos)?
+    : 'global' IDENT '=' operand eos (swap eos)*
     ;
 
 swap
@@ -245,7 +245,7 @@ initBlock
     ;
 
 initStep
-    : IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)?  #runInit                               
+    : IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)*  #runInit                               
     ;
 
 runStep

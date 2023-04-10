@@ -30,7 +30,6 @@ def traffic = flow{
     },
 };
 
-for 5 run {
-    servers = new traffic;
+for 5 init{servers = new traffic;} run {
     servers.in | servers.release1 | servers.release2 | servers.release3;
 };

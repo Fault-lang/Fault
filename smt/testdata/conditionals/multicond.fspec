@@ -19,7 +19,6 @@ def f = flow{
     },
 };
 
-for 1 run {
-    t = new f;
+for 1 init{t = new f;} run {
     t.change;
 };

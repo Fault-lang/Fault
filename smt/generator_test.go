@@ -32,8 +32,7 @@ func TestEventually(t *testing.T) {
 
 	assume amount.value > 0 eventually;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -78,8 +77,7 @@ func TestEventuallyAlways(t *testing.T) {
 
 	assume amount.value > 0 eventually-always;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -131,8 +129,7 @@ func TestEventuallyAlways2(t *testing.T) {
 
 	assert amount.value > 0 eventually-always;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -184,8 +181,7 @@ func TestTemporal(t *testing.T) {
 
 	assert amount.value <= 0 nmt 1;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -234,8 +230,7 @@ func TestTemporal2(t *testing.T) {
 		assume s.x == 2 nmt 2;
 		assert s.x == 11 eventually; 
 
-		for 5 run {
-			t = new test;
+		for 5 init{t = new test;} run {
 			t.bar;
 		};
 	`

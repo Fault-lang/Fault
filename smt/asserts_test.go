@@ -20,8 +20,7 @@ func TestSimpleAssert(t *testing.T) {
 
 	assert amount.value > 0;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -66,8 +65,7 @@ func TestCompoundAssertAnd(t *testing.T) {
 
 	assert amount.value > 0 && amount.value <= 10;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -122,8 +120,7 @@ func TestCompoundAssertOr(t *testing.T) {
 
 	assert amount.value > 0 || amount.value <= 10;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -168,8 +165,7 @@ func TestMultiAssert(t *testing.T) {
 	assert amount.value > 0; 
 	assert amount.value <= 10;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -230,8 +226,7 @@ func TestAssertInfix(t *testing.T) {
 
 	assert amount.value > (2+3-5);
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -281,8 +276,7 @@ func TestMultiVar(t *testing.T) {
 
 	assert amount.value > test.fuzz;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;}run {
 		t.bar;
 	};
 	`
@@ -334,8 +328,7 @@ func TestSimpleAssume(t *testing.T) {
 
 	assume amount.value > 0;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -380,8 +373,7 @@ func TestSpecificStateAssume(t *testing.T) {
 
 	assume amount.value[1] > 0;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`

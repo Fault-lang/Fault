@@ -16,7 +16,6 @@ def f = flow{
 assume s.a > 5;
 assert s.a <= 6;
 
-for 3 run {
-    loop = new f;
+for 3 init{loop = new f;} run {
     loop.fn; 
 }
