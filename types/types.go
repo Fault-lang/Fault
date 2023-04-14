@@ -879,23 +879,42 @@ func (c *Checker) inferSwapNode(node ast.Expression) (ast.Node, error) {
 }
 
 func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, error) {
+	var swaps []ast.Node
 	for _, s := range base.Swaps {
 		n, err := c.typecheck(s)
 		if err != nil {
 			return base, err
 		}
+		swaps = append(swaps, n)
+		// infix := n.(*ast.InfixExpression)
+		// rawid := infix.Left.(ast.Nameable).RawId()
+		// key := rawid[len(rawid)-1]
+		// val, err := c.lookupReference(infix.Right)
+		// if err != nil {
+		// 	return base, err
+		// }
 
-		infix := n.(*ast.InfixExpression)
-		rawid := infix.Left.(ast.Nameable).RawId()
-		key := rawid[len(rawid)-1]
-		val, err := c.lookupReference(infix.Right)
-		if err != nil {
-			return base, err
-		}
-		base.Properties[key].Value = val
-		base = c.swapDeepNames(base)
+		// // Because part of what we're doing here is renaming
+		// // these nodes. We need to do a deep copy to separate
+		// // the swapped nodes from their original reference values
+		// copyVal, err := deepcopy.Anything(val)
+		// if err != nil {
+		// 	return base, err
+		// }
+
+		// val = copyVal.(ast.Node)
+
+		// switch v := val.(type) {
+		// case *ast.StructInstance:
+		// 	v.Name = key
+		// 	val = v
+		// }
+
+		// base.Properties[key].Value = val
+		// base = c.swapDeepNames(base)
 
 	}
+	base.Swaps = swaps
 	return base, nil
 }
 
