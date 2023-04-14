@@ -338,6 +338,7 @@ type InvariantClause struct {
 	Left         Expression
 	Operator     string
 	Right        Expression
+	SyncedState  bool
 	InferredType *Type
 }
 

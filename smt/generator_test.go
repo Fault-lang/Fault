@@ -431,21 +431,21 @@ func TestTemporalSys2(t *testing.T) {
 
 func TestTestData(t *testing.T) {
 	specs := []string{
-		/*"testdata/bathtub.fspec",
+		"testdata/bathtub.fspec",
 		"testdata/simple.fspec",
 		"testdata/bathtub2.fspec",
 		"testdata/booleans.fspec",
 		"testdata/unknowns.fspec",
-		"testdata/swaps/swaps.fspec",*/
+		"testdata/swaps/swaps.fspec",
 		"testdata/swaps/swaps1.fspec",
 	}
 	smt2s := []string{
-		/*"testdata/bathtub.smt2",
+		"testdata/bathtub.smt2",
 		"testdata/simple.smt2",
 		"testdata/bathtub2.smt2",
 		"testdata/booleans.smt2",
 		"testdata/unknowns.smt2",
-		"testdata/swaps/swaps.smt2",*/
+		"testdata/swaps/swaps.smt2",
 		"testdata/swaps/swaps1.smt2",
 	}
 	for i, s := range specs {
@@ -608,7 +608,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) string 
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, true)
+	compiler := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
 
 	//fmt.Println(compiler.GetIR())
 	generator := Execute(compiler)

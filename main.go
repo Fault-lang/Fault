@@ -23,7 +23,7 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string) {
+func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string, map[string]string) {
 	//Confirm that the filetype and file declaration match
 	if !validate_filetype(data, filetype) {
 		log.Fatalf("malformatted file: declaration does not match filetype.")
@@ -52,7 +52,7 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 		r := reachability.NewTracer()
 		r.Scan(ty.Checked)
 	}
-	return tree, lstnr, ty, visual
+	return tree, lstnr, ty, visual, sw.Alias
 }
 
 func validate_filetype(data string, filetype string) bool {
@@ -110,7 +110,7 @@ func run(filepath string, mode string, input string, reach bool) {
 
 	switch input {
 	case "fspec":
-		tree, lstnr, ty, visual := parse(d, path, filepath, filetype, reach, mode == "visualize")
+		tree, lstnr, ty, visual, alias := parse(d, path, filepath, filetype, reach, mode == "visualize")
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -120,7 +120,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, false)
+		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
 		uncertains = compiler.Uncertains
 		unknowns = compiler.Unknowns
 

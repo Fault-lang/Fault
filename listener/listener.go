@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/barkimedes/go-deepcopy"
 )
 
 type FaultListener struct {
@@ -30,6 +31,8 @@ type FaultListener struct {
 	Uncertains           map[string][]float64
 	Unknowns             []string
 	StructsPropertyOrder map[string][]string
+	instances            map[string]*ast.Instance
+	swaps                map[string][]ast.Node
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
@@ -39,6 +42,8 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 		skipRun:              skipRun,
 		Uncertains:           make(map[string][]float64),
 		StructsPropertyOrder: make(map[string][]string),
+		instances:            make(map[string]*ast.Instance),
+		swaps:                make(map[string][]ast.Node),
 	}
 }
 
@@ -104,6 +109,7 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
+	l.addSwaps()
 	l.AST = spec
 }
 
@@ -657,13 +663,14 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 }
 
 func (l *FaultListener) ExitInitBlock(c *parser.InitBlockContext) {
-	var swaps, orphanSwaps []ast.Node
+	//var swaps, orphanSwaps []ast.Node
+	var swaps []ast.Node
 	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
 	sl := &ast.BlockStatement{
 		Token: token,
 	}
-	orphanSwaps = l.getSwaps()
+	swaps = l.getSwaps()
 
 	steps := c.AllInitStep()
 	for i := len(steps) - 1; i >= 0; i-- {
@@ -671,12 +678,12 @@ func (l *FaultListener) ExitInitBlock(c *parser.InitBlockContext) {
 
 		if sw, ok := ex.(*ast.InfixExpression); ok && sw.TokenLiteral() == "SWAP" {
 			i++
-			orphanSwaps = append(orphanSwaps, sw)
+			swaps = append(swaps, sw)
 			continue
 		}
 
 		if t, ok := ex.(*ast.Instance); ok {
-			swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
+			//swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
 			t.Swaps = append(t.Swaps, swaps...)
 
 			token2 := ex.GetToken()
@@ -762,14 +769,15 @@ func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
-	var swaps, orphanSwaps []ast.Node
+	//var swaps, orphanSwaps []ast.Node
+	var swaps []ast.Node
 	txt := c.AllIDENT()
 	var right string
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
 	// Check for swaps
-	orphanSwaps = l.getSwaps()
+	swaps = l.getSwaps()
 
 	ident := &ast.Identifier{Token: token2}
 	switch len(txt) {
@@ -799,16 +807,18 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
 	order := l.StructsPropertyOrder[key]
 
-	swaps, orphanSwaps = l.filterSwaps(right, orphanSwaps)
+	//swaps, orphanSwaps = l.filterSwaps(right, orphanSwaps)
+	inst := &ast.Instance{
+		Value: ident,
+		Name:  right,
+		Order: order,
+	}
 
-	l.pushN(orphanSwaps)
-	l.push(
-		&ast.Instance{
-			Value: ident,
-			Name:  right,
-			Order: order,
-			Swaps: swaps,
-		})
+	l.instances[right] = inst
+	l.sortSwaps(swaps)
+
+	//l.pushN(orphanSwaps)
+	l.push(inst)
 }
 
 func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
@@ -1590,6 +1600,7 @@ func (l *FaultListener) ExitSysSpec(c *parser.SysSpecContext) {
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
+	l.addSwaps()
 	l.AST = spec
 }
 
@@ -1681,7 +1692,9 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 		key := strings.Join([]string{importSpec, importStruct}, "_")
 		order := l.StructsPropertyOrder[key]
 		parent.Order = order
-		parent.Swaps = swaps
+
+		l.instances[parent.Name] = parent
+		l.sortSwaps(swaps)
 	}
 
 	l.push(&ast.DefStatement{
@@ -1872,6 +1885,30 @@ func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 		return n
 	default:
 		return n
+	}
+}
+
+func (l *FaultListener) sortSwaps(swaps []ast.Node) {
+	for _, s := range swaps {
+		if node, ok := s.(*ast.InfixExpression).Left.(*ast.ParameterCall); ok {
+			if _, ok2 := l.swaps[node.Value[0]]; !ok2 {
+				l.swaps[node.Value[0]] = []ast.Node{}
+			}
+			l.swaps[node.Value[0]] = append(l.swaps[node.Value[0]], s)
+		}
+	}
+}
+
+func (l *FaultListener) addSwaps() {
+	for key, inst := range l.instances {
+		if sw, ok := l.swaps[key]; ok {
+			c, err := deepcopy.Anything(sw)
+			if err != nil {
+				panic(err)
+			}
+			inst.Swaps = c.([]ast.Node)
+			l.swaps[key] = []ast.Node{}
+		}
 	}
 }
 

@@ -11,11 +11,13 @@ import (
 
 type Precompiler struct {
 	checker *types.Checker
+	Alias   map[string]string
 }
 
 func NewPrecompiler(check *types.Checker) *Precompiler {
 	return &Precompiler{
 		checker: check,
+		Alias:   make(map[string]string),
 	}
 }
 
@@ -65,11 +67,11 @@ func (c *Precompiler) walk(n ast.Node) ast.Node {
 		return node
 	case *ast.ForStatement:
 		var st []ast.Statement
-		for _, v := range node.Body.Statements {
+		for _, v := range node.Inits.Statements {
 			snode := c.walk(v)
 			st = append(st, snode.(ast.Statement))
 		}
-		node.Body.Statements = st
+		node.Inits.Statements = st
 		return node
 	case *ast.StartStatement:
 		return node
@@ -164,9 +166,20 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 		val = copyVal.(ast.Node)
 
 		switch v := val.(type) {
+		case *ast.ParameterCall, *ast.Identifier:
+			c.Alias[infix.Left.(ast.Nameable).IdString()] = infix.Right.(ast.Nameable).IdString()
 		case *ast.StructInstance:
+			for k, v2 := range v.Properties {
+				aliasKey := fmt.Sprintf("%s_%s", infix.Left.(ast.Nameable).IdString(), k)
+				c.Alias[aliasKey] = v2.IdString()
+			}
+
 			v.Name = key
 			val = v
+		}
+
+		if len(val.(ast.Nameable).RawId()) == 0 {
+			val.(ast.Nameable).SetId(rawid)
 		}
 
 		base.Properties[key].Value = val

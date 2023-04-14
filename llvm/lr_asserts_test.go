@@ -6,12 +6,10 @@ package llvm
 import (
 	"fault/ast"
 	"fault/listener"
-	"fault/parser"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSimpleAssert(t *testing.T) {
@@ -191,28 +189,22 @@ func TestAssertWConjunc(t *testing.T) {
 // // END AWFUL TEST, NOTHING TO SEE HERE... MOVE ALONG ;)
 
 func prepAssertTest(test string) (*Compiler, error) {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-	pre := preprocess.NewProcesser()
-	tree := pre.Run(l.AST)
-
-	ty := types.NewTypeChecker(pre)
-	tree, err := ty.Check(tree)
-
-	if err != nil {
-		return nil, err
-	}
+	l := listener.Execute(test, "", flags)
+	pre := preprocess.Execute(l)
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(pre.Specs, l.Uncertains, l.Unknowns, true)
-	err = compiler.Compile(tree)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err := compiler.Compile(tree)
 	if err != nil {
 		return nil, err
 	}
+
 	return compiler, err
 }
