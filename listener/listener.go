@@ -821,19 +821,6 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	l.push(inst)
 }
 
-func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
-	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
-
-	right := l.pop()
-	left := l.pop()
-
-	l.push(&ast.InfixExpression{
-		Token:    token,
-		Left:     left.(ast.Expression),
-		Operator: "=",
-		Right:    right.(ast.Expression),
-	})
-}
 
 func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
 	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
