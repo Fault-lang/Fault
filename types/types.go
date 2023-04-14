@@ -22,12 +22,11 @@ var COMPARE = map[string]bool{
 }
 
 type Checker struct {
-	SpecStructs  map[string]*preprocess.SpecRecord
-	Constants    map[string]map[string]ast.Node
-	Instances    map[string]*ast.StructInstance
-	inStock      string
-	temps        map[string]*ast.Type
-	Preprocesser *preprocess.Processor
+	SpecStructs map[string]*preprocess.SpecRecord
+	Constants   map[string]map[string]ast.Node
+	inStock     string
+	temps       map[string]*ast.Type
+	Checked     *ast.Spec
 }
 
 func NewTypeChecker(Processer *preprocess.Processor) *Checker {
@@ -38,6 +37,16 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 		temps:        make(map[string]*ast.Type),
 		Preprocesser: Processer,
 	}
+}
+
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord) *Checker {
+	ty := NewTypeChecker(specRec)
+	tree, err := ty.Check(tree)
+	if err != nil {
+		panic(err)
+	}
+	ty.Checked = tree
+	return ty
 }
 
 func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {

@@ -3,15 +3,12 @@ package visualize
 import (
 	"fault/ast"
 	"fault/listener"
-	"fault/parser"
 	"fault/preprocess"
 	"fault/swaps"
 	"fault/types"
 	"strings"
 	"testing"
 	"unicode"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func TestSpec(t *testing.T) {
@@ -32,8 +29,11 @@ func TestSpec(t *testing.T) {
 		};
 		
 	`
-
-	vis := prepTest(test)
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	flags["testing"] = false
+	flags["skipRun"] = false
+	vis := prepTest(test, flags)
 
 	got := vis.Render()
 
@@ -62,7 +62,11 @@ func TestSys(t *testing.T) {
 		};
 	`
 
-	vis := prepSysTest(test, true)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+	vis := prepTest(test, flags)
 
 	got := vis.Render()
 
@@ -93,7 +97,11 @@ func TestCombined(t *testing.T) {
 		};
 	`
 
-	vis := prepSysTest(test, false)
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = false
+	flags["skipRun"] = false
+	vis := prepTest(test, flags)
 
 	got := vis.Render()
 
@@ -138,47 +146,12 @@ func stripAndEscape(str string) string {
 	return output.String()
 }
 
-func prepTest(test string) *Visual {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, true, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
-	pre := preprocess.NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	tree := pre.Run(l.AST)
-
-	ty := types.NewTypeChecker(pre)
-	tree, _ = ty.Check(tree)
-
-	sw := swaps.NewPrecompiler(ty)
-	tree = sw.Swap(tree)
-
-	vis := NewVisual(tree)
-	vis.Build()
-
-	return vis
-}
-
-func prepSysTest(test string, im bool) *Visual {
-	path := ""
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	p := parser.NewFaultParser(stream)
-	l := listener.NewListener(path, im, false)
-	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
-	pre := preprocess.NewProcesser()
-	pre.StructsPropertyOrder = l.StructsPropertyOrder
-	tree := pre.Run(l.AST)
-	ty := types.NewTypeChecker(pre)
-	tree, _ = ty.Check(tree)
-
-	vis := NewVisual(tree)
+func prepTest(test string, flags map[string]bool) *Visual {
+	var path string
+	l := listener.Execute(test, path, flags)
+	pre := preprocess.Execute(l)
+	ty := types.Execute(pre.Processed, pre.Specs)
+	vis := NewVisual(ty.Checked)
 	vis.Build()
 
 	return vis

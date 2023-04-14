@@ -2,6 +2,7 @@ package preprocess
 
 import (
 	"fault/ast"
+	"fault/listener"
 	"fault/util"
 	"fmt"
 	"strings"
@@ -13,7 +14,7 @@ type Processor struct {
 	localIdents          map[string][]string
 	trail                util.ImportTrail
 	structTypes          map[string]map[string]string
-	Processed            ast.Node
+	Processed            *ast.Spec
 	initialPass          bool
 	inFunc               bool
 	inStruct             string
@@ -34,6 +35,13 @@ func NewProcesser() *Processor {
 		StructsPropertyOrder: make(map[string][]string),
 		Instances:            make(map[string]*ast.StructInstance),
 	}
+}
+
+func Execute(l *listener.FaultListener) *Processor {
+	pre := NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
+	pre.Run(l.AST)
+	return pre
 }
 
 func (p *Processor) Run(n *ast.Spec) *ast.Spec {
