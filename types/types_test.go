@@ -912,7 +912,7 @@ func TestSwapError(t *testing.T) {
 
 	for 1 run {
 		f2 = new f1;
-			f2.x = 2.3;
+		f2.x = 2.3;
 	}
 	`
 
@@ -944,7 +944,7 @@ func TestSwapError2(t *testing.T) {
 
 	for 1 run {
 		f2 = new f1;
-			f2.x = new s2;
+		f2.x = new s2;
 	}
 	`
 
@@ -998,8 +998,25 @@ func prepTest(test string, specType bool) (*Checker, error) {
 
 	l := listener.Execute(test, "", flags)
 
-	pre := preprocess.Execute(l)
-	ty := NewTypeChecker(pre.Specs)
-	_, err := ty.Check(pre.Processed)
+	ty := NewTypeChecker(pre.Specs, pre.Instances)
+	_, err := ty.Check(tree)
+	return ty, err
+}
+
+func prepTestSys(test string) (*Checker, error) {
+	path := ""
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(path, true, false)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+
+	pre := preprocess.NewProcesser()
+	tree := pre.Run(l.AST)
+
+	ty := NewTypeChecker(pre.Specs, pre.Instances)
+	_, err := ty.Check(tree)
 	return ty, err
 }
