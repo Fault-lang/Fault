@@ -30,12 +30,13 @@ type Checker struct {
 	Checked     *ast.Spec
 }
 
-func NewTypeChecker(specs map[string]*preprocess.SpecRecord, inst map[string]*ast.StructInstance) *Checker {
+func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	return &Checker{
-		SpecStructs: specs,
-		Instances:   inst,
-		Constants:   make(map[string]map[string]ast.Node),
-		temps:       make(map[string]*ast.Type),
+		SpecStructs:  Processer.Specs,
+		Instances:    Processer.Instances,
+		Constants:    make(map[string]map[string]ast.Node),
+		temps:        make(map[string]*ast.Type),
+		Preprocesser: Processer,
 	}
 }
 
@@ -888,13 +889,23 @@ func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, err
 		rawid := infix.Left.(ast.Nameable).RawId()
 		key := rawid[len(rawid)-1]
 		val, err := c.lookupReference(infix.Right)
-		val.(ast.Nameable).SetId(base.Properties[key].Value.(ast.Nameable).RawId())
 		if err != nil {
 			return base, err
 		}
 		base.Properties[key].Value = val
+		base = c.swapDeepNames(base)
+
 	}
 	return base, nil
+}
+
+func (c *Checker) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
+	rawid := val.RawId()
+	node, err := c.Preprocesser.Partial(rawid[0], val)
+	if err != nil {
+		panic(fmt.Sprintf("failed to update process ids on swap %s", val.String()))
+	}
+	return node.(*ast.StructInstance)
 }
 
 func (c *Checker) InstanceOf(node ast.Node) string {

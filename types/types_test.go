@@ -998,7 +998,9 @@ func prepTest(test string, specType bool) (*Checker, error) {
 
 	l := listener.Execute(test, "", flags)
 
-	ty := NewTypeChecker(pre.Specs, pre.Instances)
+	pre := preprocess.Execute(l)
+	ty := NewTypeChecker(pre.Specs)
+	_, err := ty.Check(pre.Processed)
 	_, err := ty.Check(tree)
 	return ty, err
 }
@@ -1016,7 +1018,7 @@ func prepTestSys(test string) (*Checker, error) {
 	pre := preprocess.NewProcesser()
 	tree := pre.Run(l.AST)
 
-	ty := NewTypeChecker(pre.Specs, pre.Instances)
+	ty := NewTypeChecker(pre)
 	_, err := ty.Check(tree)
 	return ty, err
 }

@@ -612,8 +612,52 @@ func prepTest(filepath string, test string, specType bool, testRun bool) string 
 	compiler := llvm.Execute(ty.Checked, ty.SpecStructs, l.Uncertains, l.Unknowns, true)
 
 	//fmt.Println(compiler.GetIR())
+<<<<<<< HEAD
 	generator := Execute(compiler)
 	return generator.SMT()
+=======
+	generator := NewGenerator()
+	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.Run(compiler.GetIR())
+	//fmt.Println(generator.SMT())
+	return generator.SMT(), nil
+}
+
+func prepTestSys(filepath string, test string, imports bool) (string, error) {
+	filepath = util.Filepath(filepath)
+	path := gopath.Dir(filepath)
+
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	p := parser.NewFaultParser(stream)
+	l := listener.NewListener(path, !imports, false) //imports being true means testing is false :)
+	antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+
+	pre := preprocess.NewProcesser()
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
+	tree := pre.Run(l.AST)
+
+	ty := types.NewTypeChecker(pre)
+	tree, err := ty.Check(tree)
+
+	if err != nil {
+		return "", err
+	}
+	compiler := llvm.NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Println(compiler.GetIR())
+	generator := NewGenerator()
+	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.Run(compiler.GetIR())
+	//fmt.Println(generator.SMT())
+	return generator.SMT(), nil
+>>>>>>> 163641c (here's a crazy idea: let the typechecker just have the preprocessor and let it do partial runs to rename nodes post-swap)
 }
 
 func notStrictlyOrdered(want string, got string) bool {
