@@ -438,6 +438,7 @@ func TestTestData(t *testing.T) {
 		"testdata/unknowns.fspec",
 		"testdata/swaps/swaps.fspec",
 		"testdata/swaps/swaps1.fspec",
+		"testdata/swaps/swaps2.fspec",
 	}
 	smt2s := []string{
 		"testdata/bathtub.smt2",
@@ -447,6 +448,7 @@ func TestTestData(t *testing.T) {
 		"testdata/unknowns.smt2",
 		"testdata/swaps/swaps.smt2",
 		"testdata/swaps/swaps1.smt2",
+		"testdata/swaps/swaps2.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)

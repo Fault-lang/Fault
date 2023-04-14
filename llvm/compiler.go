@@ -699,9 +699,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	var id []string
 	pos := node.Position()
 
-	if node.TokenLiteral() == "SWAP" {
-		return c.compileSwap(node)
-	}
+	// if node.TokenLiteral() == "SWAP" {
+	// 	return c.compileSwap(node)
+	// }
 
 	switch node.Operator {
 	case "=": // Used to store temporary local values
@@ -923,66 +923,66 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	}
 }
 
-func (c *Compiler) compileSwap(node *ast.InfixExpression) value.Value {
-	n, ok := node.Left.(*ast.ParameterCall)
-	pos := node.Position()
-	if !ok {
-		panic(fmt.Sprintf("cannot swap a non-stock or non-flow property col: %d, line: %d", pos[0], pos[1]))
-	}
+// func (c *Compiler) compileSwap(node *ast.InfixExpression) value.Value {
+// 	n, ok := node.Left.(*ast.ParameterCall)
+// 	pos := node.Position()
+// 	if !ok {
+// 		panic(fmt.Sprintf("cannot swap a non-stock or non-flow property col: %d, line: %d", pos[0], pos[1]))
+// 	}
 
-	rawid := n.RawId()
+// 	rawid := n.RawId()
 
-	s := c.specs[rawid[0]]
-	spec := c.specStructs[rawid[0]]
-	ty, _ := spec.GetStructType(rawid)
-	if ty == "NIL" {
-		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-	}
+// 	s := c.specs[rawid[0]]
+// 	spec := c.specStructs[rawid[0]]
+// 	ty, _ := spec.GetStructType(rawid)
+// 	if ty == "NIL" {
+// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 	}
 
-	_, err := spec.FetchVar(rawid, ty)
+// 	_, err := spec.FetchVar(rawid, ty)
 
-	if err == nil {
-		r := c.compileValue(node.Right)
-		pointer := s.GetSpecVarPointer(rawid)
-		c.contextBlock.NewStore(r, pointer)
-		return nil
-	}
+// 	if err == nil {
+// 		r := c.compileValue(node.Right)
+// 		pointer := s.GetSpecVarPointer(rawid)
+// 		c.contextBlock.NewStore(r, pointer)
+// 		return nil
+// 	}
 
-	var str1, str2 map[string]ast.Node
-	switch ty {
-	case "STOCK":
-		id := n.Id()
-		str1, err = spec.FetchStock(id[1])
-		if err != nil {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-		}
+// 	var str1, str2 map[string]ast.Node
+// 	switch ty {
+// 	case "STOCK":
+// 		id := n.Id()
+// 		str1, err = spec.FetchStock(id[1])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 		}
 
-		rightId := node.Right.(ast.Nameable).Id()
-		str2, err = spec.FetchStock(rightId[1])
+// 		rightId := node.Right.(ast.Nameable).Id()
+// 		str2, err = spec.FetchStock(rightId[1])
 
-	case "FLOW":
-		id := n.Id()
-		str1, err = spec.FetchFlow(id[1])
-		if err != nil {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-		}
+// 	case "FLOW":
+// 		id := n.Id()
+// 		str1, err = spec.FetchFlow(id[1])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 		}
 
-		rightId := node.Right.(ast.Nameable).Id()
-		str2, err = spec.FetchFlow(rightId[1])
-	}
+// 		rightId := node.Right.(ast.Nameable).Id()
+// 		str2, err = spec.FetchFlow(rightId[1])
+// 	}
 
-	if err != nil {
-		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-	}
+// 	if err != nil {
+// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 	}
 
-	for k := range str1 {
-		from := append(rawid, k)
-		to := c.compileValue(str2[k])
-		pointer := s.GetSpecVarPointer(from)
-		c.contextBlock.NewStore(to, pointer)
-	}
-	return nil
-}
+// 	for k := range str1 {
+// 		from := append(rawid, k)
+// 		to := c.compileValue(str2[k])
+// 		pointer := s.GetSpecVarPointer(from)
+// 		c.contextBlock.NewStore(to, pointer)
+// 	}
+// 	return nil
+// }
 
 func (c *Compiler) tagBuiltIns(v1 value.Value, gname string) value.Value {
 	// BuiltIns in a "b || b" or "b && b" construction need metadata
