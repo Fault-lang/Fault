@@ -1746,7 +1746,7 @@ func TestUnknown(t *testing.T) {
 
 }
 
-func TestSysSpec(t *testing.T) {
+func TestSwap(t *testing.T) {
 	test := `system test1;
 
 			import "foo.fspec";

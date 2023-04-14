@@ -669,17 +669,12 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 	for i := len(steps) - 1; i >= 0; i-- {
 		ex := l.pop()
 
-		if sw, ok := ex.(*ast.InfixExpression); ok && sw.TokenLiteral() == "SWAP" {
-			i++
-			orphanSwaps = append(orphanSwaps, sw)
-			continue
+		if ex.TokenLiteral() == "SWAP" {
+			i++ //Swaps are the same step as the instance that initializes them
 		}
 
 		switch t := ex.(type) {
 		case *ast.Instance:
-			swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
-			t.Swaps = append(t.Swaps, swaps...)
-
 			token2 := ex.GetToken()
 
 			s := &ast.ExpressionStatement{
@@ -753,7 +748,7 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
 	// Check for swaps
-	orphanSwaps = l.getSwaps()
+	swaps := l.getSwaps()
 
 	ident := &ast.Identifier{Token: token2}
 	switch len(txt) {
@@ -793,6 +788,8 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 			Order: order,
 			Swaps: swaps,
 		})
+
+	l.pushN(swaps)
 }
 
 func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
