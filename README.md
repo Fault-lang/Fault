@@ -29,7 +29,10 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [audio](https://anchor.fm/mwapl)
 - [transcripts](https://dev.to/bellmar/series/9711)
 
-### Current Status (3/29/2023)
+### Current Status (4/13/2023)
+BREAKING CHANGE. Adding support for altering the initial values of new instances of stocks and flows ended up requiring a lot of fundalmental changes, the big one being separating the initialization of model structs for the logic of a loop. Previously these both lived in the run block (`for 2 run{...}`) but now the run block has a optional `init{}` clause where initializations go, leaving the run block with just the steps the happen in the loop. The documentation and example specs have been updated to reflect this new construction.  
+
+#### (3/29/2023)
 Been doing a lot of work on improving how Fault is packaged and ultimately released. The Dockerfiles will remain available, but going to be stepping away from Docker as the preferred way to installing Fault in favor of a traditional build and release pipeline.
 
 #### (2/15/2023)
