@@ -1585,37 +1585,18 @@ func (l *FaultListener) getSwaps() []ast.Node {
 	return swaps
 }
 
-func (l *FaultListener) filterSwaps(id string, swaps []ast.Node) ([]ast.Node, []ast.Node) {
-	var filtered, orphaned []ast.Node
-	for _, s := range swaps {
-		if infx, ok := s.(*ast.InfixExpression); ok {
-			var id2 string
-			switch n := infx.Left.(type) {
-			case *ast.ParameterCall:
-				id2 = n.Value[0]
-			default:
-				panic(fmt.Sprintf("malformed swap got=%s", infx.String()))
-			}
-
-			if id == id2 {
-				filtered = append(filtered, s)
-			} else {
-				orphaned = append(orphaned, s)
-			}
-
-		}
-	}
-	return filtered, orphaned
-}
-
 func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 	var swaps, orphanSwaps []ast.Node
 
 	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
 
-	orphanSwaps = l.getSwaps()
+	swaps := l.getSwaps()
 
 	instance := l.pop()
+
+	if swaps != nil {
+		l.pushN(swaps)
+	}
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
 
@@ -1647,6 +1628,20 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 
 	l.pushN(orphanSwaps)
 
+}
+
+func (l *FaultListener) ExitSwap(c *parser.SwapContext) {
+	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
+
+	right := l.pop()
+	left := l.pop()
+
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "=",
+		Right:    right.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitSwap(c *parser.SwapContext) {
