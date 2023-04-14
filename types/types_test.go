@@ -987,6 +987,7 @@ func TestSwapError3(t *testing.T) {
 	}
 }
 
+
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

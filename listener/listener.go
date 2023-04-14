@@ -53,7 +53,6 @@ func Execute(spec string, path string, flags map[string]bool /*specType bool, te
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-
 	l := NewListener(path, flags["testing"], flags["skipRun"])
 
 	if flags["specType"] {

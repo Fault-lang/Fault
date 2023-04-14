@@ -23,7 +23,9 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
+
 func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string, map[string]string) {
+
 	//Confirm that the filetype and file declaration match
 	if !validate_filetype(data, filetype) {
 		log.Fatalf("malformatted file: declaration does not match filetype.")
@@ -119,8 +121,9 @@ func run(filepath string, mode string, input string, reach bool) {
 			fmt.Println(lstnr.AST)
 			return
 		}
-
+    
 		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
+
 		uncertains = compiler.Uncertains
 		unknowns = compiler.Unknowns
 

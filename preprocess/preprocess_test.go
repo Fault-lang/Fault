@@ -273,7 +273,9 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow property value not correctly named in runblock got=%s", buzz.Properties["foo"].Value.(ast.Nameable).IdString())
 	}
 
+
 	run := process.Processed.Statements[3].(*ast.ForStatement).Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
+
 	for k, v := range run.Properties {
 		if k == "fizz" {
 			foo := v.Value.(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression).Left.(*ast.ParameterCall).IdString()

@@ -729,12 +729,14 @@ func prepTest(test string, specType bool) (string, error) {
 
 	l := listener.Execute(test, "", flags)
 	pre := preprocess.Execute(l)
+
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
 	err := compiler.Compile(tree)
+
 	if err != nil {
 		return "", err
 	}
