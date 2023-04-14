@@ -1842,9 +1842,9 @@ func TestSwap(t *testing.T) {
 			 };
 			
 			for 1 run {
-				car = new f;
 				bot = new foo.bar;
-				car.test = bot;
+				car = new f;
+					car.test = bot;
 			}
 			`
 	_, sys := prepSysTest(test, nil)
@@ -1854,12 +1854,13 @@ func TestSwap(t *testing.T) {
 		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])
 	}
 
-	if len(forSt.Body.Statements) != 3 {
+	if len(forSt.Body.Statements) != 2 {
 		t.Fatalf("run block has the wrong number of statements. got=%d", len(forSt.Body.Statements))
 	}
 
-	if forSt.Body.Statements[2].TokenLiteral() != "SWAP" {
-		t.Fatalf("swap incorrect in AST. got=%s", forSt.Body.Statements[2].TokenLiteral())
+	inst := forSt.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	if inst.Swaps[0].TokenLiteral() != "SWAP" {
+		t.Fatalf("swap incorrect in AST. got=%s", inst.Swaps[0].TokenLiteral())
 	}
 }
 

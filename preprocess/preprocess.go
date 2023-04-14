@@ -21,7 +21,7 @@ type Processor struct {
 	inState              string
 	inGlobal             bool
 	StructsPropertyOrder map[string][]string
-	Instances            map[string][]string
+	Instances            map[string]*ast.StructInstance
 }
 
 func NewProcesser() *Processor {
@@ -33,7 +33,7 @@ func NewProcesser() *Processor {
 		inFunc:               false,
 		inGlobal:             false,
 		StructsPropertyOrder: make(map[string][]string),
-		Instances:            make(map[string][]string),
+		Instances:            make(map[string]*ast.StructInstance),
 	}
 }
 
@@ -621,8 +621,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		p.scope = key
 
-		p.Instances[node.IdString()] = []string{node.Value.Spec, node.Value.Value}
-
 		ty := p.structTypes[node.Value.Spec][node.Value.Value]
 		var properties map[string]ast.Node
 		switch ty {
@@ -669,11 +667,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = inst.Parent
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				case *ast.Instance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = []string{inst.Value.Spec, inst.Value.Value}
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				default:
 					pro2, err = p.walk(v)
 					pro2.(ast.Nameable).SetId(name)
@@ -741,11 +741,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = inst.Parent
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				case *ast.Instance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
-					p.Instances[pro2.(ast.Nameable).IdString()] = []string{inst.Value.Spec, inst.Value.Value}
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 
 				default:
 					pro2, err = p.walk(v)
