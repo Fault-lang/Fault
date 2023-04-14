@@ -1,0 +1,21 @@
+spec swaps;
+
+def s1 = stock{
+    v: 10,
+};
+
+def f1 = flow{
+    target: new s1,
+    fn: func{
+        target.v <- 2;
+    },
+};
+
+for 2 init {
+    s2 = new s1;
+    s2.v = 20;
+    f2 = new f1;
+    f2.target = s2;
+} run {
+        f2.fn;
+}

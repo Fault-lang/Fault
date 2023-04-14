@@ -69,6 +69,7 @@ type Node interface {
 	Position() []int
 	Type() string
 	SetType(*Type)
+	GetToken() Token
 }
 
 type Statement interface {
@@ -104,6 +105,12 @@ func (s *Spec) TokenLiteral() string {
 	} else {
 		return ""
 	}
+}
+
+func (s *Spec) GetToken() Token {
+	return Token{Type: "SPEC",
+		Literal:  "SPEC",
+		Position: []int{0, 0, 0, 0}}
 }
 
 func (s *Spec) Position() []int {
@@ -152,6 +159,11 @@ func (sd *SpecDeclStatement) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+
+func (sd *SpecDeclStatement) GetToken() Token {
+	return sd.Token
+}
+
 func (sd *SpecDeclStatement) Type() string {
 	return "SPEC"
 }
@@ -174,6 +186,9 @@ func (sd *SysDeclStatement) String() string {
 	out.WriteString(sd.Name.String())
 	out.WriteString(";")
 	return out.String()
+}
+func (sd *SysDeclStatement) GetToken() Token {
+	return sd.Token
 }
 func (sd *SysDeclStatement) Type() string {
 	return "SYSTEM"
@@ -203,6 +218,9 @@ func (is *ImportStatement) String() string {
 
 	out.WriteString(";")
 	return out.String()
+}
+func (is *ImportStatement) GetToken() Token {
+	return is.Token
 }
 func (is *ImportStatement) Type() string {
 	return "IMPORT"
@@ -235,6 +253,9 @@ func (cs *ConstantStatement) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+func (cs *ConstantStatement) GetToken() Token {
+	return cs.Token
+}
 func (cs *ConstantStatement) Type() string {
 	return cs.Value.Type()
 }
@@ -264,6 +285,9 @@ func (ds *DefStatement) String() string {
 
 	out.WriteString(";")
 	return out.String()
+}
+func (ds *DefStatement) GetToken() Token {
+	return ds.Token
 }
 func (ds *DefStatement) Type() string {
 	return ds.Token.Literal
@@ -299,6 +323,9 @@ func (as *AssertionStatement) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+func (as *AssertionStatement) GetToken() Token {
+	return as.Token
+}
 func (as *AssertionStatement) Type() string {
 	return as.Constraint.Right.Type()
 }
@@ -311,6 +338,7 @@ type InvariantClause struct {
 	Left         Expression
 	Operator     string
 	Right        Expression
+	SyncedState  bool
 	InferredType *Type
 }
 
@@ -328,6 +356,9 @@ func (i *InvariantClause) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+func (i *InvariantClause) GetToken() Token {
+	return i.Token
+}
 func (i *InvariantClause) Type() string {
 	return i.Right.Type()
 }
@@ -335,45 +366,11 @@ func (i *InvariantClause) SetType(ty *Type) {
 	//Skip
 }
 
-// type Invariant struct {
-// 	Token        Token
-// 	Variable     Expression
-// 	Comparison   string
-// 	Expression   Expression
-// 	Conjuction   string
-// 	InferredType *Type
-// }
-
-// func (i *Invariant) expressionNode()      {}
-// func (i *Invariant) TokenLiteral() string { return i.Token.Literal }
-// func (i *Invariant) Position() []int      { return i.Token.GetPosition() }
-// func (i *Invariant) String() string {
-// 	var out bytes.Buffer
-
-// 	out.WriteString(i.TokenLiteral() + " assert ")
-// 	out.WriteString(i.Variable.String())
-// 	if i.Conjuction != "" {
-// 		out.WriteString(i.Conjuction)
-// 	}
-// 	if i.Comparison != "" {
-// 		out.WriteString(i.Comparison)
-// 	}
-// 	out.WriteString(i.Expression.String())
-
-// 	out.WriteString(";")
-// 	return out.String()
-// }
-// func (i *Invariant) Type() string {
-// 	return i.Variable.Type()
-// }
-// func (i *Invariant) SetType(ty *Type) {
-// 	//Skip
-// }
-
 type ForStatement struct {
 	Token  Token
 	Rounds *IntegerLiteral
 	Body   *BlockStatement
+	Inits  *BlockStatement
 }
 
 func (fs *ForStatement) statementNode()       {}
@@ -388,6 +385,9 @@ func (fs *ForStatement) String() string {
 
 	out.WriteString(";")
 	return out.String()
+}
+func (fs *ForStatement) GetToken() Token {
+	return fs.Token
 }
 func (fs *ForStatement) Type() string {
 	return ""
@@ -420,6 +420,9 @@ func (ss *StartStatement) String() string {
 	out.WriteString(";")
 	return out.String()
 }
+func (ss *StartStatement) GetToken() Token {
+	return ss.Token
+}
 func (ss *StartStatement) Type() string {
 	return "START"
 }
@@ -447,6 +450,9 @@ func (i *Identifier) Type() string {
 	} else {
 		return ""
 	}
+}
+func (i *Identifier) GetToken() Token {
+	return i.Token
 }
 func (i *Identifier) SetType(ty *Type) {
 	i.InferredType = ty
@@ -483,6 +489,9 @@ func (p *ParameterCall) String() string {
 	out.WriteString(strings.Join(p.Value, "."))
 
 	return out.String()
+}
+func (p *ParameterCall) GetToken() Token {
+	return p.Token
 }
 func (p *ParameterCall) Type() string {
 	t := p.InferredType
@@ -528,6 +537,9 @@ func (av *AssertVar) Type() string {
 		return ""
 	}
 }
+func (av *AssertVar) GetToken() Token {
+	return av.Token
+}
 func (av *AssertVar) SetType(ty *Type) {
 	av.InferredType = ty
 }
@@ -542,6 +554,7 @@ type StructInstance struct {
 	Name          string
 	Parent        []string
 	ComplexScope  string
+	Swaps         []Node
 	ProcessedName []string
 }
 
@@ -554,6 +567,9 @@ func (si *StructInstance) String() string {
 		out.WriteString(fmt.Sprintf("%s_%s_%s:%s", si.Spec, si.Name, key, value.String()))
 	}
 	return out.String()
+}
+func (si *StructInstance) GetToken() Token {
+	return si.Token
 }
 func (si *StructInstance) Type() string {
 	return string(si.Token.Literal)
@@ -594,6 +610,9 @@ func (sp *StructProperty) String() string {
 func (sp *StructProperty) SetId(id []string) {
 	sp.ProcessedName = id
 }
+func (sp *StructProperty) GetToken() Token {
+	return sp.Token
+}
 func (sp *StructProperty) Type() string {
 	return string(sp.Value.Type())
 }
@@ -620,6 +639,7 @@ type Instance struct {
 	Complex       bool //If stock does this stock contain another stock?
 	ComplexScope  string
 	Processed     *StructInstance
+	Swaps         []Node
 	ProcessedName []string
 	Order         []string
 }
@@ -634,6 +654,9 @@ func (i *Instance) String() string {
 	out.WriteString(i.Value.String())
 
 	return out.String()
+}
+func (i *Instance) GetToken() Token {
+	return i.Token
 }
 func (i *Instance) Type() string {
 	return i.Token.Literal
@@ -672,6 +695,9 @@ func (es *ExpressionStatement) String() string {
 
 	return ""
 }
+func (es *ExpressionStatement) GetToken() Token {
+	return es.Token
+}
 func (es *ExpressionStatement) Type() string {
 	if es.Expression != nil {
 		return es.Expression.Type()
@@ -701,6 +727,9 @@ func (il *IntegerLiteral) Type() string {
 	} else {
 		return "INT"
 	}
+}
+func (il *IntegerLiteral) GetToken() Token {
+	return il.Token
 }
 func (il *IntegerLiteral) SetType(ty *Type) {
 	il.InferredType = ty
@@ -738,6 +767,9 @@ func (fl *FloatLiteral) Type() string {
 		return "FLOAT"
 	}
 }
+func (fl *FloatLiteral) GetToken() Token {
+	return fl.Token
+}
 func (fl *FloatLiteral) SetType(ty *Type) {
 	fl.InferredType = ty
 }
@@ -774,6 +806,9 @@ func (n *Natural) Type() string {
 		return "NATURAL"
 	}
 }
+func (n *Natural) GetToken() Token {
+	return n.Token
+}
 func (n *Natural) SetType(ty *Type) {
 	n.InferredType = ty
 }
@@ -809,6 +844,9 @@ func (u *Uncertain) String() string {
 	out.WriteString(strconv.FormatFloat(u.Sigma, 'f', 6, 64))
 	out.WriteString(";")
 	return out.String()
+}
+func (u *Uncertain) GetToken() Token {
+	return u.Token
 }
 func (u *Uncertain) Type() string {
 	t := u.InferredType
@@ -854,6 +892,9 @@ func (u *Unknown) String() string {
 	}
 	out.WriteString(")")
 	return out.String()
+}
+func (u *Unknown) GetToken() Token {
+	return u.Token
 }
 func (u *Unknown) Type() string {
 	t := u.InferredType
@@ -902,6 +943,9 @@ func (pe *PrefixExpression) String() string {
 
 	return out.String()
 }
+func (pe *PrefixExpression) GetToken() Token {
+	return pe.Token
+}
 func (pe *PrefixExpression) Type() string {
 	t := pe.InferredType
 	if t != nil {
@@ -946,6 +990,9 @@ func (ie *InfixExpression) String() string {
 
 	return out.String()
 }
+func (ie *InfixExpression) GetToken() Token {
+	return ie.Token
+}
 func (ie *InfixExpression) Type() string {
 	t := ie.InferredType
 	if t != nil {
@@ -976,6 +1023,9 @@ func (b *Boolean) Type() string {
 	} else {
 		return "BOOL"
 	}
+}
+func (b *Boolean) GetToken() Token {
+	return b.Token
 }
 func (b *Boolean) SetType(ty *Type) {
 	b.InferredType = ty
@@ -1014,6 +1064,9 @@ func (t *This) Type() string {
 		return ""
 	}
 }
+func (t *This) GetToken() Token {
+	return t.Token
+}
 func (t *This) SetType(ty *Type) {
 	t.InferredType = ty
 }
@@ -1050,6 +1103,9 @@ func (c *Clock) Type() string {
 		return ""
 	}
 }
+func (c *Clock) GetToken() Token {
+	return c.Token
+}
 func (c *Clock) SetType(ty *Type) {
 	c.InferredType = ty
 }
@@ -1074,6 +1130,9 @@ func (n *Nil) Type() string {
 func (n *Nil) SetType(ty *Type) {
 	n.InferredType = ty
 }
+func (n *Nil) GetToken() Token {
+	return n.Token
+}
 
 type BlockStatement struct {
 	Token        Token
@@ -1092,6 +1151,9 @@ func (bs *BlockStatement) String() string {
 	}
 
 	return out.String()
+}
+func (bs *BlockStatement) GetToken() Token {
+	return bs.Token
 }
 func (bs *BlockStatement) Type() string { return "" }
 func (bs *BlockStatement) SetType(ty *Type) {
@@ -1117,6 +1179,9 @@ func (pf *ParallelFunctions) String() string {
 	return out.String()
 }
 func (pf *ParallelFunctions) Type() string { return "" }
+func (pf *ParallelFunctions) GetToken() Token {
+	return pf.Token
+}
 func (pf *ParallelFunctions) SetType(ty *Type) {
 	//skip
 }
@@ -1137,6 +1202,9 @@ func (ie *InitExpression) String() string {
 	out.WriteString("init ")
 	out.WriteString(ie.Expression.String())
 	return out.String()
+}
+func (ie *InitExpression) GetToken() Token {
+	return ie.Token
 }
 func (ie *InitExpression) Type() string { return "" }
 func (ie *InitExpression) SetType(ty *Type) {
@@ -1191,6 +1259,9 @@ func (ie *IfExpression) String() string {
 
 	return out.String()
 }
+func (ie *IfExpression) GetToken() Token {
+	return ie.Token
+}
 func (ie *IfExpression) Type() string { return "" }
 func (ie *IfExpression) SetType(ty *Type) {
 	//skip
@@ -1220,6 +1291,9 @@ func (fl *FunctionLiteral) String() string {
 	out.WriteString(fl.Body.String())
 
 	return out.String()
+}
+func (fl *FunctionLiteral) GetToken() Token {
+	return fl.Token
 }
 func (fl *FunctionLiteral) Type() string { return fl.Body.Statements[len(fl.Body.Statements)-1].Type() }
 func (fl *FunctionLiteral) SetType(ty *Type) {
@@ -1263,6 +1337,9 @@ func (b *BuiltIn) String() string {
 
 	return out.String()
 }
+func (b *BuiltIn) GetToken() Token {
+	return b.Token
+}
 func (b *BuiltIn) Type() string { return "BUILTIN" }
 func (b *BuiltIn) SetType(ty *Type) {
 	//skip
@@ -1298,6 +1375,9 @@ func (sl *StringLiteral) Type() string {
 	} else {
 		return "STRING"
 	}
+}
+func (sl *StringLiteral) GetToken() Token {
+	return sl.Token
 }
 func (sl *StringLiteral) SetType(ty *Type) {
 	sl.InferredType = ty
@@ -1336,6 +1416,9 @@ func (ie *IndexExpression) String() string {
 	out.WriteString("])")
 
 	return out.String()
+}
+func (ie *IndexExpression) GetToken() Token {
+	return ie.Token
 }
 func (ie *IndexExpression) Type() string {
 	return ie.Left.Type()
@@ -1382,6 +1465,9 @@ func (sl *StockLiteral) String() string {
 	out.WriteString("}")
 
 	return out.String()
+}
+func (sl *StockLiteral) GetToken() Token {
+	return sl.Token
 }
 func (sl *StockLiteral) Type() string { return "STOCK" }
 func (sl *StockLiteral) SetType(ty *Type) {
@@ -1435,6 +1521,9 @@ func (fl *FlowLiteral) String() string {
 
 	return out.String()
 }
+func (fl *FlowLiteral) GetToken() Token {
+	return fl.Token
+}
 func (fl *FlowLiteral) Type() string { return "FLOW" }
 func (fl *FlowLiteral) SetType(ty *Type) {
 	//skip
@@ -1486,6 +1575,9 @@ func (cl *ComponentLiteral) String() string {
 	out.WriteString("}")
 
 	return out.String()
+}
+func (cl *ComponentLiteral) GetToken() Token {
+	return cl.Token
 }
 func (cl *ComponentLiteral) Type() string { return "COMPONENT" }
 func (cl *ComponentLiteral) SetType(ty *Type) {

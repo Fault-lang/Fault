@@ -897,10 +897,96 @@ func TestComponents(t *testing.T) {
 
 }
 
-// Infix, Prefix, ... what other types of expressions?
-// Type check init matches expression type. init cannot be an uncertain. Uncertains are immutable... can only be declared as constants?
-// check float + float returns a the larger scope
-// "ignore x=5" <-- syntax to remove scenarios from the model checker?
+func TestSwapError(t *testing.T) {
+	test := `spec test;
+	def s1 = stock{
+		a: 10,
+	};
+	
+	def f1 = flow{
+		x: new s1,
+		f: func{
+			x.a -> 2;
+		},
+	};
+
+	for 1 init{f2 = new f1;
+		f2.x = 2.3;
+		} run {}
+	`
+
+	_, err := prepTest(test, true)
+
+	actual := "cannot redeclare variable f2.x is type STOCK got FLOAT"
+
+	if err == nil || err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+}
+
+func TestSwapError2(t *testing.T) {
+	test := `spec test;
+	def s1 = stock{
+		a: 10,
+	};
+
+	def s2 = stock{
+		b: 10,
+	};
+	
+	def f1 = flow{
+		x: new s1,
+		f: func{
+			x.a -> 2;
+		},
+	};
+
+	for 1 init{f2 = new f1;
+		f2.x = new s2;
+		} run {	}
+	`
+
+	_, err := prepTest(test, true)
+
+	actual := "cannot redeclare variable f2.x is instance of test.s1 got test.s2"
+
+	if err == nil || err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+}
+
+func TestSwapError3(t *testing.T) {
+	test := `spec test;
+	def s1 = stock{
+		a: 10,
+	};
+
+	def s2 = stock{
+		b: 10,
+	};
+	
+	def f1 = flow{
+		x: new s1,
+		f: func{
+			x.a -> 2;
+		},
+	};
+
+	for 1 init{f2 = new f1;
+		s = new s2;
+		f2.x = s;} run {
+	}
+	`
+
+	_, err := prepTest(test, true)
+
+	actual := "cannot redeclare variable f2.x is instance of test.s1 got test.s2"
+
+	if err == nil || err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+}
+
 
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)
@@ -911,7 +997,7 @@ func prepTest(test string, specType bool) (*Checker, error) {
 	l := listener.Execute(test, "", flags)
 
 	pre := preprocess.Execute(l)
-	ty := NewTypeChecker(pre.Specs)
+	ty := NewTypeChecker(pre)
 	_, err := ty.Check(pre.Processed)
 	return ty, err
 }

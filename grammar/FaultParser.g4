@@ -17,7 +17,11 @@ sysClause
     ;
 
 globalDecl
-    : 'global' IDENT '=' operand eos
+    : 'global' IDENT '=' operand eos (swap eos)*
+    ;
+
+swap
+    : paramCall '=' (functionLit | numeric | string_ | bool_ | operandName | prefix | solvable)
     ;
 
 componentDecl
@@ -211,7 +215,7 @@ ifStmtState
     ;
 
 forStmt
-    : 'for' rounds 'run' runBlock eos?
+    : 'for' rounds ('init' initBlock)? 'run' runBlock eos?
     ;
 
 rounds
@@ -227,7 +231,7 @@ stateBlock
     ;
 
 stateStep
-    : paramCall ('|' paramCall)* eos              #stateStepExpr
+    : paramCall ('|' paramCall)? eos              #stateStepExpr
     | stateChange eos                                #stateChain
     | ifStmtState                                 #stateExpr
     ;
@@ -236,9 +240,16 @@ runBlock
     : '{' runStep* '}'
     ;
 
+initBlock
+    : '{' initStep* '}'
+    ;
+
+initStep
+    : IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)*  #runInit                               
+    ;
+
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
-    | IDENT '=' 'new' (paramCall | IDENT) eos      #runInit
     | simpleStmt eos                              #runExpr
     | ifStmtRun                                     #runExpr
     ;

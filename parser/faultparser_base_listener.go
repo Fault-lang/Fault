@@ -1,4 +1,4 @@
-// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
 
 package parser // FaultParser
 
@@ -38,6 +38,12 @@ func (s *BaseFaultParserListener) EnterGlobalDecl(ctx *GlobalDeclContext) {}
 
 // ExitGlobalDecl is called when production globalDecl is exited.
 func (s *BaseFaultParserListener) ExitGlobalDecl(ctx *GlobalDeclContext) {}
+
+// EnterSwap is called when production swap is entered.
+func (s *BaseFaultParserListener) EnterSwap(ctx *SwapContext) {}
+
+// ExitSwap is called when production swap is exited.
+func (s *BaseFaultParserListener) ExitSwap(ctx *SwapContext) {}
 
 // EnterComponentDecl is called when production componentDecl is entered.
 func (s *BaseFaultParserListener) EnterComponentDecl(ctx *ComponentDeclContext) {}
@@ -375,17 +381,23 @@ func (s *BaseFaultParserListener) EnterRunBlock(ctx *RunBlockContext) {}
 // ExitRunBlock is called when production runBlock is exited.
 func (s *BaseFaultParserListener) ExitRunBlock(ctx *RunBlockContext) {}
 
-// EnterRunStepExpr is called when production runStepExpr is entered.
-func (s *BaseFaultParserListener) EnterRunStepExpr(ctx *RunStepExprContext) {}
+// EnterInitBlock is called when production initBlock is entered.
+func (s *BaseFaultParserListener) EnterInitBlock(ctx *InitBlockContext) {}
 
-// ExitRunStepExpr is called when production runStepExpr is exited.
-func (s *BaseFaultParserListener) ExitRunStepExpr(ctx *RunStepExprContext) {}
+// ExitInitBlock is called when production initBlock is exited.
+func (s *BaseFaultParserListener) ExitInitBlock(ctx *InitBlockContext) {}
 
 // EnterRunInit is called when production runInit is entered.
 func (s *BaseFaultParserListener) EnterRunInit(ctx *RunInitContext) {}
 
 // ExitRunInit is called when production runInit is exited.
 func (s *BaseFaultParserListener) ExitRunInit(ctx *RunInitContext) {}
+
+// EnterRunStepExpr is called when production runStepExpr is entered.
+func (s *BaseFaultParserListener) EnterRunStepExpr(ctx *RunStepExprContext) {}
+
+// ExitRunStepExpr is called when production runStepExpr is exited.
+func (s *BaseFaultParserListener) ExitRunStepExpr(ctx *RunStepExprContext) {}
 
 // EnterRunExpr is called when production runExpr is entered.
 func (s *BaseFaultParserListener) EnterRunExpr(ctx *RunExprContext) {}

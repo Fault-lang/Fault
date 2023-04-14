@@ -4,6 +4,7 @@ import (
 	"fault/listener"
 	"fault/llvm"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"fault/util"
 	"fmt"
@@ -31,8 +32,7 @@ func TestEventually(t *testing.T) {
 
 	assume amount.value > 0 eventually;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -77,8 +77,7 @@ func TestEventuallyAlways(t *testing.T) {
 
 	assume amount.value > 0 eventually-always;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -130,8 +129,7 @@ func TestEventuallyAlways2(t *testing.T) {
 
 	assert amount.value > 0 eventually-always;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -183,8 +181,7 @@ func TestTemporal(t *testing.T) {
 
 	assert amount.value <= 0 nmt 1;
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -233,8 +230,7 @@ func TestTemporal2(t *testing.T) {
 		assume s.x == 2 nmt 2;
 		assert s.x == 11 eventually; 
 
-		for 5 run {
-			t = new test;
+		for 5 init{t = new test;} run {
 			t.bar;
 		};
 	`
@@ -440,6 +436,9 @@ func TestTestData(t *testing.T) {
 		"testdata/bathtub2.fspec",
 		"testdata/booleans.fspec",
 		"testdata/unknowns.fspec",
+		"testdata/swaps/swaps.fspec",
+		"testdata/swaps/swaps1.fspec",
+		"testdata/swaps/swaps2.fspec",
 	}
 	smt2s := []string{
 		"testdata/bathtub.smt2",
@@ -447,6 +446,9 @@ func TestTestData(t *testing.T) {
 		"testdata/bathtub2.smt2",
 		"testdata/booleans.smt2",
 		"testdata/unknowns.smt2",
+		"testdata/swaps/swaps.smt2",
+		"testdata/swaps/swaps1.smt2",
+		"testdata/swaps/swaps2.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)
@@ -474,19 +476,19 @@ func TestTestData(t *testing.T) {
 func TestSys(t *testing.T) {
 	specs := [][]string{
 		{"testdata/statecharts/statechart.fsystem", "0"},
-		/*{"testdata/statecharts/advanceor.fsystem", "0"},
+		{"testdata/statecharts/advanceor.fsystem", "0"},
 		{"testdata/statecharts/multioradvance.fsystem", "0"},
 		{"testdata/statecharts/advanceand.fsystem", "0"},
-		{"testdata/statecharts/mixedcalls.fsystem", "1"},
-		{"testdata/statecharts/triggerfunc.fsystem", "1"},*/
+		{"testdata/statecharts/mixedcalls.fsystem", "0"},
+		{"testdata/statecharts/triggerfunc.fsystem", "0"},
 	}
 	smt2s := []string{
 		"testdata/statecharts/statechart.smt2",
-		/*"testdata/statecharts/advanceor.smt2",
+		"testdata/statecharts/advanceor.smt2",
 		"testdata/statecharts/multioradvance.smt2",
 		"testdata/statecharts/advanceand.smt2",
 		"testdata/statecharts/mixedcalls.smt2",
-		"testdata/statecharts/triggerfunc.smt2",*/
+		"testdata/statecharts/triggerfunc.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])
@@ -605,8 +607,10 @@ func prepTest(filepath string, test string, specType bool, testRun bool) string 
 
 	l := listener.Execute(test, path, flags)
 	pre := preprocess.Execute(l)
-	ty := types.Execute(pre.Processed, pre.Specs)
-	compiler := llvm.Execute(ty.Checked, ty.SpecStructs, l.Uncertains, l.Unknowns, true)
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
 
 	//fmt.Println(compiler.GetIR())
 	generator := Execute(compiler)

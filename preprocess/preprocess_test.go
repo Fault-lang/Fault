@@ -233,8 +233,7 @@ func TestRunInstances(t *testing.T) {
 		},
 	};
 
-	for 5 run {
-		f =  new fl;
+	for 5 init{f =  new fl;} run {
 		f.fizz;
 	}
 	`
@@ -252,7 +251,7 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow f returns the wrong number of properties got=%d want=3", len(fl))
 	}
 
-	pc := process.Processed.Statements[3].(*ast.ForStatement).Body.Statements[1].(*ast.ParallelFunctions).Expressions[0].(*ast.ParameterCall)
+	pc := process.Processed.Statements[3].(*ast.ForStatement).Body.Statements[0].(*ast.ParallelFunctions).Expressions[0].(*ast.ParameterCall)
 	if pc.IdString() != "test1_f_fizz" {
 		t.Fatalf("flow not correctly named in runblock got=%s", pc.IdString())
 	}
@@ -274,7 +273,9 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow property value not correctly named in runblock got=%s", buzz.Properties["foo"].Value.(ast.Nameable).IdString())
 	}
 
-	run := process.Processed.Statements[3].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
+
+	run := process.Processed.Statements[3].(*ast.ForStatement).Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
+
 	for k, v := range run.Properties {
 		if k == "fizz" {
 			foo := v.Value.(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression).Left.(*ast.ParameterCall).IdString()
@@ -382,8 +383,7 @@ func TestUnknowns(t *testing.T) {
 		},
 	};
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`

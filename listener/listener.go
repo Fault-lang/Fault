@@ -14,11 +14,12 @@ import (
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/barkimedes/go-deepcopy"
 )
 
 type FaultListener struct {
 	*parser.BaseFaultParserListener
-	stack                []interface{}
+	stack                []ast.Node
 	AST                  *ast.Spec
 	structscope          string
 	scope                string
@@ -30,6 +31,8 @@ type FaultListener struct {
 	Uncertains           map[string][]float64
 	Unknowns             []string
 	StructsPropertyOrder map[string][]string
+	instances            map[string]*ast.Instance
+	swaps                map[string][]ast.Node
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
@@ -39,16 +42,17 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 		skipRun:              skipRun,
 		Uncertains:           make(map[string][]float64),
 		StructsPropertyOrder: make(map[string][]string),
+		instances:            make(map[string]*ast.Instance),
+		swaps:                make(map[string][]ast.Node),
 	}
 }
 
-func Execute(spec string, path string, flags map[string]bool/*specType bool, testing bool*/) *FaultListener {
+func Execute(spec string, path string, flags map[string]bool /*specType bool, testing bool*/) *FaultListener {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
-	
 	l := NewListener(path, flags["testing"], flags["skipRun"])
 
 	if flags["specType"] {
@@ -79,14 +83,22 @@ func (l *FaultListener) validate() {
 	os.Exit(1)
 }
 
-func (l *FaultListener) push(n interface{}) {
+func (l *FaultListener) push(n ast.Node) {
 	l.stack = append(l.stack, n)
 }
 
-func (l *FaultListener) pop() interface{} {
-	var s interface{}
+func (l *FaultListener) pushN(n []ast.Node) {
+	l.stack = append(l.stack, n...)
+}
+
+func (l *FaultListener) pop() ast.Node {
+	var s ast.Node
 	s, l.stack = l.stack[len(l.stack)-1], l.stack[:len(l.stack)-1]
 	return s
+}
+
+func (l *FaultListener) peek() ast.Node {
+	return l.stack[len(l.stack)-1]
 }
 
 func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
@@ -96,6 +108,7 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
+	l.addSwaps()
 	l.AST = spec
 }
 
@@ -124,11 +137,11 @@ func (l *FaultListener) ExitSpecClause(c *parser.SpecClauseContext) {
 func (l *FaultListener) ExitImportDecl(c *parser.ImportDeclContext) {
 	items := len(c.AllImportSpec())
 
-	var itemList []interface{}
+	var itemList []ast.Node
 	for i := 0; i < items; i++ {
 		right := l.pop()
 
-		var temp []interface{}
+		var temp []ast.Node
 		temp = append(temp, right)
 
 		itemList = append(temp, itemList...)
@@ -203,7 +216,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 	}
 	items = len(identlist.AllOperandName())
 
-	var val interface{}
+	var val ast.Node
 	if (c.GetChildCount() - items) > 0 {
 		val = l.pop()
 		if val == nil {
@@ -215,7 +228,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 		val = &ast.Unknown{Token: token2, Name: nil}
 	}
 
-	var itemList []interface{}
+	var itemList []ast.Node
 	for i := 0; i < items; i++ {
 		left := l.pop()
 		ident, ok := left.(*ast.Identifier)
@@ -231,7 +244,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
 		}
-		var temp []interface{}
+		var temp []ast.Node
 		temp = append(temp, &ast.ConstantStatement{
 			Token: token,
 			Name:  ident,
@@ -389,7 +402,7 @@ func (l *FaultListener) ExitPropVar(c *parser.PropVarContext) {
 }
 
 func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
-	var val interface{}
+	var val ast.Node
 	var keyValuePair bool
 	if c.GetChildCount() != 1 {
 		val = l.pop()
@@ -648,29 +661,58 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 	l.push(pc)
 }
 
-func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
+func (l *FaultListener) ExitInitBlock(c *parser.InitBlockContext) {
+	//var swaps, orphanSwaps []ast.Node
+	var swaps []ast.Node
 	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
 	sl := &ast.BlockStatement{
 		Token: token,
 	}
-	steps := c.AllRunStep()
+	swaps = l.getSwaps()
+
+	steps := c.AllInitStep()
 	for i := len(steps) - 1; i >= 0; i-- {
-		v := steps[i]
 		ex := l.pop()
-		switch t := ex.(type) {
-		case *ast.Instance:
-			token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+
+		if sw, ok := ex.(*ast.InfixExpression); ok && sw.TokenLiteral() == "SWAP" {
+			i++
+			swaps = append(swaps, sw)
+			continue
+		}
+
+		if t, ok := ex.(*ast.Instance); ok {
+			//swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
+			t.Swaps = append(t.Swaps, swaps...)
+
+			token2 := ex.GetToken()
 
 			s := &ast.ExpressionStatement{
 				Token:      token2,
 				Expression: t,
 			}
 			sl.Statements = append([]ast.Statement{s}, sl.Statements...)
+		}
+	}
+	l.push(sl)
+}
+
+func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
+	token := util.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+
+	sl := &ast.BlockStatement{
+		Token: token,
+	}
+
+	steps := c.AllRunStep()
+	for i := len(steps) - 1; i >= 0; i-- {
+		ex := l.pop()
+
+		switch t := ex.(type) {
 		case *ast.ParallelFunctions:
 			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 		case ast.Expression:
-			token2 := util.GenerateToken("FUNCTION", "FUNCTION", v.(*parser.RunInitContext).GetStart(), v.(*parser.RunInitContext).GetStop())
+			token2 := ex.GetToken()
 			n := l.packageCallsAsRunSteps(t)
 
 			s := &ast.ExpressionStatement{
@@ -726,10 +768,15 @@ func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
 }
 
 func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
+	//var swaps, orphanSwaps []ast.Node
+	var swaps []ast.Node
 	txt := c.AllIDENT()
 	var right string
 
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	// Check for swaps
+	swaps = l.getSwaps()
 
 	ident := &ast.Identifier{Token: token2}
 	switch len(txt) {
@@ -759,12 +806,33 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	key := strings.Join([]string{ident.Spec, ident.Value}, "_")
 	order := l.StructsPropertyOrder[key]
 
-	l.push(
-		&ast.Instance{
-			Value: ident,
-			Name:  right,
-			Order: order,
-		})
+	//swaps, orphanSwaps = l.filterSwaps(right, orphanSwaps)
+	inst := &ast.Instance{
+		Value: ident,
+		Name:  right,
+		Order: order,
+	}
+
+	l.instances[right] = inst
+	l.sortSwaps(swaps)
+
+	//l.pushN(orphanSwaps)
+	l.push(inst)
+}
+
+
+func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
+	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
+
+	right := l.pop()
+	left := l.pop()
+
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "=",
+		Right:    right.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
@@ -1203,31 +1271,46 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	token := util.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
 
-	rg := l.pop()
-	lf := l.pop()
+	run := l.pop()
+	init := l.pop()
+	var rounds *ast.IntegerLiteral
+	var block2 *ast.BlockStatement
 
-	if rg == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+	if run == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
 
-	block, ok := rg.(*ast.BlockStatement)
+	block, ok := run.(*ast.BlockStatement)
 	if !ok {
-		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), rg))
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
 
-	if lf == nil {
-		panic(fmt.Sprintf("top of stack not an statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	if init == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
 	}
 
-	rounds, ok := lf.(*ast.IntegerLiteral)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), lf))
+	switch x := init.(type) {
+	case *ast.BlockStatement:
+		num := l.pop()
+		rounds, ok = num.(*ast.IntegerLiteral)
+		if !ok {
+			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
+		}
+		block2 = x
+
+	case *ast.IntegerLiteral:
+		rounds = x
+		block2 = &ast.BlockStatement{}
+
+	default:
+		panic(fmt.Sprintf("top of stack not a block statement or integer: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
 	}
 
 	forSt := &ast.ForStatement{
 		Token:  token,
 		Rounds: rounds,
 		Body:   block,
+		Inits:  block2,
 	}
 
 	if !l.skipRun {
@@ -1473,7 +1556,7 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 	return p
 }
 
-func (l *FaultListener) intOrFloatOk(v interface{}) (float64, error) {
+func (l *FaultListener) intOrFloatOk(v ast.Node) (float64, error) {
 	switch val := v.(type) {
 	case *ast.FloatLiteral:
 		return val.Value, nil
@@ -1503,6 +1586,7 @@ func (l *FaultListener) ExitSysSpec(c *parser.SysSpecContext) {
 	for _, v := range l.stack {
 		spec.Statements = append(spec.Statements, v.(ast.Statement))
 	}
+	l.addSwaps()
 	l.AST = spec
 }
 
@@ -1527,8 +1611,51 @@ func (l *FaultListener) ExitSysClause(c *parser.SysClauseContext) {
 	)
 }
 
+func (l *FaultListener) getSwaps() []ast.Node {
+	var swaps []ast.Node
+	loop := true
+
+	for loop {
+		peek := l.peek()
+		if swap, ok := peek.(*ast.InfixExpression); ok && swap.TokenLiteral() == "SWAP" {
+			l.pop()
+			swaps = append(swaps, swap)
+		} else {
+			loop = false
+		}
+	}
+	return swaps
+}
+
+func (l *FaultListener) filterSwaps(id string, swaps []ast.Node) ([]ast.Node, []ast.Node) {
+	var filtered, orphaned []ast.Node
+	for _, s := range swaps {
+		if infx, ok := s.(*ast.InfixExpression); ok {
+			var id2 string
+			switch n := infx.Left.(type) {
+			case *ast.ParameterCall:
+				id2 = n.Value[0]
+			default:
+				panic(fmt.Sprintf("malformed swap got=%s", infx.String()))
+			}
+
+			if id == id2 {
+				filtered = append(filtered, s)
+			} else {
+				orphaned = append(orphaned, s)
+			}
+
+		}
+	}
+	return filtered, orphaned
+}
+
 func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
+	var swaps, orphanSwaps []ast.Node
+
 	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
+
+	orphanSwaps = l.getSwaps()
 
 	instance := l.pop()
 
@@ -1544,12 +1671,16 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 	var importStruct string
 	switch parent := instance.(type) {
 	case *ast.Instance:
+		swaps, orphanSwaps = l.filterSwaps(ident.Value, orphanSwaps)
 		importSpec = parent.Value.Spec
 		importStruct = parent.Value.Value
 		parent.Name = ident.Value
 		key := strings.Join([]string{importSpec, importStruct}, "_")
 		order := l.StructsPropertyOrder[key]
 		parent.Order = order
+
+		l.instances[parent.Name] = parent
+		l.sortSwaps(swaps)
 	}
 
 	l.push(&ast.DefStatement{
@@ -1558,6 +1689,22 @@ func (l *FaultListener) ExitGlobalDecl(c *parser.GlobalDeclContext) {
 		Value: instance.(ast.Expression),
 	})
 
+	l.pushN(orphanSwaps)
+
+}
+
+func (l *FaultListener) ExitSwap(c *parser.SwapContext) {
+	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
+
+	right := l.pop()
+	left := l.pop()
+
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "=",
+		Right:    right.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
@@ -1626,7 +1773,12 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 
 func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
 	idents := c.AllIDENT()
-	l.push([]string{idents[0].GetText(), idents[1].GetText()})
+	start := &ast.InfixExpression{
+		Left:     &ast.StringLiteral{Value: idents[0].GetText()},
+		Operator: ":",
+		Right:    &ast.StringLiteral{Value: idents[1].GetText()},
+	}
+	l.push(start)
 
 }
 
@@ -1635,8 +1787,8 @@ func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
 	var pairs [][]string
 	for i := 0; i < len(c.AllStartPair()); i++ {
 		p := l.pop()
-		pair := p.([]string)
-		pairs = append(pairs, pair)
+		pair := p.(*ast.InfixExpression)
+		pairs = append(pairs, []string{pair.Left.String(), pair.Right.String()})
 	}
 
 	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
@@ -1719,6 +1871,30 @@ func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 		return n
 	default:
 		return n
+	}
+}
+
+func (l *FaultListener) sortSwaps(swaps []ast.Node) {
+	for _, s := range swaps {
+		if node, ok := s.(*ast.InfixExpression).Left.(*ast.ParameterCall); ok {
+			if _, ok2 := l.swaps[node.Value[0]]; !ok2 {
+				l.swaps[node.Value[0]] = []ast.Node{}
+			}
+			l.swaps[node.Value[0]] = append(l.swaps[node.Value[0]], s)
+		}
+	}
+}
+
+func (l *FaultListener) addSwaps() {
+	for key, inst := range l.instances {
+		if sw, ok := l.swaps[key]; ok {
+			c, err := deepcopy.Anything(sw)
+			if err != nil {
+				panic(err)
+			}
+			inst.Swaps = c.([]ast.Node)
+			l.swaps[key] = []ast.Node{}
+		}
 	}
 }
 

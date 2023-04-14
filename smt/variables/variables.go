@@ -22,6 +22,7 @@ type VarData struct {
 	Loads map[string]value.Value
 	Phis  map[string][][]int16
 	Types map[string]string
+	Alias map[string]string
 }
 
 func NewVariables() *VarData {

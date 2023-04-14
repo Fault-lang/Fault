@@ -4,6 +4,7 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/preprocess"
+	"fault/swaps"
 	"fault/types"
 	"fmt"
 	"io"
@@ -83,8 +84,7 @@ func TestRunBlock(t *testing.T) {
 				b: 20,
 			};
 
-			for 5 run{
-				test = new foo;
+			for 5 init{test = new foo;} run{
 				test.fizz | test.fizz2;
 				test.fizz3;
 			};
@@ -199,8 +199,7 @@ func TestIfCond(t *testing.T) {
 				b: 20,
 			};
 
-			for 1 run{
-				test = new foo;
+			for 1 init{test = new foo;} run{
 				test.fizz;
 			};
 	`
@@ -281,8 +280,7 @@ func TestUnknowns(t *testing.T) {
 				 },
 			 };
 
-	for 5 run {
-		t = new test;
+	for 5 init{t = new test;} run {
 		t.bar;
 	};
 	`
@@ -342,7 +340,7 @@ func TestUnknowns(t *testing.T) {
 func TestParamReset(t *testing.T) {
 	structs := make(map[string]*preprocess.SpecRecord)
 	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{}, true)
+	c.LoadMeta(structs, make(map[string][]float64), []string{}, make(map[string]string), true)
 	s := NewCompiledSpec("test")
 	c.currentSpec = "test"
 	c.specs["test"] = s
@@ -731,10 +729,14 @@ func prepTest(test string, specType bool) (string, error) {
 
 	l := listener.Execute(test, "", flags)
 	pre := preprocess.Execute(l)
-	ty := types.Execute(pre.Processed, pre.Specs)
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, true)
-	err := compiler.Compile(ty.Checked)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err := compiler.Compile(tree)
+
 	if err != nil {
 		return "", err
 	}
@@ -744,7 +746,7 @@ func prepTest(test string, specType bool) (string, error) {
 
 func validateIR(ir string) ([]byte, error) {
 	//Run LLVM optimizer to check IR is valid
-	cmd := exec.Command("opt", "-S", "-inline", "--mem2reg")
+	cmd := exec.Command("opt", "-S", "--passes=mem2reg")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err

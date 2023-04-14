@@ -75,6 +75,7 @@ type Compiler struct {
 	Unknowns       []string
 	Components     map[string]*StateFunc
 	ComponentOrder []string
+	Alias          map[string]string
 }
 
 func NewCompiler() *Compiler {
@@ -104,9 +105,11 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, testing bool) *Compiler {
+
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) *Compiler {
 	compiler := NewCompiler()
-	compiler.LoadMeta(specRec, uncertains, unknowns, testing)
+	compiler.LoadMeta(specRec, uncertains, unknowns, aliases, testing)
+
 	err := compiler.Compile(tree)
 	if err != nil {
 		panic(err)
@@ -114,11 +117,13 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 	return compiler
 }
 
-func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, test bool) {
+func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, test bool) {
+
 	c.specStructs = structs
 	c.Unknowns = unknowns
 	c.Uncertains = uncertains
 	c.isTesting = test
+	c.Alias = aliases
 }
 
 func (c *Compiler) Compile(root ast.Node) (err error) {
@@ -248,8 +253,12 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.ForStatement:
 		c.contextFuncName = "__run"
+
 		for i := int64(0); i < v.Rounds.Value; i++ {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
+			if i == 0 {
+				c.compileBlock(v.Inits)
+			}
 			c.compileBlock(v.Body)
 			c.stateCheck()
 			c.RunRound = c.RunRound + 1
@@ -322,7 +331,7 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		c.compileInstance(instance)
 		c.contextFuncName = context
 
-		rawid := instance.RawId()
+		rawid := c.AliasToBaseRaw(instance.RawId())
 		s := c.specStructs[rawid[0]]
 		ty, _ := s.GetStructType(rawid)
 		n := strings.Join(rawid[1:], "_")
@@ -506,7 +515,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	var err error
-	id := pc.RawId()
+	id := c.AliasToBaseRaw(pc.RawId())
 	spec := c.specStructs[id[0]]
 	ty, _ := spec.GetStructType(id[0:2]) //Removing the key
 	st := id[len(id)-2]                  //The struct is the second to last item
@@ -692,6 +701,11 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	var s *spec
 	var id []string
 	pos := node.Position()
+
+	// if node.TokenLiteral() == "SWAP" {
+	// 	return c.compileSwap(node)
+	// }
+
 	switch node.Operator {
 	case "=": // Used to store temporary local values
 		if !c.validOperator(node, true) {
@@ -701,9 +715,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			switch n := node.Left.(type) {
 			case *ast.Identifier:
-				id = n.RawId()
+				id = c.AliasToBaseRaw(n.RawId())
 			case *ast.ParameterCall:
-				id = n.RawId()
+				id = c.AliasToBaseRaw(n.RawId())
 			}
 
 			s = c.specs[id[0]]
@@ -738,7 +752,7 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		}
 
 		pos := n.Position()
-		id = n.RawId()
+		id = c.AliasToBaseRaw(n.RawId())
 
 		s = c.specs[id[0]]
 
@@ -902,7 +916,7 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
-		id := v.Id()
+		id := c.AliasToBaseRaw(v.Id())
 		return c.lookupIdent(id, node.Position())
 	case *ast.This:
 		id := v.Id()
@@ -911,6 +925,67 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 		return c.compileValue(node)
 	}
 }
+
+// func (c *Compiler) compileSwap(node *ast.InfixExpression) value.Value {
+// 	n, ok := node.Left.(*ast.ParameterCall)
+// 	pos := node.Position()
+// 	if !ok {
+// 		panic(fmt.Sprintf("cannot swap a non-stock or non-flow property col: %d, line: %d", pos[0], pos[1]))
+// 	}
+
+// 	rawid := n.RawId()
+
+// 	s := c.specs[rawid[0]]
+// 	spec := c.specStructs[rawid[0]]
+// 	ty, _ := spec.GetStructType(rawid)
+// 	if ty == "NIL" {
+// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 	}
+
+// 	_, err := spec.FetchVar(rawid, ty)
+
+// 	if err == nil {
+// 		r := c.compileValue(node.Right)
+// 		pointer := s.GetSpecVarPointer(rawid)
+// 		c.contextBlock.NewStore(r, pointer)
+// 		return nil
+// 	}
+
+// 	var str1, str2 map[string]ast.Node
+// 	switch ty {
+// 	case "STOCK":
+// 		id := n.Id()
+// 		str1, err = spec.FetchStock(id[1])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 		}
+
+// 		rightId := node.Right.(ast.Nameable).Id()
+// 		str2, err = spec.FetchStock(rightId[1])
+
+// 	case "FLOW":
+// 		id := n.Id()
+// 		str1, err = spec.FetchFlow(id[1])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 		}
+
+// 		rightId := node.Right.(ast.Nameable).Id()
+// 		str2, err = spec.FetchFlow(rightId[1])
+// 	}
+
+// 	if err != nil {
+// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
+// 	}
+
+// 	for k := range str1 {
+// 		from := append(rawid, k)
+// 		to := c.compileValue(str2[k])
+// 		pointer := s.GetSpecVarPointer(from)
+// 		c.contextBlock.NewStore(to, pointer)
+// 	}
+// 	return nil
+// }
 
 func (c *Compiler) tagBuiltIns(v1 value.Value, gname string) value.Value {
 	// BuiltIns in a "b || b" or "b && b" construction need metadata
@@ -1060,7 +1135,7 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		e.Right = c.convertAssertVariables(e.Right)
 		return e
 	case *ast.Identifier:
-		id := e.RawId()
+		id := c.AliasToBaseRaw(e.RawId())
 		pos := e.Position()
 		vname := strings.Join(id, "_")
 
@@ -1078,7 +1153,7 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 			Instances:    instas,
 		}
 	case *ast.ParameterCall:
-		id := e.RawId()
+		id := c.AliasToBaseRaw(e.RawId())
 		pos := e.Position()
 		vname := strings.Join(id, "_")
 
@@ -1211,25 +1286,17 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			id = pv.Id()
 			funcs = append(funcs, id)
 		default:
-			if n, ok := pv.(*ast.Unknown); ok {
+			if c.IsAlias(pv.(ast.Nameable).IdString()) {
+				continue
+			}
+
+			if _, ok := pv.(*ast.Unknown); ok {
 				isUnknown = true
-				id = n.Id()
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
-				id = uncertain.Id()
-			} else if n, ok := pv.(*ast.IntegerLiteral); ok {
-				id = n.Id()
-			} else if n, ok := pv.(*ast.FloatLiteral); ok {
-				id = n.Id()
-			} else if n, ok := pv.(*ast.Boolean); ok {
-				id = n.Id()
-			} else if n, ok := pv.(*ast.StringLiteral); ok {
-				id = n.Id()
-			} else if n, ok := pv.(*ast.Identifier); ok {
-				id = n.Id()
-			} else if n, ok := pv.(*ast.ParameterCall); ok {
-				id = n.Id()
 			}
+
+			id = pv.(ast.Nameable).Id()
 
 			val := c.compileValue(pv)
 			s = c.specs[id[0]]
@@ -1295,7 +1362,7 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 			p = append(p, ip...)
 		case *ast.StructProperty:
 			if _, ok := n.Value.(*ast.FunctionLiteral); !ok {
-				rawid := n.Value.(ast.Nameable).RawId()
+				rawid := c.AliasToBaseRaw(n.Value.(ast.Nameable).RawId())
 				s = c.specs[rawid[0]]
 				vname := strings.Join(rawid, "_")
 				ty := s.GetPointerType(vname)
@@ -1308,19 +1375,19 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 				p = append(p, ir.NewParam(vname, I1P))
 			}
 		case *ast.IntegerLiteral:
-			rawid := n.RawId()
+			rawid := c.AliasToBaseRaw(n.RawId())
 			vname := strings.Join(rawid, "_")
 			p = append(p, ir.NewParam(vname, DoubleP))
 		case *ast.FloatLiteral:
-			rawid := n.RawId()
+			rawid := c.AliasToBaseRaw(n.RawId())
 			vname := strings.Join(rawid, "_")
 			p = append(p, ir.NewParam(vname, DoubleP))
 		case *ast.Boolean:
-			rawid := n.RawId()
+			rawid := c.AliasToBaseRaw(n.RawId())
 			vname := strings.Join(rawid, "_")
 			p = append(p, ir.NewParam(vname, I1P))
 		default:
-			rawid := n.(ast.Nameable).RawId()
+			rawid := c.AliasToBaseRaw(n.(ast.Nameable).RawId())
 			s = c.specs[rawid[0]]
 			vname := strings.Join(rawid, "_")
 			ty := s.GetPointerType(vname)
@@ -1379,6 +1446,29 @@ func (c *Compiler) isConstant(rawid []string) bool {
 	spec := c.specStructs[rawid[0]]
 	_, err := spec.FetchConstant(rawid[1])
 	return err == nil
+}
+
+func (c *Compiler) IsAlias(alias string) bool {
+	if _, ok := c.Alias[alias]; ok {
+		return true
+	}
+	return false
+}
+
+func (c *Compiler) AliasToBase(alias string) string {
+	if b, ok := c.Alias[alias]; ok {
+		return c.AliasToBase(b)
+	}
+	return alias
+}
+
+func (c *Compiler) AliasToBaseRaw(rawid []string) []string {
+	alias := strings.Join(rawid, "_")
+	if b, ok := c.Alias[alias]; ok {
+		r := strings.Split(b, "_")
+		return c.AliasToBaseRaw(r)
+	}
+	return rawid
 }
 
 func (c *Compiler) isVarSet(rawid []string) bool {

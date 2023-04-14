@@ -21,6 +21,7 @@ type Processor struct {
 	inState              string
 	inGlobal             bool
 	StructsPropertyOrder map[string][]string
+	Instances            map[string]*ast.StructInstance
 }
 
 func NewProcesser() *Processor {
@@ -32,6 +33,7 @@ func NewProcesser() *Processor {
 		inFunc:               false,
 		inGlobal:             false,
 		StructsPropertyOrder: make(map[string][]string),
+		Instances:            make(map[string]*ast.StructInstance),
 	}
 }
 
@@ -56,6 +58,12 @@ func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	spec := tree.(*ast.Spec)
 	p.Processed = spec
 	return spec
+}
+
+func (p *Processor) Partial(spec string, node ast.Node) (ast.Node, error) {
+	p.initialPass = true
+	p.trail = p.trail.PushSpec(spec)
+	return p.walk(node)
 }
 
 func (p *Processor) buildIdContext(spec string) []string {
@@ -438,6 +446,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Expression = pro.(ast.Expression)
 		return node, err
 	case *ast.ForStatement:
+		for i, v := range node.Inits.Statements {
+			pro, err = p.walk(v)
+			if err != nil {
+				return node, err
+			}
+			node.Inits.Statements[i] = pro.(ast.Statement)
+		}
 		for i, v := range node.Body.Statements {
 			pro, err = p.walk(v)
 			if err != nil {
@@ -474,8 +489,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Statements = statements
 		return node, err
 	case *ast.InfixExpression:
+		if node.TokenLiteral() == "SWAP" {
+			return p.walkSwap(node)
+		}
+
 		l, err := p.walk(node.Left)
 		if err != nil {
+			if node.Token.Type == "ASSIGN" {
+				return node, fmt.Errorf("illegal assignment %s", node.String())
+			}
 			return node, err
 		}
 
@@ -596,7 +618,17 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			key = strings.Join([]string{p.scope, node.Name}, "_")
 		}
 
+		var swaps []ast.Node
 		oldScope := p.scope
+		p.scope = "" //Just so we can do swaps
+		for _, s := range node.Swaps {
+
+			sw, err := p.walk(s)
+			if err != nil {
+				return node, err
+			}
+			swaps = append(swaps, sw)
+		}
 		p.scope = key
 
 		ty := p.structTypes[node.Value.Spec][node.Value.Value]
@@ -627,6 +659,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				Parent:       []string{node.Value.Spec, node.Value.Value},
 				Properties:   make(map[string]*ast.StructProperty),
 				ComplexScope: node.ComplexScope,
+				Swaps:        swaps,
 				Order:        order}
 
 			pro.Token.Literal = "STOCK"
@@ -644,18 +677,21 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				case *ast.Instance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				default:
 					pro2, err = p.walk(v)
+					pro2.(ast.Nameable).SetId(name)
 				}
 
 				if err != nil {
 					return node, err
 				}
-
-				pro2.(ast.Nameable).SetId(name)
 
 				token := ast.Token{
 					Type:     ast.TokenType("STOCK"),
@@ -669,6 +705,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateStock(key, properties2)
 			pro.ProcessedName = pn
+			p.Instances[node.IdString()] = pro
 
 			p.scope = oldScope
 			return pro, err
@@ -696,6 +733,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				Spec: p.trail.CurrentSpec(), Name: node.Name,
 				Parent:       []string{node.Value.Spec, node.Value.Value},
 				Properties:   make(map[string]*ast.StructProperty),
+				Swaps:        swaps,
 				ComplexScope: node.ComplexScope,
 				Order:        order}
 
@@ -713,18 +751,22 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				case *ast.StructInstance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
 				case *ast.Instance:
 					inst.ComplexScope = key
 					pro2, err = p.walk(inst)
+					pro2.(ast.Nameable).SetId(name)
+					p.Instances[pro2.(ast.Nameable).IdString()] = pro2.(*ast.StructInstance)
+
 				default:
 					pro2, err = p.walk(v)
+					pro2.(ast.Nameable).SetId(name)
 				}
 
 				if err != nil {
 					return node, err
 				}
-
-				pro2.(ast.Nameable).SetId(name)
 
 				token := ast.Token{
 					Type:     ast.TokenType("FLOW"),
@@ -738,6 +780,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			spec.UpdateFlow(key, properties2)
 			pro.ProcessedName = pn
+			p.Instances[node.IdString()] = pro
 
 			p.scope = oldScope
 			return pro, err
@@ -767,6 +810,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		parent := node.Parent
 		pname := strings.Join(parent[1:], "_")
 		ty := p.structTypes[parent[0]][pname]
+
 		var properties map[string]ast.Node
 		switch ty {
 		case "STOCK":
@@ -775,9 +819,15 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				return node, err
 			}
 			spec.AddInstance(key, reference, ty)
-			properties, err = spec.FetchStock(key)
-			if err != nil {
-				return node, err
+
+			if len(node.Properties) > 0 {
+				properties = util.ExtractBranches(node.Properties)
+			} else {
+				properties, err = spec.FetchStock(key)
+				if err != nil {
+					return node, err
+				}
+
 			}
 
 			spec.Index("STOCK", key)
@@ -833,9 +883,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 
 			spec.AddInstance(key, reference, ty)
-			properties, err = spec.FetchFlow(key)
-			if err != nil {
-				return node, err
+			if len(node.Properties) > 0 {
+				properties = util.ExtractBranches(node.Properties)
+			} else {
+				properties, err = spec.FetchFlow(key)
+				if err != nil {
+					return node, err
+				}
 			}
 
 			spec.Index("FLOW", key)
@@ -1047,6 +1101,43 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	default:
 		return node, err
 	}
+}
+
+func (p *Processor) walkSwap(node *ast.InfixExpression) (ast.Node, error) {
+	left, err := p.swapNode(node.Left)
+	if err != nil {
+		return node, err
+	}
+
+	right, err := p.swapNode(node.Right)
+	if err != nil {
+		return node, err
+	}
+
+	node.Left = left.(ast.Expression)
+	node.Right = right.(ast.Expression)
+	return node, err
+}
+
+func (p *Processor) swapNode(node ast.Node) (ast.Node, error) {
+	var err error
+	if n, ok := node.(*ast.ParameterCall); ok {
+		if p.initialPass {
+			return n, err
+		}
+		if n.Value[0] == "this" {
+			return nil, fmt.Errorf("incorrect left side value %s", n.Value[0])
+		}
+
+		var rawid []string
+		rawid = p.buildIdContext(p.trail.CurrentSpec())
+
+		rawid = append(rawid, n.Value...)
+
+		n.ProcessedName = rawid
+		return n, err
+	}
+	return p.walk(node)
 }
 
 func alreadyNamed(n1 []string, n2 []string) bool {

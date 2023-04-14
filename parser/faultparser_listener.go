@@ -1,4 +1,4 @@
-// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
 
 package parser // FaultParser
 
@@ -16,6 +16,9 @@ type FaultParserListener interface {
 
 	// EnterGlobalDecl is called when entering the globalDecl production.
 	EnterGlobalDecl(c *GlobalDeclContext)
+
+	// EnterSwap is called when entering the swap production.
+	EnterSwap(c *SwapContext)
 
 	// EnterComponentDecl is called when entering the componentDecl production.
 	EnterComponentDecl(c *ComponentDeclContext)
@@ -185,11 +188,14 @@ type FaultParserListener interface {
 	// EnterRunBlock is called when entering the runBlock production.
 	EnterRunBlock(c *RunBlockContext)
 
-	// EnterRunStepExpr is called when entering the runStepExpr production.
-	EnterRunStepExpr(c *RunStepExprContext)
+	// EnterInitBlock is called when entering the initBlock production.
+	EnterInitBlock(c *InitBlockContext)
 
 	// EnterRunInit is called when entering the runInit production.
 	EnterRunInit(c *RunInitContext)
+
+	// EnterRunStepExpr is called when entering the runStepExpr production.
+	EnterRunStepExpr(c *RunStepExprContext)
 
 	// EnterRunExpr is called when entering the runExpr production.
 	EnterRunExpr(c *RunExprContext)
@@ -268,6 +274,9 @@ type FaultParserListener interface {
 
 	// ExitGlobalDecl is called when exiting the globalDecl production.
 	ExitGlobalDecl(c *GlobalDeclContext)
+
+	// ExitSwap is called when exiting the swap production.
+	ExitSwap(c *SwapContext)
 
 	// ExitComponentDecl is called when exiting the componentDecl production.
 	ExitComponentDecl(c *ComponentDeclContext)
@@ -437,11 +446,14 @@ type FaultParserListener interface {
 	// ExitRunBlock is called when exiting the runBlock production.
 	ExitRunBlock(c *RunBlockContext)
 
-	// ExitRunStepExpr is called when exiting the runStepExpr production.
-	ExitRunStepExpr(c *RunStepExprContext)
+	// ExitInitBlock is called when exiting the initBlock production.
+	ExitInitBlock(c *InitBlockContext)
 
 	// ExitRunInit is called when exiting the runInit production.
 	ExitRunInit(c *RunInitContext)
+
+	// ExitRunStepExpr is called when exiting the runStepExpr production.
+	ExitRunStepExpr(c *RunStepExprContext)
 
 	// ExitRunExpr is called when exiting the runExpr production.
 	ExitRunExpr(c *RunExprContext)

@@ -9,7 +9,6 @@ def fl2 = flow{
     },
 };
 
-for 2 run {
-    fl3 = new fl2;
+for 2 init{fl3 = new fl2;} run {
     fl3.fn;
 }

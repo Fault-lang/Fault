@@ -22,6 +22,7 @@ func (c *Compiler) updateVariableStateName(id []string) string {
 
 func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	name := strings.Join(id, "_")
+
 	var alloc *ir.InstAlloca
 	var store *ir.InstStore
 

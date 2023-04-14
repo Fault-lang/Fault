@@ -49,6 +49,7 @@ func (sr *SpecRecord) AddConstant(name string, v ast.Node) {
 }
 
 func (sr *SpecRecord) AddInstance(name string, v map[string]ast.Node, ty string) {
+
 	// When creating an instance of a struct need to deep copy the data
 	v2, err := deepcopy.Anything(v)
 

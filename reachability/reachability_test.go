@@ -226,7 +226,7 @@ func prepTestSys(test string) (bool, []string) {
 
 	l := listener.Execute(test, path, flags)
 	pre := preprocess.Execute(l)
-	ty := types.Execute(pre.Processed, pre.Specs)
+	ty := types.Execute(pre.Processed, pre)
 	tracer := NewTracer()
 	tracer.walk(ty.Checked)
 	return tracer.check()

@@ -149,7 +149,7 @@ func prepTest(test string, flags map[string]bool) *Visual {
 	var path string
 	l := listener.Execute(test, path, flags)
 	pre := preprocess.Execute(l)
-	ty := types.Execute(pre.Processed, pre.Specs)
+	ty := types.Execute(pre.Processed, pre)
 	vis := NewVisual(ty.Checked)
 	vis.Build()
 

@@ -15,8 +15,7 @@ def f = flow{
     },
 };
 
-for 3 run {
-    t = new f;
+for 3 init{t = new f;} run {
     if t.base.cond < 4 {
         t.change;
     }

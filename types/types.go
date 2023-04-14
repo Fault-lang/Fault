@@ -22,23 +22,27 @@ var COMPARE = map[string]bool{
 }
 
 type Checker struct {
-	SpecStructs map[string]*preprocess.SpecRecord
-	Constants   map[string]map[string]ast.Node
-	inStock     string
-	temps       map[string]*ast.Type
-	Checked     *ast.Spec
+	SpecStructs  map[string]*preprocess.SpecRecord
+	Constants    map[string]map[string]ast.Node
+	Instances    map[string]*ast.StructInstance
+	inStock      string
+	temps        map[string]*ast.Type
+	Checked      *ast.Spec
+	Preprocesser *preprocess.Processor
 }
 
-func NewTypeChecker(specs map[string]*preprocess.SpecRecord) *Checker {
+func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	return &Checker{
-		SpecStructs: specs,
-		Constants:   make(map[string]map[string]ast.Node),
-		temps:       make(map[string]*ast.Type),
+		SpecStructs:  Processer.Specs,
+		Instances:    Processer.Instances,
+		Constants:    make(map[string]map[string]ast.Node),
+		temps:        make(map[string]*ast.Type),
+		Preprocesser: Processer,
 	}
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord) *Checker {
-	ty := NewTypeChecker(specRec)
+func Execute(tree *ast.Spec, processor *preprocess.Processor) *Checker {
+	ty := NewTypeChecker(processor)
 	tree, err := ty.Check(tree)
 	if err != nil {
 		panic(err)
@@ -58,6 +62,10 @@ func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {
 	}
 
 	return a, err
+}
+
+func (c *Checker) Reference(n ast.Node) (ast.Node, error) {
+	return c.lookupReference(n)
 }
 
 func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
@@ -188,6 +196,25 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.ForStatement:
+		var st1 []ast.Statement
+		var st2 []ast.Statement
+		for _, v := range node.Inits.Statements {
+			tnode, err = c.typecheck(v)
+			if err != nil {
+				return node, err
+			}
+			st1 = append(st1, tnode.(ast.Statement))
+		}
+		node.Inits.Statements = st1
+
+		for _, v := range node.Body.Statements {
+			tnode, err = c.typecheck(v)
+			if err != nil {
+				return node, err
+			}
+			st2 = append(st2, tnode.(ast.Statement))
+		}
+		node.Body.Statements = st2
 		return node, err
 	case *ast.StartStatement:
 		return node, err
@@ -549,6 +576,10 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			}
 		}
 
+		if node.TokenLiteral() == "SWAP" {
+			return c.inferSwap(node)
+		}
+
 		var nl, nr ast.Node
 		if c.isValue(node.Right) {
 			nr, err = c.infer(node.Right)
@@ -782,6 +813,157 @@ func (c *Checker) inferUncertain(node *ast.Uncertain) []ast.Type {
 	}
 }
 
+func (c *Checker) inferSwap(node *ast.InfixExpression) (ast.Expression, error) {
+	var left, right ast.Node
+	var err error
+
+	left, err = c.inferSwapNode(node.Left)
+	if err != nil {
+		return node, err
+	}
+
+	right, err = c.inferSwapNode(node.Right)
+	if err != nil {
+		return node, err
+	}
+
+	if left.Type() != right.Type() {
+		return node, fmt.Errorf("cannot redeclare variable %s is type %s got %s", node.Left.String(), left.Type(), right.Type())
+	}
+
+	if c.InstanceOf(left) != c.InstanceOf(right) {
+		return node, fmt.Errorf("cannot redeclare variable %s is instance of %s got %s", node.Left.String(), c.InstanceOf(left), c.InstanceOf(right))
+	}
+
+	node.Left = left.(ast.Expression)
+	node.Right = right.(ast.Expression)
+
+	return node, err
+}
+
+func (c *Checker) inferSwapNode(node ast.Expression) (ast.Node, error) {
+	switch n := node.(type) {
+	case *ast.ParameterCall:
+		rawid := n.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		p, err := spec.FetchVar(rawid, ty)
+		if err != nil {
+			n.InferredType = &ast.Type{Type: ty,
+				Scope:      0,
+				Parameters: nil}
+			return n, nil
+		}
+
+		ref, err := c.lookupReference(p)
+		if err != nil {
+			return node, err
+		}
+		n.InferredType = &ast.Type{Type: ref.Type(),
+			Scope:      0,
+			Parameters: nil}
+		return n, nil
+
+	case *ast.Identifier:
+		rawid := n.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		if ty != "" {
+			n.InferredType = &ast.Type{Type: ty,
+				Scope:      0,
+				Parameters: nil}
+			return n, nil
+		}
+
+		ref, err := c.lookupReference(n)
+		if err != nil {
+			return node, err
+		}
+		n.InferredType = &ast.Type{Type: ref.Type(),
+			Scope:      0,
+			Parameters: nil}
+		return n, nil
+
+	default:
+		return c.lookupReference(node)
+	}
+}
+
+func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, error) {
+	var swaps []ast.Node
+	for _, s := range base.Swaps {
+		n, err := c.typecheck(s)
+		if err != nil {
+			return base, err
+		}
+		swaps = append(swaps, n)
+		// infix := n.(*ast.InfixExpression)
+		// rawid := infix.Left.(ast.Nameable).RawId()
+		// key := rawid[len(rawid)-1]
+		// val, err := c.lookupReference(infix.Right)
+		// if err != nil {
+		// 	return base, err
+		// }
+
+		// // Because part of what we're doing here is renaming
+		// // these nodes. We need to do a deep copy to separate
+		// // the swapped nodes from their original reference values
+		// copyVal, err := deepcopy.Anything(val)
+		// if err != nil {
+		// 	return base, err
+		// }
+
+		// val = copyVal.(ast.Node)
+
+		// switch v := val.(type) {
+		// case *ast.StructInstance:
+		// 	v.Name = key
+		// 	val = v
+		// }
+
+		// base.Properties[key].Value = val
+		// base = c.swapDeepNames(base)
+
+	}
+	base.Swaps = swaps
+	return base, nil
+}
+
+func (c *Checker) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
+	rawid := val.RawId()
+	node, err := c.Preprocesser.Partial(rawid[0], val)
+	if err != nil {
+		panic(fmt.Sprintf("failed to update process ids on swap %s", val.String()))
+	}
+	return node.(*ast.StructInstance)
+}
+
+func (c *Checker) InstanceOf(node ast.Node) string {
+	switch n := node.(type) {
+	case *ast.StructInstance:
+		return strings.Join(n.Parent, ".")
+
+	case *ast.ParameterCall:
+		key := n.IdString()
+		value, ok := c.Instances[key]
+		if !ok {
+			return ""
+		}
+
+		return strings.Join(value.Parent, ".")
+	case *ast.Identifier:
+		key := n.IdString()
+		value, ok := c.Instances[key]
+		if !ok {
+			return ""
+		}
+
+		return strings.Join(value.Parent, ".")
+	default:
+		return ""
+	}
+}
+
 func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 	switch b := base.(type) {
 	case *ast.ParameterCall:
@@ -792,6 +974,10 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if p == nil {
+			id := b.Id()
+			return c.lookupStruct(id, ty)
+		}
 		return c.lookupReference(p)
 	case *ast.Identifier:
 		// Check to see if this variable is referencing
@@ -800,6 +986,12 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		spec := c.SpecStructs[rawid[0]]
 		ty, _ := spec.GetStructType(rawid)
 		p, err := spec.FetchVar(rawid, ty)
+
+		if p == nil {
+			id := b.Id()
+			return c.lookupStruct(id, ty)
+		}
+
 		if _, ok := p.(*ast.Identifier); !ok {
 			return c.infer(p)
 		}
@@ -818,6 +1010,17 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 			return c.inferFunction(base.(ast.Expression))
 		}
 	}
+}
+
+func (c *Checker) lookupStruct(id []string, ty string) (*ast.StructInstance, error) {
+	spec := c.SpecStructs[id[0]]
+	prop, err := spec.Fetch(id[1], ty)
+	if err != nil {
+		return nil, err
+	}
+	st := c.Instances[strings.Join(id, "_")]
+	st.Properties = util.WrapBranches(prop)
+	return st, err
 }
 
 func (c *Checker) lookupCallType(base ast.Node) (*ast.Type, error) {
@@ -874,8 +1077,18 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 		v.Value = b
 		ret[k] = v
 	}
+
 	base.Properties = ret
-	return base, err
+	rawid = base.RawId()
+	swappedBase, err := c.swapValues(base)
+	if err != nil {
+		return base, err
+	}
+	spec := c.SpecStructs[rawid[0]]
+	prop := util.ExtractBranches(swappedBase.Properties)
+	spec.Update(base.RawId(), prop)
+
+	return swappedBase, err
 }
 
 func (c *Checker) calculateBase(s string) int32 {

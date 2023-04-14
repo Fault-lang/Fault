@@ -232,6 +232,19 @@ func ExtractBranches(b map[string]*ast.StructProperty) map[string]ast.Node {
 	return ret
 }
 
+func WrapBranches(b map[string]ast.Node) map[string]*ast.StructProperty {
+	ret := make(map[string]*ast.StructProperty)
+	for k, v := range b {
+		rawid := v.(ast.Nameable).RawId()
+		ret[k] = &ast.StructProperty{Value: v}
+		ret[k].ProcessedName = rawid
+		ret[k].SetType(&ast.Type{Type: v.Type()})
+		ret[k].Spec = rawid[0]
+		ret[k].Name = k
+	}
+	return ret
+}
+
 func CaptureState(id string) (string, bool, bool) {
 	var a, c bool
 	raw := strings.Split(id, "_")
