@@ -166,6 +166,8 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 		val = copyVal.(ast.Node)
 
 		switch v := val.(type) {
+		default:
+			panic(fmt.Sprintf("invalid syntax cannot assign new value to %s", infix.Left.(ast.Nameable).IdString()))
 		case *ast.ParameterCall, *ast.Identifier:
 			c.Alias[infix.Left.(ast.Nameable).IdString()] = infix.Right.(ast.Nameable).IdString()
 		case *ast.StructInstance:

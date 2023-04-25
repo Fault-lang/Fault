@@ -105,7 +105,6 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-
 func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) *Compiler {
 	compiler := NewCompiler()
 	compiler.LoadMeta(specRec, uncertains, unknowns, aliases, testing)
@@ -646,6 +645,7 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 		c.compileInstance(v)
 
 	case *ast.IndexExpression:
+		c.compileIndex(v)
 
 	case *ast.ParameterCall:
 		return c.compileParameterCall(v)
@@ -683,6 +683,18 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 		panic(fmt.Sprintf("invalid expression %T in function body. line: %d, col:%d", node, pos[0], pos[1]))
 	}
 	return nil
+}
+
+func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
+	var value value.Value
+	if node.Left.Type() == "BOOLEAN" {
+		value = constant.NewBool(false)
+	} else {
+		value = constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	}
+	c.setConst(node.RawId(), value)
+	c.globalVariable(node.Id(), value, node.Position())
+	return c.lookupIdent(node.Id(), node.Position())
 }
 
 func (c *Compiler) compilePrefix(node *ast.PrefixExpression) value.Value {

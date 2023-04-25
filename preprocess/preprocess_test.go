@@ -273,7 +273,6 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow property value not correctly named in runblock got=%s", buzz.Properties["foo"].Value.(ast.Nameable).IdString())
 	}
 
-
 	run := process.Processed.Statements[3].(*ast.ForStatement).Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
 
 	for k, v := range run.Properties {
@@ -463,12 +462,12 @@ func TestAsserts(t *testing.T) {
 	}
 
 	str3a := str3p1.Right.(ast.Nameable).RawId()
-	if len(str3a) != 3 || str3a[0] != "test1" || str3a[1] != "foo" || str3a[2] != "y" {
+	if len(str3a) != 4 || str3a[0] != "test1" || str3a[1] != "foo" || str3a[2] != "y" {
 		t.Fatalf("assumption var name 4 not correct got=%s", str3a)
 	}
 
 	str4 := str3p2.Left.(ast.Nameable).RawId()
-	if len(str4) != 3 || str4[0] != "test1" || str4[1] != "foo" || str4[2] != "y" {
+	if len(str4) != 4 || str4[0] != "test1" || str4[1] != "foo" || str4[2] != "y" {
 		t.Fatalf("assumption var name 5 not correct got=%s", str4)
 	}
 
@@ -584,6 +583,39 @@ func TestCollapseElse(t *testing.T) {
 	}
 }
 
+func TestIndexId(t *testing.T) {
+	test := `spec test1;
+	def a = stock{
+		foo: 2,
+	};
+
+	def b = flow{
+		blob: new a,
+		bar: func{
+			blob[3];
+		},
+	};
+	`
+	process := prepTest(test, true)
+	tree := process.Processed
+	spec := tree.Statements
+
+	fl, ok := spec[2].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("statement not a struct definition got=%T", spec[2])
+	}
+
+	for k, v := range fl.Value.(*ast.FlowLiteral).Pairs {
+		if k.Value == "bar" {
+			rawid := v.(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IndexExpression).IdString()
+			if rawid != "test1_b_blob_3" {
+				t.Fatalf("index expression misnamed got=%s", rawid)
+			}
+			break
+		}
+	}
+}
+
 func TestCondCollapse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
@@ -667,17 +699,6 @@ func TestCondCollapse(t *testing.T) {
 	if cond4.Right.(*ast.IntegerLiteral).Value != 4 {
 		t.Fatalf("collapsed multicond wrong right value got=%s", cond4.Right)
 	}
-
-	// if a == 2 && a != 0{
-	// 		3;
-	// }elif a !=5 {
-	// 	true;
-	// 	}elif a == 2 && a < 1 && a >= 2{
-	// 		true;
-	// }elif a > 4 {
-	// 		false;
-	// };
-
 }
 
 func TestInstanceFlatten(t *testing.T) {

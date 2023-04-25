@@ -517,7 +517,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 		node.Left = l.(ast.Expression)
-		node.ProcessedName = l.(ast.Nameable).RawId()
+		rawid := l.(ast.Nameable).RawId()
+		rawid = append(rawid, node.Index.String())
+		node.ProcessedName = rawid
 		return node, err
 
 	case *ast.PrefixExpression:

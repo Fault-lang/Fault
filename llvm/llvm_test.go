@@ -683,9 +683,45 @@ func TestComponentIR(t *testing.T) {
 
 }
 
-// init values
-// clock
-// index
+func TestIndexExp(t *testing.T) {
+	test := `spec test1;
+			
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					buzz.a = buzz.a[1] - 2;  
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+			};
+
+			for 1 init{test = new foo;} run{
+				test.fizz;
+			};
+	`
+
+	expecting := ``
+
+	llvm, err := prepTest(test, true)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
 
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {
