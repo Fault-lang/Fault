@@ -702,7 +702,26 @@ func TestIndexExp(t *testing.T) {
 			};
 	`
 
-	expecting := ``
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753
+	
+	define void @__run() {
+	block-27:
+		store i16 0, i16* @__rounds
+		%test1_test_buzz_a = alloca double
+		store double 10.0, double* %test1_test_buzz_a
+		call void @test1_test_fizz(double* %test1_test_buzz_a), !\37f977975ebdfc28b778ed4618a0af327 !DIBasicType(tag: DW_TAG_string_type)
+		ret void
+	}
+	
+	define void @test1_test_fizz(double* %test1_test_buzz_a) {
+	block-28:
+		%0 = load double, double* @test1_test_buzz_a_1
+		%1 = fsub double %0, 2.0
+		store double %1, double* %test1_test_buzz_a
+		ret void
+	}`
 
 	llvm, err := prepTest(test, true)
 

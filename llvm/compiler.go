@@ -386,6 +386,8 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 		return c.compileThis(v)
 	case *ast.BuiltIn:
 		return c.compileFunction(v)
+	case *ast.IndexExpression:
+		return c.compileIndex(v)
 	default:
 		pos := v.Position()
 		panic(fmt.Sprintf("unknown value type %T line: %d col: %d", v, pos[0], pos[1]))
