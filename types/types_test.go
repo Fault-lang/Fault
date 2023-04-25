@@ -987,6 +987,20 @@ func TestSwapError3(t *testing.T) {
 	}
 }
 
+func TestIndexError(t *testing.T) {
+	test := `spec test;
+	const a = 10;
+	assert a[2];
+	`
+
+	_, err := prepTest(test, true)
+
+	actual := "variable a is a constant cannot access by index"
+
+	if err == nil || err.Error() != actual {
+		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+}
 
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)

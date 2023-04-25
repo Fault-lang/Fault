@@ -23,7 +23,6 @@ var COMPARE = map[string]bool{
 
 type Checker struct {
 	SpecStructs  map[string]*preprocess.SpecRecord
-	Constants    map[string]map[string]ast.Node
 	Instances    map[string]*ast.StructInstance
 	inStock      string
 	temps        map[string]*ast.Type
@@ -35,7 +34,6 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	return &Checker{
 		SpecStructs:  Processer.Specs,
 		Instances:    Processer.Instances,
-		Constants:    make(map[string]map[string]ast.Node),
 		temps:        make(map[string]*ast.Type),
 		Preprocesser: Processer,
 	}
@@ -358,6 +356,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.ComponentLiteral:
 		return true
+	case *ast.IndexExpression:
+		return true
 	default:
 		return false
 	}
@@ -461,6 +461,20 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 		}
 		return node, nil
 	case *ast.IndexExpression:
+		rawid := node.Left.(ast.Nameable).RawId()
+		spec := c.SpecStructs[rawid[0]]
+		con, _ := spec.FetchConstant(rawid[1])
+		if con != nil {
+			return nil, fmt.Errorf("variable %s is a constant cannot access by index", node.Left.String())
+		}
+
+		if node.InferredType == nil {
+			t, err := c.LookupType(node.Left)
+			if err != nil {
+				return nil, err
+			}
+			node.InferredType = t
+		}
 		return node, nil
 	case *ast.ComponentLiteral:
 		if node.InferredType == nil {
@@ -770,8 +784,6 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		node.InferredType = node.Consequence.InferredType // This is probably an incorrect approach. Need to think about it.
 		return node, err
 
-	case *ast.IndexExpression:
-		return node, err
 	case *ast.PrefixExpression:
 		var nr ast.Node
 		if c.isValue(node.Right) {
@@ -997,7 +1009,6 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		}
 
 		// Assume it's referencing a constant then
-		spec = c.SpecStructs[b.Spec]
 		n, _ := spec.FetchConstant(b.Value)
 		if n != nil {
 			return n, err
