@@ -418,66 +418,6 @@ func TestNegate(t *testing.T) {
 	}
 }
 
-func TestEval(t *testing.T) {
-	tests := []*ast.InfixExpression{{
-		Left:  &ast.IntegerLiteral{Value: 2},
-		Right: &ast.IntegerLiteral{Value: 2},
-	},
-		{
-			Left:  &ast.FloatLiteral{Value: 2.5},
-			Right: &ast.IntegerLiteral{Value: 2},
-		},
-		{
-			Left:     &ast.IntegerLiteral{Value: 2},
-			Operator: "+",
-			Right:    &ast.FloatLiteral{Value: 2.5},
-		}}
-
-	operators := []string{"+", "-", "/", "*"}
-
-	results := []ast.Node{
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.IntegerLiteral{Value: 0},
-		&ast.FloatLiteral{Value: .5},
-		&ast.FloatLiteral{Value: -.5},
-		&ast.FloatLiteral{Value: 1},
-		&ast.FloatLiteral{Value: 1.25},
-		&ast.FloatLiteral{Value: .8},
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 5},
-		&ast.FloatLiteral{Value: 5},
-	}
-
-	i := 0
-	for _, o := range operators {
-		for _, n := range tests {
-			n.Operator = o
-			test := evaluate(n)
-			switch actual := test.(type) {
-			case *ast.IntegerLiteral:
-				expected, ok := results[i].(*ast.IntegerLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			case *ast.FloatLiteral:
-				expected, ok := results[i].(*ast.FloatLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			}
-			i++
-		}
-	}
-}
-
 func TestIsVarSet(t *testing.T) {
 	c := NewCompiler()
 	c.specStructs["test"] = preprocess.NewSpecRecord()

@@ -156,6 +156,56 @@ func (p *Processor) attachElif(n *ast.IfExpression, el *ast.IfExpression) *ast.I
 	return n
 }
 
+func (p *Processor) formatIndex(n *ast.InfixExpression) string {
+	_, okR := n.Right.(*ast.Clock)
+	_, okL := n.Left.(*ast.Clock)
+
+	if okR && n.Operator == "-" {
+		panic("negative indexes not possible")
+	}
+
+	if (okR || okL) && n.Operator == "+" {
+		panic("index out of range")
+	}
+
+	if (okR || okL) && n.Operator == "*" {
+		panic("index out of range")
+	}
+
+	// If left and right are numeric it will evaluate
+	// and return new node, otherwise just returns the
+	// same node
+	val := util.Evaluate(n)
+	if _, okF := val.(*ast.FloatLiteral); okF {
+		panic("index must be a whole number")
+	}
+
+	if _, ok := val.(*ast.InfixExpression); !ok {
+		return val.String()
+	}
+
+	var left, right string
+	inf := val.(*ast.InfixExpression)
+	switch l := inf.Left.(type) {
+	case *ast.IntegerLiteral:
+		left = l.String()
+	case *ast.Clock:
+		left = l.String()
+	case ast.Nameable:
+		left = l.IdString()
+	}
+
+	switch r := inf.Right.(type) {
+	case *ast.IntegerLiteral:
+		right = r.String()
+	case *ast.Clock:
+		right = r.String()
+	case ast.Nameable:
+		right = r.IdString()
+	}
+	return fmt.Sprintf("(%s %s %s)", left, inf.Operator, right)
+}
+
 func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 	var err error
 	var pro ast.Node
@@ -517,8 +567,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 		node.Left = l.(ast.Expression)
-		rawid := l.(ast.Nameable).RawId()
-		rawid = append(rawid, node.Index.String())
+		var rawid []string
+		switch ex := node.Index.(type) {
+		case *ast.InfixExpression:
+			rawid = node.Left.(ast.Nameable).RawId()
+			idx := p.formatIndex(ex)
+			rawid = append(rawid, idx)
+		case *ast.IntegerLiteral:
+			rawid = node.Left.(ast.Nameable).RawId()
+			rawid = append(rawid, node.Index.String())
+		default:
+			panic("unsupported syntax for index")
+		}
 		node.ProcessedName = rawid
 		return node, err
 

@@ -518,8 +518,8 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	var err error
 	id := c.AliasToBaseRaw(pc.RawId())
 	spec := c.specStructs[id[0]]
-	ty, _ := spec.GetStructType(id[0:2]) //Removing the key
-	st := id[len(id)-2]                  //The struct is the second to last item
+	ty, _ := spec.GetStructType(id)          //Removing the key
+	st := strings.Join(id[1:len(id)-1], "_") //The struct
 	key := id[len(id)-1]
 
 	var branches map[string]ast.Node
@@ -1591,7 +1591,7 @@ func negate(e ast.Expression) ast.Expression {
 		n.Left = negate(n.Left)
 		n.Right = negate(n.Right)
 
-		node := evaluate(n) // If Int/Float, evaluate and return the value
+		node := util.Evaluate(n) // If Int/Float, evaluate and return the value
 		return node
 	case *ast.Boolean:
 		if n.Value {
@@ -1622,91 +1622,6 @@ func negateTemporal(op string, n int) (string, int) {
 		n2 = n - 1
 	}
 	return op2, n2
-}
-
-func evaluate(n *ast.InfixExpression) ast.Expression {
-	if util.IsCompare(n.Operator) {
-		return n
-	}
-	f1, ok1 := n.Left.(*ast.FloatLiteral)
-	i1, ok2 := n.Left.(*ast.IntegerLiteral)
-
-	if !ok1 && !ok2 {
-		return n
-	}
-
-	f2, ok1 := n.Right.(*ast.FloatLiteral)
-	i2, ok2 := n.Right.(*ast.IntegerLiteral)
-
-	if !ok1 && !ok2 {
-		return n
-	}
-
-	if f1 != nil {
-		if f2 != nil {
-			v := evalFloat(f1.Value, f2.Value, n.Operator)
-			return &ast.FloatLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		} else {
-			v := evalFloat(f1.Value, float64(i2.Value), n.Operator)
-			return &ast.FloatLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		}
-	} else {
-		if f2 != nil {
-			v := evalFloat(float64(i1.Value), f2.Value, n.Operator)
-			return &ast.FloatLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		} else {
-			if n.Operator == "/" {
-				//Return a float in the case of division
-				v := evalFloat(float64(i1.Value), float64(i2.Value), n.Operator)
-				return &ast.FloatLiteral{
-					Token: n.Token,
-					Value: v,
-				}
-			}
-			v := evalInt(i1.Value, i2.Value, n.Operator)
-			return &ast.IntegerLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		}
-	}
-}
-
-func evalFloat(f1 float64, f2 float64, op string) float64 {
-	switch op {
-	case "+":
-		return f1 + f2
-	case "-":
-		return f1 - f2
-	case "*":
-		return f1 * f2
-	case "/":
-		return f1 / f2
-	default:
-		panic(fmt.Sprintf("unsupported operator %s", op))
-	}
-}
-
-func evalInt(i1 int64, i2 int64, op string) int64 {
-	switch op {
-	case "+":
-		return i1 + i2
-	case "-":
-		return i1 - i2
-	case "*":
-		return i1 * i2
-	default:
-		panic(fmt.Sprintf("unsupported operator %s", op))
-	}
 }
 
 func (c *Compiler) GetIR() string {

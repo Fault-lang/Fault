@@ -222,7 +222,7 @@ func (g *Generator) newConstants(globals []*ir.Global) []string {
 	r := []string{}
 	for _, gl := range globals {
 		id := g.variables.FormatIdent(gl.GlobalIdent.Ident())
-		if !g.variables.IsIndexed(id) {
+		if !g.variables.IsIndexed(id) && !g.variables.IsClocked(id) {
 			r = append(r, g.constantRule(id, gl.Init))
 		}
 	}
@@ -723,8 +723,8 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	state := g.variables.Loads[refname]
 	newState := state.Ident()
 	base := newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
-	n := g.variables.SSA[base]
-	prev := fmt.Sprintf("%s_%d", base, n)
+	n := g.variables.GetSSANum(base)
+	prev := g.variables.GetSSA(base)
 	if !g.inPhiState.Check() {
 		g.variables.NewPhi(base, n+1)
 	} else {
@@ -744,7 +744,7 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	}
 
 	base2 := g.currentFunction[1 : len(g.currentFunction)-7]
-	n2 := g.variables.SSA[base2]
+	n2 := g.variables.GetSSANum(base2)
 	prev2 := fmt.Sprintf("%s_%d", base2, n2)
 	if !g.inPhiState.Check() {
 		g.variables.NewPhi(base2, n2+1)
@@ -974,7 +974,7 @@ func (g *Generator) fetchIdent(id string, r rules.Rule) rules.Rule {
 	if g.variables.IsTemp(id) {
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
 		if v, ok := g.variables.Loads[refname]; ok {
-			n := g.variables.SSA[id]
+			n := g.variables.GetSSANum(id)
 			if !g.inPhiState.Check() {
 				g.variables.NewPhi(id, n+1)
 			} else {
@@ -1280,7 +1280,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
 		if val, ok := g.variables.Loads[refname]; ok {
 			ty := g.variables.LookupType(refname, val)
-			n := g.variables.SSA[base]
+			n := g.variables.GetSSANum(base)
 			prev := fmt.Sprintf("%s_%d", base, n)
 			if !g.inPhiState.Check() {
 				g.variables.NewPhi(base, n+1)
@@ -1301,7 +1301,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 			case *rules.Infix:
 				r.X = g.tempToIdent(r.X)
 				r.Y = g.tempToIdent(r.Y)
-				n := g.variables.SSA[base]
+				n := g.variables.GetSSANum(base)
 				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
 					g.variables.NewPhi(base, n+1)
@@ -1320,7 +1320,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 					ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r})
 				}
 			default:
-				n := g.variables.SSA[base]
+				n := g.variables.GetSSANum(base)
 				prev := fmt.Sprintf("%s_%d", base, n)
 				if !g.inPhiState.Check() {
 					g.variables.NewPhi(base, n+1)
@@ -1339,7 +1339,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 		}
 	} else {
 		ty := g.variables.LookupType(base, inst.Src)
-		n := g.variables.SSA[base]
+		n := g.variables.GetSSANum(base)
 		prev := fmt.Sprintf("%s_%d", base, n)
 		if !g.inPhiState.Check() {
 			g.variables.NewPhi(base, n+1)
