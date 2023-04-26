@@ -63,6 +63,15 @@ func (vd *VarData) IsBoolean(id string) bool {
 	return false
 }
 
+func (vd *VarData) IsIndexed(id string) bool {
+	rawid := strings.Split(id, "_")
+	_, err := strconv.Atoi(rawid[len(rawid)-1])
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func (vd *VarData) ConvertIdent(f string, val string) string {
 	if vd.IsTemp(val) {
 		refname := fmt.Sprintf("%s-%s", f, val)
@@ -155,6 +164,10 @@ func (vd *VarData) FormatValue(val value.Value) string {
 }
 
 func (vd *VarData) GetSSA(id string) string {
+	if vd.IsIndexed(id) {
+		return id
+	}
+
 	if _, ok := vd.SSA[id]; ok {
 		return fmt.Sprint(id, "_", vd.SSA[id])
 	} else {
@@ -164,6 +177,10 @@ func (vd *VarData) GetSSA(id string) string {
 }
 
 func (vd *VarData) AdvanceSSA(id string) string {
+	if vd.IsIndexed(id) {
+		return id
+	}
+
 	if i, ok := vd.SSA[id]; ok {
 		vd.SSA[id] = i + 1
 		return fmt.Sprint(id, "_", vd.SSA[id])

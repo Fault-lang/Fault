@@ -222,7 +222,9 @@ func (g *Generator) newConstants(globals []*ir.Global) []string {
 	r := []string{}
 	for _, gl := range globals {
 		id := g.variables.FormatIdent(gl.GlobalIdent.Ident())
-		r = append(r, g.constantRule(id, gl.Init))
+		if !g.variables.IsIndexed(id) {
+			r = append(r, g.constantRule(id, gl.Init))
+		}
 	}
 	return r
 }
