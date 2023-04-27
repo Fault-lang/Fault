@@ -175,6 +175,100 @@ func TestFilepath(t *testing.T) {
 	os.Setenv("FAULT_HOST", host)
 }
 
+func TestEval(t *testing.T) {
+	tests := []*ast.InfixExpression{{
+		Left:  &ast.IntegerLiteral{Value: 2},
+		Right: &ast.IntegerLiteral{Value: 2},
+	},
+		{
+			Left:  &ast.FloatLiteral{Value: 2.5},
+			Right: &ast.IntegerLiteral{Value: 2},
+		},
+		{
+			Left:     &ast.IntegerLiteral{Value: 2},
+			Operator: "+",
+			Right:    &ast.FloatLiteral{Value: 2.5},
+		}}
+
+	operators := []string{"+", "-", "/", "*"}
+
+	results := []ast.Node{
+		&ast.IntegerLiteral{Value: 4},
+		&ast.FloatLiteral{Value: 4.5},
+		&ast.FloatLiteral{Value: 4.5},
+		&ast.IntegerLiteral{Value: 0},
+		&ast.FloatLiteral{Value: .5},
+		&ast.FloatLiteral{Value: -.5},
+		&ast.FloatLiteral{Value: 1},
+		&ast.FloatLiteral{Value: 1.25},
+		&ast.FloatLiteral{Value: .8},
+		&ast.IntegerLiteral{Value: 4},
+		&ast.FloatLiteral{Value: 5},
+		&ast.FloatLiteral{Value: 5},
+	}
+
+	i := 0
+	for _, o := range operators {
+		for _, n := range tests {
+			n.Operator = o
+			test := Evaluate(n)
+			switch actual := test.(type) {
+			case *ast.IntegerLiteral:
+				expected, ok := results[i].(*ast.IntegerLiteral)
+				if !ok {
+					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+				}
+				if expected.Value != actual.Value {
+					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+				}
+			case *ast.FloatLiteral:
+				expected, ok := results[i].(*ast.FloatLiteral)
+				if !ok {
+					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+				}
+				if expected.Value != actual.Value {
+					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+				}
+			}
+			i++
+		}
+	}
+}
+
+func TestEvalFloat(t *testing.T) {
+	test1 := evalFloat(2.1, 1.5, "+")
+	if test1 != 3.6 {
+		t.Fatal("evalFloat failed to eval + correctly")
+	}
+	test2 := evalFloat(2.5, 1.5, "-")
+	if test2 != 1 {
+		t.Fatal("evalFloat failed to eval - correctly")
+	}
+	test3 := evalFloat(2.1, 1.0, "*")
+	if test3 != 2.1 {
+		t.Fatal("evalFloat failed to eval * correctly")
+	}
+	test4 := evalFloat(2.0, 2.0, "/")
+	if test4 != 1.0 {
+		t.Fatal("evalFloat failed to eval / correctly")
+	}
+}
+
+func TestEvalInt(t *testing.T) {
+	test1 := evalInt(2, 1, "+")
+	if test1 != 3 {
+		t.Fatal("evalInt failed to eval + correctly")
+	}
+	test2 := evalInt(2, 1, "-")
+	if test2 != 1 {
+		t.Fatal("evalInt failed to eval - correctly")
+	}
+	test3 := evalInt(2, 1, "*")
+	if test3 != 2 {
+		t.Fatal("evalInt failed to eval * correctly")
+	}
+}
+
 func TestCartesian(t *testing.T) {
 	list1 := []string{"a", "b", "c"}
 	list2 := []string{"1", "2"}

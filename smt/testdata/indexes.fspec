@@ -1,0 +1,18 @@
+spec indexes;
+
+def foo = stock{
+    a: 10,
+};
+
+def bar = flow{
+    bash: new foo,
+    fizz: func{
+        bash.a <- bash.a[0] - 2;
+    },
+};
+
+for 2 init{
+    gee = new bar;
+}run{
+    gee.fizz;
+};

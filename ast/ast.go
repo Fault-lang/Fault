@@ -442,7 +442,9 @@ func (i *Identifier) operandNode()         {}
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) Position() []int      { return i.Token.GetPosition() }
-func (i *Identifier) String() string       { return i.Value }
+func (i *Identifier) String() string {
+	return i.Value
+}
 func (i *Identifier) Type() string {
 	t := i.InferredType
 	if t != nil {
@@ -1094,7 +1096,7 @@ type Clock struct {
 func (c *Clock) expressionNode()      {}
 func (c *Clock) TokenLiteral() string { return c.Token.Literal }
 func (c *Clock) Position() []int      { return c.Token.GetPosition() }
-func (c *Clock) String() string       { return c.Token.Literal }
+func (c *Clock) String() string       { return "now" }
 func (c *Clock) Type() string {
 	t := c.InferredType
 	if t != nil {

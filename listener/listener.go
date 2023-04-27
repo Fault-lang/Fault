@@ -820,7 +820,6 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	l.push(inst)
 }
 
-
 func (l *FaultListener) ExitRunSwap(c *parser.SwapContext) {
 	token := util.GenerateToken("SWAP", "SWAP", c.GetStart(), c.GetStop())
 
@@ -1384,6 +1383,13 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		}
 	case *ast.InvariantClause:
 		con = e
+	case *ast.IndexExpression:
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
 	}
 
 	l.push(&ast.AssertionStatement{

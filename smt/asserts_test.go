@@ -401,3 +401,43 @@ func TestSpecificStateAssume(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 }
+
+func TestIndexes(t *testing.T) {
+	test := `spec indexes;
+
+	def foo = stock{
+		a: 10,
+	};
+	
+	def bar = flow{
+		bash: new foo,
+		fizz: func{
+			bash.a <- 2;
+		},
+	};
+	
+	assert foo.a[1] == 8;
+	
+	for 2 init{
+		gee = new bar;
+	}run{
+		gee.fizz;
+	};`
+
+	expecting := `(set-logic QF_NRA)
+	(declare-fun indexes_gee_bash_a_0 () Real)
+	(declare-fun indexes_gee_bash_a_1 () Real)
+	(declare-fun indexes_gee_bash_a_2 () Real)
+	(assert (= indexes_gee_bash_a_0 10.0))
+	(assert (= indexes_gee_bash_a_1 (+ indexes_gee_bash_a_0 2.0)))
+	(assert (= indexes_gee_bash_a_2 (+ indexes_gee_bash_a_1 2.0)))
+	(assert (not (= indexes_gee_bash_a_1 8)))`
+
+	smt := prepTest("", test, true, false)
+
+	err := compareResults("SpecificStateAssume", smt, expecting)
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}

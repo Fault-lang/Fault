@@ -418,66 +418,6 @@ func TestNegate(t *testing.T) {
 	}
 }
 
-func TestEval(t *testing.T) {
-	tests := []*ast.InfixExpression{{
-		Left:  &ast.IntegerLiteral{Value: 2},
-		Right: &ast.IntegerLiteral{Value: 2},
-	},
-		{
-			Left:  &ast.FloatLiteral{Value: 2.5},
-			Right: &ast.IntegerLiteral{Value: 2},
-		},
-		{
-			Left:     &ast.IntegerLiteral{Value: 2},
-			Operator: "+",
-			Right:    &ast.FloatLiteral{Value: 2.5},
-		}}
-
-	operators := []string{"+", "-", "/", "*"}
-
-	results := []ast.Node{
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.IntegerLiteral{Value: 0},
-		&ast.FloatLiteral{Value: .5},
-		&ast.FloatLiteral{Value: -.5},
-		&ast.FloatLiteral{Value: 1},
-		&ast.FloatLiteral{Value: 1.25},
-		&ast.FloatLiteral{Value: .8},
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 5},
-		&ast.FloatLiteral{Value: 5},
-	}
-
-	i := 0
-	for _, o := range operators {
-		for _, n := range tests {
-			n.Operator = o
-			test := evaluate(n)
-			switch actual := test.(type) {
-			case *ast.IntegerLiteral:
-				expected, ok := results[i].(*ast.IntegerLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			case *ast.FloatLiteral:
-				expected, ok := results[i].(*ast.FloatLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			}
-			i++
-		}
-	}
-}
-
 func TestIsVarSet(t *testing.T) {
 	c := NewCompiler()
 	c.specStructs["test"] = preprocess.NewSpecRecord()
@@ -683,9 +623,64 @@ func TestComponentIR(t *testing.T) {
 
 }
 
-// init values
-// clock
-// index
+func TestIndexExp(t *testing.T) {
+	test := `spec test1;
+			
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					buzz.a = buzz.a[1] - 2;  
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+			};
+
+			for 1 init{test = new foo;} run{
+				test.fizz;
+			};
+	`
+
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753
+	
+	define void @__run() {
+	block-27:
+		store i16 0, i16* @__rounds
+		%test1_test_buzz_a = alloca double
+		store double 10.0, double* %test1_test_buzz_a
+		call void @test1_test_fizz(double* %test1_test_buzz_a), !\37f977975ebdfc28b778ed4618a0af327 !DIBasicType(tag: DW_TAG_string_type)
+		ret void
+	}
+	
+	define void @test1_test_fizz(double* %test1_test_buzz_a) {
+	block-28:
+		%0 = load double, double* @test1_test_buzz_a_1
+		%1 = fsub double %0, 2.0
+		store double %1, double* %test1_test_buzz_a
+		ret void
+	}`
+
+	llvm, err := prepTest(test, true)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
 
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {

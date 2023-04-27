@@ -21,40 +21,6 @@ func TestNegateTemporal(t *testing.T) {
 	}
 }
 
-func TestEvalFloat(t *testing.T) {
-	test1 := evalFloat(2.1, 1.5, "+")
-	if test1 != 3.6 {
-		t.Fatal("evalFloat failed to eval + correctly")
-	}
-	test2 := evalFloat(2.5, 1.5, "-")
-	if test2 != 1 {
-		t.Fatal("evalFloat failed to eval - correctly")
-	}
-	test3 := evalFloat(2.1, 1.0, "*")
-	if test3 != 2.1 {
-		t.Fatal("evalFloat failed to eval * correctly")
-	}
-	test4 := evalFloat(2.0, 2.0, "/")
-	if test4 != 1.0 {
-		t.Fatal("evalFloat failed to eval / correctly")
-	}
-}
-
-func TestEvalInt(t *testing.T) {
-	test1 := evalInt(2, 1, "+")
-	if test1 != 3 {
-		t.Fatal("evalInt failed to eval + correctly")
-	}
-	test2 := evalInt(2, 1, "-")
-	if test2 != 1 {
-		t.Fatal("evalInt failed to eval - correctly")
-	}
-	test3 := evalInt(2, 1, "*")
-	if test3 != 2 {
-		t.Fatal("evalInt failed to eval * correctly")
-	}
-}
-
 func TestValidOperator(t *testing.T) {
 	c := NewCompiler()
 	boolTy := &ast.Type{Type: "BOOL"}

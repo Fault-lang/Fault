@@ -1,0 +1,7 @@
+(set-logic QF_NRA)
+(declare-fun indexes_gee_bash_a_0 () Real)
+(declare-fun indexes_gee_bash_a_1 ()Real)
+(declare-fun indexes_gee_bash_a_2 ()Real)
+(assert(= indexes_gee_bash_a_0 10.0))
+(assert (= indexes_gee_bash_a_1 (+ indexes_gee_bash_a_0 (- indexes_gee_bash_a_0 2.0))))
+(assert (= indexes_gee_bash_a_2 (+ indexes_gee_bash_a_1 (- indexes_gee_bash_a_0 2.0))))

@@ -29,7 +29,10 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [audio](https://anchor.fm/mwapl)
 - [transcripts](https://dev.to/bellmar/series/9711)
 
-### Current Status (4/13/2023)
+### Current Status (4/26/2023)
+Adding support for indexes (ie accessing historical values in the model) there are some edge cases around branches that need to be worked through.
+
+#### (4/13/2023)
 BREAKING CHANGE. Adding support for altering the initial values of new instances of stocks and flows ended up requiring a lot of fundalmental changes, the big one being separating the initialization of model structs for the logic of a loop. Previously these both lived in the run block (`for 2 run{...}`) but now the run block has a optional `init{}` clause where initializations go, leaving the run block with just the steps the happen in the loop. The documentation and example specs have been updated to reflect this new construction.  
 
 #### (3/29/2023)

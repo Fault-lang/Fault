@@ -173,7 +173,7 @@ func TestString(t *testing.T) {
 			want = "foo.bar"
 		case *Clock:
 			got = t.String()
-			want = "test"
+			want = "now"
 		case *Nil:
 			got = t.String()
 			want = "test"
