@@ -242,7 +242,7 @@ func (c *Compiler) compile(node ast.Node) {
 		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral:
 			c.compileStruct(v)
 		case *ast.StringLiteral:
-			value := c.compileValue(v)
+			value := c.compileValue(v.Value)
 			c.globalVariable(v.Name.ProcessedName, value, v.Position())
 		}
 	case *ast.FunctionLiteral:
@@ -1503,23 +1503,12 @@ func (c *Compiler) isVarSet(rawid []string) bool {
 		return c.isStrVarSet(rawid)
 	}
 
-	_, err = s.FetchStock(rawid[1])
+	ty, _ := s.GetStructType(rawid)
+	_, err = s.Fetch(rawid[1], ty)
 	if err == nil {
 		return true
 	}
-
-	_, err = s.FetchFlow(rawid[1])
-	if err == nil {
-		return true
-	}
-
-	_, err = s.FetchConstant(rawid[1])
-	if err == nil {
-		return true
-	}
-
-	_, err = s.FetchComponent(rawid[1])
-	return err == nil
+	return false
 }
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {

@@ -295,6 +295,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Name = namepro.(*ast.Identifier)
 		node.Value = pro.(ast.Expression)
 
+		if str, ok := node.Value.(*ast.StringLiteral); ok {
+			id := node.Name.Id()
+			p.Specs[id[0]].AddGlobal(id[1], str)
+		}
+
 		if node.TokenLiteral() == "GLOBAL" {
 			p.inGlobal = false
 		} else {

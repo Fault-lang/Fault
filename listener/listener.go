@@ -1219,7 +1219,7 @@ func (l *FaultListener) ExitFloat_(c *parser.Float_Context) {
 }
 
 func (l *FaultListener) ExitStringDecl(c *parser.StringDeclContext) {
-	token := util.GenerateToken("STRING", "STRING", c.GetStart(), c.GetStop())
+	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
 
 	val := l.pop()
 	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
