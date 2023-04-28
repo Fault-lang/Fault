@@ -184,17 +184,22 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 				c.hasRunBlock = true
 				continue
 			case *ast.DefStatement:
-				if cm, ok := n.Value.(*ast.ComponentLiteral); ok {
+				switch d := n.Value.(type) {
+				case *ast.ComponentLiteral:
 					//assembling component parts as params
-					id := cm.Id()
+					id := d.Id()
 					s := c.specStructs[id[0]]
 					branches, err := s.FetchComponent(id[1])
 					if err != nil {
 						panic(err)
 					}
-					params := c.generateParameters(cm.Id(), branches, true)
+					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
+				case *ast.StringLiteral:
+					value := c.compileValue(d)
+					c.globalVariable(d.ProcessedName, value, d.Position())
 				}
+
 			}
 		}
 	default:
@@ -233,8 +238,13 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ConstantStatement:
 		c.compileConstant(v)
 	case *ast.DefStatement:
-		c.compileStruct(v)
-
+		switch v.Value.(type) {
+		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral:
+			c.compileStruct(v)
+		case *ast.StringLiteral:
+			value := c.compileValue(v)
+			c.globalVariable(v.Name.ProcessedName, value, v.Position())
+		}
 	case *ast.FunctionLiteral:
 
 	case *ast.InfixExpression:
@@ -357,7 +367,8 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.FloatLiteral:
 		return constant.NewFloat(irtypes.Double, v.Value)
 	case *ast.StringLiteral:
-		return constant.NewCharArrayFromString(v.Value)
+		return constant.NewBool(false)
+		//return constant.NewCharArrayFromString(v.Value)
 	case *ast.Boolean:
 		return constant.NewBool(v.Value)
 	case *ast.Natural:

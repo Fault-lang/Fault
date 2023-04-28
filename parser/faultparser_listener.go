@@ -56,6 +56,9 @@ type FaultParserListener interface {
 	// EnterConstSpec is called when entering the constSpec production.
 	EnterConstSpec(c *ConstSpecContext)
 
+	// EnterStringDecl is called when entering the stringDecl production.
+	EnterStringDecl(c *StringDeclContext)
+
 	// EnterIdentList is called when entering the identList production.
 	EnterIdentList(c *IdentListContext)
 
@@ -313,6 +316,9 @@ type FaultParserListener interface {
 
 	// ExitConstSpec is called when exiting the constSpec production.
 	ExitConstSpec(c *ConstSpecContext)
+
+	// ExitStringDecl is called when exiting the stringDecl production.
+	ExitStringDecl(c *StringDeclContext)
 
 	// ExitIdentList is called when exiting the identList production.
 	ExitIdentList(c *IdentListContext)

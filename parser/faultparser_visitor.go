@@ -56,6 +56,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#constSpec.
 	VisitConstSpec(ctx *ConstSpecContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#stringDecl.
+	VisitStringDecl(ctx *StringDeclContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#identList.
 	VisitIdentList(ctx *IdentListContext) interface{}
 

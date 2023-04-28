@@ -72,6 +72,10 @@ func (v *BaseFaultParserVisitor) VisitConstSpec(ctx *ConstSpecContext) interface
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitStringDecl(ctx *StringDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitIdentList(ctx *IdentListContext) interface{} {
 	return v.VisitChildren(ctx)
 }

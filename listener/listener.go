@@ -1218,6 +1218,25 @@ func (l *FaultListener) ExitFloat_(c *parser.Float_Context) {
 	})
 }
 
+func (l *FaultListener) ExitStringDecl(c *parser.StringDeclContext) {
+	token := util.GenerateToken("STRING", "STRING", c.GetStart(), c.GetStop())
+
+	val := l.pop()
+	token2 := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	ident := &ast.Identifier{
+		Token: token2,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	}
+
+	if _, ok := val.(*ast.StringLiteral); !ok {
+		panic(fmt.Sprintf("top of the stack is not a string got %T: line %d col %d", val, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	}
+
+	l.push(&ast.DefStatement{Token: token, Name: ident, Value: val.(ast.Expression)})
+}
+
 func (l *FaultListener) ExitString_(c *parser.String_Context) {
 	token := util.GenerateToken("STRING", "STRING", c.GetStart(), c.GetStop())
 

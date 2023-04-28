@@ -33,7 +33,7 @@ func TestSimpleConst(t *testing.T) {
 	@test1_y = global double 0x3FF3333333333333
 	@test1_a = global i1 true
 	@test1_b = global i1 false
-	@test1_c = global [14 x i8] c"\22Hello World!\22"
+	@test1_c = global i1 false
 	
 	define void @__run() {
 	block-0:
@@ -662,6 +662,37 @@ func TestIndexExp(t *testing.T) {
 		store double %1, double* %test1_test_buzz_a
 		ret void
 	}`
+
+	llvm, err := prepTest(test, true)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestStringExp(t *testing.T) {
+	test := `spec test;
+		str1 = "is a fish";
+		str2 = "tastes delicious with ginger";
+		str3 = "native to North America";
+
+		assume str1 && str3;
+		assert str3;
+	`
+
+	expecting := ``
 
 	llvm, err := prepTest(test, true)
 
