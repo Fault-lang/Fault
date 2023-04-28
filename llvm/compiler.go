@@ -239,7 +239,7 @@ func (c *Compiler) compile(node ast.Node) {
 		c.compileConstant(v)
 	case *ast.DefStatement:
 		switch v.Value.(type) {
-		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral:
+		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral, *ast.StructInstance:
 			c.compileStruct(v)
 		case *ast.StringLiteral:
 			value := c.compileValue(v.Value)

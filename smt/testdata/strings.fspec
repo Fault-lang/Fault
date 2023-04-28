@@ -1,0 +1,7 @@
+spec test;
+str1 = "is a fish";
+str2 = "tastes delicious with ginger";
+str3 = "native to North America";
+
+assume str1 && str3;
+assert str3;
