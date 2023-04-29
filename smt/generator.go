@@ -1248,7 +1248,16 @@ func (g *Generator) generateRules() []string {
 ///////////////////////////////////
 
 func (g *Generator) constantRule(id string, c constant.Constant) string {
+	if id == "__rounds" || id == "__parallelGroup" {
+		return ""
+	}
+
 	switch val := c.(type) {
+	case *constant.Int:
+		ty := g.variables.LookupType(id, val)
+		g.addVarToRound(id, 0)
+		id = g.variables.AdvanceSSA(id)
+		g.declareVar(id, ty)
 	case *constant.Float:
 		ty := g.variables.LookupType(id, val)
 		g.addVarToRound(id, 0)

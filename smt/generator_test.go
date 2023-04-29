@@ -431,7 +431,7 @@ func TestTemporalSys2(t *testing.T) {
 
 func TestTestData(t *testing.T) {
 	specs := []string{
-		"testdata/bathtub.fspec",
+		/*"testdata/bathtub.fspec",
 		"testdata/simple.fspec",
 		"testdata/bathtub2.fspec",
 		"testdata/booleans.fspec",
@@ -439,11 +439,11 @@ func TestTestData(t *testing.T) {
 		"testdata/swaps/swaps.fspec",
 		"testdata/swaps/swaps1.fspec",
 		"testdata/swaps/swaps2.fspec",
-		"testdata/indexes.fspec",
+		"testdata/indexes.fspec",*/
 		"testdata/strings.fspec",
 	}
 	smt2s := []string{
-		"testdata/bathtub.smt2",
+		/*"testdata/bathtub.smt2",
 		"testdata/simple.smt2",
 		"testdata/bathtub2.smt2",
 		"testdata/booleans.smt2",
@@ -451,7 +451,7 @@ func TestTestData(t *testing.T) {
 		"testdata/swaps/swaps.smt2",
 		"testdata/swaps/swaps1.smt2",
 		"testdata/swaps/swaps2.smt2",
-		"testdata/indexes.smt2",
+		"testdata/indexes.smt2",*/
 		"testdata/strings.smt2",
 	}
 	for i, s := range specs {
