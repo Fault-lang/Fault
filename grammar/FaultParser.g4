@@ -86,6 +86,15 @@ constSpec
 
 stringDecl
     : IDENT '=' string_ eos
+    | IDENT '=' compoundString eos
+    | IDENT '=' compoundString eos
+    ;
+
+compoundString
+    : operandName
+    | '!' operandName
+    | compoundString '&&' compoundString
+    | compoundString '||' compoundString
     ;
 
 identList

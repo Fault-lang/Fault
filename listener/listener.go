@@ -1218,6 +1218,37 @@ func (l *FaultListener) ExitFloat_(c *parser.Float_Context) {
 	})
 }
 
+func (l *FaultListener) ExitCompoundString(c *parser.CompoundStringContext) {
+	if c.GetChildCount() < 2 {
+		return //Single operand, no actions
+	}
+
+	if pre, ok := c.GetChild(0).(antlr.TerminalNode); ok && pre.GetText() == "!" {
+		token := util.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+		exp := l.pop()
+		e := &ast.PrefixExpression{
+			Token:    token,
+			Operator: "-",
+			Right:    exp.(ast.Expression),
+		}
+		l.push(e)
+		return
+	}
+
+	operator := c.GetChild(1).(antlr.TerminalNode).GetText()
+	token := util.GenerateToken(string(ast.OPS[operator]), operator, c.GetStart(), c.GetStop())
+
+	rght := l.pop()
+	lft := l.pop()
+	e := &ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: operator,
+		Right:    rght.(ast.Expression),
+	}
+	l.push(e)
+}
+
 func (l *FaultListener) ExitStringDecl(c *parser.StringDeclContext) {
 	token := util.GenerateToken("GLOBAL", "GLOBAL", c.GetStart(), c.GetStop())
 
@@ -1229,12 +1260,15 @@ func (l *FaultListener) ExitStringDecl(c *parser.StringDeclContext) {
 		Value: c.IDENT().GetText(),
 		Spec:  l.currSpec,
 	}
-
-	if _, ok := val.(*ast.StringLiteral); !ok {
+	switch val.(type) {
+	case *ast.StringLiteral:
+		l.push(&ast.DefStatement{Token: token, Name: ident, Value: val.(ast.Expression)})
+	case *ast.InfixExpression, *ast.PrefixExpression:
+		token2 := util.GenerateToken("COMPOUND_STRING", "COMPOUND_STRING", c.GetStart(), c.GetStop())
+		l.push(&ast.ExpressionStatement{Token: token, Expression: &ast.InfixExpression{Token: token2, Left: ident, Operator: "=", Right: val.(ast.Expression)}})
+	default:
 		panic(fmt.Sprintf("top of the stack is not a string got %T: line %d col %d", val, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
-
-	l.push(&ast.DefStatement{Token: token, Name: ident, Value: val.(ast.Expression)})
 }
 
 func (l *FaultListener) ExitString_(c *parser.String_Context) {

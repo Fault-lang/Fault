@@ -120,6 +120,25 @@ func (i *Infix) Tag(k1 string, k2 string) {
 	}
 }
 
+type Prefix struct {
+	Rule
+	X   Rule
+	Ty  string
+	Op  string
+	tag *branch
+}
+
+func (pr *Prefix) ruleNode() {}
+func (pr *Prefix) String() string {
+	return fmt.Sprintf("%s %s", pr.Op, pr.X.String())
+}
+func (pr *Prefix) Tag(k1 string, k2 string) {
+	pr.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type Ite struct {
 	Rule
 	Cond Rule

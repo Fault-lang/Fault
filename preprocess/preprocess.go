@@ -563,6 +563,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		node.Left = l.(ast.Expression)
 		node.Right = r.(ast.Expression)
+
+		if node.Token.Type == "COMPOUND_STRING" {
+			id := node.Left.(ast.Nameable).Id()
+			p.Specs[id[0]].AddGlobal(id[1], node)
+		}
 		return node, err
 
 	case *ast.IndexExpression:

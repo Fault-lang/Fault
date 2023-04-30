@@ -70,6 +70,20 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 		alloc = c.contextBlock.NewAlloca(irtypes.I1)
 		alloc.SetName(name)
 		store = c.contextBlock.NewStore(v, alloc)
+	case *ir.InstAnd:
+		alloc = c.contextBlock.NewAlloca(irtypes.I1)
+		alloc.SetName(name)
+		if v.Type() == nil {
+			v.Typ = irtypes.I1
+		}
+		store = c.contextBlock.NewStore(v, alloc)
+	case *ir.InstOr:
+		alloc = c.contextBlock.NewAlloca(irtypes.I1)
+		alloc.SetName(name)
+		if v.Type() == nil {
+			v.Typ = irtypes.I1
+		}
+		store = c.contextBlock.NewStore(v, alloc)
 	case *ir.Func:
 		return
 	default:
@@ -115,6 +129,14 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 	case *ir.InstFCmp:
 		c.allocVariable(id, val, pos)
 	case *ir.Func:
+	case *ir.InstAnd:
+		placeholder := constant.NewAnd(constant.NewBool(false), constant.NewBool(false))
+		alloc := c.module.NewGlobalDef(name, placeholder)
+		c.storeGlobal(name, alloc)
+	case *ir.InstOr:
+		placeholder := constant.NewAnd(constant.NewBool(false), constant.NewBool(false))
+		alloc := c.module.NewGlobalDef(name, placeholder)
+		c.storeGlobal(name, alloc)
 	default:
 		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
 	}

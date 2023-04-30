@@ -59,6 +59,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#stringDecl.
 	VisitStringDecl(ctx *StringDeclContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#compoundString.
+	VisitCompoundString(ctx *CompoundStringContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#identList.
 	VisitIdentList(ctx *IdentListContext) interface{}
 

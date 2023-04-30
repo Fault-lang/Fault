@@ -247,6 +247,9 @@ func (c *Compiler) compile(node ast.Node) {
 		}
 	case *ast.FunctionLiteral:
 
+	case *ast.ExpressionStatement:
+		c.compile(v.Expression)
+
 	case *ast.InfixExpression:
 		c.compileInfix(v)
 
@@ -700,7 +703,7 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 
 func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
 	var value value.Value
-	if node.Left.Type() == "BOOLEAN" {
+	if node.Left.Type() == "BOOL" {
 		value = constant.NewBool(false)
 	} else {
 		value = constant.NewFloat(irtypes.Double, float64(0.000000000009))
@@ -736,7 +739,15 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		if !c.validOperator(node, true) {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
+
+		if node.TokenLiteral() == "COMPOUND_STRING" {
+			r := c.compileCompoundGlobal(node.Left.(ast.Nameable).IdString(), node.Right.(*ast.InfixExpression))
+			c.storeGlobal(node.Left.(ast.Nameable).IdString(), r)
+			return nil
+		}
+
 		r := c.compileValue(node.Right)
+
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			switch n := node.Left.(type) {
 			case *ast.Identifier:
@@ -951,67 +962,6 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	}
 }
 
-// func (c *Compiler) compileSwap(node *ast.InfixExpression) value.Value {
-// 	n, ok := node.Left.(*ast.ParameterCall)
-// 	pos := node.Position()
-// 	if !ok {
-// 		panic(fmt.Sprintf("cannot swap a non-stock or non-flow property col: %d, line: %d", pos[0], pos[1]))
-// 	}
-
-// 	rawid := n.RawId()
-
-// 	s := c.specs[rawid[0]]
-// 	spec := c.specStructs[rawid[0]]
-// 	ty, _ := spec.GetStructType(rawid)
-// 	if ty == "NIL" {
-// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 	}
-
-// 	_, err := spec.FetchVar(rawid, ty)
-
-// 	if err == nil {
-// 		r := c.compileValue(node.Right)
-// 		pointer := s.GetSpecVarPointer(rawid)
-// 		c.contextBlock.NewStore(r, pointer)
-// 		return nil
-// 	}
-
-// 	var str1, str2 map[string]ast.Node
-// 	switch ty {
-// 	case "STOCK":
-// 		id := n.Id()
-// 		str1, err = spec.FetchStock(id[1])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 		}
-
-// 		rightId := node.Right.(ast.Nameable).Id()
-// 		str2, err = spec.FetchStock(rightId[1])
-
-// 	case "FLOW":
-// 		id := n.Id()
-// 		str1, err = spec.FetchFlow(id[1])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 		}
-
-// 		rightId := node.Right.(ast.Nameable).Id()
-// 		str2, err = spec.FetchFlow(rightId[1])
-// 	}
-
-// 	if err != nil {
-// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 	}
-
-// 	for k := range str1 {
-// 		from := append(rawid, k)
-// 		to := c.compileValue(str2[k])
-// 		pointer := s.GetSpecVarPointer(from)
-// 		c.contextBlock.NewStore(to, pointer)
-// 	}
-// 	return nil
-// }
-
 func (c *Compiler) tagBuiltIns(v1 value.Value, gname string) value.Value {
 	// BuiltIns in a "b || b" or "b && b" construction need metadata
 	// so we can find parse them correctly
@@ -1084,6 +1034,40 @@ func (c *Compiler) compileIf(n *ast.IfExpression) {
 		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
 	} else {
 		afterBlock.NewRet(nil)
+	}
+}
+
+func (c *Compiler) compileCompoundGlobal(name string, n *ast.InfixExpression) *ir.Global {
+	r := c.compileCompoundNode(n.Right)
+	l := c.compileCompoundNode(n.Left)
+
+	var ret *ir.Global
+	switch n.Operator {
+	case "&&":
+		v := constant.NewAnd(r, l)
+		ret = c.module.NewGlobalDef(name, v)
+	case "||":
+		v := constant.NewOr(r, l)
+		ret = c.module.NewGlobalDef(name, v)
+	}
+	return ret
+}
+
+func (c *Compiler) compileCompoundNode(n ast.Node) *ir.Global {
+	switch v := n.(type) {
+	case *ast.Identifier:
+		return c.specGlobals[v.IdString()]
+	case *ast.ParameterCall:
+		return c.specGlobals[v.IdString()]
+	case *ast.PrefixExpression:
+		r := c.compileCompoundNode(v.Right)
+		name := r.Ident()
+		name = fmt.Sprintf("%s_neg", util.FormatIdent(name))
+		return c.module.NewGlobalDef(name, constant.NewFNeg(r))
+	default:
+		r := c.compileValue(v)
+		name := r.Ident()
+		return c.module.NewGlobalDef(util.FormatIdent(name), r.(constant.Constant))
 	}
 }
 

@@ -59,6 +59,9 @@ type FaultParserListener interface {
 	// EnterStringDecl is called when entering the stringDecl production.
 	EnterStringDecl(c *StringDeclContext)
 
+	// EnterCompoundString is called when entering the compoundString production.
+	EnterCompoundString(c *CompoundStringContext)
+
 	// EnterIdentList is called when entering the identList production.
 	EnterIdentList(c *IdentListContext)
 
@@ -319,6 +322,9 @@ type FaultParserListener interface {
 
 	// ExitStringDecl is called when exiting the stringDecl production.
 	ExitStringDecl(c *StringDeclContext)
+
+	// ExitCompoundString is called when exiting the compoundString production.
+	ExitCompoundString(c *CompoundStringContext)
 
 	// ExitIdentList is called when exiting the identList production.
 	ExitIdentList(c *IdentListContext)
