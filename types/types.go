@@ -523,12 +523,12 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	spec := c.SpecStructs[rawid[0]]
 	ty, _ := spec.GetStructType(rawid)
 	v, err := spec.FetchVar(rawid, ty)
-	if v.TokenLiteral() == "COMPOUND_STRING" {
-		return &ast.Type{Type: "BOOL"}, err
-	}
-
 	if err != nil {
 		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
+	}
+
+	if v.TokenLiteral() == "COMPOUND_STRING" {
+		return &ast.Type{Type: "BOOL"}, err
 	}
 
 	ret := typeable(v)
