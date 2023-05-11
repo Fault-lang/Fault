@@ -93,6 +93,7 @@ stringDecl
 compoundString
     : operandName
     | '!' operandName
+    | '(' compoundString ')'
     | compoundString '&&' compoundString
     | compoundString '||' compoundString
     ;

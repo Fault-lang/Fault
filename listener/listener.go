@@ -1235,18 +1235,20 @@ func (l *FaultListener) ExitCompoundString(c *parser.CompoundStringContext) {
 		return
 	}
 
-	operator := c.GetChild(1).(antlr.TerminalNode).GetText()
-	token := util.GenerateToken(string(ast.OPS[operator]), operator, c.GetStart(), c.GetStop())
+	if op, ok := c.GetChild(1).(antlr.TerminalNode); ok {
+		operator := op.GetText()
+		token := util.GenerateToken(string(ast.OPS[operator]), operator, c.GetStart(), c.GetStop())
 
-	rght := l.pop()
-	lft := l.pop()
-	e := &ast.InfixExpression{
-		Token:    token,
-		Left:     lft.(ast.Expression),
-		Operator: operator,
-		Right:    rght.(ast.Expression),
+		rght := l.pop()
+		lft := l.pop()
+		e := &ast.InfixExpression{
+			Token:    token,
+			Left:     lft.(ast.Expression),
+			Operator: operator,
+			Right:    rght.(ast.Expression),
+		}
+		l.push(e)
 	}
-	l.push(e)
 }
 
 func (l *FaultListener) ExitStringDecl(c *parser.StringDeclContext) {

@@ -11,6 +11,7 @@ import (
 type Rule interface {
 	ruleNode()
 	String() string
+	Assertless() string
 }
 
 type Ands struct {
@@ -27,6 +28,13 @@ func (a *Ands) String() string {
 	}
 	return out.String()
 }
+func (a *Ands) Assertless() string {
+	var ands string
+	for _, asrt := range a.X {
+		ands = fmt.Sprintf("%s %s", ands, asrt.Assertless())
+	}
+	return fmt.Sprintf("(and %s)", ands)
+}
 func (a *Ands) Tag(k1 string, k2 string) {
 	a.tag = &branch{
 		branch: k1,
@@ -38,7 +46,7 @@ type States struct {
 	Rule
 	Terminal bool
 	Base     string
-	States   map[int][]string //
+	States   map[int][]string
 	Constant bool
 	tag      *branch
 }
@@ -46,6 +54,9 @@ type States struct {
 func (s *States) ruleNode() {}
 func (s *States) String() string {
 	return s.Base
+}
+func (s *States) Assertless() string {
+	return ""
 }
 func (s *States) Tag(k1 string, k2 string) {
 	s.tag = &branch{
@@ -67,6 +78,9 @@ type Assrt struct {
 func (a *Assrt) ruleNode() {}
 func (a *Assrt) String() string {
 	return a.Variable.String() + a.Conjunction + a.Assertion.String()
+}
+func (a *Assrt) Assertless() string {
+	return ""
 }
 func (a *Assrt) Tag(k1 string, k2 string) {
 	a.tag = &branch{
@@ -93,6 +107,9 @@ func (c *Choices) String() string {
 	}
 	return out.String()
 }
+func (c *Choices) Assertless() string {
+	return ""
+}
 func (c *Choices) Tag(k1 string, k2 string) {
 	c.tag = &branch{
 		branch: k1,
@@ -113,6 +130,9 @@ func (i *Infix) ruleNode() {}
 func (i *Infix) String() string {
 	return fmt.Sprintf("%s %s %s", i.X.String(), i.Op, i.Y.String())
 }
+func (i *Infix) Assertless() string {
+	return fmt.Sprintf("(%s %s %s)", i.Op, i.X.Assertless(), i.Y.Assertless())
+}
 func (i *Infix) Tag(k1 string, k2 string) {
 	i.tag = &branch{
 		branch: k1,
@@ -131,6 +151,9 @@ type Prefix struct {
 func (pr *Prefix) ruleNode() {}
 func (pr *Prefix) String() string {
 	return fmt.Sprintf("%s %s", pr.Op, pr.X.String())
+}
+func (pr *Prefix) Assertless() string {
+	return fmt.Sprintf("(%s %s)", pr.Op, pr.X)
 }
 func (pr *Prefix) Tag(k1 string, k2 string) {
 	pr.tag = &branch{
@@ -151,6 +174,18 @@ func (it *Ite) ruleNode() {}
 func (it *Ite) String() string {
 	return fmt.Sprintf("if %s then %s else %s", it.Cond.String(), it.T, it.F)
 }
+func (it *Ite) Assertless() string {
+	var t, f string
+	for _, tr := range it.T {
+		t = fmt.Sprintf("%s %s", t, tr.Assertless())
+	}
+
+	for _, fa := range it.F {
+		t = fmt.Sprintf("%s %s", f, fa.Assertless())
+	}
+	return fmt.Sprintf("(ite (%s) (%s) (%s))", it.Cond.Assertless(), t, f)
+}
+
 func (ite *Ite) Tag(k1 string, k2 string) {
 	ite.tag = &branch{
 		branch: k1,
@@ -172,6 +207,9 @@ func (i *Invariant) String() string {
 		return fmt.Sprint(i.Operator, i.Right.String())
 	}
 	return fmt.Sprint(i.Left.String(), i.Operator, i.Right.String())
+}
+func (i *Invariant) Assertless() string {
+	return fmt.Sprintf("(%s %s %s)", i.Operator, i.Left.Assertless(), i.Right.Assertless())
 }
 func (i *Invariant) Tag(k1 string, k2 string) {
 	i.tag = &branch{
@@ -196,6 +234,9 @@ func (p *Phi) String() string {
 		out.WriteString(r)
 	}
 	return out.String()
+}
+func (p *Phi) Assertless() string {
+	return ""
 }
 func (p *Phi) Tag(k1 string, k2 string) {
 	p.tag = &branch{
@@ -224,6 +265,9 @@ func (sc *StateChange) String() string {
 	}
 	return out.String()
 }
+func (sc *StateChange) Assertless() string {
+	return ""
+}
 func (sc *StateChange) Tag(k1 string, k2 string) {
 	sc.tag = &branch{
 		branch: k1,
@@ -243,6 +287,9 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 func (w *Wrap) ruleNode() {}
 func (w *Wrap) String() string {
 	return w.Value
+}
+func (w *Wrap) Assertless() string {
+	return w.String()
 }
 func (w *Wrap) Tag(k1 string, k2 string) {
 	w.tag = &branch{
@@ -274,6 +321,9 @@ func (sg *StateGroup) String() string {
 	}
 	return out.String()
 }
+func (sg *StateGroup) Assertless() string {
+	return ""
+}
 func (sg *StateGroup) Tag(k1 string, k2 string) {
 	sg.tag = &branch{
 		branch: k1,
@@ -295,6 +345,9 @@ func (wg *WrapGroup) String() string {
 	}
 	return out.String()
 }
+func (wg *WrapGroup) Assertless() string {
+	return ""
+}
 func (wg *WrapGroup) Tag(k1 string, k2 string) {
 	wg.tag = &branch{
 		branch: k1,
@@ -311,6 +364,9 @@ type Vwrap struct {
 func (vw *Vwrap) ruleNode() {}
 func (vw *Vwrap) String() string {
 	return vw.Value.String()
+}
+func (vw *Vwrap) Assertless() string {
+	return ""
 }
 func (vw *Vwrap) Tag(k1 string, k2 string) {
 	vw.tag = &branch{

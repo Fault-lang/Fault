@@ -1313,7 +1313,7 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 		g.addVarToRound(id, 0)
 		id = g.variables.AdvanceSSA(id)
 		rule := g.parseConstExpr(val)
-		v := g.writeRule(rule)
+		v := rule.Assertless()
 		return g.writeInitRule(id, ty, v)
 	default:
 		ty := g.variables.LookupType(id, val)

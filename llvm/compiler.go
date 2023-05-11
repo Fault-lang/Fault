@@ -7,6 +7,7 @@ import (
 	"fault/preprocess"
 	"fault/util"
 	"fmt"
+	"math/rand"
 	"runtime/debug"
 	"strings"
 
@@ -162,6 +163,14 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 			c.IsValid = true
 			return
 		}
+
+		if d, ok := n.(*ast.DefStatement); ok {
+			if _, str := d.Value.(*ast.StringLiteral); str {
+				c.IsValid = true
+				return
+			}
+		}
+
 	}
 }
 
@@ -1064,6 +1073,23 @@ func (c *Compiler) compileCompoundNode(n ast.Node) *ir.Global {
 		name := r.Ident()
 		name = fmt.Sprintf("%s_neg", util.FormatIdent(name))
 		return c.module.NewGlobalDef(name, constant.NewFNeg(r))
+	case *ast.InfixExpression:
+		r := c.compileCompoundNode(v.Right)
+		l := c.compileCompoundNode(v.Left)
+		rname := r.Ident()
+		lname := l.Ident()
+		name := fmt.Sprintf("%s_%s", util.FormatIdent(lname), util.FormatIdent(rname))
+		if _, ok := c.GetGlobal(name); ok { //avoiding conflicts when compound rules overlap
+			name = fmt.Sprintf("%s_%d", name, rand.Int())
+		}
+		var infix constant.Constant
+		switch v.Operator {
+		case "&&":
+			infix = constant.NewAnd(l, r)
+		case "||":
+			infix = constant.NewOr(l, r)
+		}
+		return c.module.NewGlobalDef(name, infix)
 	default:
 		r := c.compileValue(v)
 		name := r.Ident()
@@ -1562,6 +1588,15 @@ func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) b
 		return false
 	}
 	return true
+}
+
+func (c *Compiler) GetGlobal(name string) (*ir.Global, bool) {
+	for _, gl := range c.module.Globals {
+		if util.FormatIdent(gl.Ident()) == name {
+			return gl, true
+		}
+	}
+	return nil, false
 }
 
 func negate(e ast.Expression) ast.Expression {

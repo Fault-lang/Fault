@@ -1,0 +1,9 @@
+spec test;
+str1 = "is a fish";
+str2 = "tastes delicious with ginger";
+str3 = "native to North America";
+str4 = "walks on four legs";
+str5 = "has a tail";
+str6 = "is blue";
+str7 = (str1 && str2) || (str3 && str4);
+str8 = str6 || str5 && str1; 
