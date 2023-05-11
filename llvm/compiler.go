@@ -185,6 +185,8 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	switch decl := specfile.Statements[0].(type) {
 	case *ast.SpecDeclStatement:
 		c.currentSpec = decl.Name.Value
+		c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
+
 		if isImport { //We still want the globals compiled
 			for _, v := range specfile.Statements {
 				switch n := v.(type) {
@@ -194,13 +196,37 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 					switch d := n.Value.(type) {
 					case *ast.StringLiteral:
 						value := c.compileValue(d)
-						c.globalVariable(d.ProcessedName, value, d.Position())
+						rawid := d.RawId()
+						s := c.specs[rawid[0]]
+						//s.DefineSpecVar(rawid, value)
+						s.DefineSpecType(rawid, value.Type())
+						c.globalVariable(rawid, value, d.Position())
+					case *ast.InfixExpression:
+						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
+							value := c.compileValue(d)
+							rawid := n.Name.RawId()
+							s := c.specs[rawid[0]]
+							//s.DefineSpecVar(rawid, value)
+							s.DefineSpecType(rawid, value.Type())
+							c.globalVariable(rawid, value, d.Position())
+						}
+					case *ast.PrefixExpression:
+						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
+							value := c.compileValue(d)
+							rawid := n.Name.RawId()
+							s := c.specs[rawid[0]]
+							//s.DefineSpecVar(rawid, value)
+							s.DefineSpecType(rawid, value.Type())
+							c.globalVariable(rawid, value, d.Position())
+						}
 					}
 				}
 			}
 		}
 	case *ast.SysDeclStatement:
 		c.currentSpec = decl.Name.Value
+		c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
+
 		for _, v := range specfile.Statements {
 			switch n := v.(type) {
 			case *ast.ForStatement:
@@ -229,7 +255,6 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
 	if !isImport && c.IsValid { //Don't compile if the spec is being imported
 		for _, fileNode := range specfile.Statements {
 			c.compile(fileNode)
@@ -266,7 +291,29 @@ func (c *Compiler) compile(node ast.Node) {
 			c.compileStruct(v)
 		case *ast.StringLiteral:
 			value := c.compileValue(v.Value)
-			c.globalVariable(v.Name.ProcessedName, value, v.Position())
+			rawid := v.Name.RawId()
+			s := c.specs[rawid[0]]
+			s.DefineSpecVar(rawid, value)
+			s.DefineSpecType(rawid, value.Type())
+			c.globalVariable(rawid, value, v.Position())
+		case *ast.InfixExpression:
+			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
+				value := c.compileValue(v.Value)
+				rawid := v.Name.RawId()
+				s := c.specs[rawid[0]]
+				s.DefineSpecVar(rawid, value)
+				s.DefineSpecType(rawid, value.Type())
+				c.globalVariable(rawid, value, v.Position())
+			}
+		case *ast.PrefixExpression:
+			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
+				value := c.compileValue(v.Value)
+				rawid := v.Name.RawId()
+				s := c.specs[rawid[0]]
+				s.DefineSpecVar(rawid, value)
+				s.DefineSpecType(rawid, value.Type())
+				c.globalVariable(rawid, value, v.Position())
+			}
 		}
 	case *ast.FunctionLiteral:
 
@@ -1251,8 +1298,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 }
 
 func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
-	s := c.specs[id[0]]
 	vname := strings.Join(id, "_")
+	s := c.specs[id[0]]
 	local := s.GetSpecVar(id)
 	if local != nil {
 		pointer := s.GetSpecVarPointer(id)
@@ -1263,7 +1310,6 @@ func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
 
 	pointer := c.specGlobals[vname]
 	if pointer != nil {
-		pointer := c.specGlobals[vname]
 		ty := s.GetSpecType(vname)
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load

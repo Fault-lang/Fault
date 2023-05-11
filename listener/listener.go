@@ -1265,9 +1265,14 @@ func (l *FaultListener) ExitStringDecl(c *parser.StringDeclContext) {
 	switch val.(type) {
 	case *ast.StringLiteral:
 		l.push(&ast.DefStatement{Token: token, Name: ident, Value: val.(ast.Expression)})
-	case *ast.InfixExpression, *ast.PrefixExpression:
+	case *ast.InfixExpression:
 		token2 := util.GenerateToken("COMPOUND_STRING", "COMPOUND_STRING", c.GetStart(), c.GetStop())
-		l.push(&ast.ExpressionStatement{Token: token, Expression: &ast.InfixExpression{Token: token2, Left: ident, Operator: "=", Right: val.(ast.Expression)}})
+		val.(*ast.InfixExpression).Token = token2
+		l.push(&ast.DefStatement{Token: token, Name: ident, Value: val.(ast.Expression)})
+	case *ast.PrefixExpression:
+		token2 := util.GenerateToken("COMPOUND_STRING", "COMPOUND_STRING", c.GetStart(), c.GetStop())
+		val.(*ast.PrefixExpression).Token = token2
+		l.push(&ast.DefStatement{Token: token, Name: ident, Value: val.(ast.Expression)})
 	default:
 		panic(fmt.Sprintf("top of the stack is not a string got %T: line %d col %d", val, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}

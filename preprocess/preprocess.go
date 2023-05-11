@@ -292,16 +292,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
-		if len(pro.(ast.Nameable).RawId()) == 0 {
+		if _, ok := pro.(ast.Nameable); ok && len(pro.(ast.Nameable).RawId()) == 0 {
 			pro.(ast.Nameable).SetId(namepro.(ast.Nameable).RawId())
 		}
 
 		node.Name = namepro.(*ast.Identifier)
 		node.Value = pro.(ast.Expression)
 
-		if str, ok := node.Value.(*ast.StringLiteral); ok {
+		if _, ok := node.Value.(*ast.StringLiteral); ok || node.Value.TokenLiteral() == "COMPOUND_STRING" {
 			id := node.Name.Id()
-			p.Specs[id[0]].AddGlobal(id[1], str)
+			p.Specs[id[0]].AddGlobal(id[1], node.Value)
 		}
 
 		if node.TokenLiteral() == "GLOBAL" {
@@ -568,10 +568,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Left = l.(ast.Expression)
 		node.Right = r.(ast.Expression)
 
-		if node.Token.Type == "COMPOUND_STRING" {
-			id := node.Left.(ast.Nameable).Id()
-			p.Specs[id[0]].AddGlobal(id[1], node)
-		}
+		// if node.Token.Type == "COMPOUND_STRING" {
+		// 	id := node.Left.(ast.Nameable).Id()
+		// 	p.Specs[id[0]].AddGlobal(id[1], node)
+		// }
 		return node, err
 
 	case *ast.IndexExpression:
