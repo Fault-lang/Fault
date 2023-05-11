@@ -97,16 +97,17 @@ func (mc *ModelChecker) LoadMeta(frks []forks.Fork) {
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 	cmd := exec.Command(mc.solver[command].Command,
 		mc.solver[command].Arguments...)
-
 	cmd.Stdin = strings.NewReader(fmt.Sprint(mc.SMT, strings.Join(actions, "\n")))
 
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf(fmt.Sprint(err) + ": " + stderr.String())
 	}
 	return strings.TrimSpace(out.String()), err
 }

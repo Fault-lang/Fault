@@ -292,6 +292,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
+		if len(pro.(ast.Nameable).RawId()) == 0 {
+			pro.(ast.Nameable).SetId(namepro.(ast.Nameable).RawId())
+		}
+
 		node.Name = namepro.(*ast.Identifier)
 		node.Value = pro.(ast.Expression)
 

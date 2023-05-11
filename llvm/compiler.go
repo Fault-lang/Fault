@@ -185,6 +185,20 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	switch decl := specfile.Statements[0].(type) {
 	case *ast.SpecDeclStatement:
 		c.currentSpec = decl.Name.Value
+		if isImport { //We still want the globals compiled
+			for _, v := range specfile.Statements {
+				switch n := v.(type) {
+				case *ast.ConstantStatement:
+					c.compileConstant(n)
+				case *ast.DefStatement:
+					switch d := n.Value.(type) {
+					case *ast.StringLiteral:
+						value := c.compileValue(d)
+						c.globalVariable(d.ProcessedName, value, d.Position())
+					}
+				}
+			}
+		}
 	case *ast.SysDeclStatement:
 		c.currentSpec = decl.Name.Value
 		for _, v := range specfile.Statements {
@@ -205,8 +219,8 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
 				case *ast.StringLiteral:
-					value := c.compileValue(d)
-					c.globalVariable(d.ProcessedName, value, d.Position())
+					//value := c.compileValue(d)
+					//c.globalVariable(d.ProcessedName, value, d.Position())
 				}
 
 			}
@@ -1080,7 +1094,7 @@ func (c *Compiler) compileCompoundNode(n ast.Node) *ir.Global {
 		lname := l.Ident()
 		name := fmt.Sprintf("%s_%s", util.FormatIdent(lname), util.FormatIdent(rname))
 		if _, ok := c.GetGlobal(name); ok { //avoiding conflicts when compound rules overlap
-			name = fmt.Sprintf("%s_%d", name, rand.Int())
+			name = fmt.Sprintf("%s_%s%d", name, "p", rand.Int())
 		}
 		var infix constant.Constant
 		switch v.Operator {
@@ -1598,6 +1612,33 @@ func (c *Compiler) GetGlobal(name string) (*ir.Global, bool) {
 	}
 	return nil, false
 }
+
+// func (c *Compiler) mergeGlobals(parent []*ir.Global, im []*ir.Global) []*ir.Global {
+// 	if len(im) == 2 { //__rounds and __parallel will always be there
+// 		return parent
+// 	}
+
+// 	if len(parent) == 2 { //no conflicts possible
+// 		t := append(parent, im[2:]...)
+// 		return t
+// 	}
+
+// 	cp, err := deepcopy.Anything(parent)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	t := cp.([]*ir.Global)
+// 	for _, p := range parent {
+// 		for _, c := range im {
+// 			if p.Ident() == c.Ident() {
+// 				panic(fmt.Sprintf("global variable %s already defined", c.Ident()))
+// 			}
+// 			t = append(t, c)
+// 		}
+// 	}
+// 	return t
+// }
 
 func negate(e ast.Expression) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it
