@@ -43,7 +43,7 @@ type Generator struct {
 	localCallstack []string
 
 	forks            []forks.Fork
-	storedChoice     map[string]*rules.StateChange
+	storedChoice     map[string]rules.Rule
 	inPhiState       *forks.PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping string
 	parallelRunStart bool            //Flag, make sure all branches with parallel runs begin from the same point
@@ -60,7 +60,7 @@ func NewGenerator() *Generator {
 		variables:       variables.NewVariables(),
 		functions:       make(map[string]*ir.Func),
 		blocks:          make(map[string][]rules.Rule),
-		storedChoice:    make(map[string]*rules.StateChange),
+		storedChoice:    make(map[string]rules.Rule),
 		currentFunction: "@__run",
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      forks.NewPhiState(),
@@ -349,11 +349,13 @@ func (g *Generator) parseBlock(block *ir.Block) []rules.Rule {
 	// For each non-branching instruction of the basic block.
 	for _, inst := range block.Insts {
 		r := g.parseInstruct(inst)
-		ru = append(ru, r...)
+		if len(r) > 0 {
+			ru = append(ru, r...)
+		}
 	}
 
 	for k, v := range g.storedChoice {
-		r0 := g.stateRules(k, v)
+		r0 := g.stateRules(k, v.(*rules.StateChange))
 		ru = append(ru, r0)
 	}
 
@@ -568,32 +570,14 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 		g.tempRule(inst, r)
 	case *ir.InstAnd:
 		if g.isStateChangeChain(inst) {
-			sc := &rules.StateChange{
-				Ors:  []value.Value{},
-				Ands: []value.Value{},
-			}
-			andAd, _ := g.parseChoice(inst, sc)
-			id := inst.Ident()
-			refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-			g.variables.Loads[refname] = inst
-			g.storedChoice[refname] = andAd
-
+			g.storeStateChange(inst)
 		} else {
 			r := g.andRule(inst)
 			g.tempRule(inst, r)
 		}
 	case *ir.InstOr:
 		if g.isStateChangeChain(inst) {
-			sc := &rules.StateChange{
-				Ors:  []value.Value{},
-				Ands: []value.Value{},
-			}
-			orAd, _ := g.parseChoice(inst, sc)
-			id := inst.Ident()
-			refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-			g.variables.Loads[refname] = inst
-			g.storedChoice[refname] = orAd
-
+			g.storeStateChange(inst)
 		} else {
 			r := g.orRule(inst)
 			g.tempRule(inst, r)
@@ -602,15 +586,7 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 		//Do nothing
 	case *ir.InstFNeg:
 		if g.isStateChangeChain(inst) {
-			sc := &rules.StateChange{
-				Ors:  []value.Value{},
-				Ands: []value.Value{},
-			}
-			orAd, _ := g.parseChoice(inst, sc)
-			id := inst.Ident()
-			refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-			g.variables.Loads[refname] = inst
-			g.storedChoice[refname] = orAd
+			g.storeStateChange(inst)
 		} else {
 			r := g.negRule(inst)
 			g.tempRule(inst, r)
@@ -683,86 +659,138 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, *
 	return t, f, a
 }
 
-func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (rules.Rule, []value.Value) {
+func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (*rules.StateChange, []value.Value) {
 	var ret []value.Value
 	switch branch := branch.(type) {
 	case *ir.InstCall:
 		return sc, append(ret, branch)
 	case *ir.InstOr:
+		op := "or"
 		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
 		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		vxR := g.variables.Ref[refnamex]
+		vxL := g.variables.Loads[refnamex]
+		sc = g.mergeStateChange(refnamex, vxL, sc, op)
+		delete(g.storedChoice, refnamex)
 
-		if vx, ok := g.variables.Ref[refnamex]; ok {
-			if vy, ok := g.variables.Ref[refnamey]; ok {
-				return &rules.Infix{X: vx, Y: vy, Op: "or", Ty: "BOOL"}, []value.Value{}
-			}
-			vy := g.variables.Loads[refnamey]
-			if g.peek(vy) != "infix" {
-				sc2, ret2 := g.parseChoice(vy, sc)
-				sc = sc2.(*rules.StateChange)
-				sc.Ors = append(sc.Ors, ret2...)
-			} else {
-				sc2 := g.storedChoice[refnamey]
-				sc.Ands = append(sc.Ands, sc2.Ands...)
-				sc.Ors = append(sc.Ors, sc2.Ors...)
-			}
+		vyR := g.variables.Ref[refnamey]
+		vyL := g.variables.Loads[refnamey]
+		sc = g.mergeStateChange(refnamey, vyL, sc, op)
+		delete(g.storedChoice, refnamey)
+
+		//Both right and left are rules
+		if vxR != nil && vyR != nil {
+			infix := &rules.Infix{X: vxR, Y: vyR, Op: op, Ty: "BOOL"}
+			return &rules.StateChange{Rules: infix}, ret
+		}
+		//Right is a rule and left is a value
+		if vxR != nil && vyL != nil {
 			sr := g.stateRules(refnamey, sc)
-			return &rules.Infix{X: vx, Y: sr, Op: "or", Ty: "BOOL"}, []value.Value{}
+			infix := &rules.Infix{X: vxR, Y: sr, Op: op, Ty: "BOOL"}
+			return &rules.StateChange{Rules: infix}, ret
 		}
-
-		vx := g.variables.Loads[refnamex]
-		if g.peek(vx) != "infix" {
-			sc2, ret2 := g.parseChoice(vx, sc)
-			sc = sc2.(*rules.StateChange)
-			sc.Ors = append(sc.Ors, ret2...)
-		} else {
-			sc2 := g.storedChoice[refnamex]
-			sc.Ands = append(sc.Ands, sc2.Ands...)
-			sc.Ors = append(sc.Ors, sc2.Ors...)
+		//Left is value and right is a rule
+		if vxL != nil && vyR != nil {
+			sr := g.stateRules(refnamex, sc)
+			infix := &rules.Infix{X: sr, Y: vyR, Op: op, Ty: "BOOL"}
+			return &rules.StateChange{Rules: infix}, ret
 		}
-		delete(g.storedChoice, refnamex)
-
-		vy := g.variables.Loads[refnamey]
-		if g.peek(vy) != "infix" {
-			sc2, ret2 := g.parseChoice(vy, sc)
-			sc = sc2.(*rules.StateChange)
-			sc.Ors = append(sc.Ors, ret2...)
-		} else {
-			sc2 := g.storedChoice[refnamey]
-			sc.Ands = append(sc.Ands, sc2.Ands...)
-			sc.Ors = append(sc.Ors, sc2.Ors...)
-		}
-		delete(g.storedChoice, refnamey)
-
+		//Both right and left are values
 		return sc, ret
+
+		// if vx, ok := g.variables.Ref[refnamex]; ok {
+		// 	if vy, ok := g.variables.Ref[refnamey]; ok {
+		// 		return &rules.Infix{X: vx, Y: vy, Op: "or", Ty: "BOOL"}, []value.Value{}
+		// 	}
+		// 	vy := g.variables.Loads[refnamey]
+
+		// 	sr := g.stateRules(refnamey, sc)
+		// 	return &rules.Infix{X: vx, Y: sr, Op: "or", Ty: "BOOL"}, []value.Value{}
+		// }
+
+		// vx := g.variables.Loads[refnamex]
+		// if g.peek(vx) != "infix" {
+		// 	sc2, ret2 := g.parseChoice(vx, sc)
+		// 	sc = sc2.(*rules.StateChange)
+		// 	sc.Ors = append(sc.Ors, ret2...)
+		// } else {
+		// 	sc2 := g.storedChoice[refnamex]
+		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
+		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
+		// }
+		// delete(g.storedChoice, refnamex)
+
+		// vy := g.variables.Loads[refnamey]
+		// if g.peek(vy) != "infix" {
+		// 	sc2, ret2 := g.parseChoice(vy, sc)
+		// 	sc = sc2.(*rules.StateChange)
+		// 	sc.Ors = append(sc.Ors, ret2...)
+		// } else {
+		// 	sc2 := g.storedChoice[refnamey]
+		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
+		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
+		// }
+		// delete(g.storedChoice, refnamey)
 	case *ir.InstAnd:
+		op := "and"
 		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
-		vx := g.variables.Loads[refnamex]
-		if g.peek(vx) != "infix" {
-			sc2, ret2 := g.parseChoice(vx, sc)
-			sc = sc2.(*rules.StateChange)
-			sc.Ands = append(sc.Ands, ret2...)
-		} else {
-			sc2 := g.storedChoice[refnamex]
-			sc.Ands = append(sc.Ands, sc2.Ands...)
-			sc.Ors = append(sc.Ors, sc2.Ors...)
-		}
+		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		vxR := g.variables.Ref[refnamex]
+		vxL := g.variables.Loads[refnamex]
+		sc = g.mergeStateChange(refnamex, vxL, sc, op)
 		delete(g.storedChoice, refnamex)
 
-		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
-		vy := g.variables.Loads[refnamey]
-		if g.peek(vy) != "infix" {
-			sc2, ret2 := g.parseChoice(vy, sc)
-			sc = sc2.(*rules.StateChange)
-			sc.Ands = append(sc.Ands, ret2...)
-		} else {
-			sc2 := g.storedChoice[refnamey]
-			sc.Ands = append(sc.Ands, sc2.Ands...)
-			sc.Ors = append(sc.Ors, sc2.Ors...)
-		}
+		vyR := g.variables.Ref[refnamey]
+		vyL := g.variables.Loads[refnamey]
+		sc = g.mergeStateChange(refnamey, vyL, sc, op)
 		delete(g.storedChoice, refnamey)
 
+		//Both right and left are rules
+		if vxR != nil && vyR != nil {
+			infix := &rules.Infix{X: vxR, Y: vyR, Op: op, Ty: "BOOL"}
+			return &rules.StateChange{Rules: infix}, ret
+		}
+		//Right is a rule and left is a value
+		if vxR != nil && vyL != nil {
+			sr := g.stateRules(refnamey, sc)
+			infix := &rules.Infix{X: vxR, Y: sr, Op: op, Ty: "BOOL"}
+			return &rules.StateChange{Rules: infix}, ret
+		}
+		//Left is value and right is a rule
+		if vxL != nil && vyR != nil {
+			sr := g.stateRules(refnamex, sc)
+			infix := &rules.Infix{X: sr, Y: vyR, Op: op, Ty: "BOOL"}
+			return &rules.StateChange{Rules: infix}, ret
+		}
+		//Both right and left are values
 		return sc, ret
+		// refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
+		// vx := g.variables.Loads[refnamex]
+		// if g.peek(vx) != "infix" {
+		// 	sc2, ret2 := g.parseChoice(vx, sc)
+		// 	sc = sc2.(*rules.StateChange)
+		// 	sc.Ands = append(sc.Ands, ret2...)
+		// } else {
+		// 	sc2 := g.storedChoice[refnamex]
+		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
+		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
+		// }
+		// delete(g.storedChoice, refnamex)
+
+		// refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		// vy := g.variables.Loads[refnamey]
+		// if g.peek(vy) != "infix" {
+		// 	sc2, ret2 := g.parseChoice(vy, sc)
+		// 	sc = sc2.(*rules.StateChange)
+		// 	sc.Ands = append(sc.Ands, ret2...)
+		// } else {
+		// 	sc2 := g.storedChoice[refnamey]
+		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
+		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
+		// }
+		// delete(g.storedChoice, refnamey)
+
+		// return sc, ret
 	}
 	return sc, ret
 }
@@ -1233,7 +1261,7 @@ func (g *Generator) writeRule(ru rules.Rule) string {
 		return g.writeAssertlessRule(r.Op, x, "")
 
 	case *rules.Ite:
-		cond := g.writeCond(r.Cond.(*rules.Infix))
+		cond := g.writeCond(r.Cond)
 		var tRule, fRule string
 		var tEnds, fEnds []string
 		for _, t := range r.T {
@@ -1295,17 +1323,27 @@ func (g *Generator) writeRule(ru rules.Rule) string {
 	}
 }
 
-func (g *Generator) writeCond(r *rules.Infix) string {
-	y := g.unpackCondRule(r.Y)
-	x := g.unpackCondRule(r.X)
-
-	return g.writeAssertlessRule(r.Op, x, y)
+func (g *Generator) writeCond(ru rules.Rule) string {
+	switch r := ru.(type) {
+	case *rules.Infix:
+		y := g.unpackCondRule(r.Y)
+		x := g.unpackCondRule(r.X)
+		return g.writeAssertlessRule(r.Op, x, y)
+	case *rules.Prefix:
+		x := g.unpackCondRule(r.X)
+		return g.writeAssertlessRule(r.Op, x, "")
+	default:
+		panic(fmt.Sprintf("unsupported rule type %T", ru))
+	}
 }
 
 func (g *Generator) unpackCondRule(x rules.Rule) string {
 	switch r := x.(type) {
 	case *rules.Wrap:
 		return r.Value
+	case *rules.Prefix:
+		x := g.unpackCondRule(r.X)
+		return g.writeAssertlessRule(r.Op, x, "")
 	case *rules.Infix:
 		x := g.unpackCondRule(r.X)
 		y := g.unpackCondRule(r.Y)
@@ -1543,6 +1581,10 @@ func (g *Generator) negRule(inst *ir.InstFNeg) rules.Rule {
 }
 
 func (g *Generator) stateRules(key string, sc *rules.StateChange) rules.Rule {
+	if sc.Rules != nil {
+		return sc.Rules
+	}
+
 	if len(sc.Ors) == 0 {
 		and := g.andStateRule(key, sc.Ands)
 		a := &rules.Ands{

@@ -130,11 +130,11 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 		c.allocVariable(id, val, pos)
 	case *ir.Func:
 	case *ir.InstAnd:
-		placeholder := constant.NewAnd(constant.NewBool(false), constant.NewBool(false))
+		placeholder := constant.NewAnd(v.X.(constant.Expression), v.Y.(constant.Expression))
 		alloc := c.module.NewGlobalDef(name, placeholder)
 		c.storeGlobal(name, alloc)
 	case *ir.InstOr:
-		placeholder := constant.NewAnd(constant.NewBool(false), constant.NewBool(false))
+		placeholder := constant.NewOr(v.X.(constant.Expression), v.Y.(constant.Expression))
 		alloc := c.module.NewGlobalDef(name, placeholder)
 		c.storeGlobal(name, alloc)
 	default:

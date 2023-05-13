@@ -247,9 +247,10 @@ func (p *Phi) Tag(k1 string, k2 string) {
 
 type StateChange struct {
 	Rule
-	Ands []value.Value
-	Ors  []value.Value
-	tag  *branch
+	Ands  []value.Value
+	Ors   []value.Value
+	Rules Rule
+	tag   *branch
 }
 
 func (sc *StateChange) ruleNode() {}
@@ -273,6 +274,18 @@ func (sc *StateChange) Tag(k1 string, k2 string) {
 		branch: k1,
 		block:  k2,
 	}
+}
+func (sc *StateChange) Empty() bool {
+	if len(sc.Ands) > 0 {
+		return false
+	}
+	if len(sc.Ors) > 0 {
+		return false
+	}
+	if sc.Rules != nil {
+		return false
+	}
+	return true
 }
 
 type Wrap struct { //wrapper for constant values to be used in infix as rules

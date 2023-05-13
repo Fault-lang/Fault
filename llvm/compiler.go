@@ -298,21 +298,15 @@ func (c *Compiler) compile(node ast.Node) {
 			c.globalVariable(rawid, value, v.Position())
 		case *ast.InfixExpression:
 			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
-				value := c.compileValue(v.Value)
-				rawid := v.Name.RawId()
-				s := c.specs[rawid[0]]
-				s.DefineSpecVar(rawid, value)
-				s.DefineSpecType(rawid, value.Type())
-				c.globalVariable(rawid, value, v.Position())
+				name := v.Name.IdString()
+				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
+				c.storeGlobal(name, r)
 			}
 		case *ast.PrefixExpression:
 			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
-				value := c.compileValue(v.Value)
-				rawid := v.Name.RawId()
-				s := c.specs[rawid[0]]
-				s.DefineSpecVar(rawid, value)
-				s.DefineSpecType(rawid, value.Type())
-				c.globalVariable(rawid, value, v.Position())
+				name := v.Name.IdString()
+				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
+				c.storeGlobal(name, r)
 			}
 		}
 	case *ast.FunctionLiteral:
@@ -1298,20 +1292,23 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 }
 
 func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
-	vname := strings.Join(id, "_")
+	var pointer *ir.InstAlloca
 	s := c.specs[id[0]]
+	vname := strings.Join(id, "_")
+	ty := s.GetSpecType(vname)
+
 	local := s.GetSpecVar(id)
 	if local != nil {
-		pointer := s.GetSpecVarPointer(id)
-		ty := s.GetSpecType(vname)
+		pointer = s.GetSpecVarPointer(id)
+	}
+	if pointer != nil {
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
 	}
 
-	pointer := c.specGlobals[vname]
-	if pointer != nil {
-		ty := s.GetSpecType(vname)
-		load := c.contextBlock.NewLoad(ty, pointer)
+	gpointer := c.specGlobals[vname]
+	if gpointer != nil {
+		load := c.contextBlock.NewLoad(ty, gpointer)
 		return load
 	}
 	return nil
