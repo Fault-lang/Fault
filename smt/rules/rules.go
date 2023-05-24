@@ -412,6 +412,10 @@ func TagRule(ru Rule, branch string, block string) Rule {
 		r.Y = TagRule(r.Y, branch, block)
 		r.Tag(branch, block)
 		return r
+	case *Prefix:
+		r.X = TagRule(r.X, branch, block)
+		r.Tag(branch, block)
+		return r
 	case *Ite:
 		r.Cond = TagRule(r.Cond, branch, block)
 		r.T = TagRules(r.T, branch, block)

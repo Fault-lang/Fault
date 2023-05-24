@@ -203,21 +203,15 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 						c.globalVariable(rawid, value, d.Position())
 					case *ast.InfixExpression:
 						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
-							value := c.compileValue(d)
-							rawid := n.Name.RawId()
-							s := c.specs[rawid[0]]
-							//s.DefineSpecVar(rawid, value)
-							s.DefineSpecType(rawid, value.Type())
-							c.globalVariable(rawid, value, d.Position())
+							name := n.Name.IdString()
+							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
+							c.storeGlobal(name, r)
 						}
 					case *ast.PrefixExpression:
 						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
-							value := c.compileValue(d)
-							rawid := n.Name.RawId()
-							s := c.specs[rawid[0]]
-							//s.DefineSpecVar(rawid, value)
-							s.DefineSpecType(rawid, value.Type())
-							c.globalVariable(rawid, value, d.Position())
+							name := n.Name.IdString()
+							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
+							c.storeGlobal(name, r)
 						}
 					}
 				}
