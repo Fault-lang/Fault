@@ -139,6 +139,16 @@ func trimSlashes(parts []string, host bool) []string {
 	return parts
 }
 
+func FormatIdent(id string) string {
+	//Removes LLVM IR specific leading characters
+	if string(id[0]) == "@" {
+		return id[1:]
+	} else if string(id[0]) == "%" {
+		return id[1:]
+	}
+	return id
+}
+
 func Preparse(pairs map[*ast.Identifier]ast.Expression) map[string]ast.Node {
 	properties := make(map[string]ast.Node)
 	for k, v := range pairs {

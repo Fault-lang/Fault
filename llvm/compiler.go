@@ -7,6 +7,7 @@ import (
 	"fault/preprocess"
 	"fault/util"
 	"fmt"
+	"math/rand"
 	"runtime/debug"
 	"strings"
 
@@ -162,6 +163,14 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 			c.IsValid = true
 			return
 		}
+
+		if d, ok := n.(*ast.DefStatement); ok {
+			if _, str := d.Value.(*ast.StringLiteral); str {
+				c.IsValid = true
+				return
+			}
+		}
+
 	}
 }
 
@@ -176,32 +185,70 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 	switch decl := specfile.Statements[0].(type) {
 	case *ast.SpecDeclStatement:
 		c.currentSpec = decl.Name.Value
+		c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
+
+		if isImport { //We still want the globals compiled
+			for _, v := range specfile.Statements {
+				switch n := v.(type) {
+				case *ast.ConstantStatement:
+					c.compileConstant(n)
+				case *ast.DefStatement:
+					switch d := n.Value.(type) {
+					case *ast.StringLiteral:
+						value := c.compileValue(d)
+						rawid := d.RawId()
+						s := c.specs[rawid[0]]
+						//s.DefineSpecVar(rawid, value)
+						s.DefineSpecType(rawid, value.Type())
+						c.globalVariable(rawid, value, d.Position())
+					case *ast.InfixExpression:
+						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
+							name := n.Name.IdString()
+							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
+							c.storeGlobal(name, r)
+						}
+					case *ast.PrefixExpression:
+						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
+							name := n.Name.IdString()
+							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
+							c.storeGlobal(name, r)
+						}
+					}
+				}
+			}
+		}
 	case *ast.SysDeclStatement:
 		c.currentSpec = decl.Name.Value
+		c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
+
 		for _, v := range specfile.Statements {
 			switch n := v.(type) {
 			case *ast.ForStatement:
 				c.hasRunBlock = true
 				continue
 			case *ast.DefStatement:
-				if cm, ok := n.Value.(*ast.ComponentLiteral); ok {
+				switch d := n.Value.(type) {
+				case *ast.ComponentLiteral:
 					//assembling component parts as params
-					id := cm.Id()
+					id := d.Id()
 					s := c.specStructs[id[0]]
 					branches, err := s.FetchComponent(id[1])
 					if err != nil {
 						panic(err)
 					}
-					params := c.generateParameters(cm.Id(), branches, true)
+					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
+				case *ast.StringLiteral:
+					//value := c.compileValue(d)
+					//c.globalVariable(d.ProcessedName, value, d.Position())
 				}
+
 			}
 		}
 	default:
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
 	if !isImport && c.IsValid { //Don't compile if the spec is being imported
 		for _, fileNode := range specfile.Statements {
 			c.compile(fileNode)
@@ -233,9 +280,33 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ConstantStatement:
 		c.compileConstant(v)
 	case *ast.DefStatement:
-		c.compileStruct(v)
-
+		switch v.Value.(type) {
+		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral, *ast.StructInstance:
+			c.compileStruct(v)
+		case *ast.StringLiteral:
+			value := c.compileValue(v.Value)
+			rawid := v.Name.RawId()
+			s := c.specs[rawid[0]]
+			s.DefineSpecVar(rawid, value)
+			s.DefineSpecType(rawid, value.Type())
+			c.globalVariable(rawid, value, v.Position())
+		case *ast.InfixExpression:
+			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
+				name := v.Name.IdString()
+				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
+				c.storeGlobal(name, r)
+			}
+		case *ast.PrefixExpression:
+			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
+				name := v.Name.IdString()
+				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
+				c.storeGlobal(name, r)
+			}
+		}
 	case *ast.FunctionLiteral:
+
+	case *ast.ExpressionStatement:
+		c.compile(v.Expression)
 
 	case *ast.InfixExpression:
 		c.compileInfix(v)
@@ -357,7 +428,8 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.FloatLiteral:
 		return constant.NewFloat(irtypes.Double, v.Value)
 	case *ast.StringLiteral:
-		return constant.NewCharArrayFromString(v.Value)
+		return constant.NewBool(false)
+		//return constant.NewCharArrayFromString(v.Value)
 	case *ast.Boolean:
 		return constant.NewBool(v.Value)
 	case *ast.Natural:
@@ -689,7 +761,7 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 
 func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
 	var value value.Value
-	if node.Left.Type() == "BOOLEAN" {
+	if node.Left.Type() == "BOOL" {
 		value = constant.NewBool(false)
 	} else {
 		value = constant.NewFloat(irtypes.Double, float64(0.000000000009))
@@ -725,7 +797,15 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		if !c.validOperator(node, true) {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
+
+		if node.TokenLiteral() == "COMPOUND_STRING" {
+			r := c.compileCompoundGlobal(node.Left.(ast.Nameable).IdString(), node.Right.(*ast.InfixExpression))
+			c.storeGlobal(node.Left.(ast.Nameable).IdString(), r)
+			return nil
+		}
+
 		r := c.compileValue(node.Right)
+
 		if _, ok := node.Right.(*ast.Instance); !ok { // If declaring a new instance don't save
 			switch n := node.Left.(type) {
 			case *ast.Identifier:
@@ -940,67 +1020,6 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	}
 }
 
-// func (c *Compiler) compileSwap(node *ast.InfixExpression) value.Value {
-// 	n, ok := node.Left.(*ast.ParameterCall)
-// 	pos := node.Position()
-// 	if !ok {
-// 		panic(fmt.Sprintf("cannot swap a non-stock or non-flow property col: %d, line: %d", pos[0], pos[1]))
-// 	}
-
-// 	rawid := n.RawId()
-
-// 	s := c.specs[rawid[0]]
-// 	spec := c.specStructs[rawid[0]]
-// 	ty, _ := spec.GetStructType(rawid)
-// 	if ty == "NIL" {
-// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 	}
-
-// 	_, err := spec.FetchVar(rawid, ty)
-
-// 	if err == nil {
-// 		r := c.compileValue(node.Right)
-// 		pointer := s.GetSpecVarPointer(rawid)
-// 		c.contextBlock.NewStore(r, pointer)
-// 		return nil
-// 	}
-
-// 	var str1, str2 map[string]ast.Node
-// 	switch ty {
-// 	case "STOCK":
-// 		id := n.Id()
-// 		str1, err = spec.FetchStock(id[1])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 		}
-
-// 		rightId := node.Right.(ast.Nameable).Id()
-// 		str2, err = spec.FetchStock(rightId[1])
-
-// 	case "FLOW":
-// 		id := n.Id()
-// 		str1, err = spec.FetchFlow(id[1])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 		}
-
-// 		rightId := node.Right.(ast.Nameable).Id()
-// 		str2, err = spec.FetchFlow(rightId[1])
-// 	}
-
-// 	if err != nil {
-// 		panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(rawid, "_"), pos[0], pos[1]))
-// 	}
-
-// 	for k := range str1 {
-// 		from := append(rawid, k)
-// 		to := c.compileValue(str2[k])
-// 		pointer := s.GetSpecVarPointer(from)
-// 		c.contextBlock.NewStore(to, pointer)
-// 	}
-// 	return nil
-// }
-
 func (c *Compiler) tagBuiltIns(v1 value.Value, gname string) value.Value {
 	// BuiltIns in a "b || b" or "b && b" construction need metadata
 	// so we can find parse them correctly
@@ -1073,6 +1092,57 @@ func (c *Compiler) compileIf(n *ast.IfExpression) {
 		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
 	} else {
 		afterBlock.NewRet(nil)
+	}
+}
+
+func (c *Compiler) compileCompoundGlobal(name string, n *ast.InfixExpression) *ir.Global {
+	r := c.compileCompoundNode(n.Right)
+	l := c.compileCompoundNode(n.Left)
+
+	var ret *ir.Global
+	switch n.Operator {
+	case "&&":
+		v := constant.NewAnd(r, l)
+		ret = c.module.NewGlobalDef(name, v)
+	case "||":
+		v := constant.NewOr(r, l)
+		ret = c.module.NewGlobalDef(name, v)
+	}
+	return ret
+}
+
+func (c *Compiler) compileCompoundNode(n ast.Node) *ir.Global {
+	switch v := n.(type) {
+	case *ast.Identifier:
+		return c.specGlobals[v.IdString()]
+	case *ast.ParameterCall:
+		return c.specGlobals[v.IdString()]
+	case *ast.PrefixExpression:
+		r := c.compileCompoundNode(v.Right)
+		name := r.Ident()
+		name = fmt.Sprintf("%s_neg", util.FormatIdent(name))
+		return c.module.NewGlobalDef(name, constant.NewFNeg(r))
+	case *ast.InfixExpression:
+		r := c.compileCompoundNode(v.Right)
+		l := c.compileCompoundNode(v.Left)
+		rname := r.Ident()
+		lname := l.Ident()
+		name := fmt.Sprintf("%s_%s", util.FormatIdent(lname), util.FormatIdent(rname))
+		if _, ok := c.GetGlobal(name); ok { //avoiding conflicts when compound rules overlap
+			name = fmt.Sprintf("%s_%s%d", name, "p", rand.Int())
+		}
+		var infix constant.Constant
+		switch v.Operator {
+		case "&&":
+			infix = constant.NewAnd(l, r)
+		case "||":
+			infix = constant.NewOr(l, r)
+		}
+		return c.module.NewGlobalDef(name, infix)
+	default:
+		r := c.compileValue(v)
+		name := r.Ident()
+		return c.module.NewGlobalDef(util.FormatIdent(name), r.(constant.Constant))
 	}
 }
 
@@ -1216,21 +1286,23 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 }
 
 func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
+	var pointer *ir.InstAlloca
 	s := c.specs[id[0]]
 	vname := strings.Join(id, "_")
+	ty := s.GetSpecType(vname)
+
 	local := s.GetSpecVar(id)
 	if local != nil {
-		pointer := s.GetSpecVarPointer(id)
-		ty := s.GetSpecType(vname)
+		pointer = s.GetSpecVarPointer(id)
+	}
+	if pointer != nil {
 		load := c.contextBlock.NewLoad(ty, pointer)
 		return load
 	}
 
-	pointer := c.specGlobals[vname]
-	if pointer != nil {
-		pointer := c.specGlobals[vname]
-		ty := s.GetSpecType(vname)
-		load := c.contextBlock.NewLoad(ty, pointer)
+	gpointer := c.specGlobals[vname]
+	if gpointer != nil {
+		load := c.contextBlock.NewLoad(ty, gpointer)
 		return load
 	}
 	return nil
@@ -1492,23 +1564,12 @@ func (c *Compiler) isVarSet(rawid []string) bool {
 		return c.isStrVarSet(rawid)
 	}
 
-	_, err = s.FetchStock(rawid[1])
+	ty, _ := s.GetStructType(rawid)
+	_, err = s.Fetch(rawid[1], ty)
 	if err == nil {
 		return true
 	}
-
-	_, err = s.FetchFlow(rawid[1])
-	if err == nil {
-		return true
-	}
-
-	_, err = s.FetchConstant(rawid[1])
-	if err == nil {
-		return true
-	}
-
-	_, err = s.FetchComponent(rawid[1])
-	return err == nil
+	return false
 }
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {
@@ -1579,6 +1640,42 @@ func (c *Compiler) validOperator(node *ast.InfixExpression, boolsAllowed bool) b
 	}
 	return true
 }
+
+func (c *Compiler) GetGlobal(name string) (*ir.Global, bool) {
+	for _, gl := range c.module.Globals {
+		if util.FormatIdent(gl.Ident()) == name {
+			return gl, true
+		}
+	}
+	return nil, false
+}
+
+// func (c *Compiler) mergeGlobals(parent []*ir.Global, im []*ir.Global) []*ir.Global {
+// 	if len(im) == 2 { //__rounds and __parallel will always be there
+// 		return parent
+// 	}
+
+// 	if len(parent) == 2 { //no conflicts possible
+// 		t := append(parent, im[2:]...)
+// 		return t
+// 	}
+
+// 	cp, err := deepcopy.Anything(parent)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	t := cp.([]*ir.Global)
+// 	for _, p := range parent {
+// 		for _, c := range im {
+// 			if p.Ident() == c.Ident() {
+// 				panic(fmt.Sprintf("global variable %s already defined", c.Ident()))
+// 			}
+// 			t = append(t, c)
+// 		}
+// 	}
+// 	return t
+// }
 
 func negate(e ast.Expression) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it

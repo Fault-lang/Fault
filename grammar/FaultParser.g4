@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* (assertion | assumption)? startBlock? forStmt?
+    : sysClause importDecl* globalDecl* componentDecl* (assertion | assumption | stringDecl)? startBlock? forStmt?
     ;
 
 sysClause
@@ -64,6 +64,7 @@ declaration
     | structDecl
     | assertion
     | assumption
+    | stringDecl
     ;
 
 comparison
@@ -81,6 +82,20 @@ constDecl
 
 constSpec
     : identList ('=' constants)?
+    ;
+
+stringDecl
+    : IDENT '=' string_ eos
+    | IDENT '=' compoundString eos
+    | IDENT '=' compoundString eos
+    ;
+
+compoundString
+    : operandName
+    | '!' operandName
+    | '(' compoundString ')'
+    | compoundString '&&' compoundString
+    | compoundString '||' compoundString
     ;
 
 identList

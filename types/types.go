@@ -513,7 +513,7 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 			Scope:      0,
 			Parameters: nil}, nil
 	case *ast.BuiltIn:
-		return &ast.Type{Type: "BOOLEAN",
+		return &ast.Type{Type: "BOOL",
 			Scope:      0,
 			Parameters: nil}, nil
 	case *ast.ParameterCall:
@@ -525,6 +525,10 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	v, err := spec.FetchVar(rawid, ty)
 	if err != nil {
 		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
+	}
+
+	if v.TokenLiteral() == "COMPOUND_STRING" {
+		return &ast.Type{Type: "BOOL"}, err
 	}
 
 	ret := typeable(v)
@@ -609,7 +613,8 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			nr, err = c.infer(node.Right)
 		}
 
-		if node.Token.Type == "ASSIGN" { //In case of temp values
+		if node.Token.Type == "ASSIGN" || //In case of temp values
+			node.Token.Type == "COMPOUND_STRING" { //In case of compound string based rules
 			ty, _ := c.LookupType(node.Left)
 			if ty != nil && !isConvertible(ty, right) {
 				return node, fmt.Errorf("cannot redeclare variable %s is type %s got %s", node.Left.String(), ty.Type, right.Type)

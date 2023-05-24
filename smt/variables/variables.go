@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -142,7 +143,7 @@ func (vd *VarData) ConvertIdent(f string, val string) string {
 	if vd.IsTemp(val) {
 		refname := fmt.Sprintf("%s-%s", f, val)
 		if v, ok := vd.Loads[refname]; ok {
-			id := vd.FormatIdent(v.Ident())
+			id := util.FormatIdent(v.Ident())
 			if v, ok := vd.SSA[id]; ok {
 				return fmt.Sprint(id, "_", v)
 			} else {
@@ -155,21 +156,11 @@ func (vd *VarData) ConvertIdent(f string, val string) string {
 	} else {
 		id := val
 		if string(id[0]) == "%" || vd.IsGlobal(id) {
-			id = vd.FormatIdent(id)
+			id = util.FormatIdent(id)
 			return fmt.Sprint(id, "_", vd.SSA[id])
 		}
 		return id //Is a value, not an identifier
 	}
-}
-
-func (vd *VarData) FormatIdent(id string) string {
-	//Removes LLVM IR specific leading characters
-	if string(id[0]) == "@" {
-		return id[1:]
-	} else if string(id[0]) == "%" {
-		return id[1:]
-	}
-	return id
 }
 
 func (vd *VarData) GetClockBase(id string) string {
@@ -190,6 +181,21 @@ func (vd *VarData) GetVarBase(id string) (string, int) {
 func (vd *VarData) LookupType(id string, value value.Value) string {
 	if cache, ok := vd.Types[id]; ok { //If we've seen this one before
 		return cache
+	}
+
+	if _, ok := value.(*constant.ExprAnd); ok {
+		vd.Types[id] = "Bool"
+		return "Bool"
+	}
+
+	if _, ok := value.(*constant.ExprOr); ok {
+		vd.Types[id] = "Bool"
+		return "Bool"
+	}
+
+	if _, ok := value.(*constant.ExprFNeg); ok {
+		vd.Types[id] = "Bool"
+		return "Bool"
 	}
 
 	val := vd.Loads[id]

@@ -15,6 +15,7 @@ type SpecRecord struct {
 	Flows      map[string]map[string]ast.Node
 	Components map[string]map[string]ast.Node
 	Constants  map[string]ast.Node
+	Globals    map[string]ast.Node //mostly for stand alone string rules
 	// Because the order in which structs are declared matters
 	Order [][]string // ("STOCK", this_var_name)
 }
@@ -25,6 +26,7 @@ func NewSpecRecord() *SpecRecord {
 		Flows:      make(map[string]map[string]ast.Node),
 		Components: make(map[string]map[string]ast.Node),
 		Constants:  make(map[string]ast.Node),
+		Globals:    make(map[string]ast.Node),
 	}
 }
 
@@ -46,6 +48,10 @@ func (sr *SpecRecord) AddComponent(name string, v map[string]ast.Node) {
 
 func (sr *SpecRecord) AddConstant(name string, v ast.Node) {
 	sr.Constants[name] = v
+}
+
+func (sr *SpecRecord) AddGlobal(name string, v ast.Node) {
+	sr.Globals[name] = v
 }
 
 func (sr *SpecRecord) AddInstance(name string, v map[string]ast.Node, ty string) {
@@ -72,6 +78,11 @@ func (sr *SpecRecord) GetStructType(rawid []string) (string, []string) {
 		_, err := sr.FetchConstant(rawid[1])
 		if err == nil {
 			return "CONSTANT", rawid
+		}
+
+		_, err = sr.FetchGlobal(rawid[1])
+		if err == nil {
+			return "GLOBAL", rawid
 		}
 	}
 
@@ -100,6 +111,12 @@ func (sr *SpecRecord) Fetch(name string, ty string) (map[string]ast.Node, error)
 		return sr.FetchComponent(name)
 	case "CONSTANT":
 		ret, err := sr.FetchConstant(name)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]ast.Node{name: ret}, nil
+	case "GLOBAL":
+		ret, err := sr.FetchGlobal(name)
 		if err != nil {
 			return nil, err
 		}
@@ -141,6 +158,14 @@ func (sr *SpecRecord) FetchConstant(name string) (ast.Node, error) {
 	}
 }
 
+func (sr *SpecRecord) FetchGlobal(name string) (ast.Node, error) {
+	if sr.Globals[name] != nil {
+		return sr.Globals[name], nil
+	} else {
+		return nil, fmt.Errorf("no global found with name %s in spec %s", name, sr.SpecName)
+	}
+}
+
 func (sr *SpecRecord) FetchOrder() [][]string {
 	return sr.Order
 }
@@ -156,6 +181,10 @@ func (sr *SpecRecord) FetchAll() map[string]ast.Node {
 		all = util.MergeNodeMaps(all, v)
 	}
 	for k, v := range sr.Constants {
+		all[k] = v
+	}
+
+	for k, v := range sr.Globals {
 		all[k] = v
 	}
 	return all
@@ -216,6 +245,8 @@ func (sr *SpecRecord) FetchVar(rawid []string, ty string) (ast.Node, error) {
 		return nil, fmt.Errorf("no property named %s in component %s", br, str)
 	case "CONSTANT":
 		return sr.FetchConstant(rawid[1])
+	case "GLOBAL":
+		return sr.FetchGlobal(rawid[1])
 	default:
 		return nil, fmt.Errorf("cannot fetch a variable %s of type %s", rawid, ty)
 	}
@@ -262,6 +293,14 @@ func (sr *SpecRecord) UpdateComponent(name string, val map[string]ast.Node) erro
 	return fmt.Errorf("no component found with name %s in spec %s", name, sr.SpecName)
 }
 
+func (sr *SpecRecord) UpdateGlobal(name string, val ast.Node) error {
+	if sr.Globals[name] != nil {
+		sr.Globals[name] = val
+		return nil
+	}
+	return fmt.Errorf("no global found with name %s in spec %s", name, sr.SpecName)
+}
+
 func (sr *SpecRecord) UpdateVar(rawid []string, ty string, val ast.Node) error {
 	var err error
 	name := strings.Join(rawid[1:len(rawid)-1], "_")
@@ -273,9 +312,9 @@ func (sr *SpecRecord) UpdateVar(rawid []string, ty string, val ast.Node) error {
 		sr.Flows[name][pr] = val
 	case "COMPONENT":
 		sr.Components[name][pr] = val
-	case "CONSTANT":
+	case "GLOBAL":
 		name = strings.Join(rawid[1:], "_")
-		sr.Constants[name] = val
+		sr.Globals[name] = val
 	case "NIL":
 		return fmt.Errorf("cannot find the struct value %s", rawid)
 	}

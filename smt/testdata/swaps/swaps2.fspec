@@ -15,8 +15,8 @@ def f2 = flow {
     target: new s1,
     fn2: func{
         target.v -> 5;
-    }
-}
+    },
+};
 
 for 2 init{ 
     f1a = new f1;

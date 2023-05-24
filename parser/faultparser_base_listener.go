@@ -117,6 +117,18 @@ func (s *BaseFaultParserListener) EnterConstSpec(ctx *ConstSpecContext) {}
 // ExitConstSpec is called when production constSpec is exited.
 func (s *BaseFaultParserListener) ExitConstSpec(ctx *ConstSpecContext) {}
 
+// EnterStringDecl is called when production stringDecl is entered.
+func (s *BaseFaultParserListener) EnterStringDecl(ctx *StringDeclContext) {}
+
+// ExitStringDecl is called when production stringDecl is exited.
+func (s *BaseFaultParserListener) ExitStringDecl(ctx *StringDeclContext) {}
+
+// EnterCompoundString is called when production compoundString is entered.
+func (s *BaseFaultParserListener) EnterCompoundString(ctx *CompoundStringContext) {}
+
+// ExitCompoundString is called when production compoundString is exited.
+func (s *BaseFaultParserListener) ExitCompoundString(ctx *CompoundStringContext) {}
+
 // EnterIdentList is called when production identList is entered.
 func (s *BaseFaultParserListener) EnterIdentList(ctx *IdentListContext) {}
 

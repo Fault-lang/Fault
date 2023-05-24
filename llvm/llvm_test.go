@@ -33,7 +33,7 @@ func TestSimpleConst(t *testing.T) {
 	@test1_y = global double 0x3FF3333333333333
 	@test1_a = global i1 true
 	@test1_b = global i1 false
-	@test1_c = global [14 x i8] c"\22Hello World!\22"
+	@test1_c = global i1 false
 	
 	define void @__run() {
 	block-0:
@@ -432,10 +432,10 @@ func TestIsVarSet(t *testing.T) {
 	}
 
 	c.specStructs["test"].AddComponent("this", val)
+	c.specStructs["test"].Index("COMPONENT", "this")
 	if !c.isVarSet(test) {
 		t.Fatal("isVarSet returned false on component, should return true")
 	}
-	c.specStructs["test"].Index("COMPONENT", "this")
 
 	if !c.isVarSet(test1) {
 		t.Fatal("isStrVarSet returned false on a component var, should return true")
@@ -451,10 +451,10 @@ func TestIsVarSet(t *testing.T) {
 	c.specStructs["test"] = preprocess.NewSpecRecord()
 
 	c.specStructs["test"].AddFlow("this", val)
+	c.specStructs["test"].Index("FLOW", "this")
 	if !c.isVarSet(test) {
 		t.Fatal("isVarSet returned false on flow, should return true")
 	}
-	c.specStructs["test"].Index("FLOW", "this")
 
 	if !c.isVarSet(test1) {
 		t.Fatal("isStrVarSet returned false on a flow var, should return true")
@@ -463,11 +463,10 @@ func TestIsVarSet(t *testing.T) {
 	c.specStructs["test"] = preprocess.NewSpecRecord()
 
 	c.specStructs["test"].AddStock("this", val)
+	c.specStructs["test"].Index("STOCK", "this")
 	if !c.isVarSet(test) {
 		t.Fatal("isVarSet returned false on stock, should return true")
 	}
-
-	c.specStructs["test"].Index("STOCK", "this")
 
 	if !c.isVarSet(test1) {
 		t.Fatal("isStrVarSet returned false on a stock var, should return true")
@@ -662,6 +661,47 @@ func TestIndexExp(t *testing.T) {
 		store double %1, double* %test1_test_buzz_a
 		ret void
 	}`
+
+	llvm, err := prepTest(test, true)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestStringExp(t *testing.T) {
+	test := `spec test;
+		str1 = "is a fish";
+		str2 = "tastes delicious with ginger";
+		str3 = "native to North America";
+
+		assume str1 && str3;
+		assert str3;
+	`
+
+	expecting := `@__rounds = global i16 0
+	@__parallelGroup = global [5 x i8] c"start"
+	@test_str1 = global i1 false
+	@test_str2 = global i1 false
+	@test_str3 = global i1 false
+	
+	define void @__run() {
+	block-29:
+		ret void
+	}
+	`
 
 	llvm, err := prepTest(test, true)
 

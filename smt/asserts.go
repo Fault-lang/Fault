@@ -141,9 +141,24 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 			operator = smtlibOperators(e.Operator)
 		}
 
-		if r, ok := right.(*rules.States); ok {
+		switch r := right.(type) {
+		case *rules.Wrap:
+			var numstr = r.State
+			if r.Constant {
+				numstr = "0"
+			}
+			if r.All {
+				numstr = ""
+			}
+			vr := g.varRounds(r.Value, numstr)
+			s := &rules.States{Base: r.Value,
+				States:   vr,
+				Constant: true,
+			}
+			return g.mergeInvariantPrefix([]*rules.States{s}, operator)
+		case *rules.States:
 			return g.mergeInvariantPrefix([]*rules.States{r}, operator)
-		} else {
+		default:
 			return g.mergeInvariantPrefix(right.(*rules.StateGroup).Wraps, operator)
 		}
 
@@ -171,8 +186,10 @@ func (g *Generator) mergeInvariantPrefix(right []*rules.States, operator string)
 	for _, r := range right {
 		states := make(map[int][]string)
 		for i := 0; i <= g.Rounds; i++ {
-			if s, ok := r.States[i]; ok {
-				states[i] = append(states[i], fmt.Sprintf("(%s %s)", operator, s))
+			if st, ok := r.States[i]; ok {
+				for _, s := range st {
+					states[i] = append(states[i], fmt.Sprintf("(%s %s)", operator, s))
+				}
 			}
 		}
 		r.States = states

@@ -183,9 +183,9 @@ func TestUpdateVar(t *testing.T) {
 		t.Fatalf("property bar has incorrect value got=%d want=3", i3b.Value)
 	}
 
-	sr.AddConstant("test4", &ast.IntegerLiteral{Value: 1})
-	sr.UpdateVar([]string{"foo", "test"}, "CONSTANT", &ast.IntegerLiteral{Value: 3})
-	t4b, _ := sr.FetchConstant("test")
+	sr.AddGlobal("test4", &ast.IntegerLiteral{Value: 1})
+	sr.UpdateVar([]string{"foo", "test4"}, "GLOBAL", &ast.IntegerLiteral{Value: 3})
+	t4b, _ := sr.FetchGlobal("test4")
 
 	i4b, ok := t4b.(*ast.IntegerLiteral)
 	if !ok {
