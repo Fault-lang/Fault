@@ -139,7 +139,7 @@ func run(filepath string, mode string, input string, reach bool) {
 		}
 
 		if !compiler.IsValid {
-			fmt.Println("Fault found nothing to run. Missing run block or start block.")
+			log.Fatal("Fault found nothing to run. Missing run block or start block.")
 			return
 		}
 
@@ -161,6 +161,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.LoadMeta(generator.GetForks())
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+			os.Exit(1)
 		}
 	case "ll":
 		generator := smt2(d, 0, uncertains, unknowns, nil, nil)
@@ -178,6 +179,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.LoadMeta(generator.GetForks())
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+			os.Exit(1)
 		}
 	case "smt2":
 		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange))
@@ -189,6 +191,7 @@ func run(filepath string, mode string, input string, reach bool) {
 		if data != nil {
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+			os.Exit(1)
 		}
 	}
 }
