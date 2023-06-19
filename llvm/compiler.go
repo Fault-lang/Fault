@@ -76,6 +76,7 @@ type Compiler struct {
 	Unknowns       []string
 	Components     map[string]*StateFunc
 	ComponentOrder []string
+	States         map[string]bool
 	Alias          map[string]string
 }
 
@@ -101,6 +102,7 @@ func NewCompiler() *Compiler {
 		specGlobals:   make(map[string]*ir.Global),
 		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
+		States:        make(map[string]bool),
 	}
 	c.setup()
 	return c
@@ -557,6 +559,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			c.contextFunc = f
 			pname = name.Block()
 			c.contextBlock = f.NewBlock(pname)
+			c.States[v.IdString()] = true
 			c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
 			c.ComponentOrder = append(c.ComponentOrder, childId)
 			val2 := c.compileBlock(v.Body)

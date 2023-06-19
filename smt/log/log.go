@@ -1,5 +1,7 @@
 package log
 
+import "fmt"
+
 type ResultLog struct {
 	Events []*Event
 	Lookup map[string]int
@@ -15,13 +17,26 @@ type Event struct {
 	Probability float64
 }
 
+func (e *Event) String() string {
+	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%f\n", e.Round, e.Type, e.Scope, e.Variable, e.Previous, e.Current, e.Probability)
+}
+
 func NewLog() *ResultLog {
 	return &ResultLog{
 		Lookup: make(map[string]int),
 	}
 }
 
-func (rl *ResultLog) NewChange(round int, scope string, variable string) *Event {
+func NewInit(round int, scope string, variable string) *Event {
+	return &Event{
+		Round:    round,
+		Type:     "INIT",
+		Scope:    scope,
+		Variable: variable,
+	}
+}
+
+func NewChange(round int, scope string, variable string) *Event {
 	return &Event{
 		Round:    round,
 		Type:     "CHANGE",
@@ -30,15 +45,17 @@ func (rl *ResultLog) NewChange(round int, scope string, variable string) *Event 
 	}
 }
 
-func (rl *ResultLog) NewTransition(round int, scope string) *Event {
+func NewTransition(round int, previous string, current string) *Event {
 	return &Event{
-		Round: round,
-		Type:  "TRANSITION",
-		Scope: scope,
+		Round:    round,
+		Type:     "TRANSITION",
+		Variable: "__state",
+		Previous: previous,
+		Current:  current,
 	}
 }
 
-func (rl *ResultLog) NewTrigger(round int, scope string, variable string) *Event {
+func NewTrigger(round int, scope string, variable string) *Event {
 	return &Event{
 		Round:    round,
 		Type:     "TRIGGER",

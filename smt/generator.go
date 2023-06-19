@@ -55,6 +55,7 @@ type Generator struct {
 	RVarLookup map[string][][]int
 	Results    map[string][]*variables.VarChange
 	Log        *resultlog.ResultLog
+	States     map[string]bool
 }
 
 func NewGenerator() *Generator {
@@ -76,6 +77,7 @@ func NewGenerator() *Generator {
 func Execute(compiler *llvm.Compiler) *Generator {
 	generator := NewGenerator()
 	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.States = compiler.States
 	generator.Run(compiler.GetIR())
 	return generator
 }
@@ -326,6 +328,11 @@ func (g *Generator) parseFunction(f *ir.Func) []rules.Rule {
 
 	if g.isBuiltIn(f.Ident()) {
 		return ru
+	}
+
+	if g.currentRound() != -1 {
+		event := resultlog.NewTrigger(g.currentRound(), g.currentFunction, f.Ident())
+		g.Log.Add(event)
 	}
 
 	oldfunc := g.currentFunction
@@ -785,6 +792,10 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	g.addVarToRound(base2, int(n2+1))
 	currentState := g.variables.AdvanceSSA(base2)
 	g.AddNewVarChange(base2, currentState, prev2)
+
+	event := resultlog.NewTransition(g.currentRound(), base2, base)
+	g.Log.Add(event)
+
 	if complex {
 		g.declareVar(currentState, "Bool")
 	}
@@ -1402,6 +1413,10 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				v = fmt.Sprintf("%s_%d", v, n)
 			}
 			g.AddNewVarChange(base, id, prev)
+
+			event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+			g.Log.Add(event)
+
 			ru = append(ru, g.createRule(id, v, ty, ""))
 		} else if ref, ok := g.variables.Ref[refname]; ok {
 			switch r := ref.(type) {
@@ -1419,6 +1434,10 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 				wid := &rules.Wrap{Value: id}
+
+				event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				g.Log.Add(event)
+
 				if g.variables.IsBoolean(r.Y.String()) {
 					ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
 				} else if g.isASolvable(r.X.String()) {
@@ -1438,6 +1457,10 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				id := g.variables.AdvanceSSA(base)
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
+
+				event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				g.Log.Add(event)
+
 				wid := &rules.Wrap{Value: id}
 				ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
 			}
@@ -1456,7 +1479,20 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 		id := g.variables.AdvanceSSA(base)
 		g.addVarToRound(base, int(g.variables.SSA[base]))
 		g.AddNewVarChange(base, id, prev)
+
 		ru = append(ru, g.createRule(id, inst.Src.Ident(), ty, ""))
+
+		if g.States[base] { //Don't log changes to variables associated with state chart transitions
+			return ru
+		}
+
+		if g.variables.SSA[base] != 0 {
+			event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+			g.Log.Add(event)
+		} else {
+			event := resultlog.NewInit(g.currentRound(), g.currentFunction, id)
+			g.Log.Add(event)
+		}
 	}
 	return ru
 }
