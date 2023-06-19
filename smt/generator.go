@@ -5,6 +5,7 @@ import (
 	"fault/ast"
 	"fault/llvm"
 	"fault/smt/forks"
+	resultlog "fault/smt/log"
 	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
@@ -53,6 +54,7 @@ type Generator struct {
 	RoundVars  [][][]string
 	RVarLookup map[string][][]int
 	Results    map[string][]*variables.VarChange
+	Log        *resultlog.ResultLog
 }
 
 func NewGenerator() *Generator {
@@ -67,6 +69,7 @@ func NewGenerator() *Generator {
 		returnVoid:      forks.NewPhiState(),
 		Results:         make(map[string][]*variables.VarChange),
 		RVarLookup:      make(map[string][][]int),
+		Log:             resultlog.NewLog(),
 	}
 }
 
@@ -697,40 +700,6 @@ func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (*rul
 		}
 		//Both right and left are values
 		return sc, ret
-
-		// if vx, ok := g.variables.Ref[refnamex]; ok {
-		// 	if vy, ok := g.variables.Ref[refnamey]; ok {
-		// 		return &rules.Infix{X: vx, Y: vy, Op: "or", Ty: "BOOL"}, []value.Value{}
-		// 	}
-		// 	vy := g.variables.Loads[refnamey]
-
-		// 	sr := g.stateRules(refnamey, sc)
-		// 	return &rules.Infix{X: vx, Y: sr, Op: "or", Ty: "BOOL"}, []value.Value{}
-		// }
-
-		// vx := g.variables.Loads[refnamex]
-		// if g.peek(vx) != "infix" {
-		// 	sc2, ret2 := g.parseChoice(vx, sc)
-		// 	sc = sc2.(*rules.StateChange)
-		// 	sc.Ors = append(sc.Ors, ret2...)
-		// } else {
-		// 	sc2 := g.storedChoice[refnamex]
-		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
-		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
-		// }
-		// delete(g.storedChoice, refnamex)
-
-		// vy := g.variables.Loads[refnamey]
-		// if g.peek(vy) != "infix" {
-		// 	sc2, ret2 := g.parseChoice(vy, sc)
-		// 	sc = sc2.(*rules.StateChange)
-		// 	sc.Ors = append(sc.Ors, ret2...)
-		// } else {
-		// 	sc2 := g.storedChoice[refnamey]
-		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
-		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
-		// }
-		// delete(g.storedChoice, refnamey)
 	case *ir.InstAnd:
 		op := "and"
 		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
@@ -764,33 +733,6 @@ func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (*rul
 		}
 		//Both right and left are values
 		return sc, ret
-		// refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
-		// vx := g.variables.Loads[refnamex]
-		// if g.peek(vx) != "infix" {
-		// 	sc2, ret2 := g.parseChoice(vx, sc)
-		// 	sc = sc2.(*rules.StateChange)
-		// 	sc.Ands = append(sc.Ands, ret2...)
-		// } else {
-		// 	sc2 := g.storedChoice[refnamex]
-		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
-		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
-		// }
-		// delete(g.storedChoice, refnamex)
-
-		// refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
-		// vy := g.variables.Loads[refnamey]
-		// if g.peek(vy) != "infix" {
-		// 	sc2, ret2 := g.parseChoice(vy, sc)
-		// 	sc = sc2.(*rules.StateChange)
-		// 	sc.Ands = append(sc.Ands, ret2...)
-		// } else {
-		// 	sc2 := g.storedChoice[refnamey]
-		// 	sc.Ands = append(sc.Ands, sc2.Ands...)
-		// 	sc.Ors = append(sc.Ors, sc2.Ors...)
-		// }
-		// delete(g.storedChoice, refnamey)
-
-		// return sc, ret
 	}
 	return sc, ret
 }
