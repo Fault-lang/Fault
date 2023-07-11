@@ -331,7 +331,8 @@ func (g *Generator) parseFunction(f *ir.Func) []rules.Rule {
 	}
 
 	if g.currentRound() != -1 {
-		event := resultlog.NewTrigger(g.currentRound(), g.currentFunction, f.Ident())
+		name := util.FormatIdent(f.Ident())
+		event := resultlog.NewTrigger(g.currentRound(), g.currentFunction, name)
 		g.Log.Add(event)
 	}
 

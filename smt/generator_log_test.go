@@ -7,7 +7,6 @@ import (
 	"fault/swaps"
 	"fault/types"
 	"fault/util"
-	"fmt"
 	gopath "path"
 	"testing"
 )
@@ -50,11 +49,11 @@ func TestChange(t *testing.T) {
 	}
 
 	if generator.Log.Events[1].Type != "TRIGGER" && generator.Log.Events[1].Variable != "test1_t_bar" {
-		t.Fatalf("Event has wrong data got=%s, want=0,TRIGGER,@__run,@test1_t_bar,,,0.000000", generator.Log.Events[1].String())
+		t.Fatalf("Event has wrong data got=%s, want=0,TRIGGER,@__run,test1_t_bar,,,0.000000", generator.Log.Events[1].String())
 	}
 
-	if generator.Log.Events[1].String() != "0,TRIGGER,@__run,@test1_t_bar,,,0.000000\n" {
-		t.Fatalf("Event has wrong data got=%s, want=0,TRIGGER,@__run,@test1_t_bar,,,0.000000", generator.Log.Events[1].String())
+	if generator.Log.Events[1].String() != "0,TRIGGER,@__run,test1_t_bar,,,0.000000\n" {
+		t.Fatalf("Event has wrong data got=%s, want=0,TRIGGER,@__run,test1_t_bar,,,0.000000", generator.Log.Events[1].String())
 	}
 }
 
@@ -101,8 +100,6 @@ func TestTransition(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	fmt.Println(generator.Log.Events)
-
 	if len(generator.Log.Events) != 3 {
 		t.Fatalf("ResultLog has wrong number of events got=%d, want=2", len(generator.Log.Events))
 	}
@@ -111,8 +108,8 @@ func TestTransition(t *testing.T) {
 		t.Fatalf("Event has wrong data got=%s, want=1,TRANSITION,,__state,test1_drain_initial,test1_drain_open,0.000000", generator.Log.Events[1].String())
 	}
 
-	if generator.Log.Events[0].String() != "1,TRIGGER,@__run,@test1_drain_initial__state,,,0.000000\n" {
-		t.Fatalf("Event has wrong data got=%s, want=1,TRIGGER,@__run,@test1_drain_initial__state,,,0.000000", generator.Log.Events[0].String())
+	if generator.Log.Events[0].String() != "1,TRIGGER,@__run,test1_drain_initial__state,,,0.000000\n" {
+		t.Fatalf("Event has wrong data got=%s, want=1,TRIGGER,@__run,test1_drain_initial__state,,,0.000000", generator.Log.Events[0].String())
 	}
 }
 

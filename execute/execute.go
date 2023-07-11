@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fault/execute/parser"
 	"fault/smt/forks"
+	resultlog "fault/smt/log"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
@@ -31,6 +32,7 @@ type ModelChecker struct {
 	Unknowns     []string
 	Results      map[string][]*variables.VarChange
 	ResultValues map[string]string
+	Log          *resultlog.ResultLog
 	solver       map[string]*Solver
 	forks        map[string][]*Branch
 }
@@ -66,11 +68,12 @@ func GenerateSolver() map[string]*Solver {
 	return s
 }
 
-func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*variables.VarChange) {
+func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*variables.VarChange, log *resultlog.ResultLog) {
 	mc.SMT = smt
 	mc.Uncertains = uncertains
 	mc.Unknowns = unknowns
 	mc.Results = results
+	mc.Log = log
 }
 
 func (mc *ModelChecker) LoadMeta(frks []forks.Fork) {

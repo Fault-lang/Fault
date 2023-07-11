@@ -59,6 +59,47 @@ func (mc *ModelChecker) Format(results map[string]Scenario) {
 	fmt.Println(out.String())
 }
 
+func (mc *ModelChecker) EventLog(results map[string]Scenario) {
+	var out bytes.Buffer
+	for k, v := range results {
+		//filtered := deadBranches(k, v, mc.forks)
+		mc.mapToLog(k, v)
+	}
+	out.WriteString(mc.Log.String())
+
+	fmt.Println(out.String())
+}
+
+func (mc *ModelChecker) mapToLog(k string, vals Scenario) {
+	switch v := vals.(type) {
+	case *BoolTrace:
+		for idx, s := range v.results {
+			name := fmt.Sprintf("%s_%d", k, idx)
+			j := mc.Log.Index(name)
+			if j >= 0 {
+				mc.Log.UpdateCurrent(j, fmt.Sprintf("%v", s))
+			}
+		}
+	case *FloatTrace:
+		for idx, s := range v.results {
+			name := fmt.Sprintf("%s_%d", k, idx)
+			j := mc.Log.Index(name)
+			if j >= 0 {
+				mc.Log.UpdateCurrent(j, fmt.Sprintf("%v", s))
+			}
+		}
+	case *IntTrace:
+		for idx, s := range v.results {
+			name := fmt.Sprintf("%s_%d", k, idx)
+			j := mc.Log.Index(name)
+			if j >= 0 {
+				mc.Log.UpdateCurrent(j, fmt.Sprintf("%v", s))
+			}
+		}
+	}
+
+}
+
 func generateRows(v Scenario) []string {
 	switch s := v.(type) {
 	case *FloatTrace:

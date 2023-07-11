@@ -71,10 +71,18 @@ func (rl *ResultLog) Index(name string) int {
 	return -1
 }
 
+func (rl *ResultLog) String() string {
+	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
+	for _, l := range rl.Events {
+		str = fmt.Sprintf("%s%s", str, l.String())
+	}
+	return str
+}
+
 func (rl *ResultLog) Add(e *Event) {
 	rl.Events = append(rl.Events, e)
 	if e.Variable != "" {
-		rl.Lookup[e.Variable] = len(rl.Events)
+		rl.Lookup[e.Variable] = len(rl.Events) - 1
 	}
 }
 
