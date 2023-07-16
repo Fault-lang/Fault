@@ -1,6 +1,10 @@
 package forks
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+	"strconv"
+)
 
 // Key is the base variable name
 //type Fork map[string][]*Choice
@@ -30,6 +34,7 @@ type Fork2 struct {
 // }
 
 type Var struct {
+	Base string
 	Last bool
 	Phi  string
 }
@@ -60,6 +65,26 @@ func (f *Fork2) AddVar(branch string, base string, id string, v *Var) {
 
 func NewVar() *Var {
 	return &Var{}
+}
+
+func (v *Var) String() string {
+	return fmt.Sprintf("%s_%s", v.Base, v.Phi)
+}
+
+func (v *Var) PhiInt() int {
+	i, err := strconv.ParseInt(v.Phi, 10, 32)
+	if err != nil {
+		panic(err)
+	}
+	return int(i)
+}
+
+func (v *Var) PhiInt16() int16 {
+	i, err := strconv.ParseInt(v.Phi, 10, 32)
+	if err != nil {
+		panic(err)
+	}
+	return int16(i)
 }
 
 type Fork map[string]map[int16]map[string][]int16

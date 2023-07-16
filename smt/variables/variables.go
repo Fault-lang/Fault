@@ -289,6 +289,10 @@ func (vd *VarData) GetSSA(id string) string {
 	}
 }
 
+func (vd *VarData) SetSSA(id string, n int16) {
+	vd.SSA[id] = n
+}
+
 func (vd *VarData) AdvanceSSA(id string) string {
 	if vd.IsClocked(id) {
 		now := &ast.IntegerLiteral{Value: 0}

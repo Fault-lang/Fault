@@ -11,6 +11,7 @@ import (
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -230,6 +231,7 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 		base, i := g.variables.GetVarBase(s)
 		phi := g.variables.GetSSANum(base) + 1
 		v := &forks.Var{
+			Base: base,
 			Last: lasts[base] == i,
 			Phi:  fmt.Sprint(phi),
 		}
@@ -433,7 +435,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 
 	g.variables.InitPhis()
 
-	choiceId := fmt.Sprintf("%x", md5.Sum([]byte(id)))
+	choiceId := fmt.Sprintf("%x%d", md5.Sum([]byte(id)), rand.Int31())
 	branchT := fmt.Sprintf("%s-%s", choiceId, "true")
 	branchF := fmt.Sprintf("%s-%s", choiceId, "false")
 	g.Forks.Choices[choiceId] = []string{branchT, branchF}
@@ -1815,7 +1817,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 		ru = append(ru, raw...)
 	}
 
-	ru = append(ru, g.capParallel()...)
+	ru = append(ru, g.capParallel(choiceId)...)
 	return ru
 }
 
@@ -1862,39 +1864,42 @@ func (g *Generator) updateParallelGroup(meta ir.Metadata) {
 	}
 }
 
-func (g *Generator) capParallel() []rules.Rule {
+func (g *Generator) capParallel(choiceId string) []rules.Rule {
 	// Take all the end variables for the all the branches
 	// and cap them with a phi value
 	// writes OR nodes to end each parallel run
-
-	//fork := g.getCurrentFork()
-	fork := g.forks
 	var ru []rules.Rule
-	for k /*v*/, _ := range fork {
-		id := g.variables.AdvanceSSA(k)
-		g.addVarToRound(k, int(g.variables.SSA[k]))
+	var nums = make(map[string][]int16)
+	var phiIds = make(map[string]string)
+	branches := g.Forks.Choices[choiceId]
+	for _, b := range branches {
+		for _, k := range g.Forks.Branches[b] {
+			if g.Forks.Vars[k].Last {
+				v := g.Forks.Vars[k]
+				base, n := g.variables.GetVarBase(k)
+				phiIds[base] = v.String()
+				g.addVarToRound(base, v.PhiInt())
+				g.variables.SetSSA(base, v.PhiInt16())
+				nums[base] = append(nums[base], int16(n))
+			}
+		}
+	}
 
-		var nums []int16
-		// for _, c := range v {
-		// 	//nums = append(nums, c.GetEnd())
-		// }
-
+	for k, id := range phiIds {
 		rule := &rules.Phi{
 			BaseVar:  k,
 			EndState: id,
-			Nums:     nums,
+			Nums:     nums[k],
 		}
-		g.VarChangePhi(k, id, nums)
+		g.VarChangePhi(k, id, nums[k])
 		ru = append(ru, rule)
 
-		base, i := g.variables.GetVarBase(id)
-		n := int16(i)
+		base, n := g.variables.GetVarBase(id)
 		if g.inPhiState.Level() == 1 {
-			g.variables.NewPhi(base, n)
+			g.variables.NewPhi(base, int16(n))
 		} else {
-			g.variables.StoreLastState(base, n)
+			g.variables.StoreLastState(base, int16(n))
 		}
-
 	}
 	return ru
 }
@@ -1945,7 +1950,7 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[
 			base, n := g.variables.GetVarBase(v)
 			if base == k && variable.Last {
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
-				g.Forks.AddVar(b, base, id, &forks.Var{Last: true, Phi: fmt.Sprint(n)})
+				g.Forks.AddVar(b, base, id, &forks.Var{Base: base, Last: true, Phi: fmt.Sprint(n)})
 				g.Forks.Vars[v].Last = false
 			}
 		}
