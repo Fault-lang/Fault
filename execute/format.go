@@ -59,12 +59,26 @@ func (mc *ModelChecker) Format(results map[string]Scenario) {
 	fmt.Println(out.String())
 }
 
+// func (mc *ModelChecker) EventLog(results map[string]Scenario) {
+// 	var out bytes.Buffer
+// 	for k, v := range results {
+// 		filtered := deadBranches(k, v, mc.forks)
+// 		mc.mapToLog(k, filtered)
+// 	}
+// 	out.WriteString(mc.Log.String())
+
+// 	fmt.Println(out.String())
+// }
+
 func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	var out bytes.Buffer
 	for k, v := range results {
-		//filtered := deadBranches(k, v, mc.forks)
 		mc.mapToLog(k, v)
 	}
+
+	deadVars := mc.DeadVariables()
+	mc.Log.FilterOut(deadVars)
+
 	out.WriteString(mc.Log.String())
 
 	fmt.Println(out.String())
@@ -157,6 +171,37 @@ func generateRows(v Scenario) []string {
 		return r
 	}
 	return nil
+}
+
+func (mc *ModelChecker) DeadVariables() []string {
+	var dead []string
+	for _, branchIds := range mc.Forks.Choices {
+		winner := mc.pickWinner(branchIds)
+		for _, b := range branchIds {
+			if b != winner {
+				dead = append(dead, mc.Forks.Branches[b]...)
+			}
+		}
+	}
+	return dead
+}
+
+func (mc *ModelChecker) pickWinner(branchIds []string) string {
+	var winner string
+	for _, branch := range branchIds { // Go through all the branches
+		winner = branch
+		DeclaredVars := mc.Forks.Branches[branch] // Variables declared in this branch
+		for _, dvars := range DeclaredVars {
+			if mc.Forks.Vars[dvars].Last { // Is this variable SSA the last one assigned in the branch?
+				last := mc.ResultValues[dvars]
+				phi := mc.ResultValues[mc.Forks.Vars[dvars].Phi]
+				if last != phi { // Does it's returned value match the Phi?
+					break // If not this can't be a winning branch
+				}
+			}
+		}
+	}
+	return winner
 }
 
 func deadBranches(id string, variable Scenario, branches map[string][]*Branch) Scenario {

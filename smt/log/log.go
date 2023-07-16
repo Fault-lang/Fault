@@ -15,10 +15,16 @@ type Event struct {
 	Previous    string
 	Current     string
 	Probability float64
+	Dead        bool //Filters out events not in solution
 }
 
 func (e *Event) String() string {
 	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%f\n", e.Round, e.Type, e.Scope, e.Variable, e.Previous, e.Current, e.Probability)
+}
+
+func (e *Event) Kill() {
+	e.Dead = true
+
 }
 
 func NewLog() *ResultLog {
@@ -71,10 +77,19 @@ func (rl *ResultLog) Index(name string) int {
 	return -1
 }
 
+func (rl *ResultLog) FilterOut(deadVars []string) {
+	for _, dvar := range deadVars {
+		idx := rl.Lookup[dvar]
+		rl.Events[idx].Kill()
+	}
+}
+
 func (rl *ResultLog) String() string {
 	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
 	for _, l := range rl.Events {
-		str = fmt.Sprintf("%s%s", str, l.String())
+		if !l.Dead {
+			str = fmt.Sprintf("%s%s", str, l.String())
+		}
 	}
 	return str
 }
