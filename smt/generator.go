@@ -1932,7 +1932,7 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rules.Rule {
 
 func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[string]int16) {
 	var rules []rules.Rule
-	for k, _ := range g.Forks.Bases[b] {
+	for k := range g.Forks.Bases[b] {
 		var id string
 		if phi, ok := phis[k]; !ok {
 			id = g.variables.AdvanceSSA(k)
