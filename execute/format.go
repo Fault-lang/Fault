@@ -3,6 +3,7 @@ package execute
 import (
 	"bytes"
 	"fault/smt/variables"
+	"fault/util"
 	"fmt"
 	"strings"
 )
@@ -49,10 +50,10 @@ func (mc *ModelChecker) writeObject(o *variables.VarChange) string {
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
 	var out bytes.Buffer
-	//results = definePath(results, mc.forks)
 	for k, v := range results {
 		out.WriteString(k + "\n")
-		filtered := deadBranches(k, v, mc.forks)
+		deadVars := mc.DeadVariables()
+		filtered := deadBranches(k, v, deadVars)
 		r := generateRows(filtered)
 		out.WriteString(strings.Join(r, " ") + "\n\n")
 	}
@@ -204,90 +205,34 @@ func (mc *ModelChecker) pickWinner(branchIds []string) string {
 	return winner
 }
 
-func deadBranches(id string, variable Scenario, branches map[string][]*Branch) Scenario {
+func deadBranches(id string, variable Scenario, deads []string) Scenario {
 	// Iterates through branches, determines the branches not needed by the model
 	// and removes them from the Scenario
 	//
 	// Question: what to do in the situation where two
 	// branches have the same end value as the phi but different
 	// intermediate values?
-	var phis []int16
-	for _, b := range branches[id] {
-		e := b.End()
-		phis = append(phis, b.phi)
+	_, n := util.GetVarBase(id)
+	for _, b := range deads {
 		switch v := variable.(type) {
 		case *FloatTrace:
-			endValue, ok := v.Index(e)
-			if !ok {
-				panic(fmt.Sprintf("end value for variable %s not found", id))
+			if b != id {
+				continue
 			}
-
-			phiValue, ok := v.Index(b.phi)
-			if !ok {
-				panic(fmt.Sprintf("phi value for variable %s not found", id))
-			}
-
-			if endValue != phiValue {
-				//Remove this branch from results
-				for k := range v.results {
-					if b.InTrail(k) {
-						v.Remove(k)
-					}
-				}
-			}
+			v.Remove(int16(n))
 			variable = v
 		case *IntTrace:
-			endValue, ok := v.Index(e)
-			if !ok {
-				panic(fmt.Sprintf("end value for variable %s not found", id))
+			if b != id {
+				continue
 			}
-
-			phiValue, ok := v.Index(b.phi)
-			if !ok {
-				panic(fmt.Sprintf("phi value for variable %s not found", id))
-			}
-
-			if endValue != phiValue {
-				//Remove this branch from results
-				for k := range v.results {
-					if b.InTrail(k) {
-						v.Remove(k)
-					}
-				}
-			}
+			v.Remove(int16(n))
 			variable = v
 		case *BoolTrace:
-			endValue, ok := v.Index(e)
-			if !ok {
-				panic(fmt.Sprintf("end value for variable %s not found", id))
+			if b != id {
+				continue
 			}
-
-			phiValue, ok := v.Index(b.phi)
-			if !ok {
-				panic(fmt.Sprintf("phi value for variable %s not found", id))
-			}
-
-			if endValue != phiValue {
-				//Remove this branch from results
-				for k := range v.results {
-					if b.InTrail(k) {
-						v.Remove(k)
-					}
-				}
-			}
+			v.Remove(int16(n))
 			variable = v
-		}
-	}
-
-	// Remove phis
-	for _, i := range phis {
-		switch v := variable.(type) {
-		case *FloatTrace:
-			v.Remove(i)
-		case *IntTrace:
-			v.Remove(i)
-		case *BoolTrace:
-			v.Remove(i)
 		}
 	}
 	return variable

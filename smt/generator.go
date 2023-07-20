@@ -44,8 +44,7 @@ type Generator struct {
 	blocks         map[string][]rules.Rule
 	localCallstack []string
 
-	Forks            *forks.Fork2
-	forks            forks.Fork
+	Forks            *forks.Fork
 	storedChoice     map[string]rules.Rule
 	inPhiState       *forks.PhiState //Flag, are we in a conditional or parallel?
 	parallelGrouping string
@@ -68,7 +67,6 @@ func NewGenerator() *Generator {
 		storedChoice:    make(map[string]rules.Rule),
 		currentFunction: "@__run",
 		Forks:           forks.InitFork(),
-		forks:           forks.Fork{},
 		Uncertains:      make(map[string][]float64),
 		inPhiState:      forks.NewPhiState(),
 		returnVoid:      forks.NewPhiState(),
@@ -166,57 +164,6 @@ func (g *Generator) varRounds(base string, num string) map[int][]string {
 	return ir
 }
 
-// func (g *Generator) newFork() {
-// 	if
-// 	// if len(g.forks) == 0 {
-// 	// 	g.forks = append(g.forks, forks.Fork{})
-// 	// 	return
-// 	// }
-
-// 	// if g.inPhiState.Level() > 1 {
-// 	// 	g.forks = append(g.forks[0:len(g.forks)-1], forks.Fork{})
-// 	// } else {
-// 	// 	g.forks = append(g.forks, forks.Fork{})
-// 	// }
-// }
-
-// func (g *Generator) GetForks() []forks.Fork {
-// 	return g.forks
-// }
-
-// func (g *Generator) getCurrentFork() forks.Fork {
-// 	return g.forks[len(g.forks)-1]
-// }
-
-// func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
-// 	var stateChanges []string
-// 	fork := g.getCurrentFork()
-// 	for _, ru := range rules {
-// 		stateChanges = append(stateChanges, g.allStateChangesInRule(ru)...)
-// 	}
-
-// 	seenVar := make(map[string]bool)
-// 	for _, s := range stateChanges {
-// 		base, i := g.variables.GetVarBase(s)
-// 		n := int16(i)
-// 		// Have we seen this variable in a previous branch of
-// 		// this fork?
-// 		if _, ok := fork[base]; ok {
-// 			if seenVar[base] && // Have we seen this variable before?
-// 				fork[base][len(fork[base])-1].Branch == b { // in this branch?
-// 				fork[base][len(fork[base])-1] = fork[base][len(fork[base])-1].AddChoiceValue(n)
-// 			} else {
-// 				seenVar[base] = true
-// 				fork[base] = append(fork[base], g.newChoice(base, n, b))
-// 			}
-// 		} else {
-// 			seenVar[base] = true
-// 			fork[base] = []*forks.Choice{g.newChoice(base, n, b)}
-// 		}
-// 	}
-// 	g.forks[len(g.forks)-1] = fork
-// }
-
 func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 	var stateChanges []string
 	var lasts = make(map[string]int)
@@ -227,7 +174,7 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 	}
 
 	for _, s := range stateChanges {
-		base, i := g.variables.GetVarBase(s)
+		base, i := util.GetVarBase(s)
 		phi := g.variables.GetSSANum(base) + 1
 		v := &forks.Var{
 			Base: base,
@@ -237,14 +184,6 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 		g.Forks.AddVar(b, base, s, v)
 	}
 
-}
-
-func (g *Generator) newChoice(base string, n int16, b string) *forks.Choice {
-	return &forks.Choice{
-		Base:   base,
-		Branch: b,
-		Values: []int16{n},
-	}
 }
 
 func (g *Generator) newConstants(globals []*ir.Global) []string {
@@ -447,7 +386,6 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		ru = append(ru, f...)
 
 		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
-		//g.newFork()
 		g.buildForkChoice(t, branchT)
 		g.buildForkChoice(f, branchF)
 
@@ -1128,7 +1066,7 @@ func (g *Generator) convertInfixVar(x string) string {
 	return x
 }
 func (g *Generator) isASolvable(id string) bool {
-	id, _ = g.variables.GetVarBase(id)
+	id, _ = util.GetVarBase(id)
 	for _, v := range g.Unknowns {
 		if v == id {
 			return true
@@ -1176,7 +1114,7 @@ func (g *Generator) allStateChangesInRule(ru rules.Rule, lasts map[string]int) (
 		}
 	case *rules.Wrap:
 		if !g.variables.IsNumeric(r.Value) && !g.variables.IsBoolean(r.Value) { // Wraps might be static values
-			base, n := g.variables.GetVarBase(r.Value)
+			base, n := util.GetVarBase(r.Value)
 			if n > lasts[base] {
 				lasts[base] = n
 			}
@@ -1197,43 +1135,6 @@ func (g *Generator) allStateChangesInRule(ru rules.Rule, lasts map[string]int) (
 	}
 	return wg, lasts
 }
-
-// func (g *Generator) allStateChangesInRule(wg map[string][]int, ru rules.Rule) map[string][]int {
-// 	switch r := ru.(type) {
-// 	case *rules.Infix:
-// 		wg = g.allStateChangesInRule(wg, r.X)
-// 		wg = g.allStateChangesInRule(wg, r.Y)
-// 	case *rules.Prefix:
-// 		wg = g.allStateChangesInRule(wg, r.X)
-// 	case *rules.Ite:
-// 		for _, w := range r.T {
-// 			wg = g.allStateChangesInRule(wg, w)
-// 		}
-
-// 		for _, w := range r.F {
-// 			wg = g.allStateChangesInRule(wg, w)
-// 		}
-// 	case *rules.WrapGroup:
-// 		for _, w := range r.Wraps {
-// 			wg = g.allStateChangesInRule(wg, w)
-// 		}
-// 	case *rules.Wrap:
-// 		if !g.variables.IsNumeric(r.Value) && !g.variables.IsBoolean(r.Value) { // Wraps might be static values
-// 			base, i := g.variables.GetVarBase(r.Value)
-// 			wg[base] = append(wg[base], i)
-// 			return wg
-// 		}
-// 	case *rules.Ands:
-// 		for _, w := range r.X {
-// 			wg = g.allStateChangesInRule(wg, w)
-// 		}
-// 	case *rules.Choices:
-// 		for _, w := range r.X {
-// 			wg = g.allStateChangesInRule(wg, w)
-// 		}
-// 	}
-// 	return wg
-// }
 
 ////////////////////////
 // Rules to String
@@ -1640,6 +1541,43 @@ func (g *Generator) negRule(inst *ir.InstFNeg) rules.Rule {
 	return g.createMultiCondRule(id, xRule, nil, "not")
 }
 
+func (g *Generator) storeStateChange(inst value.Value) {
+	sc := &rules.StateChange{
+		Ors:  []value.Value{},
+		Ands: []value.Value{},
+	}
+	andAd, _ := g.parseChoice(inst, sc)
+	id := inst.Ident()
+	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	g.variables.Loads[refname] = inst
+	g.storedChoice[refname] = andAd
+}
+
+func (g *Generator) mergeStateChange(refname string, v value.Value, sc *rules.StateChange, op string) *rules.StateChange {
+	if v == nil {
+		return sc
+	}
+
+	if g.peek(v) != "infix" {
+		sc, ret2 := g.parseChoice(v, sc)
+		if op == "or" {
+			sc.Ors = append(sc.Ors, ret2...)
+		}
+		if op == "and" {
+			sc.Ands = append(sc.Ands, ret2...)
+		}
+	} else {
+		sc2 := g.storedChoice[refname].(*rules.StateChange)
+		if sc.Empty() {
+			return sc2
+		}
+
+		sc.Ands = append(sc.Ands, sc2.Ands...)
+		sc.Ors = append(sc.Ors, sc2.Ors...)
+	}
+	return sc
+}
+
 func (g *Generator) stateRules(key string, sc *rules.StateChange) rules.Rule {
 	if sc.Rules != nil {
 		return sc.Rules
@@ -1791,7 +1729,6 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 	g.branchId = g.branchId + 1
 	g.Forks.Choices[choiceId] = []string{}
 
-	//g.newFork()
 	for i, calls := range perm {
 		branchBlock := fmt.Sprintf("%s_option_%d", choiceId, i)
 		g.Forks.Choices[choiceId] = append(g.Forks.Choices[choiceId], branchBlock)
@@ -1875,7 +1812,7 @@ func (g *Generator) capParallel(choiceId string) []rules.Rule {
 		for _, k := range g.Forks.Branches[b] {
 			if g.Forks.Vars[k].Last {
 				v := g.Forks.Vars[k]
-				base, n := g.variables.GetVarBase(k)
+				base, n := util.GetVarBase(k)
 				phiIds[base] = v.String()
 				g.addVarToRound(base, v.PhiInt())
 				g.variables.SetSSA(base, v.PhiInt16())
@@ -1893,7 +1830,7 @@ func (g *Generator) capParallel(choiceId string) []rules.Rule {
 		g.VarChangePhi(k, id, nums[k])
 		ru = append(ru, rule)
 
-		base, n := g.variables.GetVarBase(id)
+		base, n := util.GetVarBase(id)
 		if g.inPhiState.Level() == 1 {
 			g.variables.NewPhi(base, int16(n))
 		} else {
@@ -1937,7 +1874,7 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[
 		if phi, ok := phis[k]; !ok {
 			id = g.variables.AdvanceSSA(k)
 			g.declareVar(id, g.variables.LookupType(k, nil))
-			_, i := g.variables.GetVarBase(id)
+			_, i := util.GetVarBase(id)
 			g.addVarToRound(k, i)
 			phis[k] = int16(i)
 		} else {
@@ -1946,7 +1883,7 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[
 
 		for _, v := range g.Forks.Branches[b] {
 			variable := g.Forks.Vars[v]
-			base, n := g.variables.GetVarBase(v)
+			base, n := util.GetVarBase(v)
 			if base == k && variable.Last {
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
 				g.Forks.AddVar(b, base, id, &forks.Var{Base: base, Last: true, Phi: fmt.Sprint(n)})
@@ -1965,7 +1902,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 		seenVar := make(map[string]bool)
 		fork := g.Forks.Branches[b]
 		for _, v := range fork {
-			base, _ := g.variables.GetVarBase(v)
+			base, _ := util.GetVarBase(v)
 			if !seenVar[base] {
 				var e []rules.Rule
 				start := g.variables.GetStartState(base)

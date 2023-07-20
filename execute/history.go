@@ -23,6 +23,7 @@ type Scenario interface{}
 
 type FloatTrace struct {
 	Scenario
+	Base    string
 	results map[int16]float64
 	weights map[int16]float64
 }
@@ -62,6 +63,7 @@ func (ft *FloatTrace) Remove(i int16) {
 
 type IntTrace struct {
 	Scenario
+	Base    string
 	results map[int16]int64
 	weights map[int16]float64
 }
@@ -101,6 +103,7 @@ func (it *IntTrace) Remove(i int16) {
 
 type BoolTrace struct {
 	Scenario
+	Base    string
 	results map[int16]bool
 	weights map[int16]float64
 }

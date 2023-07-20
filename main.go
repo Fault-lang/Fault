@@ -158,13 +158,13 @@ func run(filepath string, mode string, input string, reach bool) {
 		}
 
 		if data != nil && mode == "legacy" {
-			mc.LoadMeta(generator.GetForks())
+			mc.LoadMeta(generator.Forks)
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
 		}
 
 		if data != nil {
-			mc.LoadMeta(generator.GetForks())
+			mc.LoadMeta(generator.Forks)
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.EventLog(data)
 		}
@@ -181,13 +181,13 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 		if data != nil && mode == "legacy" {
-			mc.LoadMeta(generator.GetForks())
+			mc.LoadMeta(generator.Forks)
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
 		}
 
 		if data != nil {
-			mc.LoadMeta(generator.GetForks())
+			mc.LoadMeta(generator.Forks)
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.EventLog(data)
 		}

@@ -5,13 +5,13 @@ go 1.19
 require (
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20220911224424-aa1f1f12a846
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
+	github.com/google/uuid v1.3.0
 	github.com/llir/llvm v0.3.3
 	github.com/olekukonko/tablewriter v0.0.5
 	gonum.org/v1/gonum v0.9.3
 )
 
 require (
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/llir/ll v0.0.0-20210426224459-a0543cd69183 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mewmew/float v0.0.0-20201204173432-505706aa38fa // indirect

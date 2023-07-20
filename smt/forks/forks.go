@@ -2,7 +2,6 @@ package forks
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 )
 
@@ -21,7 +20,7 @@ import (
 // branch[id] = []full_var_names
 // Var[base_var][branch_id] = {[]full_var_names, phi}
 
-type Fork2 struct {
+type Fork struct {
 	Choices  map[string][]string //slice of Branchid
 	Branches map[string][]string //slice of variables in the branch
 	Vars     map[string]*Var
@@ -39,8 +38,8 @@ type Var struct {
 	Phi  string
 }
 
-func InitFork() *Fork2 {
-	return &Fork2{
+func InitFork() *Fork {
+	return &Fork{
 		Choices:  make(map[string][]string),
 		Branches: make(map[string][]string),
 		Vars:     make(map[string]*Var),
@@ -48,7 +47,7 @@ func InitFork() *Fork2 {
 	}
 }
 
-func (f *Fork2) AddVar(branch string, base string, id string, v *Var) {
+func (f *Fork) AddVar(branch string, base string, id string, v *Var) {
 	f.Branches[branch] = append(f.Branches[branch], id)
 	f.Vars[id] = v
 	if _, ok := f.Bases[branch]; ok {
@@ -87,8 +86,6 @@ func (v *Var) PhiInt16() int16 {
 	return int16(i)
 }
 
-type Fork map[string]map[int16]map[string][]int16
-
 type PhiState struct {
 	levels int
 }
@@ -117,29 +114,29 @@ func (p *PhiState) Out() {
 	}
 }
 
-func GetForkEndPoints(c []*Choice) []int16 {
-	var ends []int16
-	for _, v := range c {
-		e := v.Values[len(v.Values)-1]
-		ends = append(ends, e)
-	}
-	return ends
-}
+// func GetForkEndPoints(c []*Choice) []int16 {
+// 	var ends []int16
+// 	for _, v := range c {
+// 		e := v.Values[len(v.Values)-1]
+// 		ends = append(ends, e)
+// 	}
+// 	return ends
+// }
 
-type Choice struct {
-	Base   string  // What variable?
-	Branch string  // For conditionals, is this the true block or false block?
-	SSA    []int   // All the SSA assignment in this branch
-	Values []int16 // All the versions of this variable in this branch
-	Phi    int16   // The phi value associated with this branch
-}
+// type Choice struct {
+// 	Base   string  // What variable?
+// 	Branch string  // For conditionals, is this the true block or false block?
+// 	SSA    []int   // All the SSA assignment in this branch
+// 	Values []int16 // All the versions of this variable in this branch
+// 	Phi    int16   // The phi value associated with this branch
+// }
 
-func (c *Choice) AddChoiceValue(n int16) *Choice {
-	c.Values = append(c.Values, n)
-	sort.Slice(c.Values, func(i, j int) bool { return c.Values[i] < c.Values[j] })
-	return c
-}
+// func (c *Choice) AddChoiceValue(n int16) *Choice {
+// 	c.Values = append(c.Values, n)
+// 	sort.Slice(c.Values, func(i, j int) bool { return c.Values[i] < c.Values[j] })
+// 	return c
+// }
 
-func (c *Choice) GetEnd() int16 {
-	return c.Values[len(c.Values)-1]
-}
+// func (c *Choice) GetEnd() int16 {
+// 	return c.Values[len(c.Values)-1]
+// }

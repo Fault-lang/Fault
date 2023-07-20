@@ -393,6 +393,15 @@ func DetectMode(filename string) string {
 	}
 }
 
+func GetVarBase(id string) (string, int) {
+	v := strings.Split(id, "_")
+	num, err := strconv.Atoi(v[len(v)-1])
+	if err != nil {
+		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
+	}
+	return strings.Join(v[0:len(v)-1], "_"), num
+}
+
 func Intersection(s1 []string, s2 []string, init bool) []string {
 	var s3 []string
 	for _, s := range s1 {

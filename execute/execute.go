@@ -34,15 +34,13 @@ type ModelChecker struct {
 	ResultValues map[string]string
 	Log          *resultlog.ResultLog
 	solver       map[string]*Solver
-	Forks        forks.Fork2
-	forks        map[string][]*Branch
+	Forks        *forks.Fork
 }
 
 func NewModelChecker() *ModelChecker {
 
 	mc := &ModelChecker{
 		solver:       GenerateSolver(),
-		forks:        make(map[string][]*Branch),
 		ResultValues: make(map[string]string),
 	}
 	return mc
@@ -77,25 +75,9 @@ func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, u
 	mc.Log = log
 }
 
-func (mc *ModelChecker) LoadMeta(frks []forks.Fork) {
+func (mc *ModelChecker) LoadMeta(frks *forks.Fork) {
 	// Load metadata that helps the results display nicely
-	tree := make(map[string][]*Branch)
-	// for _, f := range frks {
-	// 	for k, c := range f {
-	// 		ends := forks.GetForkEndPoints(c)
-	// 		phi := util.MaxInt16(ends)
-	// 		var branches []*Branch
-	// 		for _, v := range c {
-	// 			branches = append(branches, &Branch{
-	// 				trail: v.Values,
-	// 				phi:   phi + 1, //assume the phi value is +1 the highest SSA in the branch for that variable
-	// 				base:  k,
-	// 			})
-	// 		}
-	// 		tree[k] = append(tree[k], branches...)
-	// 	}
-	// }
-	mc.forks = tree
+	mc.Forks = frks
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
