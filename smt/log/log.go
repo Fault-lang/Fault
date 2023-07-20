@@ -14,12 +14,12 @@ type Event struct {
 	Variable    string
 	Previous    string
 	Current     string
-	Probability float64
+	Probability string
 	Dead        bool //Filters out events not in solution
 }
 
 func (e *Event) String() string {
-	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%f\n", e.Round, e.Type, e.Scope, e.Variable, e.Previous, e.Current, e.Probability)
+	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s\n", e.Round, e.Type, e.Scope, e.Variable, e.Previous, e.Current, e.Probability)
 }
 
 func (e *Event) Kill() {
@@ -110,5 +110,5 @@ func (rl *ResultLog) UpdatePrevious(idx int, val string) {
 }
 
 func (rl *ResultLog) UpdateProbability(idx int, p float64) {
-	rl.Events[idx].Probability = p
+	rl.Events[idx].Probability = fmt.Sprintf("%f", p)
 }
