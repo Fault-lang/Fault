@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/llir/ll v0.0.0-20210426224459-a0543cd69183 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mewmew/float v0.0.0-20201204173432-505706aa38fa // indirect

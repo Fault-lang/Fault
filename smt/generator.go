@@ -2,7 +2,6 @@ package smt
 
 import (
 	"bytes"
-	"crypto/md5"
 	"fault/ast"
 	"fault/llvm"
 	"fault/smt/forks"
@@ -11,10 +10,10 @@ import (
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
@@ -435,7 +434,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 
 	g.variables.InitPhis()
 
-	choiceId := fmt.Sprintf("%x%d", md5.Sum([]byte(id)), rand.Int31())
+	choiceId := uuid.NewString()
 	branchT := fmt.Sprintf("%s-%s", choiceId, "true")
 	branchF := fmt.Sprintf("%s-%s", choiceId, "false")
 	g.Forks.Choices[choiceId] = []string{branchT, branchF}
@@ -1663,7 +1662,8 @@ func (g *Generator) stateRules(key string, sc *rules.StateChange) rules.Rule {
 	ors := g.orStateRule(key, sc.Ors)
 
 	if len(sc.Ands) != 0 {
-		ors["joined_ands"] = and
+		branch := fmt.Sprintf("%x-joined_ands", uuid.NewString())
+		ors[branch] = and
 	}
 
 	x := g.syncStateRules(ors)
@@ -1682,7 +1682,7 @@ func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[strin
 
 	and := make(map[string][]rules.Rule)
 	for _, b := range choiceV {
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, b.Ident())
+		refname := fmt.Sprintf("%s_%s-%s", uuid.New(), g.currentFunction, b.Ident())
 		and[refname] = g.parseBuiltIn(b.(*ir.InstCall), true)
 	}
 	delete(g.storedChoice, choiceK)
@@ -1707,7 +1707,6 @@ func (g *Generator) andStateRule(andK string, andV []value.Value) []rules.Rule {
 
 func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.Ands {
 	g.inPhiState.In()
-	//g.newFork()
 
 	var e []rules.Rule
 	var keys []string
@@ -1715,7 +1714,7 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 	phis := make(map[string]int16)
 	var x []*rules.Ands
 
-	choiceId := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(branches))))
+	choiceId := uuid.NewString()
 	g.Forks.Choices[choiceId] = []string{}
 
 	for k, v := range branches {
@@ -1727,8 +1726,8 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 	}
 
 	syncs := g.capCondSyncRules(keys)
-	for k, v := range syncs {
-		e2 := append(ends[k], v...)
+	for _, k := range keys {
+		e2 := append(ends[k], syncs[k]...)
 		a := &rules.Ands{
 			X: e2,
 		}
@@ -1788,7 +1787,7 @@ func (g *Generator) parallelPermutations(p []string) (permuts [][]string) {
 func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 	var ru []rules.Rule
 
-	choiceId := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("branch_%d", g.branchId))))
+	choiceId := uuid.NewString()
 	g.branchId = g.branchId + 1
 	g.Forks.Choices[choiceId] = []string{}
 
@@ -1988,6 +1987,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 					if !g.Forks.Bases[notB][base] {
 						ends[notB] = append(ends[notB], e...)
 						g.Forks.Bases[notB][base] = true
+						g.Forks.Branches[notB] = append(g.Forks.Branches[notB], id)
 					}
 				}
 			}
