@@ -103,15 +103,15 @@ func TestEventLog(t *testing.T) {
 
 	model.mapToLog("imports_fl3_vault_value", solution["imports_fl3_vault_value"])
 
-	if model.Log.Events[0].String() != "0,INIT,,imports_fl3_vault_value_0,,30,0.000000\n" {
+	if model.Log.Events[0].String() != "0,INIT,,imports_fl3_vault_value_0,,30,\n" {
 		t.Fatalf("Incorrect event log format at index 0 got=%s", model.Log.Events[0].String())
 	}
 
-	if model.Log.Events[1].String() != "0,INIT,,imports_fl3_vault_value_1,,,0.000000\n" {
+	if model.Log.Events[1].String() != "0,INIT,,imports_fl3_vault_value_1,,,\n" {
 		t.Fatalf("Incorrect event log format at index 1 got=%s", model.Log.Events[1].String())
 	}
 
-	if model.Log.Events[3].String() != "0,CHANGE,,imports_fl3_vault_value_1,,40,0.000000\n" {
+	if model.Log.Events[3].String() != "0,CHANGE,,imports_fl3_vault_value_1,,40,\n" {
 		t.Fatalf("Incorrect event log format at index 3 got=%s", model.Log.Events[3].String())
 	}
 }

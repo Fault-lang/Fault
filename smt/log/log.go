@@ -81,7 +81,36 @@ func (rl *ResultLog) FilterOut(deadVars []string) {
 	for _, dvar := range deadVars {
 		idx := rl.Lookup[dvar]
 		rl.Events[idx].Kill()
+
+		// If this branch is really the result of
+		// a function call, remove that too.
+		if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
+			rl.Events[idx-1].Kill()
+			current := rl.Events[idx-1].Variable
+			if current[len(current)-7:] == "__state" {
+				stateVar := current[0 : len(current)-7]
+				rl.removeTransition(stateVar, idx-2)
+			}
+		}
 	}
+}
+
+func (rl *ResultLog) removeTransition(stateVar string, idx int) {
+	if idx == 0 {
+		return
+	}
+
+	if rl.Events[idx].Type != "TRANSITION" {
+		return
+	}
+
+	if stateVar == rl.Events[idx].Current {
+		rl.Events[idx].Kill()
+	} else {
+		rl.removeTransition(stateVar, idx-1)
+	}
+
+	return
 }
 
 func (rl *ResultLog) String() string {

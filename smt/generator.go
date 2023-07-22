@@ -1884,9 +1884,10 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[
 		for _, v := range g.Forks.Branches[b] {
 			variable := g.Forks.Vars[v]
 			base, n := util.GetVarBase(v)
+			n1 := g.variables.GetSSANum(base)
 			if base == k && variable.Last {
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
-				g.Forks.AddVar(b, base, id, &forks.Var{Base: base, Last: true, Phi: fmt.Sprint(n)})
+				g.Forks.AddVar(b, base, id, &forks.Var{Base: base, Last: true, Phi: fmt.Sprint(n1)})
 				g.Forks.Vars[v].Last = false
 			}
 		}

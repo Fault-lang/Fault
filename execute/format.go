@@ -60,17 +60,6 @@ func (mc *ModelChecker) Format(results map[string]Scenario) {
 	fmt.Println(out.String())
 }
 
-// func (mc *ModelChecker) EventLog(results map[string]Scenario) {
-// 	var out bytes.Buffer
-// 	for k, v := range results {
-// 		filtered := deadBranches(k, v, mc.forks)
-// 		mc.mapToLog(k, filtered)
-// 	}
-// 	out.WriteString(mc.Log.String())
-
-// 	fmt.Println(out.String())
-// }
-
 func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	var out bytes.Buffer
 	for k, v := range results {
@@ -212,23 +201,26 @@ func deadBranches(id string, variable Scenario, deads []string) Scenario {
 	// Question: what to do in the situation where two
 	// branches have the same end value as the phi but different
 	// intermediate values?
-	_, n := util.GetVarBase(id)
+
 	for _, b := range deads {
 		switch v := variable.(type) {
 		case *FloatTrace:
-			if b != id {
+			base, n := util.GetVarBase(b)
+			if base != id {
 				continue
 			}
 			v.Remove(int16(n))
 			variable = v
 		case *IntTrace:
-			if b != id {
+			base, n := util.GetVarBase(b)
+			if base != id {
 				continue
 			}
 			v.Remove(int16(n))
 			variable = v
 		case *BoolTrace:
-			if b != id {
+			base, n := util.GetVarBase(b)
+			if base != id {
 				continue
 			}
 			v.Remove(int16(n))
