@@ -66,7 +66,7 @@ func NewVar() *Var {
 	return &Var{}
 }
 
-func (v *Var) String() string {
+func (v *Var) FullPhi() string {
 	return fmt.Sprintf("%s_%s", v.Base, v.Phi)
 }
 

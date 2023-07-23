@@ -1813,7 +1813,7 @@ func (g *Generator) capParallel(choiceId string) []rules.Rule {
 			if g.Forks.Vars[k].Last {
 				v := g.Forks.Vars[k]
 				base, n := util.GetVarBase(k)
-				phiIds[base] = v.String()
+				phiIds[base] = v.FullPhi()
 				g.addVarToRound(base, v.PhiInt())
 				g.variables.SetSSA(base, v.PhiInt16())
 				nums[base] = append(nums[base], int16(n))
