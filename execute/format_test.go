@@ -18,19 +18,19 @@ func TestPhis(t *testing.T) {
 
 	phis := forks.InitFork()
 	phis.Choices["choice1"] = []string{"test1_branch1", "test1_branch2"}
-	phis.AddVar("test1_branch1", "test_value", "test_value_0", &forks.Var{Base: "test_value", Last: false, Phi: "4"})
-	phis.AddVar("test1_branch1", "test_value", "test_value_1", &forks.Var{Base: "test_value", Last: true, Phi: "4"})
-	phis.AddVar("test1_branch2", "test_value", "test_value_2", &forks.Var{Base: "test_value", Last: false, Phi: "4"})
-	phis.AddVar("test1_branch2", "test_value", "test_value_3", &forks.Var{Base: "test_value", Last: true, Phi: "4"})
+	phis.AddVar("test1_branch1", "test_value", "test_value_0", forks.NewVar("test_value", false, "choice1", "4"))
+	phis.AddVar("test1_branch1", "test_value", "test_value_1", forks.NewVar("test_value", true, "choice1", "4"))
+	phis.AddVar("test1_branch2", "test_value", "test_value_2", forks.NewVar("test_value", false, "choice1", "4"))
+	phis.AddVar("test1_branch2", "test_value", "test_value_3", forks.NewVar("test_value", true, "choice1", "4"))
 
 	phis.Choices["choice2"] = []string{"test2_branch1", "test2_branch2"}
-	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_0", &forks.Var{Base: "test_value_foo", Last: false, Phi: "7"})
-	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_1", &forks.Var{Base: "test_value_foo", Last: false, Phi: "7"})
-	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_2", &forks.Var{Base: "test_value_foo", Last: false, Phi: "7"})
-	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_3", &forks.Var{Base: "test_value_foo", Last: false, Phi: "7"})
-	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_4", &forks.Var{Base: "test_value_foo", Last: true, Phi: "7"})
-	phis.AddVar("test2_branch2", "test_value_foo", "test_value_foo_5", &forks.Var{Base: "test_value_foo", Last: false, Phi: "7"})
-	phis.AddVar("test2_branch2", "test_value_foo", "test_value_foo_6", &forks.Var{Base: "test_value_foo", Last: true, Phi: "7"})
+	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_0", forks.NewVar("test_value_foo", false, "choice2", "7"))
+	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_1", forks.NewVar("test_value_foo", false, "choice2", "7"))
+	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_2", forks.NewVar("test_value_foo", false, "choice2", "7"))
+	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_3", forks.NewVar("test_value_foo", false, "choice2", "7"))
+	phis.AddVar("test2_branch1", "test_value_foo", "test_value_foo_4", forks.NewVar("test_value_foo", true, "choice2", "7"))
+	phis.AddVar("test2_branch2", "test_value_foo", "test_value_foo_5", forks.NewVar("test_value_foo", false, "choice2", "7"))
+	phis.AddVar("test2_branch2", "test_value_foo", "test_value_foo_6", forks.NewVar("test_value_foo", true, "choice2", "7"))
 
 	mc := NewModelChecker()
 
@@ -83,14 +83,14 @@ func TestMultiPhis(t *testing.T) {
 
 	phis := forks.InitFork()
 	phis.Choices["choice1"] = []string{"choice1_branch1", "choice1_branch2"}
-	phis.AddVar("choice1_branch1", "test_value", "test_value_1", &forks.Var{Base: "test_value", Last: false, Phi: "4"})
-	phis.AddVar("choice1_branch1", "test_value", "test_value_2", &forks.Var{Base: "test_value", Last: true, Phi: "4"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_3", &forks.Var{Base: "test_value", Last: true, Phi: "4"})
+	phis.AddVar("choice1_branch1", "test_value", "test_value_1", forks.NewVar("test_value", false, "choice1", "4"))
+	phis.AddVar("choice1_branch1", "test_value", "test_value_2", forks.NewVar("test_value", true, "choice1", "4"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_3", forks.NewVar("test_value", true, "choice1", "4"))
 	phis.Choices["choice2"] = []string{"choice2_branch1", "choice2_branch2"}
-	phis.AddVar("choice2_branch1", "test_value", "test_value_5", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice2_branch1", "test_value", "test_value_6", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
-	phis.AddVar("choice2_branch2", "test_value", "test_value_7", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice2_branch2", "test_value", "test_value_8", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
+	phis.AddVar("choice2_branch1", "test_value", "test_value_5", forks.NewVar("test_value", false, "choice2", "9"))
+	phis.AddVar("choice2_branch1", "test_value", "test_value_6", forks.NewVar("test_value", true, "choice2", "9"))
+	phis.AddVar("choice2_branch2", "test_value", "test_value_7", forks.NewVar("test_value", false, "choice2", "9"))
+	phis.AddVar("choice2_branch2", "test_value", "test_value_8", forks.NewVar("test_value", true, "choice2", "9"))
 
 	mc := NewModelChecker()
 	mc.LoadMeta(phis)
@@ -141,22 +141,22 @@ func TestNestledPhis(t *testing.T) {
 
 	phis := forks.InitFork()
 	phis.Choices["choice1"] = []string{"choice1_branch1", "choice1_branch2"}
-	phis.AddVar("choice1_branch1", "test_value", "test_value_1", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice1_branch1", "test_value", "test_value_2", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_3", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_4", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_5", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_6", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_7", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_8", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
+	phis.AddVar("choice1_branch1", "test_value", "test_value_1", forks.NewVar("test_value", false, "choice1", "9"))
+	phis.AddVar("choice1_branch1", "test_value", "test_value_2", forks.NewVar("test_value", true, "choice1", "9"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_3", forks.NewVar("test_value", false, "choice1", "9"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_4", forks.NewVar("test_value", false, "choice1", "9"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_5", forks.NewVar("test_value", true, "choice1", "9"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_6", forks.NewVar("test_value", false, "choice1", "9"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_7", forks.NewVar("test_value", false, "choice1", "9"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_8", forks.NewVar("test_value", true, "choice1", "9"))
 
 	phis.Choices["choice2"] = []string{"choice2_branch1", "choice2_branch2"}
-	phis.AddVar("choice2_branch1", "test_value", "test_value_3", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice2_branch1", "test_value", "test_value_4", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice2_branch1", "test_value", "test_value_5", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
-	phis.AddVar("choice2_branch2", "test_value", "test_value_6", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice2_branch2", "test_value", "test_value_7", &forks.Var{Base: "test_value", Last: false, Phi: "9"})
-	phis.AddVar("choice2_branch2", "test_value", "test_value_8", &forks.Var{Base: "test_value", Last: true, Phi: "9"})
+	phis.AddVar("choice2_branch1", "test_value", "test_value_3", forks.NewVar("test_value", false, "choice2", "9"))
+	phis.AddVar("choice2_branch1", "test_value", "test_value_4", forks.NewVar("test_value", false, "choice2", "9"))
+	phis.AddVar("choice2_branch1", "test_value", "test_value_5", forks.NewVar("test_value", true, "choice2", "9"))
+	phis.AddVar("choice2_branch2", "test_value", "test_value_6", forks.NewVar("test_value", false, "choice2", "9"))
+	phis.AddVar("choice2_branch2", "test_value", "test_value_7", forks.NewVar("test_value", false, "choice2", "9"))
+	phis.AddVar("choice2_branch2", "test_value", "test_value_8", forks.NewVar("test_value", true, "choice2", "9"))
 
 	mc := NewModelChecker()
 	mc.LoadMeta(phis)
@@ -210,16 +210,16 @@ func TestMultiVarPhis(t *testing.T) {
 
 	phis := forks.InitFork()
 	phis.Choices["choice1"] = []string{"choice1_branch1", "choice1_branch2"}
-	phis.AddVar("choice1_branch1", "test_value", "test_value_1", &forks.Var{Base: "test_value", Last: false, Phi: "4"})
-	phis.AddVar("choice1_branch1", "test_value", "test_value_2", &forks.Var{Base: "test_value", Last: true, Phi: "4"})
-	phis.AddVar("choice1_branch2", "test_value", "test_value_3", &forks.Var{Base: "test_value", Last: true, Phi: "4"})
+	phis.AddVar("choice1_branch1", "test_value", "test_value_1", forks.NewVar("test_value", false, "choice1", "4"))
+	phis.AddVar("choice1_branch1", "test_value", "test_value_2", forks.NewVar("test_value", true, "choice1", "4"))
+	phis.AddVar("choice1_branch2", "test_value", "test_value_3", forks.NewVar("test_value", true, "choice1", "4"))
 
-	phis.AddVar("choice1_branch1", "test_value_foo", "test_value_foo_0", &forks.Var{Base: "test_value_foo", Last: false, Phi: "6"})
-	phis.AddVar("choice1_branch1", "test_value_foo", "test_value_foo_1", &forks.Var{Base: "test_value_foo", Last: false, Phi: "6"})
-	phis.AddVar("choice1_branch1", "test_value_foo", "test_value_foo_2", &forks.Var{Base: "test_value_foo", Last: true, Phi: "6"})
-	phis.AddVar("choice1_branch2", "test_value_foo", "test_value_foo_3", &forks.Var{Base: "test_value_foo", Last: false, Phi: "6"})
-	phis.AddVar("choice1_branch2", "test_value_foo", "test_value_foo_4", &forks.Var{Base: "test_value_foo", Last: false, Phi: "6"})
-	phis.AddVar("choice1_branch2", "test_value_foo", "test_value_foo_5", &forks.Var{Base: "test_value_foo", Last: true, Phi: "6"})
+	phis.AddVar("choice1_branch1", "test_value_foo", "test_value_foo_0", forks.NewVar("test_value_foo", false, "choice1", "6"))
+	phis.AddVar("choice1_branch1", "test_value_foo", "test_value_foo_1", forks.NewVar("test_value_foo", false, "choice1", "6"))
+	phis.AddVar("choice1_branch1", "test_value_foo", "test_value_foo_2", forks.NewVar("test_value_foo", true, "choice1", "6"))
+	phis.AddVar("choice1_branch2", "test_value_foo", "test_value_foo_3", forks.NewVar("test_value_foo", false, "choice1", "6"))
+	phis.AddVar("choice1_branch2", "test_value_foo", "test_value_foo_4", forks.NewVar("test_value_foo", false, "choice1", "6"))
+	phis.AddVar("choice1_branch2", "test_value_foo", "test_value_foo_5", forks.NewVar("test_value_foo", true, "choice1", "6"))
 
 	mc := NewModelChecker()
 	mc.LoadMeta(phis)

@@ -34,8 +34,8 @@ type Fork struct {
 
 type Var struct {
 	Base string
-	Last bool
-	Phi  string
+	Last map[string]bool
+	Phi  map[string]string // map[choiceID] = phi (handles nestled phis)
 }
 
 func InitFork() *Fork {
@@ -49,7 +49,17 @@ func InitFork() *Fork {
 
 func (f *Fork) AddVar(branch string, base string, id string, v *Var) {
 	f.Branches[branch] = append(f.Branches[branch], id)
-	f.Vars[id] = v
+	if _, ok := f.Vars[id]; !ok {
+		f.Vars[id] = v
+	} else {
+		for k, vlast := range v.Last {
+			f.Vars[id].Last[k] = vlast
+		}
+		for k, vphi := range v.Phi {
+			f.Vars[id].Phi[k] = vphi
+		}
+	}
+
 	if _, ok := f.Bases[branch]; ok {
 		f.Bases[branch][base] = true
 	} else {
@@ -62,24 +72,27 @@ func (f *Fork) AddVar(branch string, base string, id string, v *Var) {
 // 	return &Choice2{}
 // }
 
-func NewVar() *Var {
-	return &Var{}
+func NewVar(base string, last bool, choice string, phi string) *Var {
+	v := &Var{Base: base, Last: make(map[string]bool), Phi: make(map[string]string)}
+	v.Last[choice] = last
+	v.Phi[choice] = phi
+	return v
 }
 
-func (v *Var) FullPhi() string {
-	return fmt.Sprintf("%s_%s", v.Base, v.Phi)
+func (v *Var) FullPhi(choice string) string {
+	return fmt.Sprintf("%s_%s", v.Base, v.Phi[choice])
 }
 
-func (v *Var) PhiInt() int {
-	i, err := strconv.ParseInt(v.Phi, 10, 32)
+func (v *Var) PhiInt(choice string) int {
+	i, err := strconv.ParseInt(v.Phi[choice], 10, 32)
 	if err != nil {
 		panic(err)
 	}
 	return int(i)
 }
 
-func (v *Var) PhiInt16() int16 {
-	i, err := strconv.ParseInt(v.Phi, 10, 32)
+func (v *Var) PhiInt16(choice string) int16 {
+	i, err := strconv.ParseInt(v.Phi[choice], 10, 32)
 	if err != nil {
 		panic(err)
 	}
@@ -113,30 +126,3 @@ func (p *PhiState) Out() {
 		p.levels = p.levels - 1
 	}
 }
-
-// func GetForkEndPoints(c []*Choice) []int16 {
-// 	var ends []int16
-// 	for _, v := range c {
-// 		e := v.Values[len(v.Values)-1]
-// 		ends = append(ends, e)
-// 	}
-// 	return ends
-// }
-
-// type Choice struct {
-// 	Base   string  // What variable?
-// 	Branch string  // For conditionals, is this the true block or false block?
-// 	SSA    []int   // All the SSA assignment in this branch
-// 	Values []int16 // All the versions of this variable in this branch
-// 	Phi    int16   // The phi value associated with this branch
-// }
-
-// func (c *Choice) AddChoiceValue(n int16) *Choice {
-// 	c.Values = append(c.Values, n)
-// 	sort.Slice(c.Values, func(i, j int) bool { return c.Values[i] < c.Values[j] })
-// 	return c
-// }
-
-// func (c *Choice) GetEnd() int16 {
-// 	return c.Values[len(c.Values)-1]
-// }

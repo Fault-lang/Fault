@@ -164,7 +164,7 @@ func (g *Generator) varRounds(base string, num string) map[int][]string {
 	return ir
 }
 
-func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
+func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string) {
 	var stateChanges []string
 	var lasts = make(map[string]int)
 	for _, ru := range rules {
@@ -176,11 +176,12 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, b string) {
 	for _, s := range stateChanges {
 		base, i := util.GetVarBase(s)
 		phi := g.variables.GetSSANum(base) + 1
-		v := &forks.Var{
-			Base: base,
-			Last: lasts[base] == i,
-			Phi:  fmt.Sprint(phi),
-		}
+		v := forks.NewVar(
+			base,
+			lasts[base] == i,
+			choice,
+			fmt.Sprint(phi),
+		)
 		g.Forks.AddVar(b, base, s, v)
 	}
 
@@ -386,11 +387,11 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		ru = append(ru, f...)
 
 		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
-		g.buildForkChoice(t, branchT)
-		g.buildForkChoice(f, branchF)
+		g.buildForkChoice(t, choiceId, branchT)
+		g.buildForkChoice(f, choiceId, branchF)
 
-		tEnds, phis = g.capCond(branchT, make(map[string]int16))
-		fEnds, _ = g.capCond(branchF, phis)
+		tEnds, phis = g.capCond(choiceId, branchT, make(map[string]int16))
+		fEnds, _ = g.capCond(choiceId, branchF, phis)
 
 		// Keep variable names in sync across branches
 		syncs := g.capCondSyncRules([]string{branchT, branchF})
@@ -1087,9 +1088,11 @@ func (g *Generator) allStateChangesInRule(ru rules.Rule, lasts map[string]int) (
 		ch, l := g.allStateChangesInRule(r.X, lasts)
 		wg = append(wg, ch...)
 		lasts = l
-		ch2, l2 := g.allStateChangesInRule(r.Y, lasts)
-		wg = append(wg, ch2...)
-		lasts = l2
+		if r.Op != "" && r.Op != "=" {
+			ch2, l2 := g.allStateChangesInRule(r.Y, lasts)
+			wg = append(wg, ch2...)
+			lasts = l2
+		}
 	case *rules.Prefix:
 		ch, l := g.allStateChangesInRule(r.X, lasts)
 		lasts = l
@@ -1658,8 +1661,8 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 	for k, v := range branches {
 		g.Forks.Choices[choiceId] = append(g.Forks.Choices[choiceId], k)
 		keys = append(keys, k)
-		g.buildForkChoice(v, k)
-		e, phis = g.capCond(k, phis)
+		g.buildForkChoice(v, choiceId, k)
+		e, phis = g.capCond(choiceId, k, phis)
 		ends[k] = append(v, e...)
 	}
 
@@ -1748,7 +1751,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 		raw := g.parallelRules(opts)
 		// Pull all the variables out of the rules and
 		// sort them into fork choices
-		g.buildForkChoice(raw, branchBlock)
+		g.buildForkChoice(raw, choiceId, branchBlock)
 		g.variables.LoadState(varState)
 		ru = append(ru, raw...)
 	}
@@ -1810,12 +1813,12 @@ func (g *Generator) capParallel(choiceId string) []rules.Rule {
 	branches := g.Forks.Choices[choiceId]
 	for _, b := range branches {
 		for _, k := range g.Forks.Branches[b] {
-			if g.Forks.Vars[k].Last {
+			if g.Forks.Vars[k].Last[choiceId] {
 				v := g.Forks.Vars[k]
 				base, n := util.GetVarBase(k)
-				phiIds[base] = v.FullPhi()
-				g.addVarToRound(base, v.PhiInt())
-				g.variables.SetSSA(base, v.PhiInt16())
+				phiIds[base] = v.FullPhi(choiceId)
+				g.addVarToRound(base, v.PhiInt(choiceId))
+				g.variables.SetSSA(base, v.PhiInt16(choiceId))
 				nums[base] = append(nums[base], int16(n))
 			}
 		}
@@ -1867,7 +1870,7 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rules.Rule {
 	return e
 }
 
-func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[string]int16) {
+func (g *Generator) capCond(choiceId string, b string, phis map[string]int16) ([]rules.Rule, map[string]int16) {
 	var rules []rules.Rule
 	for k := range g.Forks.Bases[b] {
 		var id string
@@ -1885,10 +1888,10 @@ func (g *Generator) capCond(b string, phis map[string]int16) ([]rules.Rule, map[
 			variable := g.Forks.Vars[v]
 			base, n := util.GetVarBase(v)
 			n1 := g.variables.GetSSANum(base)
-			if base == k && variable.Last {
+			if base == k && variable.Last[choiceId] {
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
-				g.Forks.AddVar(b, base, id, &forks.Var{Base: base, Last: true, Phi: fmt.Sprint(n1)})
-				g.Forks.Vars[v].Last = false
+				g.Forks.AddVar(b, base, id, forks.NewVar(base, true, choiceId, fmt.Sprint(n1)))
+				g.Forks.Vars[v].Last[choiceId] = false
 			}
 		}
 	}
