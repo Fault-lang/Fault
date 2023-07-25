@@ -189,6 +189,7 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 				last := mc.ResultValues[dvars]
 				phi := mc.ResultValues[mc.Forks.Vars[dvars].FullPhi(choiceId)]
 				if last != phi { // Does it's returned value match the Phi?
+					phiID = clearPhiIDs(phiID, DeclaredVars)
 					break // If not this can't be a winning branch
 				}
 				winner = branch
@@ -197,6 +198,13 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 		}
 	}
 	return winner, phiID
+}
+
+func clearPhiIDs(ids map[string]string, vars []string) map[string]string {
+	for _, v := range vars {
+		delete(ids, v)
+	}
+	return ids
 }
 
 func deadBranches(id string, variable Scenario, deads []string) Scenario {
