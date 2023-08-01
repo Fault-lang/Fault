@@ -3,8 +3,9 @@ package log
 import "fmt"
 
 type ResultLog struct {
-	Events []*Event
-	Lookup map[string]int
+	Events  []*Event
+	Lookup  map[string]int
+	Changes map[string]bool
 }
 
 type Event struct {
@@ -29,7 +30,8 @@ func (e *Event) Kill() {
 
 func NewLog() *ResultLog {
 	return &ResultLog{
-		Lookup: make(map[string]int),
+		Lookup:  make(map[string]int),
+		Changes: make(map[string]bool),
 	}
 }
 
@@ -79,17 +81,18 @@ func (rl *ResultLog) Index(name string) int {
 
 func (rl *ResultLog) FilterOut(deadVars []string) {
 	for _, dvar := range deadVars {
-		idx := rl.Lookup[dvar]
-		rl.Events[idx].Kill()
+		if idx, ok := rl.Lookup[dvar]; ok {
+			rl.Events[idx].Kill()
 
-		// If this branch is really the result of
-		// a function call, remove that too.
-		if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
-			rl.Events[idx-1].Kill()
-			current := rl.Events[idx-1].Variable
-			if current[len(current)-7:] == "__state" {
-				stateVar := current[0 : len(current)-7]
-				rl.removeTransition(stateVar, idx-2)
+			// If this branch is really the result of
+			// a function call, remove that too.
+			if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
+				rl.Events[idx-1].Kill()
+				current := rl.Events[idx-1].Variable
+				if current[len(current)-7:] == "__state" {
+					stateVar := current[0 : len(current)-7]
+					rl.removeTransition(stateVar, idx-2)
+				}
 			}
 		}
 	}
@@ -124,9 +127,15 @@ func (rl *ResultLog) String() string {
 }
 
 func (rl *ResultLog) Add(e *Event) {
-	rl.Events = append(rl.Events, e)
-	if e.Variable != "" {
-		rl.Lookup[e.Variable] = len(rl.Events) - 1
+	if !rl.Changes[e.Variable] {
+		rl.Events = append(rl.Events, e)
+		if e.Variable != "" {
+			rl.Lookup[e.Variable] = len(rl.Events) - 1
+		}
+
+		if e.Variable != "" && e.Type == "CHANGE" {
+			rl.Changes[e.Variable] = true
+		}
 	}
 }
 

@@ -100,16 +100,16 @@ func TestTransition(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	if len(generator.Log.Events) != 3 {
-		t.Fatalf("ResultLog has wrong number of events got=%d, want=2", len(generator.Log.Events))
+	if len(generator.Log.Events) != 10 {
+		t.Fatalf("ResultLog has wrong number of events got=%d, want=1-", len(generator.Log.Events))
 	}
 
-	if generator.Log.Events[1].String() != "1,TRANSITION,,__state,test1_drain_initial,test1_drain_open,\n" {
-		t.Fatalf("Event has wrong data got=%s, want=1,TRANSITION,,__state,test1_drain_initial,test1_drain_open,", generator.Log.Events[1].String())
+	if generator.Log.Events[6].String() != "1,TRANSITION,,__state,test1_drain_initial,test1_drain_open,\n" {
+		t.Fatalf("Event has wrong data got=%s, want=1,TRANSITION,,__state,test1_drain_initial,test1_drain_open,", generator.Log.Events[6].String())
 	}
 
-	if generator.Log.Events[0].String() != "1,TRIGGER,@__run,test1_drain_initial__state,,,\n" {
-		t.Fatalf("Event has wrong data got=%s, want=1,TRIGGER,@__run,test1_drain_initial__state,,,", generator.Log.Events[0].String())
+	if generator.Log.Events[3].String() != "1,TRIGGER,@__run,test1_drain_initial__state,,,\n" {
+		t.Fatalf("Event has wrong data got=%s, want=1,TRIGGER,@__run,test1_drain_initial__state,,,", generator.Log.Events[3].String())
 	}
 }
 

@@ -170,8 +170,13 @@ func (mc *ModelChecker) DeadVariables() []string {
 		for _, b := range branchIds {
 			if b != winner {
 				dead = append(dead, mc.Forks.Branches[b]...)
+				mc.Forks.MarkMany(mc.Forks.Branches[b])
+
 				for _, p := range phi {
-					dead = append(dead, p) //Kill the phis too
+					if !mc.Forks.MarkedForDeath(p) {
+						dead = append(dead, p) //Kill the phis too
+						mc.Forks.Mark(p)
+					}
 				}
 			}
 		}
@@ -183,28 +188,29 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 	var winner string
 	var phiID = make(map[string]string)
 	for _, branch := range branchIds { // Go through all the branches
+		var candidate string
+		var candidatePhi = make(map[string]string)
+		var fail bool
 		DeclaredVars := mc.Forks.Branches[branch] // Variables declared in this branch
 		for _, dvars := range DeclaredVars {
+			//If branch1 is all true but branch2 is first item true function will return branch 2 with incomplete phis
 			if mc.Forks.Vars[dvars].Last[choiceId] { // Is this variable SSA the last one assigned in the branch?
 				last := mc.ResultValues[dvars]
 				phi := mc.ResultValues[mc.Forks.Vars[dvars].FullPhi(choiceId)]
 				if last != phi { // Does it's returned value match the Phi?
-					phiID = clearPhiIDs(phiID, DeclaredVars)
+					fail = true
 					break // If not this can't be a winning branch
 				}
-				winner = branch
-				phiID[dvars] = mc.Forks.Vars[dvars].FullPhi(choiceId)
+				candidate = branch
+				candidatePhi[dvars] = mc.Forks.Vars[dvars].FullPhi(choiceId)
 			}
+		}
+		if !fail {
+			winner = candidate
+			phiID = candidatePhi
 		}
 	}
 	return winner, phiID
-}
-
-func clearPhiIDs(ids map[string]string, vars []string) map[string]string {
-	for _, v := range vars {
-		delete(ids, v)
-	}
-	return ids
 }
 
 func deadBranches(id string, variable Scenario, deads []string) Scenario {

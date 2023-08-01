@@ -14,6 +14,7 @@ import (
 
 type StringSet struct {
 	base map[string]bool
+	vals []string
 }
 
 func NewStrSet() *StringSet {
@@ -23,7 +24,16 @@ func NewStrSet() *StringSet {
 }
 
 func (s *StringSet) Add(str string) {
-	s.base[str] = true
+	if !s.In(str) {
+		s.base[str] = true
+		s.vals = append(s.vals, str)
+	}
+}
+
+func (s *StringSet) Merge(strs []string) {
+	for _, str := range strs {
+		s.Add(str)
+	}
 }
 
 func (s *StringSet) In(str string) bool {
@@ -32,6 +42,10 @@ func (s *StringSet) In(str string) bool {
 
 func (s *StringSet) Len() int {
 	return len(s.base)
+}
+
+func (s *StringSet) Values() []string {
+	return s.vals
 }
 
 func DiffStrSets(s1 *StringSet, s2 *StringSet) *StringSet {

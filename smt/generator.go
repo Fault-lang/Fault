@@ -122,11 +122,22 @@ func (g *Generator) addVarToRound(base string, num int) {
 	if g.currentRound() == -1 {
 		g.initVarRound(base, num)
 		g.addVarToRoundLookup(base, num, 0, len(g.RoundVars[g.currentRound()])-1)
+		event := resultlog.NewInit(g.currentRound(), g.currentFunction, fmt.Sprintf("%s_%d", base, num))
+		g.Log.Add(event)
 		return
 	}
 
 	g.RoundVars[g.currentRound()] = append(g.RoundVars[g.currentRound()], []string{base, fmt.Sprint(num)})
 	g.addVarToRoundLookup(base, num, g.currentRound(), len(g.RoundVars[g.currentRound()])-1)
+
+	id := fmt.Sprintf("%s_%d", base, num)
+	if g.variables.SSA[base] != 0 {
+		event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+		g.Log.Add(event)
+	} else {
+		event := resultlog.NewInit(g.currentRound(), g.currentFunction, id)
+		g.Log.Add(event)
+	}
 }
 
 func (g *Generator) addVarToRoundLookup(base string, num int, idx int, idx2 int) {
@@ -165,20 +176,21 @@ func (g *Generator) varRounds(base string, num string) map[int][]string {
 }
 
 func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string) {
-	var stateChanges []string
+	var stateChanges = util.NewStrSet()
 	var lasts = make(map[string]int)
 	for _, ru := range rules {
 		sc, l := g.allStateChangesInRule(ru, lasts)
-		stateChanges = append(stateChanges, sc...)
+		stateChanges.Merge(sc)
 		lasts = l
 	}
 
-	for _, s := range stateChanges {
+	for _, s := range stateChanges.Values() {
 		base, i := util.GetVarBase(s)
 		phi := g.variables.GetSSANum(base) + 1
 		v := forks.NewVar(
 			base,
 			lasts[base] == i,
+			fmt.Sprint(i),
 			choice,
 			fmt.Sprint(phi),
 		)
@@ -380,6 +392,8 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	g.Forks.Choices[choiceId] = []string{branchT, branchF}
 
 	t, f, a := g.parseTerms(term.Succs())
+	t = rules.TagRules(t, branchT, choiceId)
+	f = rules.TagRules(f, branchF, choiceId)
 
 	if !g.isBranchClosed(t, f) {
 		var tEnds, fEnds []rules.Rule
@@ -397,6 +411,9 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		syncs := g.capCondSyncRules([]string{branchT, branchF})
 		tEnds = append(tEnds, syncs[branchT]...)
 		fEnds = append(fEnds, syncs[branchF]...)
+
+		tEnds = rules.TagRules(tEnds, branchT, choiceId)
+		fEnds = rules.TagRules(fEnds, branchF, choiceId)
 
 		ru = append(ru, &rules.Ite{Cond: cond, T: tEnds, F: fEnds})
 		g.inPhiState.Out()
@@ -606,30 +623,30 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, *
 	var t, f []rules.Rule
 	var a *ir.Block
 	g.branchId = g.branchId + 1
-	branch := fmt.Sprint("branch_", g.branchId)
+	//branch := fmt.Sprint("branch_", g.branchId)
 	for _, term := range terms {
 		bname := strings.Split(term.Ident(), "-")
 		switch bname[len(bname)-1] {
 		case "true":
 			g.inPhiState.In()
-			branchBlock := "true"
+			//branchBlock := "true"
 			t = g.parseBlock(term)
 
 			t1 := g.executeCallstack()
 			t = append(t, t1...)
 
-			t = rules.TagRules(t, branch, branchBlock)
+			//t = rules.TagRules(t, branch, branchBlock)
 			g.inPhiState.Out()
 		case "false":
 			g.inPhiState.In()
-			branchBlock := "false"
+			//branchBlock := "false"
 			f = g.parseBlock(term)
 
 			g.localCallstack = []string{}
 			f1 := g.executeCallstack()
 			f = append(f, f1...)
 
-			f = rules.TagRules(f, branch, branchBlock)
+			//f = rules.TagRules(f, branch, branchBlock)
 			g.inPhiState.Out()
 		case "after":
 			a = term
@@ -1400,8 +1417,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 			}
 			g.AddNewVarChange(base, id, prev)
 
-			event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
-			g.Log.Add(event)
+			// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+			// g.Log.Add(event)
 
 			ru = append(ru, g.createRule(id, v, ty, ""))
 		} else if ref, ok := g.variables.Ref[refname]; ok {
@@ -1421,8 +1438,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				g.AddNewVarChange(base, id, prev)
 				wid := &rules.Wrap{Value: id}
 
-				event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
-				g.Log.Add(event)
+				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				// g.Log.Add(event)
 
 				if g.variables.IsBoolean(r.Y.String()) {
 					ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
@@ -1444,8 +1461,8 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 
-				event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
-				g.Log.Add(event)
+				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				// g.Log.Add(event)
 
 				wid := &rules.Wrap{Value: id}
 				ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
@@ -1472,13 +1489,13 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 			return ru
 		}
 
-		if g.variables.SSA[base] != 0 {
-			event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
-			g.Log.Add(event)
-		} else {
-			event := resultlog.NewInit(g.currentRound(), g.currentFunction, id)
-			g.Log.Add(event)
-		}
+		// if g.variables.SSA[base] != 0 {
+		// 	event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+		// 	g.Log.Add(event)
+		// } else {
+		// 	event := resultlog.NewInit(g.currentRound(), g.currentFunction, id)
+		// 	g.Log.Add(event)
+		// }
 	}
 	return ru
 }
@@ -1659,10 +1676,12 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 	g.Forks.Choices[choiceId] = []string{}
 
 	for k, v := range branches {
+		v = rules.TagRules(v, k, choiceId)
 		g.Forks.Choices[choiceId] = append(g.Forks.Choices[choiceId], k)
 		keys = append(keys, k)
 		g.buildForkChoice(v, choiceId, k)
 		e, phis = g.capCond(choiceId, k, phis)
+		e = rules.TagRules(e, k, choiceId)
 		ends[k] = append(v, e...)
 	}
 
@@ -1672,6 +1691,7 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 		a := &rules.Ands{
 			X: e2,
 		}
+		a = rules.TagRule(a, k, choiceId).(*rules.Ands)
 		x = append(x, a)
 	}
 	g.inPhiState.Out()
@@ -1744,7 +1764,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 			v := g.functions[c]
 			raw := g.parseFunction(v)
 			g.inPhiState.In()
-			raw = rules.TagRules(raw, choiceId, branchBlock)
+			raw = rules.TagRules(raw, branchBlock, choiceId)
 			opts = append(opts, raw)
 		}
 		//Flat the rules
@@ -1755,8 +1775,9 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 		g.variables.LoadState(varState)
 		ru = append(ru, raw...)
 	}
-
-	ru = append(ru, g.capParallel(choiceId)...)
+	cappedRules := g.capParallel(choiceId)
+	cappedRules = rules.TagRules(cappedRules, "", choiceId)
+	ru = append(ru, cappedRules...)
 	return ru
 }
 
@@ -1851,18 +1872,20 @@ func (g *Generator) capRule(k string, nums []int16, id string) []rules.Rule {
 		ty := g.variables.LookupType(k, nil)
 		if ty == "Bool" {
 			r := &rules.Infix{
-				X:  &rules.Wrap{Value: id},
-				Y:  &rules.Wrap{Value: id2},
-				Op: "=",
-				Ty: "Bool",
+				X:   &rules.Wrap{Value: id},
+				Y:   &rules.Wrap{Value: id2},
+				Op:  "=",
+				Ty:  "Bool",
+				Phi: true,
 			}
 			e = append(e, r)
 		} else {
 			r := &rules.Infix{
-				X:  &rules.Wrap{Value: id},
-				Y:  &rules.Wrap{Value: id2},
-				Op: "=",
-				Ty: "Real",
+				X:   &rules.Wrap{Value: id},
+				Y:   &rules.Wrap{Value: id2},
+				Op:  "=",
+				Ty:  "Real",
+				Phi: true,
 			}
 			e = append(e, r)
 		}
@@ -1890,8 +1913,10 @@ func (g *Generator) capCond(choiceId string, b string, phis map[string]int16) ([
 			n1 := g.variables.GetSSANum(base)
 			if base == k && variable.Last[choiceId] {
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
-				g.Forks.AddVar(b, base, id, forks.NewVar(base, true, choiceId, fmt.Sprint(n1)))
-				g.Forks.Vars[v].Last[choiceId] = false
+				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				// g.Log.Add(event)
+				g.Forks.AddVar(b, base, id, forks.NewVar(base, false, fmt.Sprint(n1), choiceId, fmt.Sprint(n1))) //Should Phi be last=true? :/
+				//g.Forks.Vars[v].Last[choiceId] = false
 			}
 		}
 	}

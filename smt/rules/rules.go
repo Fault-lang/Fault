@@ -12,6 +12,9 @@ type Rule interface {
 	ruleNode()
 	String() string
 	Assertless() string
+	IsTagged() bool
+	Choice() string
+	Branch() string
 }
 
 type Ands struct {
@@ -42,6 +45,18 @@ func (a *Ands) Tag(k1 string, k2 string) {
 	}
 }
 
+func (a *Ands) IsTagged() bool {
+	return a.tag != nil
+}
+
+func (a *Ands) Choice() string {
+	return a.tag.block
+}
+
+func (a *Ands) Branch() string {
+	return a.tag.branch
+}
+
 type States struct {
 	Rule
 	Terminal bool
@@ -63,6 +78,18 @@ func (s *States) Tag(k1 string, k2 string) {
 		branch: k1,
 		block:  k2,
 	}
+}
+
+func (s *States) IsTagged() bool {
+	return s.tag != nil
+}
+
+func (s *States) Choice() string {
+	return s.tag.block
+}
+
+func (s *States) Branch() string {
+	return s.tag.branch
 }
 
 type Assrt struct {
@@ -87,6 +114,18 @@ func (a *Assrt) Tag(k1 string, k2 string) {
 		branch: k1,
 		block:  k2,
 	}
+}
+
+func (a *Assrt) IsTagged() bool {
+	return a.tag != nil
+}
+
+func (a *Assrt) Choice() string {
+	return a.tag.block
+}
+
+func (a *Assrt) Branch() string {
+	return a.tag.branch
 }
 
 type Choices struct {
@@ -117,6 +156,18 @@ func (c *Choices) Tag(k1 string, k2 string) {
 	}
 }
 
+func (c *Choices) IsTagged() bool {
+	return c.tag != nil
+}
+
+func (c *Choices) Choice() string {
+	return c.tag.block
+}
+
+func (c *Choices) Branch() string {
+	return c.tag.branch
+}
+
 type Infix struct {
 	Rule
 	X   Rule
@@ -124,6 +175,8 @@ type Infix struct {
 	Ty  string
 	Op  string
 	tag *branch
+	Phi bool //Tag if this rule is a phi value capping a branch
+	// If so we don't want to track it as a state change
 }
 
 func (i *Infix) ruleNode() {}
@@ -138,6 +191,18 @@ func (i *Infix) Tag(k1 string, k2 string) {
 		branch: k1,
 		block:  k2,
 	}
+}
+
+func (i *Infix) IsTagged() bool {
+	return i.tag != nil
+}
+
+func (i *Infix) Choice() string {
+	return i.tag.block
+}
+
+func (i *Infix) Branch() string {
+	return i.tag.branch
 }
 
 type Prefix struct {
@@ -162,6 +227,18 @@ func (pr *Prefix) Tag(k1 string, k2 string) {
 	}
 }
 
+func (pr *Prefix) IsTagged() bool {
+	return pr.tag != nil
+}
+
+func (pr *Prefix) Choice() string {
+	return pr.tag.block
+}
+
+func (pr *Prefix) Branch() string {
+	return pr.tag.branch
+}
+
 type Ite struct {
 	Rule
 	Cond Rule
@@ -184,6 +261,18 @@ func (it *Ite) Assertless() string {
 		t = fmt.Sprintf("%s %s", f, fa.Assertless())
 	}
 	return fmt.Sprintf("(ite (%s) (%s) (%s))", it.Cond.Assertless(), t, f)
+}
+
+func (it *Ite) IsTagged() bool {
+	return it.tag != nil
+}
+
+func (it *Ite) Choice() string {
+	return it.tag.block
+}
+
+func (it *Ite) Branch() string {
+	return it.tag.branch
 }
 
 func (ite *Ite) Tag(k1 string, k2 string) {
@@ -218,6 +307,18 @@ func (i *Invariant) Tag(k1 string, k2 string) {
 	}
 }
 
+func (i *Invariant) IsTagged() bool {
+	return i.tag != nil
+}
+
+func (i *Invariant) Choice() string {
+	return i.tag.block
+}
+
+func (i *Invariant) Branch() string {
+	return i.tag.branch
+}
+
 type Phi struct {
 	Rule
 	BaseVar  string
@@ -243,6 +344,18 @@ func (p *Phi) Tag(k1 string, k2 string) {
 		branch: k1,
 		block:  k2,
 	}
+}
+
+func (p *Phi) IsTagged() bool {
+	return p.tag != nil
+}
+
+func (p *Phi) Choice() string {
+	return p.tag.block
+}
+
+func (p *Phi) Branch() string {
+	return p.tag.branch
 }
 
 type StateChange struct {
@@ -274,6 +387,18 @@ func (sc *StateChange) Tag(k1 string, k2 string) {
 		branch: k1,
 		block:  k2,
 	}
+}
+
+func (sc *StateChange) IsTagged() bool {
+	return sc.tag != nil
+}
+
+func (sc *StateChange) Choice() string {
+	return sc.tag.block
+}
+
+func (sc *StateChange) Branch() string {
+	return sc.tag.branch
 }
 func (sc *StateChange) Empty() bool {
 	if len(sc.Ands) > 0 {
@@ -310,6 +435,17 @@ func (w *Wrap) Tag(k1 string, k2 string) {
 		block:  k2,
 	}
 }
+func (w *Wrap) IsTagged() bool {
+	return w.tag != nil
+}
+
+func (w *Wrap) Choice() string {
+	return w.tag.block
+}
+
+func (w *Wrap) Branch() string {
+	return w.tag.branch
+}
 
 type StateGroup struct {
 	Rule
@@ -344,6 +480,18 @@ func (sg *StateGroup) Tag(k1 string, k2 string) {
 	}
 }
 
+func (sg *StateGroup) IsTagged() bool {
+	return sg.tag != nil
+}
+
+func (sg *StateGroup) Choice() string {
+	return sg.tag.block
+}
+
+func (sg *StateGroup) Branch() string {
+	return sg.tag.branch
+}
+
 type WrapGroup struct {
 	Rule
 	Wraps []*Wrap
@@ -368,6 +516,18 @@ func (wg *WrapGroup) Tag(k1 string, k2 string) {
 	}
 }
 
+func (wg *WrapGroup) IsTagged() bool {
+	return wg.tag != nil
+}
+
+func (wg *WrapGroup) Choice() string {
+	return wg.tag.block
+}
+
+func (wg *WrapGroup) Branch() string {
+	return wg.tag.branch
+}
+
 type Vwrap struct {
 	Rule
 	Value value.Value
@@ -388,6 +548,18 @@ func (vw *Vwrap) Tag(k1 string, k2 string) {
 	}
 }
 
+func (vw *Vwrap) IsTagged() bool {
+	return vw.tag != nil
+}
+
+func (vw *Vwrap) Choice() string {
+	return vw.tag.block
+}
+
+func (vw *Vwrap) Branch() string {
+	return vw.tag.branch
+}
+
 type branch struct {
 	branch string
 	block  string
@@ -406,6 +578,9 @@ func TagRules(ru []Rule, branch string, block string) []Rule {
 }
 
 func TagRule(ru Rule, branch string, block string) Rule {
+	if ru.IsTagged() {
+		return ru //Don't retag something (nestled phis)
+	}
 	switch r := ru.(type) {
 	case *Infix:
 		r.X = TagRule(r.X, branch, block)

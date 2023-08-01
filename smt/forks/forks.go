@@ -1,6 +1,7 @@
 package forks
 
 import (
+	"fault/smt/rules"
 	"fmt"
 	"strconv"
 )
@@ -25,16 +26,13 @@ type Fork struct {
 	Branches map[string][]string //slice of variables in the branch
 	Vars     map[string]*Var
 	Bases    map[string]map[string]bool // Is there an instance of this variable in the branch?
+	ToKill   map[string]bool            //Quick lookup around which variables are listed as to be killed
 }
-
-// type Choice2 struct {
-// 	BranchIds     []string
-// 	WinningBranch string
-// }
 
 type Var struct {
 	Base string
 	Last map[string]bool
+	SSA  string
 	Phi  map[string]string // map[choiceID] = phi (handles nestled phis)
 }
 
@@ -44,11 +42,42 @@ func InitFork() *Fork {
 		Branches: make(map[string][]string),
 		Vars:     make(map[string]*Var),
 		Bases:    make(map[string]map[string]bool),
+		ToKill:   make(map[string]bool),
+	}
+}
+
+func (f *Fork) MarkMany(ids []string) {
+	for _, id := range ids {
+		f.Mark(id)
+	}
+}
+
+func (f *Fork) Mark(id string) {
+	f.ToKill[id] = true
+}
+
+func (f *Fork) MarkedForDeath(id string) bool {
+	return f.ToKill[id]
+}
+
+func (f *Fork) InBranch(branch string, id string) bool {
+	for _, v := range f.Branches[branch] {
+		if id == v {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *Fork) AddToBranch(branch string, id string) {
+	if !f.InBranch(branch, id) {
+		f.Branches[branch] = append(f.Branches[branch], id)
 	}
 }
 
 func (f *Fork) AddVar(branch string, base string, id string, v *Var) {
-	f.Branches[branch] = append(f.Branches[branch], id)
+	f.AddToBranch(branch, id)
+
 	if _, ok := f.Vars[id]; !ok {
 		f.Vars[id] = v
 	} else {
@@ -68,15 +97,22 @@ func (f *Fork) AddVar(branch string, base string, id string, v *Var) {
 	}
 }
 
-// func NewChoice() *Choice2 {
-// 	return &Choice2{}
-// }
+func (f *Fork) IsPhi(r *rules.Wrap) bool {
+	if f.Vars[r.Value] == nil {
+		return false
+	}
+	return f.Vars[r.Value].IsPhi(r.Choice())
+}
 
-func NewVar(base string, last bool, choice string, phi string) *Var {
-	v := &Var{Base: base, Last: make(map[string]bool), Phi: make(map[string]string)}
+func NewVar(base string, last bool, ssa string, choice string, phi string) *Var {
+	v := &Var{Base: base, Last: make(map[string]bool), SSA: ssa, Phi: make(map[string]string)}
 	v.Last[choice] = last
 	v.Phi[choice] = phi
 	return v
+}
+
+func (v *Var) IsPhi(choice string) bool {
+	return v.SSA == v.Phi[choice]
 }
 
 func (v *Var) FullPhi(choice string) string {
