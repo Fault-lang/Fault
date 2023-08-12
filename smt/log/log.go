@@ -1,6 +1,9 @@
 package log
 
-import "fmt"
+import (
+	"fault/util"
+	"fmt"
+)
 
 type ResultLog struct {
 	Events  []*Event
@@ -79,6 +82,24 @@ func (rl *ResultLog) Index(name string) int {
 	return -1
 }
 
+func (rl *ResultLog) FilterStateTransitions() {
+	for idx, l := range rl.Events {
+		if idx > 1 && l.Type == "TRANSITION" {
+			previous := l.Previous
+			current := l.Current
+			if rl.deadTransition(previous, idx-1) &&
+				rl.deadTransition(current, idx-2) {
+				//Kill everything! :D
+				rl.Events[idx].Kill()
+				rl.Events[idx-1].Kill()
+				rl.Events[idx-2].Kill()
+
+			}
+
+		}
+	}
+}
+
 func (rl *ResultLog) FilterOut(deadVars []string) {
 	for _, dvar := range deadVars {
 		if idx, ok := rl.Lookup[dvar]; ok {
@@ -88,32 +109,16 @@ func (rl *ResultLog) FilterOut(deadVars []string) {
 			// a function call, remove that too.
 			if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
 				rl.Events[idx-1].Kill()
-				current := rl.Events[idx-1].Variable
-				if current[len(current)-7:] == "__state" {
-					stateVar := current[0 : len(current)-7]
-					rl.removeTransition(stateVar, idx-2)
-				}
 			}
 		}
 	}
+
+	rl.FilterStateTransitions()
 }
 
-func (rl *ResultLog) removeTransition(stateVar string, idx int) {
-	if idx == 0 {
-		return
-	}
-
-	if rl.Events[idx].Type != "TRANSITION" {
-		return
-	}
-
-	if stateVar == rl.Events[idx].Current {
-		rl.Events[idx].Kill()
-	} else {
-		rl.removeTransition(stateVar, idx-1)
-	}
-
-	return
+func (rl *ResultLog) deadTransition(stateVar string, idx int) bool {
+	base, _ := util.GetVarBase(rl.Events[idx].Variable)
+	return base == stateVar && rl.Events[idx].Current == "false"
 }
 
 func (rl *ResultLog) String() string {

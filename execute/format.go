@@ -192,8 +192,12 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 		var candidatePhi = make(map[string]string)
 		var fail bool
 		DeclaredVars := mc.Forks.Branches[branch] // Variables declared in this branch
+		if mc.allPhis(choiceId, DeclaredVars) && winner != "" {
+			return winner, phiID
+		}
+
+		// if mc.endStateEqualPhis(choiceId, DeclaredVars)
 		for _, dvars := range DeclaredVars {
-			//If branch1 is all true but branch2 is first item true function will return branch 2 with incomplete phis
 			if mc.Forks.Vars[dvars].Last[choiceId] { // Is this variable SSA the last one assigned in the branch?
 				last := mc.ResultValues[dvars]
 				phi := mc.ResultValues[mc.Forks.Vars[dvars].FullPhi(choiceId)]
@@ -203,14 +207,45 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 				}
 				candidate = branch
 				candidatePhi[dvars] = mc.Forks.Vars[dvars].FullPhi(choiceId)
+
+				// If the only variables defined in the branch are phis
+				// branch will default to true
+			} else if mc.Forks.Vars[dvars].Phi[choiceId] == mc.Forks.Vars[dvars].SSA { //Is this the Phi?
+				last := mc.ResultValues[mc.Forks.Vars[dvars].Previous[branch]] // What was the previous value?
+				phi := mc.ResultValues[dvars]
+				if last != phi {
+					fail = true
+					break
+				}
+				candidate = branch
+				candidatePhi[dvars] = mc.Forks.Vars[dvars].FullPhi(choiceId)
 			}
 		}
+
 		if !fail {
 			winner = candidate
 			phiID = candidatePhi
 		}
 	}
+	if winner == "" { //This should never happen
+		var message []string
+		for _, branch := range branchIds {
+			b := mc.Forks.Branches[branch]
+			message = append(message, strings.Join(b, ","))
+		}
+		panic(fmt.Sprintf("event log corrupted, can't decide between branches %s", strings.Join(message, " or ")))
+	}
 	return winner, phiID
+}
+
+func (mc *ModelChecker) allPhis(choiceId string, vars []string) bool {
+	var phis int
+	for _, dvars := range vars {
+		if mc.Forks.Vars[dvars].Phi[choiceId] == mc.Forks.Vars[dvars].SSA {
+			phis++
+		}
+	}
+	return phis == len(vars)
 }
 
 func deadBranches(id string, variable Scenario, deads []string) Scenario {

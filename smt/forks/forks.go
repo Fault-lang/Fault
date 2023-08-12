@@ -30,10 +30,11 @@ type Fork struct {
 }
 
 type Var struct {
-	Base string
-	Last map[string]bool
-	SSA  string
-	Phi  map[string]string // map[choiceID] = phi (handles nestled phis)
+	Base     string
+	Last     map[string]bool
+	SSA      string
+	Previous map[string]string // map[branchId]string If this is a Phi value, keep track of the last value in the branch
+	Phi      map[string]string // map[choiceID] = phi (handles nestled phis)
 }
 
 func InitFork() *Fork {
@@ -105,10 +106,18 @@ func (f *Fork) IsPhi(r *rules.Wrap) bool {
 }
 
 func NewVar(base string, last bool, ssa string, choice string, phi string) *Var {
-	v := &Var{Base: base, Last: make(map[string]bool), SSA: ssa, Phi: make(map[string]string)}
+	v := &Var{Base: base, Last: make(map[string]bool), SSA: ssa, Phi: make(map[string]string), Previous: make(map[string]string)}
 	v.Last[choice] = last
 	v.Phi[choice] = phi
 	return v
+}
+
+func (f *Fork) Get(id string) *Var {
+	return f.Vars[id]
+}
+
+func (v *Var) AddPrevious(branchId string, previous string) {
+	v.Previous[branchId] = previous
 }
 
 func (v *Var) IsPhi(choice string) bool {

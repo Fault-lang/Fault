@@ -187,6 +187,7 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string)
 	for _, s := range stateChanges.Values() {
 		base, i := util.GetVarBase(s)
 		phi := g.variables.GetSSANum(base) + 1
+		prev := g.GetPrevious(base, i, choice, b)
 		v := forks.NewVar(
 			base,
 			lasts[base] == i,
@@ -194,8 +195,22 @@ func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string)
 			choice,
 			fmt.Sprint(phi),
 		)
+		v.AddPrevious(b, fmt.Sprintf("%s_%d", base, prev))
 		g.Forks.AddVar(b, base, s, v)
 	}
+
+}
+
+func (g *Generator) GetPrevious(base string, ssa int, choice string, branch string) int {
+	if ssa == 0 {
+		return ssa
+	}
+	n := ssa - 1
+	if g.Forks.InBranch(branch, fmt.Sprintf("%s_%d", base, n)) {
+		return n
+	}
+
+	return int(g.variables.GetStartState(base))
 
 }
 
@@ -1915,7 +1930,9 @@ func (g *Generator) capCond(choiceId string, b string, phis map[string]int16) ([
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
 				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
 				// g.Log.Add(event)
-				g.Forks.AddVar(b, base, id, forks.NewVar(base, false, fmt.Sprint(n1), choiceId, fmt.Sprint(n1))) //Should Phi be last=true? :/
+				v := forks.NewVar(base, false, fmt.Sprint(n1), choiceId, fmt.Sprint(n1))
+				v.AddPrevious(b, fmt.Sprintf("%s_%d", base, n))
+				g.Forks.AddVar(b, base, id, v) //Should Phi be last=true? :/
 				//g.Forks.Vars[v].Last[choiceId] = false
 			}
 		}
@@ -1954,6 +1971,8 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 						ends[notB] = append(ends[notB], e...)
 						g.Forks.Bases[notB][base] = true
 						g.Forks.Branches[notB] = append(g.Forks.Branches[notB], id)
+						v := g.Forks.Get(id)
+						v.AddPrevious(notB, fmt.Sprintf("%s_%d", base, start))
 					}
 				}
 			}
