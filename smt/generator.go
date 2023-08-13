@@ -131,7 +131,10 @@ func (g *Generator) addVarToRound(base string, num int) {
 	g.addVarToRoundLookup(base, num, g.currentRound(), len(g.RoundVars[g.currentRound()])-1)
 
 	id := fmt.Sprintf("%s_%d", base, num)
-	if g.variables.SSA[base] != 0 {
+	if g.States[base] {
+		event := resultlog.NewStateVar(g.currentRound(), g.currentFunction, id)
+		g.Log.Add(event)
+	} else if g.variables.SSA[base] != 0 {
 		event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
 		g.Log.Add(event)
 	} else {

@@ -56,6 +56,15 @@ func NewChange(round int, scope string, variable string) *Event {
 	}
 }
 
+func NewStateVar(round int, scope string, variable string) *Event {
+	return &Event{
+		Round:    round,
+		Type:     "STATEVAR",
+		Scope:    scope,
+		Variable: variable,
+	}
+}
+
 func NewTransition(round int, previous string, current string) *Event {
 	return &Event{
 		Round:    round,
@@ -84,6 +93,10 @@ func (rl *ResultLog) Index(name string) int {
 
 func (rl *ResultLog) FilterStateTransitions() {
 	for idx, l := range rl.Events {
+		// Kill state variables
+		if l.Type == "STATEVAR" {
+			rl.Events[idx].Kill()
+		}
 		if idx > 1 && l.Type == "TRANSITION" {
 			previous := l.Previous
 			current := l.Current
