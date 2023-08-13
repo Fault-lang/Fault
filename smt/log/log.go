@@ -118,7 +118,7 @@ func (rl *ResultLog) FilterOut(deadVars []string) {
 
 func (rl *ResultLog) deadTransition(stateVar string, idx int) bool {
 	base, _ := util.GetVarBase(rl.Events[idx].Variable)
-	return base == stateVar && rl.Events[idx].Current == "false"
+	return base == stateVar && rl.Events[idx].Dead
 }
 
 func (rl *ResultLog) String() string {

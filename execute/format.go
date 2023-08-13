@@ -192,9 +192,6 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 		var candidatePhi = make(map[string]string)
 		var fail bool
 		DeclaredVars := mc.Forks.Branches[branch] // Variables declared in this branch
-		if mc.allPhis(choiceId, DeclaredVars) && winner != "" {
-			return winner, phiID
-		}
 
 		// if mc.endStateEqualPhis(choiceId, DeclaredVars)
 		for _, dvars := range DeclaredVars {
