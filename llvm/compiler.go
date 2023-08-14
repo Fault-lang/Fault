@@ -194,6 +194,8 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 				switch n := v.(type) {
 				case *ast.ConstantStatement:
 					c.compileConstant(n)
+				case *ast.AssertionStatement:
+					c.compile(n)
 				case *ast.DefStatement:
 					switch d := n.Value.(type) {
 					case *ast.StringLiteral:
@@ -240,9 +242,6 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 					}
 					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
-				case *ast.StringLiteral:
-					//value := c.compileValue(d)
-					//c.globalVariable(d.ProcessedName, value, d.Position())
 				}
 
 			}
