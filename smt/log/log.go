@@ -93,10 +93,6 @@ func (rl *ResultLog) Index(name string) int {
 
 func (rl *ResultLog) FilterStateTransitions() {
 	for idx, l := range rl.Events {
-		// Kill state variables
-		if l.Type == "STATEVAR" {
-			rl.Events[idx].Kill()
-		}
 		if idx > 1 && l.Type == "TRANSITION" {
 			previous := l.Previous
 			current := l.Current
@@ -109,6 +105,14 @@ func (rl *ResultLog) FilterStateTransitions() {
 
 			}
 
+		}
+	}
+}
+
+func (rl *ResultLog) FilterStateVars() {
+	for idx, l := range rl.Events {
+		if l.Type == "STATEVAR" {
+			rl.Events[idx].Kill()
 		}
 	}
 }
@@ -127,6 +131,7 @@ func (rl *ResultLog) FilterOut(deadVars []string) {
 	}
 
 	rl.FilterStateTransitions()
+	rl.FilterStateVars()
 }
 
 func (rl *ResultLog) deadTransition(stateVar string, idx int) bool {
