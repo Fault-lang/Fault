@@ -116,6 +116,21 @@ func (f *Fork) Get(id string) *Var {
 	return f.Vars[id]
 }
 
+func (f *Fork) GetPrevious(id string, branch string, fallback []string) string {
+	if r, ok := f.Vars[id].Previous[branch]; ok {
+		return r
+	}
+
+	//This is a hacky solution, if the branch isn't in the map, fallback to another branch
+	//really only happens with phis generated to sync the branches so should be fine
+	for _, b := range fallback {
+		if r, ok := f.Vars[id].Previous[b]; b != branch && ok {
+			return r
+		}
+	}
+	panic(fmt.Sprintf("no previous state found for variable %s in branch %s", id, branch))
+}
+
 func (v *Var) AddPrevious(branchId string, previous string) {
 	v.Previous[branchId] = previous
 }

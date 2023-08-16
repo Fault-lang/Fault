@@ -1964,7 +1964,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 					g.variables.StoreLastState(base, n)
 				}
 				seenVar[base] = true
-
+				
 				for _, notB := range util.Intersection(branches, []string{b}, true) {
 					if _, ok := g.Forks.Bases[notB]; !ok {
 						g.Forks.Bases[notB] = make(map[string]bool)

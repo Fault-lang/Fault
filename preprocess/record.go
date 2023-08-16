@@ -142,6 +142,41 @@ func (sr *SpecRecord) FetchFlow(name string) (map[string]ast.Node, error) {
 	}
 }
 
+func (sr *SpecRecord) FetchInstanceStrMap(name string, parent, ty string) (map[string]string, error) {
+	var inst map[string]ast.Node
+	var err error
+	switch ty {
+	case "STOCK":
+		inst, err = sr.FetchStock(name)
+		if err != nil {
+			return nil, err
+		}
+	case "FLOW":
+		inst, err = sr.FetchFlow(name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var children = make(map[string]string)
+	for _, v := range inst {
+		vname := v.(ast.Nameable).IdString()
+		children[vname] = parent
+		if str, ok := v.(*ast.StructInstance); ok {
+			rawid := str.RawId()
+			cname := strings.Join(rawid[1:], "_")
+			ty, _ := sr.GetStructType(rawid)
+			grandchildren, err := sr.FetchInstanceStrMap(cname, str.Parent[1], ty)
+			if err != nil {
+				return nil, err
+			}
+
+			children = util.MergeStringMaps(children, grandchildren)
+		}
+	}
+	return children, nil
+}
+
 func (sr *SpecRecord) FetchComponent(name string) (map[string]ast.Node, error) {
 	if sr.Components[name] != nil {
 		return sr.Components[name], nil
