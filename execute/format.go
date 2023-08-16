@@ -3,6 +3,7 @@ package execute
 import (
 	"bytes"
 	"fault/smt/variables"
+	"fault/util"
 	"fmt"
 	"strings"
 )
@@ -49,14 +50,58 @@ func (mc *ModelChecker) writeObject(o *variables.VarChange) string {
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
 	var out bytes.Buffer
-	//results = definePath(results, mc.forks)
 	for k, v := range results {
 		out.WriteString(k + "\n")
-		filtered := deadBranches(k, v, mc.forks)
+		deadVars := mc.DeadVariables()
+		filtered := deadBranches(k, v, deadVars)
 		r := generateRows(filtered)
 		out.WriteString(strings.Join(r, " ") + "\n\n")
 	}
 	fmt.Println(out.String())
+}
+
+func (mc *ModelChecker) EventLog(results map[string]Scenario) {
+	var out bytes.Buffer
+	for k, v := range results {
+		mc.mapToLog(k, v)
+	}
+
+	deadVars := mc.DeadVariables()
+	mc.Log.FilterOut(deadVars)
+
+	out.WriteString(mc.Log.String())
+
+	fmt.Println(out.String())
+}
+
+func (mc *ModelChecker) mapToLog(k string, vals Scenario) {
+	switch v := vals.(type) {
+	case *BoolTrace:
+		for idx, s := range v.results {
+			name := fmt.Sprintf("%s_%d", k, idx)
+			j := mc.Log.Index(name)
+			if j >= 0 {
+				mc.Log.UpdateCurrent(j, fmt.Sprintf("%v", s))
+			}
+		}
+	case *FloatTrace:
+		for idx, s := range v.results {
+			name := fmt.Sprintf("%s_%d", k, idx)
+			j := mc.Log.Index(name)
+			if j >= 0 {
+				mc.Log.UpdateCurrent(j, fmt.Sprintf("%v", s))
+			}
+		}
+	case *IntTrace:
+		for idx, s := range v.results {
+			name := fmt.Sprintf("%s_%d", k, idx)
+			j := mc.Log.Index(name)
+			if j >= 0 {
+				mc.Log.UpdateCurrent(j, fmt.Sprintf("%v", s))
+			}
+		}
+	}
+
 }
 
 func generateRows(v Scenario) []string {
@@ -118,90 +163,119 @@ func generateRows(v Scenario) []string {
 	return nil
 }
 
-func deadBranches(id string, variable Scenario, branches map[string][]*Branch) Scenario {
+func (mc *ModelChecker) DeadVariables() []string {
+	var dead []string
+	for choiceId, branchIds := range mc.Forks.Choices {
+		winner, phi := mc.pickWinner(choiceId, branchIds)
+		for _, b := range branchIds {
+			if b != winner {
+				dead = append(dead, mc.Forks.Branches[b]...)
+				mc.Forks.MarkMany(mc.Forks.Branches[b])
+
+				for _, p := range phi {
+					if !mc.Forks.MarkedForDeath(p) {
+						dead = append(dead, p) //Kill the phis too
+						mc.Forks.Mark(p)
+					}
+				}
+			}
+		}
+	}
+	return dead
+}
+
+func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string, map[string]string) {
+	var winner string
+	var phiID = make(map[string]string)
+	for _, branch := range branchIds { // Go through all the branches
+		var candidate string
+		var candidatePhi = make(map[string]string)
+		var fail bool
+		DeclaredVars := mc.Forks.Branches[branch] // Variables declared in this branch
+
+		// if mc.endStateEqualPhis(choiceId, DeclaredVars)
+		for _, dvars := range DeclaredVars {
+			if mc.Forks.Vars[dvars].Last[choiceId] { // Is this variable SSA the last one assigned in the branch?
+				last := mc.ResultValues[dvars]
+				phi := mc.ResultValues[mc.Forks.Vars[dvars].FullPhi(choiceId)]
+				if last != phi { // Does it's returned value match the Phi?
+					fail = true
+					break // If not this can't be a winning branch
+				}
+				candidate = branch
+				candidatePhi[dvars] = mc.Forks.Vars[dvars].FullPhi(choiceId)
+
+				// If the only variables defined in the branch are phis
+				// branch will default to true
+			} else if mc.Forks.Vars[dvars].Phi[choiceId] == mc.Forks.Vars[dvars].SSA { //Is this the Phi?
+				last := mc.ResultValues[mc.Forks.GetPrevious(dvars,branch, branchIds)] // What was the previous value?
+				phi := mc.ResultValues[dvars]
+				if last != phi {
+					fail = true
+					break
+				}
+				candidate = branch
+				candidatePhi[dvars] = mc.Forks.Vars[dvars].FullPhi(choiceId)
+			}
+		}
+
+		if !fail {
+			winner = candidate
+			phiID = candidatePhi
+		}
+	}
+	if winner == "" { //This should never happen
+		var message []string
+		for _, branch := range branchIds {
+			b := mc.Forks.Branches[branch]
+			message = append(message, strings.Join(b, ","))
+		}
+		panic(fmt.Sprintf("event log corrupted, can't decide between branches %s", strings.Join(message, " or ")))
+	}
+	return winner, phiID
+}
+
+func (mc *ModelChecker) allPhis(choiceId string, vars []string) bool {
+	var phis int
+	for _, dvars := range vars {
+		if mc.Forks.Vars[dvars].Phi[choiceId] == mc.Forks.Vars[dvars].SSA {
+			phis++
+		}
+	}
+	return phis == len(vars)
+}
+
+func deadBranches(id string, variable Scenario, deads []string) Scenario {
 	// Iterates through branches, determines the branches not needed by the model
 	// and removes them from the Scenario
 	//
 	// Question: what to do in the situation where two
 	// branches have the same end value as the phi but different
 	// intermediate values?
-	var phis []int16
-	for _, b := range branches[id] {
-		e := b.End()
-		phis = append(phis, b.phi)
+
+	for _, b := range deads {
 		switch v := variable.(type) {
 		case *FloatTrace:
-			endValue, ok := v.Index(e)
-			if !ok {
-				panic(fmt.Sprintf("end value for variable %s not found", id))
+			base, n := util.GetVarBase(b)
+			if base != id {
+				continue
 			}
-
-			phiValue, ok := v.Index(b.phi)
-			if !ok {
-				panic(fmt.Sprintf("phi value for variable %s not found", id))
-			}
-
-			if endValue != phiValue {
-				//Remove this branch from results
-				for k := range v.results {
-					if b.InTrail(k) {
-						v.Remove(k)
-					}
-				}
-			}
+			v.Remove(int16(n))
 			variable = v
 		case *IntTrace:
-			endValue, ok := v.Index(e)
-			if !ok {
-				panic(fmt.Sprintf("end value for variable %s not found", id))
+			base, n := util.GetVarBase(b)
+			if base != id {
+				continue
 			}
-
-			phiValue, ok := v.Index(b.phi)
-			if !ok {
-				panic(fmt.Sprintf("phi value for variable %s not found", id))
-			}
-
-			if endValue != phiValue {
-				//Remove this branch from results
-				for k := range v.results {
-					if b.InTrail(k) {
-						v.Remove(k)
-					}
-				}
-			}
+			v.Remove(int16(n))
 			variable = v
 		case *BoolTrace:
-			endValue, ok := v.Index(e)
-			if !ok {
-				panic(fmt.Sprintf("end value for variable %s not found", id))
+			base, n := util.GetVarBase(b)
+			if base != id {
+				continue
 			}
-
-			phiValue, ok := v.Index(b.phi)
-			if !ok {
-				panic(fmt.Sprintf("phi value for variable %s not found", id))
-			}
-
-			if endValue != phiValue {
-				//Remove this branch from results
-				for k := range v.results {
-					if b.InTrail(k) {
-						v.Remove(k)
-					}
-				}
-			}
+			v.Remove(int16(n))
 			variable = v
-		}
-	}
-
-	// Remove phis
-	for _, i := range phis {
-		switch v := variable.(type) {
-		case *FloatTrace:
-			v.Remove(i)
-		case *IntTrace:
-			v.Remove(i)
-		case *BoolTrace:
-			v.Remove(i)
 		}
 	}
 	return variable

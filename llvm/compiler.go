@@ -43,6 +43,7 @@ type Compiler struct {
 	hasRunBlock bool
 	IsValid     bool
 	isTesting   bool
+	isImport    bool
 	RunRound    int16
 
 	currentSpec      string
@@ -76,6 +77,7 @@ type Compiler struct {
 	Unknowns       []string
 	Components     map[string]*StateFunc
 	ComponentOrder []string
+	States         map[string]bool
 	Alias          map[string]string
 }
 
@@ -101,6 +103,7 @@ func NewCompiler() *Compiler {
 		specGlobals:   make(map[string]*ir.Global),
 		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
+		States:        make(map[string]bool),
 	}
 	c.setup()
 	return c
@@ -143,7 +146,7 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 		}
 	}()
 
-	c.processSpec(root, false)
+	c.processSpec(root)
 	return
 }
 
@@ -174,7 +177,7 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 	}
 }
 
-func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
+func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
 		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
@@ -187,11 +190,13 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 		c.currentSpec = decl.Name.Value
 		c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
 
-		if isImport { //We still want the globals compiled
+		if c.isImport { //We still want the globals compiled
 			for _, v := range specfile.Statements {
 				switch n := v.(type) {
 				case *ast.ConstantStatement:
 					c.compileConstant(n)
+				case *ast.AssertionStatement:
+					c.compile(n)
 				case *ast.DefStatement:
 					switch d := n.Value.(type) {
 					case *ast.StringLiteral:
@@ -228,6 +233,22 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 				continue
 			case *ast.DefStatement:
 				switch d := n.Value.(type) {
+				case *ast.StructInstance:
+					rawid := n.Name.RawId()
+					id := n.Name.Id()
+					key := strings.Join(id, "_")
+					parent := strings.Join(d.Parent, "_")
+					name := strings.Join(rawid[1:], "_")
+					s := c.specStructs[rawid[0]]
+					ty, _ := s.GetStructType(rawid)
+
+					c.instances[key] = append(c.instances[key], parent)
+					c.instances[parent] = append(c.instances[parent], key)
+					children, err := s.FetchInstanceStrMap(name, d.Parent[1], ty)
+					if err != nil {
+						panic(err)
+					}
+					c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 				case *ast.ComponentLiteral:
 					//assembling component parts as params
 					id := d.Id()
@@ -238,9 +259,6 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 					}
 					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
-				case *ast.StringLiteral:
-					//value := c.compileValue(d)
-					//c.globalVariable(d.ProcessedName, value, d.Position())
 				}
 
 			}
@@ -249,7 +267,7 @@ func (c *Compiler) processSpec(root ast.Node, isImport bool) ([]*ast.AssertionSt
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	if !isImport && c.IsValid { //Don't compile if the spec is being imported
+	if !c.isImport && c.IsValid { //Don't compile if the spec is being imported
 		for _, fileNode := range specfile.Statements {
 			c.compile(fileNode)
 		}
@@ -273,7 +291,9 @@ func (c *Compiler) compile(node ast.Node) {
 		break
 	case *ast.ImportStatement:
 		parent := c.currentSpec
-		asserts, assumes := c.processSpec(v.Tree, true) //Move all asserts to the end of the compilation process
+		c.isImport = true
+		asserts, assumes := c.processSpec(v.Tree) //Move all asserts to the end of the compilation process
+		c.isImport = false
 		c.Asserts = append(c.Asserts, asserts...)
 		c.Assumes = append(c.Assumes, assumes...)
 		c.currentSpec = parent
@@ -557,6 +577,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			c.contextFunc = f
 			pname = name.Block()
 			c.contextBlock = f.NewBlock(pname)
+			c.States[v.IdString()] = true
 			c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
 			c.ComponentOrder = append(c.ComponentOrder, childId)
 			val2 := c.compileBlock(v.Body)

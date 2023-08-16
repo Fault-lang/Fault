@@ -8,6 +8,7 @@ import (
 	"fault/preprocess"
 	"fault/reachability"
 	"fault/smt"
+	resultlog "fault/smt/log"
 	smtvar "fault/smt/variables"
 	"fault/swaps"
 	"fault/types"
@@ -22,7 +23,6 @@ import (
 
 	_ "github.com/olekukonko/tablewriter"
 )
-
 
 func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string, map[string]string) {
 
@@ -74,9 +74,9 @@ func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []str
 	return generator
 }
 
-func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smtvar.VarChange) (*execute.ModelChecker, map[string]execute.Scenario) {
+func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smtvar.VarChange, rlog *resultlog.ResultLog) (*execute.ModelChecker, map[string]execute.Scenario) {
 	ex := execute.NewModelChecker()
-	ex.LoadModel(smt, uncertains, unknowns, results)
+	ex.LoadModel(smt, uncertains, unknowns, results, rlog)
 	ok, err := ex.Check()
 	if err != nil {
 		log.Fatalf("model checker has failed: %s", err)
@@ -121,7 +121,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			fmt.Println(lstnr.AST)
 			return
 		}
-    
+
 		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
 
 		uncertains = compiler.Uncertains
@@ -149,7 +149,7 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results)
+		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results, generator.Log)
 		if mode == "visualize" {
 			fmt.Println(visual)
 			fmt.Printf("\n\n")
@@ -157,10 +157,16 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		if data != nil {
-			mc.LoadMeta(generator.GetForks())
+		if data != nil && mode == "legacy" {
+			mc.LoadMeta(generator.Forks)
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+		}
+
+		if data != nil {
+			mc.LoadMeta(generator.Forks)
+			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+			mc.EventLog(data)
 		}
 	case "ll":
 		generator := smt2(d, 0, uncertains, unknowns, nil, nil)
@@ -169,26 +175,37 @@ func run(filepath string, mode string, input string, reach bool) {
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results)
+		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results, generator.Log)
 		if mode == "visualize" {
 			mc.Mermaid()
 			return
 		}
-		if data != nil {
-			mc.LoadMeta(generator.GetForks())
+		if data != nil && mode == "legacy" {
+			mc.LoadMeta(generator.Forks)
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
 		}
+
+		if data != nil {
+			mc.LoadMeta(generator.Forks)
+			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+			mc.EventLog(data)
+		}
 	case "smt2":
-		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange))
+		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange), &resultlog.ResultLog{})
 
 		if mode == "visualize" {
 			mc.Mermaid()
 			return
 		}
-		if data != nil {
+		if data != nil && mode == "legacy" {
 			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+		}
+
+		if data != nil {
+			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+			mc.EventLog(data)
 		}
 	}
 }

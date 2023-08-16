@@ -85,6 +85,8 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 		for _, v := range e.Instances {
 			wg.Bases.Add(v)
 			st, _, c := captureState(v)
+			// e.Instances not matching top level names
+			// when imported
 			vr := g.varRounds(v, st)
 			wg.AddWrap(&rules.States{Base: v,
 				Terminal: true,

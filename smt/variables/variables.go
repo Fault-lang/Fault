@@ -169,15 +169,6 @@ func (vd *VarData) GetClockBase(id string) string {
 	return strings.Join(v[0:len(v)-1], "_")
 }
 
-func (vd *VarData) GetVarBase(id string) (string, int) {
-	v := strings.Split(id, "_")
-	num, err := strconv.Atoi(v[len(v)-1])
-	if err != nil {
-		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
-	}
-	return strings.Join(v[0:len(v)-1], "_"), num
-}
-
 func (vd *VarData) LookupType(id string, value value.Value) string {
 	if cache, ok := vd.Types[id]; ok { //If we've seen this one before
 		return cache
@@ -253,7 +244,7 @@ func (vd *VarData) GetSSANum(id string) int16 {
 	}
 
 	if vd.IsIndexed(id) {
-		_, n := vd.GetVarBase(id)
+		_, n := util.GetVarBase(id)
 		return int16(n)
 	}
 
@@ -287,6 +278,10 @@ func (vd *VarData) GetSSA(id string) string {
 		vd.SSA[id] = 0
 		return fmt.Sprint(id, "_0")
 	}
+}
+
+func (vd *VarData) SetSSA(id string, n int16) {
+	vd.SSA[id] = n
 }
 
 func (vd *VarData) AdvanceSSA(id string) string {
