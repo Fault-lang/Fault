@@ -116,6 +116,99 @@ func TestEventLog(t *testing.T) {
 	}
 }
 
+func TestEval(t *testing.T) {
+	mc := NewModelChecker()
+	mc.Log = resultlog.NewLog()
+
+	a := &resultlog.Assert{
+		Left:  &resultlog.BoolClause{Value: true},
+		Right: &resultlog.BoolClause{Value: true},
+		Op:    "and",
+	}
+	if !mc.Eval(a) {
+		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a))
+	}
+
+	a1 := &resultlog.Assert{
+		Left:  &resultlog.BoolClause{Value: true},
+		Right: &resultlog.BoolClause{Value: false},
+		Op:    "=",
+	}
+	if mc.Eval(a1) {
+		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a1))
+	}
+
+	a2 := &resultlog.Assert{
+		Left:  &resultlog.FlClause{Value: 2.0},
+		Right: &resultlog.FlClause{Value: 5.0},
+		Op:    ">",
+	}
+	if mc.Eval(a2) {
+		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a2))
+	}
+}
+
+func TestEvalAmbiguous(t *testing.T) {
+	mc := NewModelChecker()
+	mc.Log = resultlog.NewLog()
+
+	a := &resultlog.Assert{
+		Left:  &resultlog.BoolClause{Value: true},
+		Right: &resultlog.BoolClause{Value: true},
+		Op:    "=",
+	}
+	if !mc.EvalAmbiguous(a) {
+		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a))
+	}
+
+	a1 := &resultlog.Assert{
+		Left:  &resultlog.FlClause{Value: 2.0},
+		Right: &resultlog.FlClause{Value: 2.0},
+		Op:    "=",
+	}
+	if !mc.EvalAmbiguous(a) {
+		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a1))
+	}
+
+}
+
+func TestEvalClause(t *testing.T) {
+	mc := NewModelChecker()
+	mc.Log = resultlog.NewLog()
+
+	mc.ResultValues["test_var_foo"] = "false"
+
+	cf := &resultlog.FlClause{
+		Value: 5.0,
+	}
+
+	a, err := mc.EvalClause(cf)
+
+	if err == nil {
+		t.Fatalf("Incorrect evaluation got=%v", a)
+	}
+
+	cb := &resultlog.BoolClause{
+		Value: true,
+	}
+
+	a1, err := mc.EvalClause(cb)
+
+	if !a1 {
+		t.Fatalf("Incorrect evaluation got=%v", a1)
+	}
+
+	cs := &resultlog.StringClause{
+		Value: "test_var_foo",
+	}
+
+	a2, err := mc.EvalClause(cs)
+
+	if a2 {
+		t.Fatalf("Incorrect evaluation got=%v", a2)
+	}
+}
+
 func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*variables.VarChange) *ModelChecker {
 	ex := NewModelChecker()
 	ex.LoadModel(smt, uncertains, unknowns, results, &resultlog.ResultLog{})

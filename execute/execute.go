@@ -149,6 +149,120 @@ func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario 
 	return results
 }
 
+func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
+	switch a.Op {
+	case "=":
+		return mc.EvalAmbiguous(a) // Could be either bool == bool or float == float
+	case "not":
+		return mc.EvalAmbiguous(a)
+	case ">":
+		left := a.Left.GetFloat()
+		right := a.Right.GetFloat()
+		res := left > right
+		mc.Log.StoreEval(a, res)
+		return res
+	case ">=":
+		left := a.Left.GetFloat()
+		right := a.Right.GetFloat()
+		res := left >= right
+		mc.Log.StoreEval(a, res)
+		return res
+	case "<":
+		left := a.Left.GetFloat()
+		right := a.Right.GetFloat()
+		res := left < right
+		mc.Log.StoreEval(a, res)
+		return res
+	case "<=":
+		left := a.Left.GetFloat()
+		right := a.Right.GetFloat()
+		res := left <= right
+		mc.Log.StoreEval(a, res)
+		return res
+	case "and":
+		left, err := mc.EvalClause(a.Left)
+		if err != nil {
+			panic(err)
+		}
+		right, err := mc.EvalClause(a.Right)
+		if err != nil {
+			panic(err)
+		}
+		res := left && right
+		mc.Log.StoreEval(a, res)
+		return res
+	case "or":
+		left, err := mc.EvalClause(a.Left)
+		if err != nil {
+			panic(err)
+		}
+		right, err := mc.EvalClause(a.Right)
+		if err != nil {
+			panic(err)
+		}
+		res := left || right
+		mc.Log.StoreEval(a, res)
+		return res
+	default:
+		panic(fmt.Sprintf("no option for operator %s", a.Op))
+	}
+}
+
+func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
+	if a.Left.Type() != a.Right.Type() {
+		panic(fmt.Sprintf("improperly formatted assertion clause %s got type left %s and type right %s", a.String(), a.Left.Type(), a.Right.Type()))
+	}
+
+	var res bool
+	switch a.Left.Type() {
+	case "FLOAT":
+		if a.Op == "=" {
+			res = a.Left.GetFloat() == a.Right.GetFloat()
+		}
+
+		if a.Op == "not" {
+			res = a.Left.GetFloat() != a.Right.GetFloat()
+		}
+	case "BOOL":
+		if a.Op == "=" {
+			res = a.Left.GetBool() == a.Right.GetBool()
+		}
+
+		if a.Op == "not" {
+			res = a.Left.GetBool() != a.Right.GetBool()
+		}
+	case "STRING":
+		if a.Op == "=" {
+			left := mc.ResultValues[a.Left.GetString()]
+			right := mc.ResultValues[a.Right.GetString()]
+			res = left == right
+		}
+
+		if a.Op == "not" {
+			left := mc.ResultValues[a.Left.GetString()]
+			right := mc.ResultValues[a.Right.GetString()]
+			res = left != right
+		}
+	}
+	mc.Log.StoreEval(a, res)
+	return res
+}
+
+func (mc *ModelChecker) EvalClause(c resultlog.Clause) (bool, error) {
+	switch c.Type() {
+	case "BOOL":
+		return c.GetBool(), nil
+	case "STRING":
+		if cl, ok := mc.Log.AssertClauses[c.GetString()]; ok {
+			return cl, nil
+		}
+
+		return false, fmt.Errorf("assertion clause %s not found", c.GetString())
+	default:
+		return false, fmt.Errorf("illegal assertion clause %s typed %s", c.GetString(), c.Type())
+	}
+}
+
 func (mc *ModelChecker) stateAssessment(dist distuv.Normal, states Scenario) Scenario {
 	var weighted Scenario
 	switch s := states.(type) {

@@ -208,7 +208,7 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 				// If the only variables defined in the branch are phis
 				// branch will default to true
 			} else if mc.Forks.Vars[dvars].Phi[choiceId] == mc.Forks.Vars[dvars].SSA { //Is this the Phi?
-				last := mc.ResultValues[mc.Forks.GetPrevious(dvars,branch, branchIds)] // What was the previous value?
+				last := mc.ResultValues[mc.Forks.GetPrevious(dvars, branch, branchIds)] // What was the previous value?
 				phi := mc.ResultValues[dvars]
 				if last != phi {
 					fail = true
