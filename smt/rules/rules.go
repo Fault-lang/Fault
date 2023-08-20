@@ -57,11 +57,16 @@ func (a *Ands) Branch() string {
 	return a.tag.branch
 }
 
+type AssertChain struct {
+	Values []string
+	Chain  []int
+}
+
 type States struct {
 	Rule
 	Terminal bool
 	Base     string
-	States   map[int][]string
+	States   map[int]*AssertChain
 	Constant bool
 	tag      *branch
 }

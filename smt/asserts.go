@@ -45,8 +45,8 @@ func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 	}
 
 	if a.Temporal != "" || a.TemporalFilter != "" {
-		ir := expandAssertStateGraph(g.flattenStates(left), g.flattenStates(right), smtlibOperators(a.Constraint.Operator), a.TemporalFilter, a.TemporalN)
-		return g.applyTemporalLogic(a.Temporal, ir, a.TemporalFilter, on, off)
+		ir := g.expandAssertStateGraph(g.flattenStates(left), g.flattenStates(right), smtlibOperators(a.Constraint.Operator), a.TemporalFilter, a.TemporalN)
+		return g.applyTemporalLogic(a.Temporal, ir.Values, a.TemporalFilter, on, off)
 	}
 	if a.Assume {
 		operator := "and"
@@ -96,8 +96,8 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 		}
 		return wg
 	case *ast.IntegerLiteral:
-		s := make(map[int][]string)
-		s[0] = []string{fmt.Sprint(e.Value)}
+		s := make(map[int]*rules.AssertChain)
+		s[0] = &rules.AssertChain{Values: []string{fmt.Sprint(e.Value)}}
 		sg := rules.NewStateGroup()
 		sg.AddWrap(&rules.States{
 			Base:     "__int",
@@ -105,8 +105,8 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 			Constant: true})
 		return sg
 	case *ast.FloatLiteral:
-		s := make(map[int][]string)
-		s[0] = []string{fmt.Sprint(e.Value)}
+		s := make(map[int]*rules.AssertChain)
+		s[0] = &rules.AssertChain{Values: []string{fmt.Sprint(e.Value)}}
 		sg := rules.NewStateGroup()
 		sg.AddWrap(&rules.States{
 			Base:     "__float",
@@ -115,8 +115,8 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 		})
 		return sg
 	case *ast.Boolean:
-		s := make(map[int][]string)
-		s[0] = []string{fmt.Sprint(e.Value)}
+		s := make(map[int]*rules.AssertChain)
+		s[0] = &rules.AssertChain{Values: []string{fmt.Sprint(e.Value)}}
 		sg := rules.NewStateGroup()
 		sg.AddWrap(&rules.States{
 			Base:     "__bool",
@@ -125,8 +125,8 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 		})
 		return sg
 	case *ast.StringLiteral:
-		s := make(map[int][]string)
-		s[0] = []string{fmt.Sprint(e.Value)}
+		s := make(map[int]*rules.AssertChain)
+		s[0] = &rules.AssertChain{Values: []string{fmt.Sprint(e.Value)}}
 		sg := rules.NewStateGroup()
 		sg.AddWrap(&rules.States{
 			Base:     "__string",
@@ -186,11 +186,12 @@ func (g *Generator) parseInvariantNode(exp ast.Expression, stateRange bool) *rul
 func (g *Generator) mergeInvariantPrefix(right []*rules.States, operator string) *rules.StateGroup {
 	sg := rules.NewStateGroup()
 	for _, r := range right {
-		states := make(map[int][]string)
+		states := make(map[int]*rules.AssertChain)
 		for i := 0; i <= g.Rounds; i++ {
 			if st, ok := r.States[i]; ok {
-				for _, s := range st {
-					states[i] = append(states[i], fmt.Sprintf("(%s %s)", operator, s))
+				for _, s := range st.Values {
+					states[i] = &rules.AssertChain{Chain: st.Chain}
+					states[i].Values = append(states[i].Values, fmt.Sprintf("(%s %s)", operator, s))
 				}
 			}
 		}
@@ -223,10 +224,10 @@ func (g *Generator) mergePairs(l string, r string, leftLead bool) []string {
 func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operator string) *rules.States {
 	ret := &rules.States{}
 
-	st := make(map[int][]string)
+	st := make(map[int]*rules.AssertChain)
 	if left.Constant && right.Constant {
-		combos := util.PairCombinations(left.States[0], right.States[0])
-		st[0] = packageStateGraph(combos, operator)
+		combos := util.PairCombinations(left.States[0].Values, right.States[0].Values)
+		st[0] = g.packageStateGraph(combos, operator)
 		ret.States = st
 		return ret
 	}
@@ -235,8 +236,8 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 		(left.Base != "" && right.Base != "") {
 		ret.Base = left.Base
 
-		var long map[int][]string
-		var short map[int][]string
+		var long map[int]*rules.AssertChain
+		var short map[int]*rules.AssertChain
 		var leftLead bool
 
 		if len(left.States) >= len(right.States) {
@@ -253,16 +254,21 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 		for i := 0; i <= g.Rounds; i++ {
 			var pairs [][]string
 			var slast []string
-			for idx, s := range long[i] {
+
+			if _, ok := long[i]; !ok {
+				long[i] = &rules.AssertChain{}
+			}
+
+			for idx, s := range long[i].Values {
 				if sstates, ok := short[i]; ok {
-					slast = sstates
-					if len(sstates) > idx {
-						p := g.mergePairs(s, sstates[idx], leftLead)
+					slast = sstates.Values
+					if len(sstates.Values) > idx {
+						p := g.mergePairs(s, sstates.Values[idx], leftLead)
 						pairs = append(pairs, p)
 						continue
 					}
 
-					p := g.mergePairs(s, sstates[len(sstates)-1], leftLead)
+					p := g.mergePairs(s, sstates.Values[len(sstates.Values)-1], leftLead)
 					pairs = append(pairs, p)
 					continue
 				}
@@ -270,7 +276,7 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 				pairs = append(pairs, p)
 
 			}
-			st[i] = packageStateGraph(pairs, operator)
+			st[i] = g.packageStateGraph(pairs, operator)
 		}
 		ret.States = st
 		return ret
@@ -293,7 +299,7 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 	if left.Terminal && right.Terminal {
 		combos := g.termCombos(left.Base, right.Base)
 		for i, c := range combos {
-			st[i] = packageStateGraph(c, operator)
+			st[i] = g.packageStateGraph(c, operator)
 		}
 		ret.States = st
 		return ret
@@ -301,16 +307,16 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 
 	var llast, rlast []string
 	for i := 0; i <= g.Rounds; i++ {
-		var l, r []string
+		var l, r *rules.AssertChain
 		var okleft, okright bool
 		if l, okleft = left.States[i]; !okleft {
 			if llast == nil {
 				if invalidBase(left.Base) {
 					panic("assert left variable base name is invalid")
 				}
-				l = []string{fmt.Sprintf("%s_%s", left.Base, "0")}
+				l.Values = []string{fmt.Sprintf("%s_%s", left.Base, "0")}
 			} else {
-				l = llast
+				l.Values = llast
 			}
 		}
 
@@ -319,16 +325,16 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 				if invalidBase(right.Base) {
 					panic("assert left variable base name is invalid")
 				}
-				r = []string{fmt.Sprintf("%s_%s", right.Base, "0")}
+				r.Values = []string{fmt.Sprintf("%s_%s", right.Base, "0")}
 			} else {
-				r = rlast
+				r.Values = rlast
 			}
 		}
 
-		combos := util.PairCombinations(l, r)
-		st[i] = packageStateGraph(combos, operator)
-		llast = l[len(l)-1:]
-		rlast = r[len(r)-1:]
+		combos := util.PairCombinations(l.Values, r.Values)
+		st[i] = g.packageStateGraph(combos, operator)
+		llast = l.Values[len(l.Values)-1:]
+		rlast = r.Values[len(r.Values)-1:]
 	}
 	ret.States = st
 	return ret
@@ -363,12 +369,12 @@ func (g *Generator) termCombos(lbase string, rbase string) map[int][][]string {
 	return combos
 }
 
-func (g *Generator) balance(vr *rules.States, con *rules.States, operator string) map[int][]string {
-	ret := make(map[int][]string)
+func (g *Generator) balance(vr *rules.States, con *rules.States, operator string) map[int]*rules.AssertChain {
+	ret := make(map[int]*rules.AssertChain)
 	for i := 0; i <= g.Rounds; i++ {
 		if v, ok := vr.States[i]; ok {
-			combos := util.PairCombinations(v, con.States[0])
-			ret[i] = packageStateGraph(combos, operator)
+			combos := util.PairCombinations(v.Values, con.States[0].Values)
+			ret[i] = g.packageStateGraph(combos, operator)
 		}
 	}
 	return ret
@@ -379,7 +385,7 @@ func (g *Generator) flattenStates(sg *rules.StateGroup) []string {
 	for _, w := range sg.Wraps {
 		for i := 0; i <= g.Rounds; i++ {
 			if s, ok := w.States[i]; ok {
-				asserts = append(asserts, s...)
+				asserts = append(asserts, s.Values...)
 			}
 		}
 	}
@@ -523,7 +529,7 @@ func (g *Generator) convertIndexExpr(idx *ast.IndexExpression) string {
 	return strings.Join([]string{idx.Left.String(), idx.Index.String()}, "_")
 }
 
-func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalFilter string, temporalN int) []string {
+func (g *Generator) expandAssertStateGraph(list1 []string, list2 []string, op string, temporalFilter string, temporalN int) *rules.AssertChain {
 	var x [][]string
 	c := util.Cartesian(list1, list2)
 	switch temporalFilter {
@@ -566,7 +572,7 @@ func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalF
 			}
 			x = append(x, []string{onStr, offStr})
 		}
-		return packageStateGraph(x, "and")
+		return g.packageStateGraph(x, "and")
 	case "nft":
 		// (or (and on on on))
 		combos := util.Combinations(c, temporalN)
@@ -585,20 +591,22 @@ func expandAssertStateGraph(list1 []string, list2 []string, op string, temporalF
 			}
 			x = append(x, []string{onStr})
 		}
-		return packageStateGraph(x, "or")
+		return g.packageStateGraph(x, "or")
 	default:
-		return packageStateGraph(c, op)
+		return g.packageStateGraph(c, op)
 	}
 }
 
-func packageStateGraph(x [][]string, op string) []string {
+func (g *Generator) packageStateGraph(x [][]string, op string) *rules.AssertChain {
 	var product []string
+	var chain []int
 	for _, a := range x {
 		if len(a) == 1 {
 			product = append(product, a[0])
 		} else {
 			var s string
 			if op == "not" && a[0] == "false" {
+
 				s = fmt.Sprintf("(%s %s)", op, a[1])
 
 			} else if op == "not" && a[1] == "false" {
@@ -611,10 +619,12 @@ func packageStateGraph(x [][]string, op string) []string {
 
 				s = fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
 			}
+			i := g.Log.NewAssert(a[0], a[1], op)
+			chain = append(chain, i)
 			product = append(product, s)
 		}
 	}
-	return product
+	return &rules.AssertChain{Values: product, Chain: chain}
 }
 
 func smtlibOperators(op string) string {

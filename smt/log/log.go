@@ -3,6 +3,7 @@ package log
 import (
 	"fault/util"
 	"fmt"
+	"strconv"
 )
 
 type ResultLog struct {
@@ -105,8 +106,28 @@ func (a *Assert) String() string {
 	return fmt.Sprintf("(%s %s %s)", a.Op, a.Left.String(), a.Right.String())
 }
 
-func (rl *ResultLog) NewAssert(l Clause, r Clause, op string) {
-	rl.Asserts = append(rl.Asserts, &Assert{Left: l, Right: r, Op: op})
+func (rl *ResultLog) NewAssert(l string, r string, op string) int {
+	left := rl.NewClause(l)
+	right := rl.NewClause(r)
+	rl.Asserts = append(rl.Asserts, &Assert{Left: left, Right: right, Op: op})
+	return len(rl.Asserts) - 1
+}
+
+func (rl *ResultLog) NewClause(x string) Clause {
+	if x == "true" || x == "false" { // 0 and 1 as well as partials like "t" are not valid anyway
+		b, err := strconv.ParseBool(x)
+		if err == nil {
+			return &BoolClause{Value: b}
+		}
+	}
+
+	f, err := strconv.ParseFloat(x, 64)
+	if err == nil {
+		return &FlClause{Value: f}
+	}
+
+	return &StringClause{Value: x}
+
 }
 
 func (rl *ResultLog) StoreEval(a *Assert, res bool) {

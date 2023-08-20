@@ -169,11 +169,14 @@ func (g *Generator) lookupVarSpecificState(base string, state int) [][]int {
 	panic(fmt.Errorf("state %d of variable %s is missing", state, base))
 }
 
-func (g *Generator) varRounds(base string, num string) map[int][]string {
-	ir := make(map[int][]string)
+func (g *Generator) varRounds(base string, num string) map[int]*rules.AssertChain {
+	ir := make(map[int]*rules.AssertChain)
 	states := g.lookupVarRounds(base, num)
 	for _, s := range states {
-		ir[s[1]] = append(ir[s[1]], fmt.Sprintf("%s_%d", base, s[0]))
+		if _, ok := ir[s[1]]; !ok {
+			ir[s[1]] = &rules.AssertChain{}
+		}
+		ir[s[1]].Values = append(ir[s[1]].Values, fmt.Sprintf("%s_%d", base, s[0]))
 	}
 	return ir
 }
@@ -1964,7 +1967,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 					g.variables.StoreLastState(base, n)
 				}
 				seenVar[base] = true
-				
+
 				for _, notB := range util.Intersection(branches, []string{b}, true) {
 					if _, ok := g.Forks.Bases[notB]; !ok {
 						g.Forks.Bases[notB] = make(map[string]bool)
