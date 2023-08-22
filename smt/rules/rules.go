@@ -58,6 +58,7 @@ func (a *Ands) Branch() string {
 }
 
 type AssertChain struct {
+	Op     string
 	Values []string
 	Chain  []int
 }
@@ -95,6 +96,14 @@ func (s *States) Choice() string {
 
 func (s *States) Branch() string {
 	return s.tag.branch
+}
+
+func (s *States) GetChains() []int {
+	var ret []int
+	for _, a := range s.States {
+		ret = append(ret, a.Chain...)
+	}
+	return ret
 }
 
 type Assrt struct {

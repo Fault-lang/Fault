@@ -181,6 +181,25 @@ func (g *Generator) varRounds(base string, num string) map[int]*rules.AssertChai
 	return ir
 }
 
+func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
+	//There is a bug somewhere here related to varRounds
+	//and variable initialization
+	var clean []int
+	if len(value) != len(chain) {
+		for _, c := range chain {
+			for _, v := range value {
+				if g.Log.Asserts[c].String() == v {
+					clean = append(clean, c)
+				}
+			}
+		}
+	} else {
+		clean = chain
+	}
+	return &rules.AssertChain{Values: value, Chain: clean, Op: op}
+
+}
+
 func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string) {
 	var stateChanges = util.NewStrSet()
 	var lasts = make(map[string]int)
@@ -2001,28 +2020,34 @@ func (g *Generator) formatEnds(k string, nums []int16, id string) string {
 // Temporal Logic
 ///////////////////////
 
-func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter string, on string, off string) string {
+func (g *Generator) applyTemporalLogic(temp string, ir *rules.AssertChain, temporalFilter string, on string, off string) string {
+	full := ir.Values
+	first := ir.Values[0]
+	clause := strings.Join(full, " ")
+
 	switch temp {
 	case "eventually":
-		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
+		if len(full) > 1 {
+			g.Log.NewAssert(clause, "", on)
+			or := fmt.Sprintf("(%s %s)", on, clause)
 			return or
 		}
-		return ir[0]
+		return first
 	case "always":
-		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+		if len(full) > 1 {
+			g.Log.NewAssert(clause, "", off)
+			or := fmt.Sprintf("(%s %s)", off, clause)
 			return or
 		}
-		return ir[0]
+		return first
 	case "eventually-always":
-		if len(ir) > 1 {
+		if len(full) > 1 {
 			or := g.eventuallyAlways(ir)
 			return or
 		}
-		return ir[0]
+		return first
 	default:
-		if len(ir) > 1 {
+		if len(full) > 1 {
 			var op string
 			switch temporalFilter {
 			case "nft":
@@ -2032,18 +2057,25 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter 
 			default:
 				op = off
 			}
-			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
+			g.Log.NewAssert(clause, "", op)
+			or := fmt.Sprintf("(%s %s)", op, clause)
 			return or
 		}
-		return ir[0]
+		return first
 	}
 }
 
-func (g *Generator) eventuallyAlways(ir []string) string {
+func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 	var progression []string
-	for i := range ir {
-		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
+	var chain []int
+	for i := range ir.Values {
+		clause := strings.Join(ir.Values[i:], " ")
+		s := fmt.Sprintf("(and %s)", clause)
 		progression = append(progression, s)
+		idx := g.Log.NewAssert(clause, "", "and")
+		chain = append(chain, idx)
 	}
-	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
+	parentClause := strings.Join(progression, " ")
+	g.Log.AssertChains[parentClause] = g.NewAssertChain(progression, chain, "and")
+	return fmt.Sprintf("(or %s)", parentClause)
 }

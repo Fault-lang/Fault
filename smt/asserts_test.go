@@ -46,7 +46,7 @@ func TestSimpleAssert(t *testing.T) {
 		t.Fatalf("wrong number of asserts in the event log")
 	}
 
-	if g.Log.Asserts[0].Right.Type() != "FLOAT" || g.Log.Asserts[0].Right.GetFloat() != 0 {
+	if g.Log.Asserts[0].Right.Type() != "INT" || g.Log.Asserts[0].Right.GetInt() != 0 {
 		t.Fatalf("wrong right value in the first assert")
 	}
 

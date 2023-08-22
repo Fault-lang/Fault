@@ -1,9 +1,11 @@
 package log
 
 import (
+	"fault/smt/rules"
 	"fault/util"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type ResultLog struct {
@@ -12,6 +14,7 @@ type ResultLog struct {
 	Changes       map[string]bool
 	Asserts       []*Assert
 	AssertClauses map[string]bool
+	AssertChains  map[string]*rules.AssertChain
 }
 
 type Event struct {
@@ -28,6 +31,7 @@ type Event struct {
 type Clause interface {
 	Type() string
 	GetFloat() float64
+	GetInt() int64
 	GetBool() bool
 	GetString() string
 	String() string
@@ -44,6 +48,9 @@ func (flc *FlClause) Type() string {
 func (flc *FlClause) GetFloat() float64 {
 	return flc.Value
 }
+func (flc *FlClause) GetInt() int64 {
+	return int64(flc.Value)
+}
 func (flc *FlClause) GetBool() bool {
 	return false
 }
@@ -52,6 +59,30 @@ func (flc *FlClause) GetString() string {
 }
 func (flc *FlClause) String() string {
 	return fmt.Sprintf("%f", flc.Value)
+}
+
+type IntClause struct {
+	Clause
+	Value int64
+}
+
+func (intc *IntClause) Type() string {
+	return "INT"
+}
+func (intc *IntClause) GetFloat() float64 {
+	return float64(intc.Value)
+}
+func (intc *IntClause) GetInt() int64 {
+	return intc.Value
+}
+func (intc *IntClause) GetBool() bool {
+	return false
+}
+func (intc *IntClause) GetString() string {
+	return ""
+}
+func (intc *IntClause) String() string {
+	return fmt.Sprintf("%d", intc.Value)
 }
 
 type BoolClause struct {
@@ -64,6 +95,9 @@ func (boolc *BoolClause) Type() string {
 }
 func (boolc *BoolClause) GetFloat() float64 {
 	return 0.0
+}
+func (boolc *BoolClause) GetInt() int64 {
+	return 0
 }
 func (boolc *BoolClause) GetBool() bool {
 	return boolc.Value
@@ -85,6 +119,9 @@ func (strc *StringClause) Type() string {
 }
 func (strc *StringClause) GetFloat() float64 {
 	return 0.0
+}
+func (strc *StringClause) GetInt() int64 {
+	return 0
 }
 func (strc *StringClause) GetBool() bool {
 	return false
@@ -122,8 +159,13 @@ func (rl *ResultLog) NewClause(x string) Clause {
 	}
 
 	f, err := strconv.ParseFloat(x, 64)
-	if err == nil {
+	if err == nil && strings.Contains(x, ".") {
 		return &FlClause{Value: f}
+	}
+
+	i, err := strconv.ParseInt(x, 10, 64)
+	if err == nil {
+		return &IntClause{Value: i}
 	}
 
 	return &StringClause{Value: x}
@@ -149,6 +191,7 @@ func NewLog() *ResultLog {
 		Lookup:        make(map[string]int),
 		Changes:       make(map[string]bool),
 		AssertClauses: make(map[string]bool),
+		AssertChains:  make(map[string]*rules.AssertChain),
 	}
 }
 
