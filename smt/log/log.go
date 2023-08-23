@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fault/ast"
 	"fault/smt/rules"
 	"fault/util"
 	"fmt"
@@ -9,12 +10,13 @@ import (
 )
 
 type ResultLog struct {
-	Events        []*Event
-	Lookup        map[string]int
-	Changes       map[string]bool
-	Asserts       []*Assert
-	AssertClauses map[string]bool
-	AssertChains  map[string]*rules.AssertChain
+	Events           []*Event
+	Lookup           map[string]int
+	Changes          map[string]bool
+	Asserts          []*Assert
+	AssertClauses    map[string]bool
+	AssertChains     map[string]*rules.AssertChain
+	ProcessedAsserts []*ast.AssertionStatement
 }
 
 type Event struct {

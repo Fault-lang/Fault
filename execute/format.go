@@ -2,6 +2,7 @@ package execute
 
 import (
 	"bytes"
+	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
@@ -68,6 +69,11 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
+
+	mc.CheckAsserts(mc.Log.AssertChains)
+	violations := mc.FetchViolations()
+	out.WriteString("Model Properties and Invarients:\n")
+	out.WriteString(strings.Join(violations, "\n") + "\n\n")
 
 	out.WriteString(mc.Log.String())
 
@@ -161,6 +167,49 @@ func generateRows(v Scenario) []string {
 		return r
 	}
 	return nil
+}
+
+func (mc *ModelChecker) CheckAsserts(chains map[string]*rules.AssertChain) {
+	cache := make(map[string]map[string]bool)
+	for _, c := range chains {
+		for _, ch := range c.Chain {
+			clause, ok := cache[mc.Log.ProcessedAsserts[c.Parent].String()]
+
+			if !ok {
+				cache[mc.Log.ProcessedAsserts[c.Parent].String()] = make(map[string]bool)
+			}
+
+			if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
+				cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
+				mc.Log.ProcessedAsserts[c.Parent].Violated = mc.Eval(mc.Log.Asserts[ch])
+			}
+		}
+	}
+}
+
+func (mc *ModelChecker) dontBackTrack(clauses map[string]bool, subclause string) bool {
+	// Formatter may iterate through assert clauses in any order, don't backtrack
+	// through subclauses we've already evaluated
+
+	for clause, _ := range clauses {
+		if len(subclause) > len(clause) { //Can't possibly be a subclause
+			return true
+		}
+
+		if strings.Contains(clause, subclause) { //We've already seen this, don't overwrite the Violation property
+			return false
+		}
+	}
+
+	return true
+}
+
+func (mc *ModelChecker) FetchViolations() []string {
+	var checked []string
+	for _, a := range mc.Log.ProcessedAsserts {
+		checked = append(checked, a.EvLogString())
+	}
+	return checked
 }
 
 func (mc *ModelChecker) DeadVariables() []string {

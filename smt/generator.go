@@ -24,6 +24,7 @@ import (
 type Generator struct {
 	currentFunction string
 	currentBlock    string
+	currentAssert   int
 	branchId        int
 
 	// Raw input
@@ -196,8 +197,9 @@ func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rule
 	} else {
 		clean = chain
 	}
-	return &rules.AssertChain{Values: value, Chain: clean, Op: op}
-
+	ret := &rules.AssertChain{Values: value, Chain: clean, Op: op, Parent: g.currentAssert}
+	//g.Log.AssertChains[ret.String()] = ret
+	return ret
 }
 
 func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string) {
@@ -264,6 +266,8 @@ func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
 func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
 	var arule []string
 	for _, v := range asserts {
+		g.Log.ProcessedAsserts = append(g.Log.ProcessedAsserts, v)
+		g.currentAssert = len(g.Log.ProcessedAsserts) - 1
 		a := g.parseAssert(v)
 		arule = append(arule, a)
 	}
@@ -2074,6 +2078,7 @@ func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 		progression = append(progression, s)
 		idx := g.Log.NewAssert(clause, "", "and")
 		chain = append(chain, idx)
+		g.Log.AssertChains[clause] = g.NewAssertChain(progression, ir.Chain[i:], "and")
 	}
 	parentClause := strings.Join(progression, " ")
 	g.Log.AssertChains[parentClause] = g.NewAssertChain(progression, chain, "and")

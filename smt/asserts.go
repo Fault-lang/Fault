@@ -605,7 +605,9 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				// Write the clauses
 				i := g.Log.NewAssert(on[0], on[1], op)
 				chainOn = append(chainOn, i)
-				o = append(o, fmt.Sprintf("(%s %s %s)", op, on[0], on[1]))
+				clause := fmt.Sprintf("(%s %s %s)", op, on[0], on[1])
+				o = append(o, clause)
+				g.Log.AssertChains[clause] = g.NewAssertChain(on, chains, op)
 			}
 			// For nmt any of the potential on states can be on
 			var onStr string
@@ -621,13 +623,17 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			offOp := llvm.OP_NEGATE[op]
 			for _, off := range p[1] {
 				if op == "=" {
+					clause := fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1])
+					g.Log.AssertChains[clause] = g.NewAssertChain(off, chains, "!=")
 					i := g.Log.NewAssert(off[0], off[1], "!=")
 					chainOff = append(chainOff, i)
-					f = append(f, fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1]))
+					f = append(f, clause)
 				} else {
+					clause := fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1])
+					g.Log.AssertChains[clause] = g.NewAssertChain(off, chains, offOp)
 					i := g.Log.NewAssert(off[0], off[1], offOp)
 					chainOff = append(chainOff, i)
-					f = append(f, fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1]))
+					f = append(f, clause)
 				}
 			}
 			// But these states must be off

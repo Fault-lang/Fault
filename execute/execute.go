@@ -6,6 +6,7 @@ import (
 	"fault/execute/parser"
 	"fault/smt/forks"
 	resultlog "fault/smt/log"
+	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
@@ -253,8 +254,18 @@ func (mc *ModelChecker) EvalClause(c resultlog.Clause) (bool, error) {
 	case "BOOL":
 		return c.GetBool(), nil
 	case "STRING":
+		if c.String() == "" { // Happens when with clauses like (and x y z)
+			return false, nil // where Left clause will be x y z and Right clause will be ""
+		}
+
 		if cl, ok := mc.Log.AssertClauses[c.GetString()]; ok {
 			return cl, nil
+		}
+		if ch, ok2 := mc.Log.AssertChains[c.GetString()]; ok2 {
+			chain := make(map[string]*rules.AssertChain)
+			chain[c.GetString()] = ch
+			mc.CheckAsserts(chain)
+			return mc.Log.AssertClauses[c.GetString()], nil
 		}
 
 		return false, fmt.Errorf("assertion clause %s not found", c.GetString())

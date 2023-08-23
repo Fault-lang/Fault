@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fault/util"
 	"fmt"
+	"strings"
 
 	"github.com/llir/llvm/ir/value"
 )
@@ -61,6 +62,17 @@ type AssertChain struct {
 	Op     string
 	Values []string
 	Chain  []int
+	Parent int
+}
+
+func (ac *AssertChain) String() string {
+	if ac.Op == "" {
+		return strings.Join(ac.Values, " ")
+	}
+	if ac.Op == "!=" {
+		return fmt.Sprintf("(not (= %s)", strings.Join(ac.Values, " "))
+	}
+	return fmt.Sprintf("(%s %s)", ac.Op, strings.Join(ac.Values, " "))
 }
 
 type States struct {

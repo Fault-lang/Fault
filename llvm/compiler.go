@@ -273,11 +273,13 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 		}
 	}
 
-	for _, assert := range c.RawAsserts {
-		c.compileAssert(assert)
-	}
-	for _, assert := range c.RawAssumes {
-		c.compileAssert(assert)
+	if !c.isImport {
+		for _, assert := range c.RawAsserts {
+			c.compileAssert(assert)
+		}
+		for _, assert := range c.RawAssumes {
+			c.compileAssert(assert)
+		}
 	}
 
 	return c.Asserts, c.Assumes
@@ -292,10 +294,11 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ImportStatement:
 		parent := c.currentSpec
 		c.isImport = true
-		asserts, assumes := c.processSpec(v.Tree) //Move all asserts to the end of the compilation process
+		//asserts, assumes := c.processSpec(v.Tree) //Move all asserts to the end of the compilation process
+		c.processSpec(v.Tree)
 		c.isImport = false
-		c.Asserts = append(c.Asserts, asserts...)
-		c.Assumes = append(c.Assumes, assumes...)
+		//c.Asserts = append(c.Asserts, asserts...)
+		//c.Assumes = append(c.Assumes, assumes...)
 		c.currentSpec = parent
 	case *ast.ConstantStatement:
 		c.compileConstant(v)

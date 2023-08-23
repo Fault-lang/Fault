@@ -303,6 +303,7 @@ type AssertionStatement struct {
 	Temporal       string
 	TemporalFilter string
 	TemporalN      int
+	Violated       bool // After model checking, for output
 }
 
 func (as *AssertionStatement) statementNode()       {}
@@ -312,6 +313,25 @@ func (as *AssertionStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(as.TokenLiteral() + " ")
+	if as.Assume {
+		out.WriteString("assume ")
+	} else {
+		out.WriteString("assert ")
+	}
+	out.WriteString(as.Constraint.Left.String())
+	out.WriteString(as.Constraint.Operator)
+	out.WriteString(as.Constraint.Right.String())
+	out.WriteString(";")
+	return out.String()
+}
+func (as *AssertionStatement) EvLogString() string {
+	var out bytes.Buffer
+	if !as.Violated {
+		out.WriteString("FAILED  ")
+	} else {
+		out.WriteString("OK  ")
+	}
+
 	if as.Assume {
 		out.WriteString("assume ")
 	} else {
