@@ -3,7 +3,6 @@ package types
 import (
 	"fault/ast"
 	"fault/preprocess"
-	"fault/util"
 	"fmt"
 	"math"
 	"strings"
@@ -1035,7 +1034,7 @@ func (c *Checker) lookupStruct(id []string, ty string) (*ast.StructInstance, err
 		return nil, err
 	}
 	st := c.Instances[strings.Join(id, "_")]
-	st.Properties = util.WrapBranches(prop)
+	st.Properties = ast.WrapBranches(prop)
 	return st, err
 }
 
@@ -1081,7 +1080,7 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 		rawid = b.RawId()
 
 		cnode, err := c.complexInstances(b)
-		props := util.ExtractBranches(cnode.Properties)
+		props := ast.ExtractBranches(cnode.Properties)
 		if err != nil {
 			return nil, err
 		}
@@ -1101,7 +1100,7 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 		return base, err
 	}
 	spec := c.SpecStructs[rawid[0]]
-	prop := util.ExtractBranches(swappedBase.Properties)
+	prop := ast.ExtractBranches(swappedBase.Properties)
 	spec.Update(base.RawId(), prop)
 
 	return swappedBase, err

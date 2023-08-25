@@ -1,16 +1,26 @@
 package util
 
 import (
-	"fault/ast"
 	"fmt"
 	"os"
 	ospath "path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
+
+var OP_NEGATE = map[string]string{
+	"==":   "!=",
+	">=":   "<",
+	">":    "<=",
+	"<=":   ">",
+	"!=":   "==",
+	"<":    ">=",
+	"&&":   "||",
+	"||":   "&&",
+	"then": "then",
+	//"=": "!=",
+}
 
 type StringSet struct {
 	base map[string]bool
@@ -62,18 +72,6 @@ func DiffStrSets(s1 *StringSet, s2 *StringSet) *StringSet {
 		}
 	}
 	return s3
-}
-
-func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) ast.Token {
-	return ast.Token{
-		Type:    ast.TokenType(token),
-		Literal: literal,
-		Position: []int{start.GetLine(),
-			start.GetColumn(),
-			stop.GetLine(),
-			stop.GetColumn(),
-		},
-	}
 }
 
 func Filepath(filepath string) string {
@@ -163,15 +161,6 @@ func FormatIdent(id string) string {
 	return id
 }
 
-func Preparse(pairs map[*ast.Identifier]ast.Expression) map[string]ast.Node {
-	properties := make(map[string]ast.Node)
-	for k, v := range pairs {
-		id := strings.TrimSpace(k.String())
-		properties[id] = v
-	}
-	return properties
-}
-
 func Cartesian(list1 []string, list2 []string) [][]string {
 	var product [][]string
 	for _, a := range list1 {
@@ -188,13 +177,6 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 		start = product(start, listOfLists[i])
 	}
 	return start
-}
-
-func MergeNodeMaps(m1 map[string]ast.Node, m2 map[string]ast.Node) map[string]ast.Node {
-	for k, v := range m2 {
-		m1[k] = v
-	}
-	return m1
 }
 
 func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
@@ -233,40 +215,11 @@ func InStringSlice(sl []string, sub string) bool {
 	return false
 }
 
-func Keys(m map[string]ast.Node) []string {
-	var ret []string
-	for k := range m {
-		ret = append(ret, k)
-	}
-	return ret
-}
-
 func StableSortKeys(keys []string) []string {
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
 	})
 	return keys
-}
-
-func ExtractBranches(b map[string]*ast.StructProperty) map[string]ast.Node {
-	ret := make(map[string]ast.Node)
-	for k, v := range b {
-		ret[k] = v.Value
-	}
-	return ret
-}
-
-func WrapBranches(b map[string]ast.Node) map[string]*ast.StructProperty {
-	ret := make(map[string]*ast.StructProperty)
-	for k, v := range b {
-		rawid := v.(ast.Nameable).RawId()
-		ret[k] = &ast.StructProperty{Value: v}
-		ret[k].ProcessedName = rawid
-		ret[k].SetType(&ast.Type{Type: v.Type()})
-		ret[k].Spec = rawid[0]
-		ret[k].Name = k
-	}
-	return ret
 }
 
 func CaptureState(id string) (string, bool, bool) {
@@ -371,31 +324,6 @@ func NotInSet(o [][]string, c [][]string) [][]string {
 	return s
 }
 
-func IsCompare(op string) bool {
-	switch op {
-	case ">":
-		return true
-	case "<":
-		return true
-	case "==":
-		return true
-	case "!=":
-		return true
-	case "<=":
-		return true
-	case ">=":
-		return true
-	case "&&":
-		return true
-	case "||":
-		return true
-	case "!":
-		return true
-	default:
-		return false
-	}
-}
-
 func DetectMode(filename string) string {
 	switch ospath.Ext(filename) {
 	case ".fspec":
@@ -438,91 +366,6 @@ func FromEnd(str string, offset int) string {
 		return str
 	}
 	return str[len(str)-offset:]
-}
-
-func Evaluate(n *ast.InfixExpression) ast.Expression {
-	if IsCompare(n.Operator) {
-		return n
-	}
-	f1, ok1 := n.Left.(*ast.FloatLiteral)
-	i1, ok2 := n.Left.(*ast.IntegerLiteral)
-
-	if !ok1 && !ok2 {
-		return n
-	}
-
-	f2, ok1 := n.Right.(*ast.FloatLiteral)
-	i2, ok2 := n.Right.(*ast.IntegerLiteral)
-
-	if !ok1 && !ok2 {
-		return n
-	}
-
-	if f1 != nil {
-		if f2 != nil {
-			v := evalFloat(f1.Value, f2.Value, n.Operator)
-			return &ast.FloatLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		} else {
-			v := evalFloat(f1.Value, float64(i2.Value), n.Operator)
-			return &ast.FloatLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		}
-	} else {
-		if f2 != nil {
-			v := evalFloat(float64(i1.Value), f2.Value, n.Operator)
-			return &ast.FloatLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		} else {
-			if n.Operator == "/" {
-				//Return a float in the case of division
-				v := evalFloat(float64(i1.Value), float64(i2.Value), n.Operator)
-				return &ast.FloatLiteral{
-					Token: n.Token,
-					Value: v,
-				}
-			}
-			v := evalInt(i1.Value, i2.Value, n.Operator)
-			return &ast.IntegerLiteral{
-				Token: n.Token,
-				Value: v,
-			}
-		}
-	}
-}
-
-func evalFloat(f1 float64, f2 float64, op string) float64 {
-	switch op {
-	case "+":
-		return f1 + f2
-	case "-":
-		return f1 - f2
-	case "*":
-		return f1 * f2
-	case "/":
-		return f1 / f2
-	default:
-		panic(fmt.Sprintf("unsupported operator %s", op))
-	}
-}
-
-func evalInt(i1 int64, i2 int64, op string) int64 {
-	switch op {
-	case "+":
-		return i1 + i2
-	case "-":
-		return i1 - i2
-	case "*":
-		return i1 * i2
-	default:
-		panic(fmt.Sprintf("unsupported operator %s", op))
-	}
 }
 
 type ImportTrail []string

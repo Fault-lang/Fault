@@ -22,19 +22,6 @@ import (
 var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
 
-var OP_NEGATE = map[string]string{
-	"==":   "!=",
-	">=":   "<",
-	">":    "<=",
-	"<=":   ">",
-	"!=":   "==",
-	"<":    ">=",
-	"&&":   "||",
-	"||":   "&&",
-	"then": "then",
-	//"=": "!=",
-}
-
 type Compiler struct {
 	module  *ir.Module
 	markers []*ir.Global // 0-index -> Round
@@ -1219,7 +1206,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
 		l = negate(a.Constraint.Left)
 		r = negate(a.Constraint.Right)
-		a.Constraint.Operator = OP_NEGATE[a.Constraint.Operator]
+		a.Constraint.Operator = util.OP_NEGATE[a.Constraint.Operator]
 	} else {
 		l = a.Constraint.Left
 		r = a.Constraint.Right
@@ -1705,14 +1692,14 @@ func negate(e ast.Expression) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it
 	switch n := e.(type) {
 	case *ast.InfixExpression:
-		op, ok := OP_NEGATE[n.Operator]
+		op, ok := util.OP_NEGATE[n.Operator]
 		if ok {
 			n.Operator = op
 		}
 		n.Left = negate(n.Left)
 		n.Right = negate(n.Right)
 
-		node := util.Evaluate(n) // If Int/Float, evaluate and return the value
+		node := ast.Evaluate(n) // If Int/Float, evaluate and return the value
 		return node
 	case *ast.Boolean:
 		if n.Value {

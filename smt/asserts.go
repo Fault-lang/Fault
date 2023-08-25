@@ -2,7 +2,6 @@ package smt
 
 import (
 	"fault/ast"
-	"fault/llvm"
 	"fault/smt/rules"
 	"fault/util"
 	"fmt"
@@ -651,7 +650,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				onStr = fmt.Sprintf("(%s %s)", "or", clause)
 			}
 
-			offOp := llvm.OP_NEGATE[op]
+			offOp := util.OP_NEGATE[op]
 			for _, off := range p[1] {
 				if op == "=" {
 					clause := fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1])
@@ -700,7 +699,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			}
 			x = append(x, []string{onStr})
 		}
-		return g.packageStateGraph(x, "or", []int{},[][]int{})
+		return g.packageStateGraph(x, "or", []int{}, [][]int{})
 	default:
 		return g.packageStateGraph(c, op, []int{}, [][]int{})
 	}

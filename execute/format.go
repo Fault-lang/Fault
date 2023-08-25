@@ -207,7 +207,7 @@ func (mc *ModelChecker) dontBackTrack(clauses map[string]bool, subclause string)
 func (mc *ModelChecker) FetchViolations() []string {
 	var checked []string
 	for _, a := range mc.Log.ProcessedAsserts {
-		checked = append(checked, a.EvLogString())
+		checked = append(checked, a.EvLogString(true))
 	}
 	return checked
 }

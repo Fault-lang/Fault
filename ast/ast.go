@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"fault/util"
 	"fmt"
 	"strconv"
 	"strings"
@@ -324,7 +325,7 @@ func (as *AssertionStatement) String() string {
 	out.WriteString(";")
 	return out.String()
 }
-func (as *AssertionStatement) EvLogString() string {
+func (as *AssertionStatement) EvLogString(negate bool) string {
 	var out bytes.Buffer
 	if as.Violated {
 		out.WriteString("FAILED  ")
@@ -338,7 +339,11 @@ func (as *AssertionStatement) EvLogString() string {
 		out.WriteString("assert ")
 	}
 	out.WriteString(as.Constraint.Left.String())
-	out.WriteString(as.Constraint.Operator)
+	if !as.Assume && negate {
+		out.WriteString(util.OP_NEGATE[as.Constraint.Operator])
+	} else {
+		out.WriteString(as.Constraint.Operator)
+	}
 	out.WriteString(as.Constraint.Right.String())
 	out.WriteString(";")
 	return out.String()

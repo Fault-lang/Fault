@@ -114,7 +114,7 @@ func (vd *VarData) evalClock(id string, base string, now *ast.IntegerLiteral) in
 		right = &ast.IntegerLiteral{Value: int64(n)}
 	}
 
-	idx := util.Evaluate(&ast.InfixExpression{Left: left, Operator: parts[1], Right: right})
+	idx := ast.Evaluate(&ast.InfixExpression{Left: left, Operator: parts[1], Right: right})
 	in, ok := idx.(*ast.IntegerLiteral)
 	if ok && in.Value < 0 {
 		return 0
