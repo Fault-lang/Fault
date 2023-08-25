@@ -352,7 +352,7 @@ func (as *AssertionStatement) EvLogString(negate bool) string {
 		out.WriteString(as.TemporalFilter)
 		out.WriteString(" ")
 		out.WriteString(fmt.Sprintf("%v", as.TemporalN))
-	} else {
+	} else if as.Temporal != "" {
 		out.WriteString(" ")
 		out.WriteString(as.Temporal)
 	}
