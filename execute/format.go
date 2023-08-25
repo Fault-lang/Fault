@@ -191,7 +191,7 @@ func (mc *ModelChecker) dontBackTrack(clauses map[string]bool, subclause string)
 	// Formatter may iterate through assert clauses in any order, don't backtrack
 	// through subclauses we've already evaluated
 
-	for clause, _ := range clauses {
+	for clause := range clauses {
 		if len(subclause) > len(clause) { //Can't possibly be a subclause
 			return true
 		}

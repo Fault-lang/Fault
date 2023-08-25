@@ -356,14 +356,32 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 	return ret
 }
 
+func (g *Generator) matchClauseToIndex(clauses []string) []int {
+	var ret []int
+	for _, clause := range clauses {
+		i := g.Log.AssertChains[clause]
+		ret = append(ret, i.Chain...)
+	}
+	return ret
+}
+
 func (g *Generator) matchChainToCombo(left []int, right []int, combos [][]string) [][]int {
 	var ret [][]int
 	merge := append(left, right...)
 	lookup := make(map[string]int)
 
-	for _, c := range combos {
+	for i, c := range combos {
 		var item []int
 		if l1, ok := lookup[c[0]]; !ok {
+			if len(merge) <= i {
+				for idx, a := range g.Log.Asserts {
+					if a.String() == c[0] {
+						item = append(item, idx)
+						lookup[c[0]] = idx
+					}
+				}
+			}
+
 			for _, m := range merge {
 				if g.Log.Asserts[m].String() == c[0] {
 					item = append(item, m)
@@ -375,6 +393,15 @@ func (g *Generator) matchChainToCombo(left []int, right []int, combos [][]string
 		}
 
 		if l2, ok := lookup[c[1]]; !ok {
+			if len(merge) <= i {
+				for idx, a := range g.Log.Asserts {
+					if a.String() == c[1] {
+						item = append(item, idx)
+						lookup[c[1]] = idx
+					}
+				}
+			}
+
 			for _, m := range merge {
 				if g.Log.Asserts[m].String() == c[1] {
 					item = append(item, m)
@@ -584,10 +611,13 @@ func (g *Generator) convertIndexExpr(idx *ast.IndexExpression) string {
 
 func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.StateGroup, op string, temporalFilter string, temporalN int) *rules.AssertChain {
 	var x [][]string
-	list1, chain1 := g.flattenStates(left)
-	list2, chain2 := g.flattenStates(right)
+	//list1, chain1 := g.flattenStates(left)
+	//list2, chain2 := g.flattenStates(right)
+	list1, _ := g.flattenStates(left)
+	list2, _ := g.flattenStates(right)
 	c := util.Cartesian(list1, list2)
-	chains := append(chain1, chain2...)
+	//chains := g.matchChainToCombo(chain1, chain2, c)
+
 	switch temporalFilter {
 	// For logic like "no more than X times" "no fewer than X times"
 	// We need to flip some of the operators and build out more
@@ -607,7 +637,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				chainOn = append(chainOn, i)
 				clause := fmt.Sprintf("(%s %s %s)", op, on[0], on[1])
 				o = append(o, clause)
-				g.Log.AssertChains[clause] = g.NewAssertChain(on, chains, op)
+				g.Log.AssertChains[clause] = g.NewAssertChain(on, []int{}, op)
 			}
 			// For nmt any of the potential on states can be on
 			var onStr string
@@ -616,6 +646,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				onStr = o[0]
 			} else {
 				clause := strings.Join(o, " ")
+				g.Log.NewMultiClauseAssert(o, "or")
 				g.Log.AssertChains[clause] = g.NewAssertChain(o, chainOn, "or")
 				onStr = fmt.Sprintf("(%s %s)", "or", clause)
 			}
@@ -624,13 +655,13 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			for _, off := range p[1] {
 				if op == "=" {
 					clause := fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1])
-					g.Log.AssertChains[clause] = g.NewAssertChain(off, chains, "!=")
+					g.Log.AssertChains[clause] = g.NewAssertChain(off, []int{}, "!=")
 					i := g.Log.NewAssert(off[0], off[1], "!=")
 					chainOff = append(chainOff, i)
 					f = append(f, clause)
 				} else {
 					clause := fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1])
-					g.Log.AssertChains[clause] = g.NewAssertChain(off, chains, offOp)
+					g.Log.AssertChains[clause] = g.NewAssertChain(off, []int{}, offOp)
 					i := g.Log.NewAssert(off[0], off[1], offOp)
 					chainOff = append(chainOff, i)
 					f = append(f, clause)
@@ -644,11 +675,12 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			} else {
 				clause := strings.Join(f, " ")
 				g.Log.AssertChains[clause] = g.NewAssertChain(f, chainOff, "and")
+				g.Log.NewMultiClauseAssert(f, "and")
 				offStr = fmt.Sprintf("(%s %s)", "and", clause)
 			}
 			x = append(x, []string{onStr, offStr})
 		}
-		return g.packageStateGraph(x, "and", chains, [][]int{})
+		return g.packageStateGraph(x, "and", []int{}, [][]int{})
 	case "nft":
 		// (or (and on on on))
 		combos := util.Combinations(c, temporalN)
@@ -663,13 +695,14 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			if len(o) == 1 {
 				onStr = o[0]
 			} else {
+				g.Log.NewMultiClauseAssert(o, "and")
 				onStr = fmt.Sprintf("(%s %s)", "and", strings.Join(o, " "))
 			}
 			x = append(x, []string{onStr})
 		}
-		return g.packageStateGraph(x, "or", chains, [][]int{})
+		return g.packageStateGraph(x, "or", []int{},[][]int{})
 	default:
-		return g.packageStateGraph(c, op, chains, [][]int{})
+		return g.packageStateGraph(c, op, []int{}, [][]int{})
 	}
 }
 
@@ -678,7 +711,11 @@ func (g *Generator) packageStateGraph(x [][]string, op string, subchain []int, s
 	var chain []int
 	for idx, a := range x {
 		if len(subchains) > 0 {
-			subchain = subchains[idx]
+			if len(subchains) <= idx {
+				subchain = []int{}
+			} else {
+				subchain = subchains[idx]
+			}
 		}
 		if len(a) == 1 {
 			product = append(product, a[0])

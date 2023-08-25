@@ -135,6 +135,30 @@ func (strc *StringClause) String() string {
 	return strc.Value
 }
 
+type MultiClause struct { // for (and x y z) and (or a b c)
+	Clause
+	Value []string
+}
+
+func (mc *MultiClause) Type() string {
+	return "MULTI"
+}
+func (mc *MultiClause) GetFloat() float64 {
+	return 0.0
+}
+func (mc *MultiClause) GetInt() int64 {
+	return 0
+}
+func (mc *MultiClause) GetBool() bool {
+	return false
+}
+func (mc *MultiClause) GetString() string {
+	return ""
+}
+func (mc *MultiClause) String() string {
+	return strings.Join(mc.Value, " ")
+}
+
 type Assert struct {
 	Left  Clause
 	Right Clause
@@ -142,6 +166,9 @@ type Assert struct {
 }
 
 func (a *Assert) String() string {
+	if a.Right.String() == "" {
+		return fmt.Sprintf("(%s %s)", a.Op, a.Left.String())
+	}
 	return fmt.Sprintf("(%s %s %s)", a.Op, a.Left.String(), a.Right.String())
 }
 
@@ -149,6 +176,12 @@ func (rl *ResultLog) NewAssert(l string, r string, op string) int {
 	left := rl.NewClause(l)
 	right := rl.NewClause(r)
 	rl.Asserts = append(rl.Asserts, &Assert{Left: left, Right: right, Op: op})
+	return len(rl.Asserts) - 1
+}
+
+func (rl *ResultLog) NewMultiClauseAssert(l []string, op string) int {
+	left := &MultiClause{Value: l}
+	rl.Asserts = append(rl.Asserts, &Assert{Left: left, Right: &StringClause{}, Op: op})
 	return len(rl.Asserts) - 1
 }
 

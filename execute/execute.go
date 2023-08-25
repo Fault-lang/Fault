@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fault/execute/parser"
 	"fault/smt/forks"
+	"fault/smt/log"
 	resultlog "fault/smt/log"
 	"fault/smt/rules"
 	"fault/smt/variables"
@@ -12,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
@@ -157,30 +159,59 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 	case "not":
 		return mc.EvalAmbiguous(a)
 	case ">":
-		left := a.Left.GetFloat()
-		right := a.Right.GetFloat()
+		left := mc.ConvertClause(a.Left)
+		right := mc.ConvertClause(a.Right)
+
 		res := left > right
 		mc.Log.StoreEval(a, res)
 		return res
 	case ">=":
-		left := a.Left.GetFloat()
-		right := a.Right.GetFloat()
+		left := mc.ConvertClause(a.Left)
+		right := mc.ConvertClause(a.Right)
+
 		res := left >= right
 		mc.Log.StoreEval(a, res)
 		return res
 	case "<":
-		left := a.Left.GetFloat()
-		right := a.Right.GetFloat()
+		left := mc.ConvertClause(a.Left)
+		right := mc.ConvertClause(a.Right)
+
 		res := left < right
 		mc.Log.StoreEval(a, res)
 		return res
 	case "<=":
-		left := a.Left.GetFloat()
-		right := a.Right.GetFloat()
+		left := mc.ConvertClause(a.Left)
+		right := mc.ConvertClause(a.Right)
+
 		res := left <= right
 		mc.Log.StoreEval(a, res)
 		return res
 	case "and":
+		if a.Left.Type() == "MULTI" {
+			//Make sure the subclauses are handled first
+			if ch, ok2 := mc.Log.AssertChains[a.Left.String()]; ok2 {
+				if len(ch.Chain) > 0 {
+					chain := make(map[string]*rules.AssertChain)
+					chain[a.Left.String()] = ch
+					mc.CheckAsserts(chain)
+				} else {
+					i := mc.LookupClause(a.Left.String())
+					if i < 0 {
+						panic(fmt.Errorf("cannot find clause for %s", a.Left.String()))
+					}
+					mc.Eval(mc.Log.Asserts[i])
+				}
+
+				// Now handle the main clause
+				res := mc.EvalAmbiguous(a)
+				mc.Log.StoreEval(a, res)
+				return res
+			} else {
+				panic(fmt.Errorf("cannot find clause for %s", a.Left.String()))
+			}
+		}
+
+		// Or just try the normal way :)
 		left, err := mc.EvalClause(a.Left)
 		if err != nil {
 			panic(err)
@@ -192,7 +223,32 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 		res := left && right
 		mc.Log.StoreEval(a, res)
 		return res
+
 	case "or":
+		if a.Left.Type() == "MULTI" {
+			//Make sure the subclauses are handled first
+			if ch, ok2 := mc.Log.AssertChains[a.Left.String()]; ok2 {
+				if len(ch.Chain) > 0 {
+					chain := make(map[string]*rules.AssertChain)
+					chain[a.Left.String()] = ch
+					mc.CheckAsserts(chain)
+				} else {
+					i := mc.LookupClause(a.Left.String())
+					if i < 0 {
+						panic(fmt.Errorf("cannot find clause for %s", a.Left.String()))
+					}
+					mc.Eval(mc.Log.Asserts[i])
+				}
+
+				// Now handle the main clause
+				res := mc.EvalAmbiguous(a)
+				mc.Log.StoreEval(a, res)
+				return res
+			} else {
+				panic(fmt.Errorf("cannot find clause for %s", a.Left.String()))
+			}
+		}
+
 		left, err := mc.EvalClause(a.Left)
 		if err != nil {
 			panic(err)
@@ -210,7 +266,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 }
 
 func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
-	if a.Left.Type() != a.Right.Type() {
+	if a.Left.Type() != a.Right.Type() && a.Left.Type() != "MULTI" {
 		panic(fmt.Sprintf("improperly formatted assertion clause %s got type left %s and type right %s", a.String(), a.Left.Type(), a.Right.Type()))
 	}
 
@@ -233,16 +289,91 @@ func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
 			res = a.Left.GetBool() != a.Right.GetBool()
 		}
 	case "STRING":
-		if a.Op == "=" {
-			left := mc.ResultValues[a.Left.GetString()]
-			right := mc.ResultValues[a.Right.GetString()]
-			res = left == right
-		}
+		if a.Op == "=" || a.Op == "not" {
+			var left string
+			var right string
+			var ok bool
+			clauseL := a.Left.GetString()
+			clauseR := a.Right.GetString()
+			if left, ok = mc.ResultValues[clauseL]; !ok {
+				if leftres, ok := mc.Log.AssertClauses[clauseL]; ok {
+					left = fmt.Sprintf("%v", leftres)
+				} else if leftClause, ok2 := mc.Log.AssertChains[clauseL]; ok2 {
+					lc := make(map[string]*rules.AssertChain)
+					lc[clauseL] = leftClause
+					mc.CheckAsserts(lc)
+					leftres := mc.Log.AssertClauses[clauseL]
+					left = fmt.Sprintf("%v", leftres)
+				} else {
+					panic(fmt.Sprintf("Cannot find clause %s", clauseL))
+				}
+			}
 
-		if a.Op == "not" {
-			left := mc.ResultValues[a.Left.GetString()]
-			right := mc.ResultValues[a.Right.GetString()]
-			res = left != right
+			if right, ok = mc.ResultValues[clauseR]; !ok {
+				if rightres, ok := mc.Log.AssertClauses[clauseR]; ok {
+					right = fmt.Sprintf("%v", rightres)
+				} else if rightClause, ok2 := mc.Log.AssertChains[clauseR]; ok2 {
+					rc := make(map[string]*rules.AssertChain)
+					rc[clauseR] = rightClause
+					mc.CheckAsserts(rc)
+					rightres := mc.Log.AssertClauses[clauseR]
+					right = fmt.Sprintf("%v", rightres)
+				} else {
+					panic(fmt.Sprintf("Cannot find clause %s", clauseR))
+				}
+			}
+
+			if a.Op == "not" {
+				res = left != right
+			} else {
+				res = left == right
+			}
+		}
+	case "MULTI":
+		if a.Op == "and" { // ANDs every clause must be true
+			var ok bool
+			for _, v := range a.Left.(*log.MultiClause).Value {
+				if res, ok = mc.Log.AssertClauses[v]; ok {
+					if !res {
+						break
+					}
+				} else {
+					c := make(map[string]*rules.AssertChain)
+					c[v] = mc.Log.AssertChains[v]
+					c[v].Chain = []int{mc.LookupClause(v)}
+					mc.CheckAsserts(c)
+					if res, ok = mc.Log.AssertClauses[v]; ok {
+						if !res {
+							break
+						}
+					} else {
+						panic(fmt.Sprintf("missing clause %s", v))
+					}
+				}
+			}
+			res = true
+		} else { //ORs only one need be true
+			for _, v := range a.Left.(*log.MultiClause).Value {
+				if r, ok := mc.Log.AssertClauses[v]; ok {
+					if r {
+						res = true
+						break
+					}
+				} else {
+					c := make(map[string]*rules.AssertChain)
+					c[v] = mc.Log.AssertChains[v]
+					c[v].Chain = []int{mc.LookupClause(v)}
+					mc.CheckAsserts(c)
+					if res, ok = mc.Log.AssertClauses[v]; ok {
+						if !res {
+							break
+						}
+					} else {
+						panic(fmt.Sprintf("missing clause %s", v))
+					}
+				}
+			}
+			res = false
 		}
 	}
 	mc.Log.StoreEval(a, res)
@@ -258,20 +389,42 @@ func (mc *ModelChecker) EvalClause(c resultlog.Clause) (bool, error) {
 			return false, nil // where Left clause will be x y z and Right clause will be ""
 		}
 
-		if cl, ok := mc.Log.AssertClauses[c.GetString()]; ok {
-			return cl, nil
+		ret, ok := mc.Log.AssertClauses[c.GetString()]
+		if !ok {
+			return false, fmt.Errorf("assertion clause %s not found", c.GetString())
 		}
-		if ch, ok2 := mc.Log.AssertChains[c.GetString()]; ok2 {
-			chain := make(map[string]*rules.AssertChain)
-			chain[c.GetString()] = ch
-			mc.CheckAsserts(chain)
-			return mc.Log.AssertClauses[c.GetString()], nil
-		}
+		return ret, nil
 
-		return false, fmt.Errorf("assertion clause %s not found", c.GetString())
 	default:
 		return false, fmt.Errorf("illegal assertion clause %s typed %s", c.GetString(), c.Type())
 	}
+}
+
+func (mc *ModelChecker) ConvertClause(a resultlog.Clause) float64 {
+	var val float64
+	var err error
+	switch a.Type() {
+	case "INT":
+		val = float64(a.GetInt())
+	case "FLOAT":
+		val = a.GetFloat()
+	case "STRING":
+		temp := mc.ResultValues[a.String()]
+		val, err = strconv.ParseFloat(temp, 64)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return val
+}
+
+func (mc *ModelChecker) LookupClause(clause string) int {
+	for i, a := range mc.Log.Asserts {
+		if a.String() == clause {
+			return i
+		}
+	}
+	return -1
 }
 
 func (mc *ModelChecker) stateAssessment(dist distuv.Normal, states Scenario) Scenario {

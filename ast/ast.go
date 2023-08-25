@@ -326,7 +326,7 @@ func (as *AssertionStatement) String() string {
 }
 func (as *AssertionStatement) EvLogString() string {
 	var out bytes.Buffer
-	if !as.Violated {
+	if as.Violated {
 		out.WriteString("FAILED  ")
 	} else {
 		out.WriteString("OK  ")

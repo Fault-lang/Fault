@@ -2032,14 +2032,14 @@ func (g *Generator) applyTemporalLogic(temp string, ir *rules.AssertChain, tempo
 	switch temp {
 	case "eventually":
 		if len(full) > 1 {
-			g.Log.NewAssert(clause, "", on)
+			g.Log.NewMultiClauseAssert(full, on)
 			or := fmt.Sprintf("(%s %s)", on, clause)
 			return or
 		}
 		return first
 	case "always":
 		if len(full) > 1 {
-			g.Log.NewAssert(clause, "", off)
+			g.Log.NewMultiClauseAssert(full, off)
 			or := fmt.Sprintf("(%s %s)", off, clause)
 			return or
 		}
@@ -2061,7 +2061,7 @@ func (g *Generator) applyTemporalLogic(temp string, ir *rules.AssertChain, tempo
 			default:
 				op = off
 			}
-			g.Log.NewAssert(clause, "", op)
+			g.Log.NewMultiClauseAssert(full, op)
 			or := fmt.Sprintf("(%s %s)", op, clause)
 			return or
 		}
@@ -2074,13 +2074,18 @@ func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 	var chain []int
 	for i := range ir.Values {
 		clause := strings.Join(ir.Values[i:], " ")
+
 		s := fmt.Sprintf("(and %s)", clause)
 		progression = append(progression, s)
-		idx := g.Log.NewAssert(clause, "", "and")
+
+		idx := g.Log.NewMultiClauseAssert(ir.Values[i:], "and")
 		chain = append(chain, idx)
-		g.Log.AssertChains[clause] = g.NewAssertChain(progression, ir.Chain[i:], "and")
+
+		g.Log.AssertChains[clause] = g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and")
+		g.Log.AssertChains[s] = g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and")
 	}
+
 	parentClause := strings.Join(progression, " ")
-	g.Log.AssertChains[parentClause] = g.NewAssertChain(progression, chain, "and")
+	g.Log.AssertChains[parentClause] = g.NewAssertChain(progression, chain, "or")
 	return fmt.Sprintf("(or %s)", parentClause)
 }
