@@ -69,11 +69,12 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
-
-	mc.CheckAsserts(mc.Log.AssertChains)
-	violations := mc.FetchViolations()
-	out.WriteString("Model Properties and Invarients:\n")
-	out.WriteString(strings.Join(violations, "\n") + "\n\n")
+	if len(mc.Log.ProcessedAsserts) > 0 {
+		mc.CheckAsserts(mc.Log.AssertChains)
+		violations := mc.FetchViolations()
+		out.WriteString("Model Properties and Invarients:\n")
+		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+	}
 
 	out.WriteString(mc.Log.String())
 
