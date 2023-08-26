@@ -66,6 +66,7 @@ type Compiler struct {
 	ComponentOrder []string
 	States         map[string]bool
 	Alias          map[string]string
+	StringRules    map[string]string
 }
 
 func NewCompiler() *Compiler {
@@ -91,6 +92,7 @@ func NewCompiler() *Compiler {
 		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
 		States:        make(map[string]bool),
+		StringRules:   make(map[string]string),
 	}
 	c.setup()
 	return c
@@ -190,7 +192,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 						value := c.compileValue(d)
 						rawid := d.RawId()
 						s := c.specs[rawid[0]]
-						//s.DefineSpecVar(rawid, value)
+						c.StringRules[d.IdString()] = d.Value
 						s.DefineSpecType(rawid, value.Type())
 						c.globalVariable(rawid, value, d.Position())
 					case *ast.InfixExpression:
@@ -297,6 +299,7 @@ func (c *Compiler) compile(node ast.Node) {
 			value := c.compileValue(v.Value)
 			rawid := v.Name.RawId()
 			s := c.specs[rawid[0]]
+			c.StringRules[v.Name.IdString()] = v.Value.String()
 			s.DefineSpecVar(rawid, value)
 			s.DefineSpecType(rawid, value.Type())
 			c.globalVariable(rawid, value, v.Position())

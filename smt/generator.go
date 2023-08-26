@@ -82,7 +82,19 @@ func Execute(compiler *llvm.Compiler) *Generator {
 	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
 	generator.States = compiler.States
 	generator.Run(compiler.GetIR())
+	generator.LoadStringRules(compiler.StringRules) // Do last to get SSA values
 	return generator
+}
+
+func (g *Generator) LoadStringRules(sr map[string]string) {
+	g.Log.StringRules = sr
+	for k := range sr {
+		num := g.variables.GetSSANum(k)
+		for i := 0; i < int(num)+1; i++ {
+			state := fmt.Sprintf("%s_%v", k, i)
+			g.Log.IsStringRule[state] = true
+		}
+	}
 }
 
 func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {

@@ -17,6 +17,8 @@ type ResultLog struct {
 	AssertClauses    map[string]bool
 	AssertChains     map[string]*rules.AssertChain
 	ProcessedAsserts []*ast.AssertionStatement
+	IsStringRule     map[string]bool   // Quick lookup
+	StringRules      map[string]string //Store the string value of the rule
 }
 
 type Event struct {
@@ -227,6 +229,8 @@ func NewLog() *ResultLog {
 		Changes:       make(map[string]bool),
 		AssertClauses: make(map[string]bool),
 		AssertChains:  make(map[string]*rules.AssertChain),
+		IsStringRule:  make(map[string]bool),
+		StringRules:   make(map[string]string),
 	}
 }
 
@@ -331,14 +335,52 @@ func (rl *ResultLog) deadTransition(stateVar string, idx int) bool {
 	return base == stateVar && rl.Events[idx].Dead
 }
 
-func (rl *ResultLog) String() string {
-	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
+func (rl *ResultLog) Static() string {
+	// Specs with just static rules
+	var str = ""
 	for _, l := range rl.Events {
-		if !l.Dead {
-			str = fmt.Sprintf("%s%s", str, l.String())
+		if l.Dead {
+			continue
+		}
+		if rl.IsStringRule[l.Variable] {
+			str = fmt.Sprintf("%s%s", str, rl.formatStatic(l))
 		}
 	}
 	return str
+}
+
+func (rl *ResultLog) String() string {
+	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
+	for _, l := range rl.Events {
+		if l.Dead {
+			continue
+		}
+		if rl.IsStringRule[l.Variable] {
+			str = fmt.Sprintf("%s%s", str, rl.formatStringRule(l))
+			continue
+		}
+
+		str = fmt.Sprintf("%s%s", str, l.String())
+	}
+	return str
+}
+
+func (rl *ResultLog) formatStatic(e *Event) string {
+	// a simpler format for specs with no state change
+	parts := strings.Split(e.Variable, "_")
+	base := strings.Join(parts[:len(parts)-1], "_")
+	if static, ok := rl.StringRules[base]; ok {
+		return fmt.Sprintf("%s %s\n", static, strings.ToUpper(e.Current))
+	}
+	//return fmt.Sprintf("%s %s\n", e.Variable, e.Current)
+	return ""
+}
+
+func (rl *ResultLog) formatStringRule(e *Event) string {
+	// Replaces Variable name with the original text rule
+	parts := strings.Split(e.Variable, "_")
+	base := strings.Join(parts[:len(parts)-1], "_")
+	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s\n", e.Round, e.Type, e.Scope, rl.StringRules[base], e.Previous, e.Current, e.Probability)
 }
 
 func (rl *ResultLog) Add(e *Event) {

@@ -61,6 +61,26 @@ func (mc *ModelChecker) Format(results map[string]Scenario) {
 	fmt.Println(out.String())
 }
 
+func (mc *ModelChecker) Static(results map[string]Scenario) {
+	var out bytes.Buffer
+	for k, v := range results {
+		mc.mapToLog(k, v)
+	}
+
+	deadVars := mc.DeadVariables()
+	mc.Log.FilterOut(deadVars)
+	if len(mc.Log.ProcessedAsserts) > 0 {
+		mc.CheckAsserts(mc.Log.AssertChains)
+		violations := mc.FetchViolations()
+		out.WriteString("Model Properties and Invarients:\n")
+		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+	}
+
+	out.WriteString(mc.Log.Static())
+
+	fmt.Println(out.String())
+}
+
 func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	var out bytes.Buffer
 	for k, v := range results {
