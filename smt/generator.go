@@ -442,14 +442,27 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 
 	g.variables.InitPhis()
 
+	t, f, a := g.parseTerms(term.Succs())
+	if len(t) == 0 && len(f) == 0 { // This happens in a construction like func{stay();}
+		g.variables.PopPhis() // in state charts since we convert them to if state{ stay(); }
+		g.variables.AppendState(phis)
+
+		if a != nil {
+			after := g.parseAfterBlock(a)
+			ru = append(ru, after...)
+		}
+		return ru
+	}
+
 	choiceId := uuid.NewString()
 	branchT := fmt.Sprintf("%s-%s", choiceId, "true")
 	branchF := fmt.Sprintf("%s-%s", choiceId, "false")
 	g.Forks.Choices[choiceId] = []string{branchT, branchF}
-
-	t, f, a := g.parseTerms(term.Succs())
 	t = rules.TagRules(t, branchT, choiceId)
 	f = rules.TagRules(f, branchF, choiceId)
+
+	g.buildForkChoice(t, choiceId, branchT)
+	g.buildForkChoice(f, choiceId, branchF)
 
 	if !g.isBranchClosed(t, f) {
 		var tEnds, fEnds []rules.Rule
@@ -457,8 +470,8 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		ru = append(ru, f...)
 
 		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
-		g.buildForkChoice(t, choiceId, branchT)
-		g.buildForkChoice(f, choiceId, branchF)
+		//g.buildForkChoice(t, choiceId, branchT)
+		//g.buildForkChoice(f, choiceId, branchF)
 
 		tEnds, phis = g.capCond(choiceId, branchT, make(map[string]int16))
 		fEnds, _ = g.capCond(choiceId, branchF, phis)

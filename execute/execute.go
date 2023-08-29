@@ -389,6 +389,15 @@ func (mc *ModelChecker) EvalClause(c resultlog.Clause) (bool, error) {
 			return false, nil // where Left clause will be x y z and Right clause will be ""
 		}
 
+		val, ok := mc.ResultValues[c.GetString()]
+		if ok {
+			ret, err := strconv.ParseBool(val)
+			if err != nil {
+				return false, fmt.Errorf("assertion on a non boolean value %s", c.GetString())
+			}
+			return ret, nil
+		}
+
 		ret, ok := mc.Log.AssertClauses[c.GetString()]
 		if !ok {
 			return false, fmt.Errorf("assertion clause %s not found", c.GetString())
