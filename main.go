@@ -67,9 +67,9 @@ func validate_filetype(data string, filetype string) bool {
 	return false
 }
 
-func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) *smt.Generator {
+func smt2(ir string, compiler *llvm.Compiler) *smt.Generator {
 	generator := smt.NewGenerator()
-	generator.LoadMeta(runs, uncertains, unknowns, asserts, assumes)
+	generator.LoadMeta(compiler)
 	generator.Run(ir)
 	return generator
 }
@@ -93,7 +93,7 @@ func probability(smt string, uncertains map[string][]float64, unknowns []string,
 	return ex, data
 }
 
-func run(filepath string, mode string, input string, reach bool) {
+func run(filepath string, mode string, input string, output string, reach bool) {
 	filetype := util.DetectMode(filepath)
 	if filetype == "" {
 		log.Fatal("file provided is not a .fspec or .fsystem file")
@@ -112,7 +112,7 @@ func run(filepath string, mode string, input string, reach bool) {
 
 	switch input {
 	case "fspec":
-		tree, lstnr, ty, visual, alias := parse(d, path, filepath, filetype, reach, mode == "visualize")
+		tree, lstnr, ty, visual, alias := parse(d, path, filepath, filetype, reach, output == "visualize")
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -150,26 +150,34 @@ func run(filepath string, mode string, input string, reach bool) {
 		}
 
 		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results, generator.Log)
-		if mode == "visualize" {
+		if output == "visualize" {
 			fmt.Println(visual)
 			fmt.Printf("\n\n")
 			mc.Mermaid()
 			return
 		}
 
-		if data != nil && mode == "legacy" {
+		if data != nil && output == "legacy" {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+			return
+		}
+
+		if data != nil && output == "static" {
+			mc.LoadMeta(generator.Forks)
+			mc.Static(data)
+			return
 		}
 
 		if data != nil {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.EventLog(data)
 		}
 	case "ll":
-		generator := smt2(d, 0, uncertains, unknowns, nil, nil)
+		compiler := llvm.NewCompiler()
+		compiler.Uncertains = uncertains
+		compiler.Unknowns = unknowns
+		generator := smt2(d, compiler)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return
@@ -180,15 +188,20 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.Mermaid()
 			return
 		}
-		if data != nil && mode == "legacy" {
+		if data != nil && output == "legacy" {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
+			return
+		}
+
+		if data != nil && output == "static" {
+			mc.LoadMeta(generator.Forks)
+			mc.Static(data)
+			return
 		}
 
 		if data != nil {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.EventLog(data)
 		}
 	case "smt2":
@@ -198,9 +211,14 @@ func run(filepath string, mode string, input string, reach bool) {
 			mc.Mermaid()
 			return
 		}
-		if data != nil && mode == "legacy" {
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		if data != nil && output == "legacy" {
 			mc.Format(data)
+			return
+		}
+
+		if data != nil && output == "static" {
+			mc.Static(data)
+			return
 		}
 
 		if data != nil {
@@ -213,12 +231,14 @@ func run(filepath string, mode string, input string, reach bool) {
 func main() {
 	var mode string
 	var input string
+	var output string
 	var filepath string
 	var reach bool
-	modeCommand := flag.String("m", "check", "stop compiler at certain milestones: ast, ir, smt, check, or visualize")
+	modeCommand := flag.String("m", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
 	inputCommand := flag.String("i", "fspec", "format of the input file (default: fspec)")
 	fpCommand := flag.String("f", "", "path to file to compile")
 	reachCommand := flag.String("c", "false", "make sure the transitions to all defined states are specified in the model")
+	outputCommand := flag.String("o", "log", "format of the output: log, static, legacy, or visualize")
 
 	flag.Parse()
 
@@ -238,15 +258,29 @@ func main() {
 		case "ir":
 		case "smt":
 		case "check":
-		case "visualize":
 		default:
 			fmt.Printf("%s is not a valid mode\n", mode)
 			os.Exit(1)
 		}
 	}
 
+	if *outputCommand == "" {
+		output = "log"
+	} else {
+		output = strings.ToLower(*outputCommand)
+		switch output {
+		case "static":
+		case "log":
+		case "legacy":
+		case "visualize":
+		default:
+			fmt.Printf("%s is not a valid mode\n", output)
+			os.Exit(1)
+		}
+	}
+
 	//Check if solver is set
-	if (mode == "check" || mode == "visualize") &&
+	if mode == "check" &&
 		os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "" {
 		fmt.Printf("\n no solver configured, defaulting to SMT output without model checking. Please set SOLVERCMD and SOLVERARG variables.\n\n")
 		mode = "smt"
@@ -285,5 +319,5 @@ func main() {
 		}
 	}
 
-	run(filepath, mode, input, reach)
+	run(filepath, mode, input, output, reach)
 }

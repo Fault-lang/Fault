@@ -1,14 +1,24 @@
 package log
 
 import (
+	"fault/ast"
+	"fault/smt/rules"
 	"fault/util"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type ResultLog struct {
-	Events  []*Event
-	Lookup  map[string]int
-	Changes map[string]bool
+	Events           []*Event
+	Lookup           map[string]int
+	Changes          map[string]bool
+	Asserts          []*Assert
+	AssertClauses    map[string]bool
+	AssertChains     map[string]*rules.AssertChain
+	ProcessedAsserts []*ast.AssertionStatement
+	IsStringRule     map[string]bool   // Quick lookup
+	StringRules      map[string]string //Store the string value of the rule
 }
 
 type Event struct {
@@ -22,6 +32,188 @@ type Event struct {
 	Dead        bool //Filters out events not in solution
 }
 
+type Clause interface {
+	Type() string
+	GetFloat() float64
+	GetInt() int64
+	GetBool() bool
+	GetString() string
+	String() string
+}
+
+type FlClause struct {
+	Clause
+	Value float64
+}
+
+func (flc *FlClause) Type() string {
+	return "FLOAT"
+}
+func (flc *FlClause) GetFloat() float64 {
+	return flc.Value
+}
+func (flc *FlClause) GetInt() int64 {
+	return int64(flc.Value)
+}
+func (flc *FlClause) GetBool() bool {
+	return false
+}
+func (flc *FlClause) GetString() string {
+	return ""
+}
+func (flc *FlClause) String() string {
+	return fmt.Sprintf("%f", flc.Value)
+}
+
+type IntClause struct {
+	Clause
+	Value int64
+}
+
+func (intc *IntClause) Type() string {
+	return "INT"
+}
+func (intc *IntClause) GetFloat() float64 {
+	return float64(intc.Value)
+}
+func (intc *IntClause) GetInt() int64 {
+	return intc.Value
+}
+func (intc *IntClause) GetBool() bool {
+	return false
+}
+func (intc *IntClause) GetString() string {
+	return ""
+}
+func (intc *IntClause) String() string {
+	return fmt.Sprintf("%d", intc.Value)
+}
+
+type BoolClause struct {
+	Clause
+	Value bool
+}
+
+func (boolc *BoolClause) Type() string {
+	return "BOOL"
+}
+func (boolc *BoolClause) GetFloat() float64 {
+	return 0.0
+}
+func (boolc *BoolClause) GetInt() int64 {
+	return 0
+}
+func (boolc *BoolClause) GetBool() bool {
+	return boolc.Value
+}
+func (boolc *BoolClause) GetString() string {
+	return ""
+}
+func (boolc *BoolClause) String() string {
+	return fmt.Sprintf("%v", boolc.Value)
+}
+
+type StringClause struct {
+	Clause
+	Value string
+}
+
+func (strc *StringClause) Type() string {
+	return "STRING"
+}
+func (strc *StringClause) GetFloat() float64 {
+	return 0.0
+}
+func (strc *StringClause) GetInt() int64 {
+	return 0
+}
+func (strc *StringClause) GetBool() bool {
+	return false
+}
+func (strc *StringClause) GetString() string {
+	return strc.Value
+}
+func (strc *StringClause) String() string {
+	return strc.Value
+}
+
+type MultiClause struct { // for (and x y z) and (or a b c)
+	Clause
+	Value []string
+}
+
+func (mc *MultiClause) Type() string {
+	return "MULTI"
+}
+func (mc *MultiClause) GetFloat() float64 {
+	return 0.0
+}
+func (mc *MultiClause) GetInt() int64 {
+	return 0
+}
+func (mc *MultiClause) GetBool() bool {
+	return false
+}
+func (mc *MultiClause) GetString() string {
+	return ""
+}
+func (mc *MultiClause) String() string {
+	return strings.Join(mc.Value, " ")
+}
+
+type Assert struct {
+	Left  Clause
+	Right Clause
+	Op    string
+}
+
+func (a *Assert) String() string {
+	if a.Right.String() == "" {
+		return fmt.Sprintf("(%s %s)", a.Op, a.Left.String())
+	}
+	return fmt.Sprintf("(%s %s %s)", a.Op, a.Left.String(), a.Right.String())
+}
+
+func (rl *ResultLog) NewAssert(l string, r string, op string) int {
+	left := rl.NewClause(l)
+	right := rl.NewClause(r)
+	rl.Asserts = append(rl.Asserts, &Assert{Left: left, Right: right, Op: op})
+	return len(rl.Asserts) - 1
+}
+
+func (rl *ResultLog) NewMultiClauseAssert(l []string, op string) int {
+	left := &MultiClause{Value: l}
+	rl.Asserts = append(rl.Asserts, &Assert{Left: left, Right: &StringClause{}, Op: op})
+	return len(rl.Asserts) - 1
+}
+
+func (rl *ResultLog) NewClause(x string) Clause {
+	if x == "true" || x == "false" { // 0 and 1 as well as partials like "t" are not valid anyway
+		b, err := strconv.ParseBool(x)
+		if err == nil {
+			return &BoolClause{Value: b}
+		}
+	}
+
+	f, err := strconv.ParseFloat(x, 64)
+	if err == nil && strings.Contains(x, ".") {
+		return &FlClause{Value: f}
+	}
+
+	i, err := strconv.ParseInt(x, 10, 64)
+	if err == nil {
+		return &IntClause{Value: i}
+	}
+
+	return &StringClause{Value: x}
+
+}
+
+func (rl *ResultLog) StoreEval(a *Assert, res bool) {
+	key := a.String()
+	rl.AssertClauses[key] = res
+}
+
 func (e *Event) String() string {
 	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s\n", e.Round, e.Type, e.Scope, e.Variable, e.Previous, e.Current, e.Probability)
 }
@@ -33,8 +225,12 @@ func (e *Event) Kill() {
 
 func NewLog() *ResultLog {
 	return &ResultLog{
-		Lookup:  make(map[string]int),
-		Changes: make(map[string]bool),
+		Lookup:        make(map[string]int),
+		Changes:       make(map[string]bool),
+		AssertClauses: make(map[string]bool),
+		AssertChains:  make(map[string]*rules.AssertChain),
+		IsStringRule:  make(map[string]bool),
+		StringRules:   make(map[string]string),
 	}
 }
 
@@ -139,14 +335,52 @@ func (rl *ResultLog) deadTransition(stateVar string, idx int) bool {
 	return base == stateVar && rl.Events[idx].Dead
 }
 
-func (rl *ResultLog) String() string {
-	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
+func (rl *ResultLog) Static() string {
+	// Specs with just static rules
+	var str = ""
 	for _, l := range rl.Events {
-		if !l.Dead {
-			str = fmt.Sprintf("%s%s", str, l.String())
+		if l.Dead {
+			continue
+		}
+		if rl.IsStringRule[l.Variable] {
+			str = fmt.Sprintf("%s%s", str, rl.formatStatic(l))
 		}
 	}
 	return str
+}
+
+func (rl *ResultLog) String() string {
+	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
+	for _, l := range rl.Events {
+		if l.Dead {
+			continue
+		}
+		if rl.IsStringRule[l.Variable] {
+			str = fmt.Sprintf("%s%s", str, rl.formatStringRule(l))
+			continue
+		}
+
+		str = fmt.Sprintf("%s%s", str, l.String())
+	}
+	return str
+}
+
+func (rl *ResultLog) formatStatic(e *Event) string {
+	// a simpler format for specs with no state change
+	parts := strings.Split(e.Variable, "_")
+	base := strings.Join(parts[:len(parts)-1], "_")
+	if static, ok := rl.StringRules[base]; ok {
+		return fmt.Sprintf("%s %s\n", static, strings.ToUpper(e.Current))
+	}
+	//return fmt.Sprintf("%s %s\n", e.Variable, e.Current)
+	return ""
+}
+
+func (rl *ResultLog) formatStringRule(e *Event) string {
+	// Replaces Variable name with the original text rule
+	parts := strings.Split(e.Variable, "_")
+	base := strings.Join(parts[:len(parts)-1], "_")
+	return fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s\n", e.Round, e.Type, e.Scope, rl.StringRules[base], e.Previous, e.Current, e.Probability)
 }
 
 func (rl *ResultLog) Add(e *Event) {

@@ -3,7 +3,6 @@ package swaps
 import (
 	"fault/ast"
 	"fault/types"
-	"fault/util"
 	"fmt"
 
 	"github.com/barkimedes/go-deepcopy"
@@ -191,7 +190,7 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 
 func (c *Precompiler) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
 	rawid := val.RawId()
-	err := c.checker.SpecStructs[rawid[0]].Update(rawid, util.ExtractBranches(val.Properties))
+	err := c.checker.SpecStructs[rawid[0]].Update(rawid, ast.ExtractBranches(val.Properties))
 	if err != nil {
 		panic(fmt.Sprintf("failed to update spec record on swap %s: %s", val.String(), err))
 	}

@@ -40,9 +40,17 @@ func TestSimpleAssert(t *testing.T) {
 	(assert (or (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_1 0)(<= test1_t_foo_value_2 0)(<= test1_t_foo_value_3 0)(<= test1_t_foo_value_4 0)(<= test1_t_foo_value_5 0)))
 `
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("SimpleAssert", smt, expecting)
+	if len(g.Log.Asserts) != 6 {
+		t.Fatalf("wrong number of asserts in the event log")
+	}
+
+	if g.Log.Asserts[0].Right.Type() != "INT" || g.Log.Asserts[0].Right.GetInt() != 0 {
+		t.Fatalf("wrong right value in the first assert")
+	}
+
+	err := compareResults("SimpleAssert", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -95,9 +103,9 @@ func TestCompoundAssertAnd(t *testing.T) {
 	(> test1_t_foo_value_4 10)
 	(> test1_t_foo_value_5 10)))`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("CompoundAssert", smt, expecting)
+	err := compareResults("CompoundAssert", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -139,9 +147,9 @@ func TestCompoundAssertOr(t *testing.T) {
 	(assert (= test1_t_foo_value_5 (- test1_t_foo_value_4 2.0)))
 	(assert (or (and (<= test1_t_foo_value_5 0) (> test1_t_foo_value_5 10)) (and (<= test1_t_foo_value_0 0) (> test1_t_foo_value_0 10)) (and (<= test1_t_foo_value_1 0) (> test1_t_foo_value_1 10)) (and (<= test1_t_foo_value_2 0) (> test1_t_foo_value_2 10)) (and (<= test1_t_foo_value_3 0) (> test1_t_foo_value_3 10)) (and (<= test1_t_foo_value_4 0) (> test1_t_foo_value_4 10))))`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("CompoundAssert", smt, expecting)
+	err := compareResults("CompoundAssert", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -201,9 +209,9 @@ func TestMultiAssert(t *testing.T) {
 		)
 	))`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("CompoundAssert", smt, expecting)
+	err := compareResults("CompoundAssert", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -250,9 +258,9 @@ func TestAssertInfix(t *testing.T) {
 	(<= test1_t_foo_value_4 0)
 	(<= test1_t_foo_value_5 0)))`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("AssertInfix", smt, expecting)
+	err := compareResults("AssertInfix", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -303,9 +311,9 @@ func TestMultiVar(t *testing.T) {
 	(<= test1_t_foo_value_5 test1_t_fuzz_0)))
 	`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("MultiVar", smt, expecting)
+	err := compareResults("MultiVar", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -348,9 +356,9 @@ func TestSimpleAssume(t *testing.T) {
 	(assert (and (> test1_t_foo_value_0 0) (> test1_t_foo_value_1 0)(> test1_t_foo_value_2 0)(> test1_t_foo_value_3 0)(> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0)))
 `
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("SimpleAssume", smt, expecting)
+	err := compareResults("SimpleAssume", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -393,9 +401,9 @@ func TestSpecificStateAssume(t *testing.T) {
 	(assert (> test1_t_foo_value_1 0))
 `
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("SpecificStateAssume", smt, expecting)
+	err := compareResults("SpecificStateAssume", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -433,9 +441,9 @@ func TestIndexes(t *testing.T) {
 	(assert (= indexes_gee_bash_a_2 (+ indexes_gee_bash_a_1 2.0)))
 	(assert (not (= indexes_gee_bash_a_1 8)))`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("SpecificStateAssume", smt, expecting)
+	err := compareResults("SpecificStateAssume", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())

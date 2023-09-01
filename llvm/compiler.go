@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/barkimedes/go-deepcopy"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
@@ -21,19 +22,6 @@ import (
 
 var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
-
-var OP_NEGATE = map[string]string{
-	"==":   "!=",
-	">=":   "<",
-	">":    "<=",
-	"<=":   ">",
-	"!=":   "==",
-	"<":    ">=",
-	"&&":   "||",
-	"||":   "&&",
-	"then": "then",
-	//"=": "!=",
-}
 
 type Compiler struct {
 	module  *ir.Module
@@ -79,6 +67,7 @@ type Compiler struct {
 	ComponentOrder []string
 	States         map[string]bool
 	Alias          map[string]string
+	StringRules    map[string]string
 }
 
 func NewCompiler() *Compiler {
@@ -104,6 +93,7 @@ func NewCompiler() *Compiler {
 		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
 		States:        make(map[string]bool),
+		StringRules:   make(map[string]string),
 	}
 	c.setup()
 	return c
@@ -203,7 +193,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 						value := c.compileValue(d)
 						rawid := d.RawId()
 						s := c.specs[rawid[0]]
-						//s.DefineSpecVar(rawid, value)
+						c.StringRules[d.IdString()] = d.Value
 						s.DefineSpecType(rawid, value.Type())
 						c.globalVariable(rawid, value, d.Position())
 					case *ast.InfixExpression:
@@ -273,11 +263,21 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 		}
 	}
 
-	for _, assert := range c.RawAsserts {
-		c.compileAssert(assert)
-	}
-	for _, assert := range c.RawAssumes {
-		c.compileAssert(assert)
+	if !c.isImport {
+		for _, assert := range c.RawAsserts {
+			a, err := deepcopy.Anything(assert)
+			if err != nil {
+				panic(err)
+			}
+			c.compileAssert(a.(*ast.AssertionStatement))
+		}
+		for _, assert := range c.RawAssumes {
+			a, err := deepcopy.Anything(assert)
+			if err != nil {
+				panic(err)
+			}
+			c.compileAssert(a.(*ast.AssertionStatement))
+		}
 	}
 
 	return c.Asserts, c.Assumes
@@ -292,10 +292,11 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ImportStatement:
 		parent := c.currentSpec
 		c.isImport = true
-		asserts, assumes := c.processSpec(v.Tree) //Move all asserts to the end of the compilation process
+		//asserts, assumes := c.processSpec(v.Tree) //Move all asserts to the end of the compilation process
+		c.processSpec(v.Tree)
 		c.isImport = false
-		c.Asserts = append(c.Asserts, asserts...)
-		c.Assumes = append(c.Assumes, assumes...)
+		//c.Asserts = append(c.Asserts, asserts...)
+		//c.Assumes = append(c.Assumes, assumes...)
 		c.currentSpec = parent
 	case *ast.ConstantStatement:
 		c.compileConstant(v)
@@ -307,6 +308,7 @@ func (c *Compiler) compile(node ast.Node) {
 			value := c.compileValue(v.Value)
 			rawid := v.Name.RawId()
 			s := c.specs[rawid[0]]
+			c.StringRules[v.Name.IdString()] = v.Value.String()
 			s.DefineSpecVar(rawid, value)
 			s.DefineSpecType(rawid, value.Type())
 			c.globalVariable(rawid, value, v.Position())
@@ -1216,7 +1218,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
 		l = negate(a.Constraint.Left)
 		r = negate(a.Constraint.Right)
-		a.Constraint.Operator = OP_NEGATE[a.Constraint.Operator]
+		a.Constraint.Operator = util.OP_NEGATE[a.Constraint.Operator]
 	} else {
 		l = a.Constraint.Left
 		r = a.Constraint.Right
@@ -1702,14 +1704,14 @@ func negate(e ast.Expression) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it
 	switch n := e.(type) {
 	case *ast.InfixExpression:
-		op, ok := OP_NEGATE[n.Operator]
+		op, ok := util.OP_NEGATE[n.Operator]
 		if ok {
 			n.Operator = op
 		}
 		n.Left = negate(n.Left)
 		n.Right = negate(n.Right)
 
-		node := util.Evaluate(n) // If Int/Float, evaluate and return the value
+		node := ast.Evaluate(n) // If Int/Float, evaluate and return the value
 		return node
 	case *ast.Boolean:
 		if n.Value {

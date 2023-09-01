@@ -24,15 +24,18 @@ import (
 type Generator struct {
 	currentFunction string
 	currentBlock    string
+	currentAssert   int
 	branchId        int
 
 	// Raw input
-	Uncertains map[string][]float64
-	Unknowns   []string
-	functions  map[string]*ir.Func
-	rawAsserts []*ast.AssertionStatement
-	rawAssumes []*ast.AssertionStatement
-	rawRules   [][]rules.Rule
+	Uncertains      map[string][]float64
+	Unknowns        []string
+	functions       map[string]*ir.Func
+	compiledAsserts []*ast.AssertionStatement
+	compiledAssumes []*ast.AssertionStatement
+	rawAsserts      []*ast.AssertionStatement
+	rawAssumes      []*ast.AssertionStatement
+	rawRules        [][]rules.Rule
 
 	// Generated SMT
 	inits     []string
@@ -78,23 +81,37 @@ func NewGenerator() *Generator {
 
 func Execute(compiler *llvm.Compiler) *Generator {
 	generator := NewGenerator()
-	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.LoadMeta(compiler)
 	generator.States = compiler.States
 	generator.Run(compiler.GetIR())
+	generator.LoadStringRules(compiler.StringRules) // Do last to get SSA values
 	return generator
 }
 
-func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {
-	if runs == 0 {
+func (g *Generator) LoadStringRules(sr map[string]string) {
+	g.Log.StringRules = sr
+	for k := range sr {
+		num := g.variables.GetSSANum(k)
+		for i := 0; i < int(num)+1; i++ {
+			state := fmt.Sprintf("%s_%v", k, i)
+			g.Log.IsStringRule[state] = true
+		}
+	}
+}
+
+func (g *Generator) LoadMeta(compiler *llvm.Compiler /*runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement*/) {
+	if compiler.RunRound == 0 {
 		g.Rounds = 1 //even if runs are zero we need to generate asserts for initialization
 	} else {
-		g.Rounds = int(runs)
+		g.Rounds = int(compiler.RunRound)
 	}
 
-	g.Uncertains = uncertains
-	g.Unknowns = unknowns
-	g.rawAsserts = asserts
-	g.rawAssumes = assumes
+	g.Uncertains = compiler.Uncertains
+	g.Unknowns = compiler.Unknowns
+	g.compiledAsserts = compiler.Asserts
+	g.compiledAssumes = compiler.Assumes
+	g.rawAsserts = compiler.RawAsserts
+	g.rawAssumes = compiler.RawAssumes
 }
 
 func (g *Generator) Run(llopt string) {
@@ -169,13 +186,36 @@ func (g *Generator) lookupVarSpecificState(base string, state int) [][]int {
 	panic(fmt.Errorf("state %d of variable %s is missing", state, base))
 }
 
-func (g *Generator) varRounds(base string, num string) map[int][]string {
-	ir := make(map[int][]string)
+func (g *Generator) varRounds(base string, num string) map[int]*rules.AssertChain {
+	ir := make(map[int]*rules.AssertChain)
 	states := g.lookupVarRounds(base, num)
 	for _, s := range states {
-		ir[s[1]] = append(ir[s[1]], fmt.Sprintf("%s_%d", base, s[0]))
+		if _, ok := ir[s[1]]; !ok {
+			ir[s[1]] = &rules.AssertChain{}
+		}
+		ir[s[1]].Values = append(ir[s[1]].Values, fmt.Sprintf("%s_%d", base, s[0]))
 	}
 	return ir
+}
+
+func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
+	//There is a bug somewhere here related to varRounds
+	//and variable initialization
+	var clean []int
+	if len(value) != len(chain) {
+		for _, c := range chain {
+			for _, v := range value {
+				if g.Log.Asserts[c].String() == v {
+					clean = append(clean, c)
+				}
+			}
+		}
+	} else {
+		clean = chain
+	}
+	ret := &rules.AssertChain{Values: value, Chain: clean, Op: op, Parent: g.currentAssert}
+	//g.Log.AssertChains[ret.String()] = ret
+	return ret
 }
 
 func (g *Generator) buildForkChoice(rules []rules.Rule, choice string, b string) {
@@ -241,7 +281,8 @@ func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
 
 func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
 	var arule []string
-	for _, v := range asserts {
+	for idx, v := range asserts {
+		g.currentAssert = idx
 		a := g.parseAssert(v)
 		arule = append(arule, a)
 	}
@@ -280,8 +321,9 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.rules = append(g.rules, g.generateRules()...)
 
-	g.newAsserts(g.rawAsserts)
-	g.newAssumes(g.rawAssumes)
+	g.processAsserts()
+	g.newAsserts(g.compiledAsserts)
+	g.newAssumes(g.compiledAssumes)
 
 }
 
@@ -299,6 +341,26 @@ func (g *Generator) generateFromCallstack(callstack []string) []rules.Rule {
 		fname := callstack[0]
 		v := g.functions[fname]
 		return g.parseFunction(v)
+	}
+}
+
+func (g *Generator) processAsserts() {
+	for i, a := range g.rawAsserts {
+		if l, ok := a.Constraint.Left.(*ast.PrefixExpression); ok {
+			l.Right = g.compiledAsserts[i].Constraint.Left
+			a.Constraint.Left = l
+		} else {
+			a.Constraint.Left = g.compiledAsserts[i].Constraint.Left
+		}
+
+		if r, ok := a.Constraint.Right.(*ast.PrefixExpression); ok {
+			r.Right = g.compiledAsserts[i].Constraint.Right
+			a.Constraint.Right = r
+		} else {
+			a.Constraint.Right = g.compiledAsserts[i].Constraint.Right
+		}
+
+		g.Log.ProcessedAsserts = append(g.Log.ProcessedAsserts, a)
 	}
 }
 
@@ -404,14 +466,27 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 
 	g.variables.InitPhis()
 
+	t, f, a := g.parseTerms(term.Succs())
+	if len(t) == 0 && len(f) == 0 { // This happens in a construction like func{stay();}
+		g.variables.PopPhis() // in state charts since we convert them to if state{ stay(); }
+		g.variables.AppendState(phis)
+
+		if a != nil {
+			after := g.parseAfterBlock(a)
+			ru = append(ru, after...)
+		}
+		return ru
+	}
+
 	choiceId := uuid.NewString()
 	branchT := fmt.Sprintf("%s-%s", choiceId, "true")
 	branchF := fmt.Sprintf("%s-%s", choiceId, "false")
 	g.Forks.Choices[choiceId] = []string{branchT, branchF}
-
-	t, f, a := g.parseTerms(term.Succs())
 	t = rules.TagRules(t, branchT, choiceId)
 	f = rules.TagRules(f, branchF, choiceId)
+
+	g.buildForkChoice(t, choiceId, branchT)
+	g.buildForkChoice(f, choiceId, branchF)
 
 	if !g.isBranchClosed(t, f) {
 		var tEnds, fEnds []rules.Rule
@@ -419,8 +494,8 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		ru = append(ru, f...)
 
 		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
-		g.buildForkChoice(t, choiceId, branchT)
-		g.buildForkChoice(f, choiceId, branchF)
+		//g.buildForkChoice(t, choiceId, branchT)
+		//g.buildForkChoice(f, choiceId, branchF)
 
 		tEnds, phis = g.capCond(choiceId, branchT, make(map[string]int16))
 		fEnds, _ = g.capCond(choiceId, branchF, phis)
@@ -1964,7 +2039,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 					g.variables.StoreLastState(base, n)
 				}
 				seenVar[base] = true
-				
+
 				for _, notB := range util.Intersection(branches, []string{b}, true) {
 					if _, ok := g.Forks.Bases[notB]; !ok {
 						g.Forks.Bases[notB] = make(map[string]bool)
@@ -1998,28 +2073,34 @@ func (g *Generator) formatEnds(k string, nums []int16, id string) string {
 // Temporal Logic
 ///////////////////////
 
-func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter string, on string, off string) string {
+func (g *Generator) applyTemporalLogic(temp string, ir *rules.AssertChain, temporalFilter string, on string, off string) string {
+	full := ir.Values
+	first := ir.Values[0]
+	clause := strings.Join(full, " ")
+
 	switch temp {
 	case "eventually":
-		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", on, strings.Join(ir, " "))
+		if len(full) > 1 {
+			g.Log.NewMultiClauseAssert(full, on)
+			or := fmt.Sprintf("(%s %s)", on, clause)
 			return or
 		}
-		return ir[0]
+		return first
 	case "always":
-		if len(ir) > 1 {
-			or := fmt.Sprintf("(%s %s)", off, strings.Join(ir, " "))
+		if len(full) > 1 {
+			g.Log.NewMultiClauseAssert(full, off)
+			or := fmt.Sprintf("(%s %s)", off, clause)
 			return or
 		}
-		return ir[0]
+		return first
 	case "eventually-always":
-		if len(ir) > 1 {
+		if len(full) > 1 {
 			or := g.eventuallyAlways(ir)
 			return or
 		}
-		return ir[0]
+		return first
 	default:
-		if len(ir) > 1 {
+		if len(full) > 1 {
 			var op string
 			switch temporalFilter {
 			case "nft":
@@ -2029,18 +2110,31 @@ func (g *Generator) applyTemporalLogic(temp string, ir []string, temporalFilter 
 			default:
 				op = off
 			}
-			or := fmt.Sprintf("(%s %s)", op, strings.Join(ir, " "))
+			g.Log.NewMultiClauseAssert(full, op)
+			or := fmt.Sprintf("(%s %s)", op, clause)
 			return or
 		}
-		return ir[0]
+		return first
 	}
 }
 
-func (g *Generator) eventuallyAlways(ir []string) string {
+func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 	var progression []string
-	for i := range ir {
-		s := fmt.Sprintf("(and %s)", strings.Join(ir[i:], " "))
+	var chain []int
+	for i := range ir.Values {
+		clause := strings.Join(ir.Values[i:], " ")
+
+		s := fmt.Sprintf("(and %s)", clause)
 		progression = append(progression, s)
+
+		idx := g.Log.NewMultiClauseAssert(ir.Values[i:], "and")
+		chain = append(chain, idx)
+
+		g.Log.AssertChains[clause] = g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and")
+		g.Log.AssertChains[s] = g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and")
 	}
-	return fmt.Sprintf("(or %s)", strings.Join(progression, " "))
+
+	parentClause := strings.Join(progression, " ")
+	g.Log.AssertChains[parentClause] = g.NewAssertChain(progression, chain, "or")
+	return fmt.Sprintf("(or %s)", parentClause)
 }

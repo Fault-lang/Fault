@@ -175,7 +175,7 @@ func (p *Processor) formatIndex(n *ast.InfixExpression) string {
 	// If left and right are numeric it will evaluate
 	// and return new node, otherwise just returns the
 	// same node
-	val := util.Evaluate(n)
+	val := ast.Evaluate(n)
 	if _, okF := val.(*ast.FloatLiteral); okF {
 		panic("index must be a whole number")
 	}
@@ -329,7 +329,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
 			p.localIdents[local] = idx
 
-			properties = util.Preparse(node.Pairs)
+			properties = ast.Preparse(node.Pairs)
 			spec.AddStock(p.scope, properties)
 			spec.Index("STOCK", p.scope)
 			p.Specs[p.trail.CurrentSpec()] = spec
@@ -361,7 +361,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
-		properties = util.Preparse(node.Pairs)
+		properties = ast.Preparse(node.Pairs)
 		spec.UpdateStock(p.scope, properties)
 
 		p.scope = ""
@@ -384,7 +384,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
 			p.localIdents[local] = idx
 
-			properties = util.Preparse(node.Pairs)
+			properties = ast.Preparse(node.Pairs)
 			spec.AddFlow(p.scope, properties)
 			spec.Index("FLOW", p.scope)
 			p.Specs[p.trail.CurrentSpec()] = spec
@@ -416,7 +416,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
-		properties = util.Preparse(node.Pairs)
+		properties = ast.Preparse(node.Pairs)
 		spec.UpdateFlow(p.scope, properties)
 
 		p.scope = ""
@@ -439,7 +439,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
 			p.localIdents[local] = idx
 
-			properties = util.Preparse(node.Pairs)
+			properties = ast.Preparse(node.Pairs)
 			spec.AddComponent(p.scope, properties)
 			spec.Index("COMPONENT", p.scope)
 			p.Specs[p.trail.CurrentSpec()] = spec
@@ -470,7 +470,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.inState = ""
 			node.Pairs[pron.(*ast.Identifier)] = pro.(ast.Expression)
 		}
-		properties = util.Preparse(node.Pairs)
+		properties = ast.Preparse(node.Pairs)
 		spec.UpdateComponent(p.scope, properties)
 
 		p.scope = ""
@@ -897,7 +897,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.AddInstance(key, reference, ty)
 
 			if len(node.Properties) > 0 {
-				properties = util.ExtractBranches(node.Properties)
+				properties = ast.ExtractBranches(node.Properties)
 			} else {
 				properties, err = spec.FetchStock(key)
 				if err != nil {
@@ -960,7 +960,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			spec.AddInstance(key, reference, ty)
 			if len(node.Properties) > 0 {
-				properties = util.ExtractBranches(node.Properties)
+				properties = ast.ExtractBranches(node.Properties)
 			} else {
 				properties, err = spec.FetchFlow(key)
 				if err != nil {

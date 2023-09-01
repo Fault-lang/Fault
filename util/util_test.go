@@ -1,102 +1,9 @@
 package util
 
 import (
-	"fault/ast"
-	"fault/parser"
 	"os"
 	"testing"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
-
-func TestGeneratorToken(t *testing.T) {
-	test := `spec test;`
-	is := antlr.NewInputStream(test)
-	lexer := parser.NewFaultLexer(is)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-	stream.GetAllText()
-	tokens := stream.GetAllTokens()
-
-	token := GenerateToken("IMPORT_DECL", "IMPORT_DECL", tokens[0], tokens[0])
-	if token.Literal != "IMPORT_DECL" {
-		t.Fatalf("token literal not correct. got=%s", token.Literal)
-	}
-	if token.Position[0] != 1 {
-		t.Fatalf("token position not correct. want=1 got=%d", token.Position[0])
-	}
-
-	if token.Position[1] != 0 {
-		t.Fatalf("token position not correct. want=0 got=%d", token.Position[1])
-	}
-
-	if token.Position[2] != 1 {
-		t.Fatalf("token position not correct. want=1 got=%d", token.Position[2])
-	}
-
-	if token.Position[3] != 0 {
-		t.Fatalf("token position not correct. want=0 got=%d", token.Position[3])
-	}
-
-}
-
-func TestPreparse(t *testing.T) {
-	token := ast.Token{Literal: "test", Position: []int{1, 2, 3, 4}}
-	pairs := make(map[*ast.Identifier]ast.Expression)
-	pairs[&ast.Identifier{Token: token, Value: "foo"}] = &ast.IntegerLiteral{Token: token, Value: 3}
-	pairs[&ast.Identifier{Token: token, Value: "bash"}] = &ast.FunctionLiteral{Token: token,
-		Parameters: []*ast.Identifier{{Token: token, Value: "foo"}},
-		Body: &ast.BlockStatement{Token: token,
-			Statements: []ast.Statement{&ast.ConstantStatement{Token: token, Name: &ast.Identifier{Token: token, Value: "buzz"}, Value: &ast.IntegerLiteral{Token: token, Value: 20}}}}}
-
-	ret := Preparse(pairs)
-
-	if len(ret) != 2 {
-		t.Fatalf("item removed from map. got=%s", ret)
-	}
-
-	for k, v := range ret {
-		if k == "foo" {
-			ty, ok := v.(*ast.IntegerLiteral)
-			if !ok {
-				t.Fatalf("pair type incorrect. want=IntegerLiteral got=%T", v)
-			}
-
-			if ty.Value != 3 {
-				t.Fatalf("pair value incorrect. want=3 got=%d", ty.Value)
-			}
-		} else if k == "bash" {
-			ty, ok := v.(*ast.FunctionLiteral)
-			if !ok {
-				t.Fatalf("pair type incorrect. want=FunctionLiteral got=%T", v)
-			}
-
-			if ty.Body.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value != 20 {
-				t.Fatalf("pair value incorrect. want=20 got=%d", ty.Body.Statements[0].(*ast.ConstantStatement).Value.(*ast.IntegerLiteral).Value)
-			}
-		} else {
-			t.Fatalf("pair key unrecognized. got=%s", k)
-		}
-	}
-}
-
-func TestKeys(t *testing.T) {
-	test := make(map[string]ast.Node)
-	test["here"] = &ast.IntegerLiteral{}
-	test["are"] = &ast.IntegerLiteral{}
-	test["your"] = &ast.IntegerLiteral{}
-	test["keys"] = &ast.IntegerLiteral{}
-
-	results := Keys(test)
-
-	if len(results) != 4 {
-		t.Fatalf("incorrect number of keys returned got=%d", len(results))
-	}
-
-	if !InStringSlice(results, "here") || !InStringSlice(results, "are") || !InStringSlice(results, "your") || !InStringSlice(results, "keys") {
-		t.Fatalf("returned keys are incorrect got=%s", results)
-	}
-
-}
 
 func TestFilepath(t *testing.T) {
 	var host string
@@ -175,100 +82,6 @@ func TestFilepath(t *testing.T) {
 	os.Setenv("FAULT_HOST", host)
 }
 
-func TestEval(t *testing.T) {
-	tests := []*ast.InfixExpression{{
-		Left:  &ast.IntegerLiteral{Value: 2},
-		Right: &ast.IntegerLiteral{Value: 2},
-	},
-		{
-			Left:  &ast.FloatLiteral{Value: 2.5},
-			Right: &ast.IntegerLiteral{Value: 2},
-		},
-		{
-			Left:     &ast.IntegerLiteral{Value: 2},
-			Operator: "+",
-			Right:    &ast.FloatLiteral{Value: 2.5},
-		}}
-
-	operators := []string{"+", "-", "/", "*"}
-
-	results := []ast.Node{
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.FloatLiteral{Value: 4.5},
-		&ast.IntegerLiteral{Value: 0},
-		&ast.FloatLiteral{Value: .5},
-		&ast.FloatLiteral{Value: -.5},
-		&ast.FloatLiteral{Value: 1},
-		&ast.FloatLiteral{Value: 1.25},
-		&ast.FloatLiteral{Value: .8},
-		&ast.IntegerLiteral{Value: 4},
-		&ast.FloatLiteral{Value: 5},
-		&ast.FloatLiteral{Value: 5},
-	}
-
-	i := 0
-	for _, o := range operators {
-		for _, n := range tests {
-			n.Operator = o
-			test := Evaluate(n)
-			switch actual := test.(type) {
-			case *ast.IntegerLiteral:
-				expected, ok := results[i].(*ast.IntegerLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			case *ast.FloatLiteral:
-				expected, ok := results[i].(*ast.FloatLiteral)
-				if !ok {
-					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
-				}
-				if expected.Value != actual.Value {
-					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
-				}
-			}
-			i++
-		}
-	}
-}
-
-func TestEvalFloat(t *testing.T) {
-	test1 := evalFloat(2.1, 1.5, "+")
-	if test1 != 3.6 {
-		t.Fatal("evalFloat failed to eval + correctly")
-	}
-	test2 := evalFloat(2.5, 1.5, "-")
-	if test2 != 1 {
-		t.Fatal("evalFloat failed to eval - correctly")
-	}
-	test3 := evalFloat(2.1, 1.0, "*")
-	if test3 != 2.1 {
-		t.Fatal("evalFloat failed to eval * correctly")
-	}
-	test4 := evalFloat(2.0, 2.0, "/")
-	if test4 != 1.0 {
-		t.Fatal("evalFloat failed to eval / correctly")
-	}
-}
-
-func TestEvalInt(t *testing.T) {
-	test1 := evalInt(2, 1, "+")
-	if test1 != 3 {
-		t.Fatal("evalInt failed to eval + correctly")
-	}
-	test2 := evalInt(2, 1, "-")
-	if test2 != 1 {
-		t.Fatal("evalInt failed to eval - correctly")
-	}
-	test3 := evalInt(2, 1, "*")
-	if test3 != 2 {
-		t.Fatal("evalInt failed to eval * correctly")
-	}
-}
-
 func TestCartesian(t *testing.T) {
 	list1 := []string{"a", "b", "c"}
 	list2 := []string{"1", "2"}
@@ -312,26 +125,6 @@ func TestCartesianMulti(t *testing.T) {
 
 	if r[3][0] != "a" || r[3][1] != "2" || r[3][2] != "4" {
 		t.Fatalf("cartesian product not correct. got=%s", r)
-	}
-
-}
-
-func TestMergeNodeMaps(t *testing.T) {
-	m1 := make(map[string]ast.Node)
-	m1["foo"] = &ast.IntegerLiteral{Value: 5}
-	m1["bar"] = &ast.IntegerLiteral{Value: 15}
-
-	m2 := make(map[string]ast.Node)
-	m2["test"] = &ast.IntegerLiteral{Value: 2}
-
-	m3 := MergeNodeMaps(m1, m2)
-
-	if len(m3) != 3 {
-		t.Fatalf("merged map has the wrong length got=%d", len(m3))
-	}
-
-	if m3["test"].(*ast.IntegerLiteral).Value != 2 || m3["foo"].(*ast.IntegerLiteral).Value != 5 {
-		t.Fatalf("node map not merged correctly")
 	}
 
 }
@@ -507,18 +300,6 @@ func TestStableSortKeys(t *testing.T) {
 	}
 }
 
-func TestExtractBranches(t *testing.T) {
-	test := make(map[string]*ast.StructProperty)
-	test["foo"] = &ast.StructProperty{Value: &ast.IntegerLiteral{Value: 5}}
-	test["bar"] = &ast.StructProperty{Value: &ast.IntegerLiteral{Value: 2}}
-
-	r := ExtractBranches(test)
-
-	if r["foo"].(*ast.IntegerLiteral).Value != 5 || r["bar"].(*ast.IntegerLiteral).Value != 2 {
-		t.Fatal("ExtractBranches returned the wrong result")
-	}
-}
-
 func TestCaptureState(t *testing.T) {
 	test1 := "this_is_a_test"
 
@@ -618,19 +399,6 @@ func TestDetectMode(t *testing.T) {
 	t3 := DetectMode("test.mp4")
 	if t3 != "" {
 		t.Fatalf("incorrect value returned from DetectMode got=%s want=%s", t3, "")
-	}
-}
-
-func TestIsCompare(t *testing.T) {
-	if IsCompare("hihi") {
-		t.Fatal("first test of IsCompare has failed")
-	}
-
-	test := []string{">", "<", "==", "!=", "<=", ">=", "&&", "||", "!"}
-	for i, c := range test {
-		if !IsCompare(c) {
-			t.Fatalf("test %d of %d IsCompare tests has failed", i, len(test))
-		}
 	}
 }
 

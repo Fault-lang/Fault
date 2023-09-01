@@ -52,9 +52,9 @@ func TestEventually(t *testing.T) {
 	(assert (or (> test1_t_foo_value_0 0) (> test1_t_foo_value_1 0)(> test1_t_foo_value_2 0)(> test1_t_foo_value_3 0)(> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0)))
 `
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("Eventually", smt, expecting)
+	err := compareResults("Eventually", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -104,9 +104,9 @@ func TestEventuallyAlways(t *testing.T) {
 		))
 `
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("EventuallyAlways", smt, expecting)
+	err := compareResults("EventuallyAlways", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -156,9 +156,9 @@ func TestEventuallyAlways2(t *testing.T) {
 		))
 `
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("EventuallyAlways2", smt, expecting)
+	err := compareResults("EventuallyAlways2", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -200,9 +200,9 @@ func TestTemporal(t *testing.T) {
 	(assert (or (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_1 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_4 0) (<= test1_t_foo_value_5 0))))
 	`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("Temporal", smt, expecting)
+	err := compareResults("Temporal", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -251,9 +251,9 @@ func TestTemporal2(t *testing.T) {
 (assert (or (and (>= test1_t_u_x_0 2) (< test1_t_u_x_0 10)) (and (>= test1_t_u_x_1 2) (< test1_t_u_x_1 10)) (and (>= test1_t_u_x_2 2) (< test1_t_u_x_2 10)) (and (>= test1_t_u_x_3 2) (< test1_t_u_x_3 10)) (and (>= test1_t_u_x_4 2) (< test1_t_u_x_4 10)) (and (>= test1_t_u_x_5 2) (< test1_t_u_x_5 10))))
 (assert (or (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_1 2)) (and (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_2 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_3 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_2 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_3 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_2 2) (= test1_t_u_x_3 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_2 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_2 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_3 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_3 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_4 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2))))))`
 
-	smt := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-	err := compareResults("Temporal2", smt, string(expecting))
+	err := compareResults("Temporal2", g.SMT(), string(expecting))
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -324,9 +324,9 @@ func TestTemporalSys(t *testing.T) {
 	(assert (ite (= test1_b_buzz_1 true) (and (= test1_a_foo_6 test1_a_foo_5) (= test1_b_buzz_3 test1_b_buzz_2)) (and (= test1_a_foo_6 test1_a_foo_4) (= test1_b_buzz_3 test1_b_buzz_1))))(assert (and (or test1_a_zoo_0 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_1) (or test1_a_zoo_1 test1_b_bar_2) (or test1_a_zoo_2 test1_b_bar_2) (or test1_a_zoo_3 test1_b_bar_2)))
 	`
 
-	smt := prepTest("", test, false, false)
+	g := prepTest("", test, false, false)
 
-	err := compareResults("TemporalSys", smt, string(expecting))
+	err := compareResults("TemporalSys", g.SMT(), string(expecting))
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -420,9 +420,9 @@ func TestTemporalSys2(t *testing.T) {
 	(assert (= test1_b_buzz_4 false))
 	(assert (ite (= test1_b_buzz_3 true) (and (= test1_a_foo_12 test1_a_foo_11) (= test1_b_buzz_5 test1_b_buzz_4)) (and (= test1_b_buzz_5 test1_b_buzz_3) (= test1_a_foo_12 test1_a_foo_10))))(assert (and (or (or test1_a_zoo_0 test1_b_buzz_0) (or (<= test1_b_bar_0 3) (not (= test1_a_foo_0 4)))) (or (or test1_a_zoo_1 test1_b_buzz_0) (or (<= test1_b_bar_0 3) (not (= test1_a_foo_0 4)))) (or (or test1_a_zoo_1 test1_b_buzz_1) (or (<= test1_b_bar_0 3) (not (= test1_a_foo_0 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_2 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_3 test1_b_buzz_1) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_3 test1_b_buzz_2) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_1 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_1 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_2 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_3 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_4 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_5 4)))) (or (or test1_a_zoo_3 test1_b_buzz_3) (or (<= test1_b_bar_2 3) (not (= test1_a_foo_6 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_4 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_5 test1_b_buzz_3) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_5 test1_b_buzz_4) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_3 3) (not (= test1_a_foo_12 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_7 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_8 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_9 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_10 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_11 4)))) (or (or test1_a_zoo_5 test1_b_buzz_5) (or (<= test1_b_bar_4 3) (not (= test1_a_foo_12 4))))))`
 
-	smt := prepTest("", test, false, false)
+	g := prepTest("", test, false, false)
 
-	err := compareResults("TemporalSys", smt, string(expecting))
+	err := compareResults("TemporalSys", g.SMT(), string(expecting))
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -465,13 +465,13 @@ func TestTestData(t *testing.T) {
 		if err != nil {
 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
 		}
-		smt := prepTest(s, string(data), true, false)
+		g := prepTest(s, string(data), true, false)
 
 		if err != nil {
 			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
 		}
 
-		err = compareResults(s, smt, string(expecting))
+		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -507,13 +507,13 @@ func TestSys(t *testing.T) {
 		if err != nil {
 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
 		}
-		smt := prepTest(s[0], string(data), false, imports)
+		g := prepTest(s[0], string(data), false, imports)
 
 		if err != nil {
 			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
 		}
 
-		err = compareResults(s[0], smt, string(expecting))
+		err = compareResults(s[0], g.SMT(), string(expecting))
 
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -523,16 +523,16 @@ func TestSys(t *testing.T) {
 
 func TestMultiCond(t *testing.T) {
 	specs := []string{
-		//"testdata/conditionals/multicond.fspec",
-		//"testdata/conditionals/multicond2.fspec",
+		"testdata/conditionals/multicond.fspec",
+		"testdata/conditionals/multicond2.fspec",
 		"testdata/conditionals/multicond3.fspec",
 		"testdata/conditionals/multicond4.fspec",
 		"testdata/conditionals/multicond5.fspec",
 		"testdata/conditionals/condwelse.fspec",
 	}
 	smt2s := []string{
-		//"testdata/conditionals/multicond.smt2",
-		//"testdata/conditionals/multicond2.smt2",
+		"testdata/conditionals/multicond.smt2",
+		"testdata/conditionals/multicond2.smt2",
 		"testdata/conditionals/multicond3.smt2",
 		"testdata/conditionals/multicond4.smt2",
 		"testdata/conditionals/multicond5.smt2",
@@ -548,13 +548,13 @@ func TestMultiCond(t *testing.T) {
 		if err != nil {
 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
 		}
-		smt := prepTest(s, string(data), true, true)
+		g := prepTest(s, string(data), true, true)
 
 		if err != nil {
 			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
 		}
 
-		err = compareResults(s, smt, string(expecting))
+		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -599,7 +599,7 @@ func stripAndEscape(str string) string {
 	return output.String()
 }
 
-func prepTest(filepath string, test string, specType bool, testRun bool) string {
+func prepTest(filepath string, test string, specType bool, testRun bool) *Generator {
 	flags := make(map[string]bool)
 	flags["specType"] = specType
 	flags["testing"] = testRun
@@ -620,7 +620,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) string 
 
 	//fmt.Println(compiler.GetIR())
 	generator := Execute(compiler)
-	return generator.SMT()
+	return generator
 }
 
 func notStrictlyOrdered(want string, got string) bool {

@@ -207,13 +207,13 @@ func (sr *SpecRecord) FetchOrder() [][]string {
 func (sr *SpecRecord) FetchAll() map[string]ast.Node {
 	all := make(map[string]ast.Node)
 	for _, v := range sr.Stocks {
-		all = util.MergeNodeMaps(all, v)
+		all = ast.MergeNodeMaps(all, v)
 	}
 	for _, v := range sr.Flows {
-		all = util.MergeNodeMaps(all, v)
+		all = ast.MergeNodeMaps(all, v)
 	}
 	for _, v := range sr.Components {
-		all = util.MergeNodeMaps(all, v)
+		all = ast.MergeNodeMaps(all, v)
 	}
 	for k, v := range sr.Constants {
 		all[k] = v

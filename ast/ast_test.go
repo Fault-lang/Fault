@@ -1,8 +1,11 @@
 package ast
 
 import (
+	"fault/parser"
 	"fmt"
 	"testing"
+
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func InitNodes() []Node {
@@ -416,6 +419,230 @@ func TestOrder(t *testing.T) {
 			if keys[0] != "foo" || keys[1] != "bar" || keys[2] != "bash" {
 				t.Fatal("order broken on ComponentLiteral")
 			}
+		}
+	}
+}
+
+func TestEval(t *testing.T) {
+	tests := []*InfixExpression{{
+		Left:  &IntegerLiteral{Value: 2},
+		Right: &IntegerLiteral{Value: 2},
+	},
+		{
+			Left:  &FloatLiteral{Value: 2.5},
+			Right: &IntegerLiteral{Value: 2},
+		},
+		{
+			Left:     &IntegerLiteral{Value: 2},
+			Operator: "+",
+			Right:    &FloatLiteral{Value: 2.5},
+		}}
+
+	operators := []string{"+", "-", "/", "*"}
+
+	results := []Node{
+		&IntegerLiteral{Value: 4},
+		&FloatLiteral{Value: 4.5},
+		&FloatLiteral{Value: 4.5},
+		&IntegerLiteral{Value: 0},
+		&FloatLiteral{Value: .5},
+		&FloatLiteral{Value: -.5},
+		&FloatLiteral{Value: 1},
+		&FloatLiteral{Value: 1.25},
+		&FloatLiteral{Value: .8},
+		&IntegerLiteral{Value: 4},
+		&FloatLiteral{Value: 5},
+		&FloatLiteral{Value: 5},
+	}
+
+	i := 0
+	for _, o := range operators {
+		for _, n := range tests {
+			n.Operator = o
+			test := Evaluate(n)
+			switch actual := test.(type) {
+			case *IntegerLiteral:
+				expected, ok := results[i].(*IntegerLiteral)
+				if !ok {
+					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+				}
+				if expected.Value != actual.Value {
+					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+				}
+			case *FloatLiteral:
+				expected, ok := results[i].(*FloatLiteral)
+				if !ok {
+					t.Fatalf("expected value a different type from actual expected=%s actual=%s", results[i], test)
+				}
+				if expected.Value != actual.Value {
+					t.Fatalf("expected value a different from actual expected=%s actual=%s", expected, actual)
+				}
+			}
+			i++
+		}
+	}
+}
+
+func TestEvalFloat(t *testing.T) {
+	test1 := evalFloat(2.1, 1.5, "+")
+	if test1 != 3.6 {
+		t.Fatal("evalFloat failed to eval + correctly")
+	}
+	test2 := evalFloat(2.5, 1.5, "-")
+	if test2 != 1 {
+		t.Fatal("evalFloat failed to eval - correctly")
+	}
+	test3 := evalFloat(2.1, 1.0, "*")
+	if test3 != 2.1 {
+		t.Fatal("evalFloat failed to eval * correctly")
+	}
+	test4 := evalFloat(2.0, 2.0, "/")
+	if test4 != 1.0 {
+		t.Fatal("evalFloat failed to eval / correctly")
+	}
+}
+
+func TestEvalInt(t *testing.T) {
+	test1 := evalInt(2, 1, "+")
+	if test1 != 3 {
+		t.Fatal("evalInt failed to eval + correctly")
+	}
+	test2 := evalInt(2, 1, "-")
+	if test2 != 1 {
+		t.Fatal("evalInt failed to eval - correctly")
+	}
+	test3 := evalInt(2, 1, "*")
+	if test3 != 2 {
+		t.Fatal("evalInt failed to eval * correctly")
+	}
+}
+
+func TestPreparse(t *testing.T) {
+	token := Token{Literal: "test", Position: []int{1, 2, 3, 4}}
+	pairs := make(map[*Identifier]Expression)
+	pairs[&Identifier{Token: token, Value: "foo"}] = &IntegerLiteral{Token: token, Value: 3}
+	pairs[&Identifier{Token: token, Value: "bash"}] = &FunctionLiteral{Token: token,
+		Parameters: []*Identifier{{Token: token, Value: "foo"}},
+		Body: &BlockStatement{Token: token,
+			Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{Token: token, Value: "buzz"}, Value: &IntegerLiteral{Token: token, Value: 20}}}}}
+
+	ret := Preparse(pairs)
+
+	if len(ret) != 2 {
+		t.Fatalf("item removed from map. got=%s", ret)
+	}
+
+	for k, v := range ret {
+		if k == "foo" {
+			ty, ok := v.(*IntegerLiteral)
+			if !ok {
+				t.Fatalf("pair type incorrect. want=IntegerLiteral got=%T", v)
+			}
+
+			if ty.Value != 3 {
+				t.Fatalf("pair value incorrect. want=3 got=%d", ty.Value)
+			}
+		} else if k == "bash" {
+			ty, ok := v.(*FunctionLiteral)
+			if !ok {
+				t.Fatalf("pair type incorrect. want=FunctionLiteral got=%T", v)
+			}
+
+			if ty.Body.Statements[0].(*ConstantStatement).Value.(*IntegerLiteral).Value != 20 {
+				t.Fatalf("pair value incorrect. want=20 got=%d", ty.Body.Statements[0].(*ConstantStatement).Value.(*IntegerLiteral).Value)
+			}
+		} else {
+			t.Fatalf("pair key unrecognized. got=%s", k)
+		}
+	}
+}
+
+func TestKeys(t *testing.T) {
+	test := make(map[string]Node)
+	test["here"] = &IntegerLiteral{}
+	test["are"] = &IntegerLiteral{}
+	test["your"] = &IntegerLiteral{}
+	test["keys"] = &IntegerLiteral{}
+
+	results := Keys(test)
+
+	if len(results) != 4 {
+		t.Fatalf("incorrect number of keys returned got=%d", len(results))
+	}
+
+}
+
+func TestGeneratorToken(t *testing.T) {
+	test := `spec test;`
+	is := antlr.NewInputStream(test)
+	lexer := parser.NewFaultLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	stream.GetAllText()
+	tokens := stream.GetAllTokens()
+
+	token := GenerateToken("IMPORT_DECL", "IMPORT_DECL", tokens[0], tokens[0])
+	if token.Literal != "IMPORT_DECL" {
+		t.Fatalf("token literal not correct. got=%s", token.Literal)
+	}
+	if token.Position[0] != 1 {
+		t.Fatalf("token position not correct. want=1 got=%d", token.Position[0])
+	}
+
+	if token.Position[1] != 0 {
+		t.Fatalf("token position not correct. want=0 got=%d", token.Position[1])
+	}
+
+	if token.Position[2] != 1 {
+		t.Fatalf("token position not correct. want=1 got=%d", token.Position[2])
+	}
+
+	if token.Position[3] != 0 {
+		t.Fatalf("token position not correct. want=0 got=%d", token.Position[3])
+	}
+
+}
+
+func TestMergeNodeMaps(t *testing.T) {
+	m1 := make(map[string]Node)
+	m1["foo"] = &IntegerLiteral{Value: 5}
+	m1["bar"] = &IntegerLiteral{Value: 15}
+
+	m2 := make(map[string]Node)
+	m2["test"] = &IntegerLiteral{Value: 2}
+
+	m3 := MergeNodeMaps(m1, m2)
+
+	if len(m3) != 3 {
+		t.Fatalf("merged map has the wrong length got=%d", len(m3))
+	}
+
+	if m3["test"].(*IntegerLiteral).Value != 2 || m3["foo"].(*IntegerLiteral).Value != 5 {
+		t.Fatalf("node map not merged correctly")
+	}
+
+}
+
+func TestExtractBranches(t *testing.T) {
+	test := make(map[string]*StructProperty)
+	test["foo"] = &StructProperty{Value: &IntegerLiteral{Value: 5}}
+	test["bar"] = &StructProperty{Value: &IntegerLiteral{Value: 2}}
+
+	r := ExtractBranches(test)
+
+	if r["foo"].(*IntegerLiteral).Value != 5 || r["bar"].(*IntegerLiteral).Value != 2 {
+		t.Fatal("ExtractBranches returned the wrong result")
+	}
+}
+
+func TestIsCompare(t *testing.T) {
+	if IsCompare("hihi") {
+		t.Fatal("first test of IsCompare has failed")
+	}
+
+	test := []string{">", "<", "==", "!=", "<=", ">=", "&&", "||", "!"}
+	for i, c := range test {
+		if !IsCompare(c) {
+			t.Fatalf("test %d of %d IsCompare tests has failed", i, len(test))
 		}
 	}
 }

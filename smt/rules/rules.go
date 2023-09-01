@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fault/util"
 	"fmt"
+	"strings"
 
 	"github.com/llir/llvm/ir/value"
 )
@@ -57,11 +58,28 @@ func (a *Ands) Branch() string {
 	return a.tag.branch
 }
 
+type AssertChain struct {
+	Op     string
+	Values []string
+	Chain  []int
+	Parent int
+}
+
+func (ac *AssertChain) String() string {
+	if ac.Op == "" {
+		return strings.Join(ac.Values, " ")
+	}
+	if ac.Op == "!=" {
+		return fmt.Sprintf("(not (= %s)", strings.Join(ac.Values, " "))
+	}
+	return fmt.Sprintf("(%s %s)", ac.Op, strings.Join(ac.Values, " "))
+}
+
 type States struct {
 	Rule
 	Terminal bool
 	Base     string
-	States   map[int][]string
+	States   map[int]*AssertChain
 	Constant bool
 	tag      *branch
 }
@@ -90,6 +108,14 @@ func (s *States) Choice() string {
 
 func (s *States) Branch() string {
 	return s.tag.branch
+}
+
+func (s *States) GetChains() []int {
+	var ret []int
+	for _, a := range s.States {
+		ret = append(ret, a.Chain...)
+	}
+	return ret
 }
 
 type Assrt struct {

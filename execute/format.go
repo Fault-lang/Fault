@@ -2,6 +2,7 @@ package execute
 
 import (
 	"bytes"
+	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
@@ -50,6 +51,7 @@ func (mc *ModelChecker) writeObject(o *variables.VarChange) string {
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
 	var out bytes.Buffer
+	out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
 	for k, v := range results {
 		out.WriteString(k + "\n")
 		deadVars := mc.DeadVariables()
@@ -57,6 +59,34 @@ func (mc *ModelChecker) Format(results map[string]Scenario) {
 		r := generateRows(filtered)
 		out.WriteString(strings.Join(r, " ") + "\n\n")
 	}
+	fmt.Println(out.String())
+}
+
+func (mc *ModelChecker) Static(results map[string]Scenario) {
+	var out bytes.Buffer
+	for k, v := range results {
+		mc.mapToLog(k, v)
+	}
+
+	deadVars := mc.DeadVariables()
+	mc.Log.FilterOut(deadVars)
+	var violations []string
+	var pass bool
+
+	if len(mc.Log.ProcessedAsserts) > 0 {
+		mc.CheckAsserts(mc.Log.AssertChains)
+		violations, pass = mc.FetchViolations()
+	}
+
+	if !pass {
+		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
+		out.WriteString("Model Properties and Invarients:\n")
+		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		out.WriteString(mc.Log.Static())
+	} else {
+		out.WriteString("Fault could not find a failure case.\n")
+	}
+
 	fmt.Println(out.String())
 }
 
@@ -68,8 +98,22 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
+	var violations []string
+	var pass bool
 
-	out.WriteString(mc.Log.String())
+	if len(mc.Log.ProcessedAsserts) > 0 {
+		mc.CheckAsserts(mc.Log.AssertChains)
+		violations, pass = mc.FetchViolations()
+	}
+
+	if !pass {
+		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
+		out.WriteString("Model Properties and Invarients:\n")
+		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		out.WriteString(mc.Log.String())
+	} else {
+		out.WriteString("Fault could not find a failure case.\n")
+	}
 
 	fmt.Println(out.String())
 }
@@ -163,6 +207,53 @@ func generateRows(v Scenario) []string {
 	return nil
 }
 
+func (mc *ModelChecker) CheckAsserts(chains map[string]*rules.AssertChain) {
+	cache := make(map[string]map[string]bool)
+	for _, c := range chains {
+		for _, ch := range c.Chain {
+			clause, ok := cache[mc.Log.ProcessedAsserts[c.Parent].String()]
+
+			if !ok {
+				cache[mc.Log.ProcessedAsserts[c.Parent].String()] = make(map[string]bool)
+			}
+
+			if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
+				cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
+				mc.Log.ProcessedAsserts[c.Parent].Violated = mc.Eval(mc.Log.Asserts[ch])
+			}
+		}
+	}
+}
+
+func (mc *ModelChecker) dontBackTrack(clauses map[string]bool, subclause string) bool {
+	// Formatter may iterate through assert clauses in any order, don't backtrack
+	// through subclauses we've already evaluated
+
+	for clause := range clauses {
+		if len(subclause) > len(clause) { //Can't possibly be a subclause
+			return true
+		}
+
+		if strings.Contains(clause, subclause) { //We've already seen this, don't overwrite the Violation property
+			return false
+		}
+	}
+
+	return true
+}
+
+func (mc *ModelChecker) FetchViolations() ([]string, bool) {
+	var checked []string
+	var pass = true
+	for _, a := range mc.Log.ProcessedAsserts {
+		checked = append(checked, a.EvLogString(false))
+		if a.Violated {
+			pass = false
+		}
+	}
+	return checked, pass
+}
+
 func (mc *ModelChecker) DeadVariables() []string {
 	var dead []string
 	for choiceId, branchIds := range mc.Forks.Choices {
@@ -208,7 +299,7 @@ func (mc *ModelChecker) pickWinner(choiceId string, branchIds []string) (string,
 				// If the only variables defined in the branch are phis
 				// branch will default to true
 			} else if mc.Forks.Vars[dvars].Phi[choiceId] == mc.Forks.Vars[dvars].SSA { //Is this the Phi?
-				last := mc.ResultValues[mc.Forks.GetPrevious(dvars,branch, branchIds)] // What was the previous value?
+				last := mc.ResultValues[mc.Forks.GetPrevious(dvars, branch, branchIds)] // What was the previous value?
 				phi := mc.ResultValues[dvars]
 				if last != phi {
 					fail = true

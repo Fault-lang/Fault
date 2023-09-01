@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"fault/util"
 	"fmt"
 	"strconv"
 	"strings"
@@ -303,6 +304,7 @@ type AssertionStatement struct {
 	Temporal       string
 	TemporalFilter string
 	TemporalN      int
+	Violated       bool // After model checking, for output
 }
 
 func (as *AssertionStatement) statementNode()       {}
@@ -320,6 +322,40 @@ func (as *AssertionStatement) String() string {
 	out.WriteString(as.Constraint.Left.String())
 	out.WriteString(as.Constraint.Operator)
 	out.WriteString(as.Constraint.Right.String())
+	out.WriteString(";")
+	return out.String()
+}
+func (as *AssertionStatement) EvLogString(negate bool) string {
+	var out bytes.Buffer
+	if as.Violated {
+		out.WriteString("FAILED  ")
+	} else {
+		out.WriteString("OK  ")
+	}
+
+	if as.Assume {
+		out.WriteString("assume ")
+	} else {
+		out.WriteString("assert ")
+	}
+	out.WriteString(as.Constraint.Left.String())
+	out.WriteString(" ")
+	if !as.Assume && negate {
+		out.WriteString(util.OP_NEGATE[as.Constraint.Operator])
+	} else {
+		out.WriteString(as.Constraint.Operator)
+	}
+	out.WriteString(" ")
+	out.WriteString(as.Constraint.Right.String())
+	if as.TemporalFilter != "" {
+		out.WriteString(" ")
+		out.WriteString(as.TemporalFilter)
+		out.WriteString(" ")
+		out.WriteString(fmt.Sprintf("%v", as.TemporalN))
+	} else if as.Temporal != "" {
+		out.WriteString(" ")
+		out.WriteString(as.Temporal)
+	}
 	out.WriteString(";")
 	return out.String()
 }

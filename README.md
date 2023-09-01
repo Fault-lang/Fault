@@ -29,7 +29,10 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [audio](https://anchor.fm/mwapl)
 - [transcripts](https://dev.to/bellmar/series/9711)
 
-### Current Status (5/24/2023)
+### Current Status (8/31/2023)
+Been doing a lot of work on how model outputs are displayed. Needed to fix how dead branches are filtered first. The default display is now formatted like an event log. Also added a static format that just outputs variable values.
+
+#### (5/24/2023)
 Introducing strings to Fault, plus fixing some bugs in the behavior of imports. Strings in Fault behave like booleans and allow easily readable rules to be defined for the model checker to solve. They are not treated as immutable but haven't yet figured out how I want to syntax to change their state to look yet.
 
 #### (4/26/2023)
