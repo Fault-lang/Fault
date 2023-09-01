@@ -51,6 +51,7 @@ func (mc *ModelChecker) writeObject(o *variables.VarChange) string {
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
 	var out bytes.Buffer
+	out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 	for k, v := range results {
 		out.WriteString(k + "\n")
 		deadVars := mc.DeadVariables()
@@ -69,14 +70,22 @@ func (mc *ModelChecker) Static(results map[string]Scenario) {
 
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
+	var violations []string
+	var pass bool
+
 	if len(mc.Log.ProcessedAsserts) > 0 {
 		mc.CheckAsserts(mc.Log.AssertChains)
-		violations := mc.FetchViolations()
-		out.WriteString("Model Properties and Invarients:\n")
-		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		violations, pass = mc.FetchViolations()
 	}
 
-	out.WriteString(mc.Log.Static())
+	if !pass {
+		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		out.WriteString("Model Properties and Invarients:\n")
+		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		out.WriteString(mc.Log.Static())
+	} else {
+		out.WriteString("Fault could not find a failure case.")
+	}
 
 	fmt.Println(out.String())
 }
@@ -89,14 +98,22 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
+	var violations []string
+	var pass bool
+
 	if len(mc.Log.ProcessedAsserts) > 0 {
 		mc.CheckAsserts(mc.Log.AssertChains)
-		violations := mc.FetchViolations()
-		out.WriteString("Model Properties and Invarients:\n")
-		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		violations, pass = mc.FetchViolations()
 	}
 
-	out.WriteString(mc.Log.String())
+	if !pass {
+		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		out.WriteString("Model Properties and Invarients:\n")
+		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		out.WriteString(mc.Log.String())
+	} else {
+		out.WriteString("Fault could not find a failure case.")
+	}
 
 	fmt.Println(out.String())
 }
@@ -225,12 +242,16 @@ func (mc *ModelChecker) dontBackTrack(clauses map[string]bool, subclause string)
 	return true
 }
 
-func (mc *ModelChecker) FetchViolations() []string {
+func (mc *ModelChecker) FetchViolations() ([]string, bool) {
 	var checked []string
+	var pass = true
 	for _, a := range mc.Log.ProcessedAsserts {
 		checked = append(checked, a.EvLogString(false))
+		if a.Violated {
+			pass = false
+		}
 	}
-	return checked
+	return checked, pass
 }
 
 func (mc *ModelChecker) DeadVariables() []string {

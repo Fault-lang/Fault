@@ -159,21 +159,18 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 
 		if data != nil && output == "legacy" {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
 			return
 		}
 
 		if data != nil && output == "static" {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Static(data)
 			return
 		}
 
 		if data != nil {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.EventLog(data)
 		}
 	case "ll":
@@ -193,21 +190,18 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 		}
 		if data != nil && output == "legacy" {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
 			return
 		}
 
 		if data != nil && output == "static" {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Static(data)
 			return
 		}
 
 		if data != nil {
 			mc.LoadMeta(generator.Forks)
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.EventLog(data)
 		}
 	case "smt2":
@@ -218,13 +212,11 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 			return
 		}
 		if data != nil && output == "legacy" {
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Format(data)
 			return
 		}
 
 		if data != nil && output == "static" {
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
 			mc.Static(data)
 			return
 		}
