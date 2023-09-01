@@ -51,7 +51,7 @@ func (mc *ModelChecker) writeObject(o *variables.VarChange) string {
 
 func (mc *ModelChecker) Format(results map[string]Scenario) {
 	var out bytes.Buffer
-	out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+	out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
 	for k, v := range results {
 		out.WriteString(k + "\n")
 		deadVars := mc.DeadVariables()
@@ -79,12 +79,12 @@ func (mc *ModelChecker) Static(results map[string]Scenario) {
 	}
 
 	if !pass {
-		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
 		out.WriteString("Model Properties and Invarients:\n")
 		out.WriteString(strings.Join(violations, "\n") + "\n\n")
 		out.WriteString(mc.Log.Static())
 	} else {
-		out.WriteString("Fault could not find a failure case.")
+		out.WriteString("Fault could not find a failure case.\n")
 	}
 
 	fmt.Println(out.String())
@@ -107,12 +107,12 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	}
 
 	if !pass {
-		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
 		out.WriteString("Model Properties and Invarients:\n")
 		out.WriteString(strings.Join(violations, "\n") + "\n\n")
 		out.WriteString(mc.Log.String())
 	} else {
-		out.WriteString("Fault could not find a failure case.")
+		out.WriteString("Fault could not find a failure case.\n")
 	}
 
 	fmt.Println(out.String())
