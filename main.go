@@ -67,9 +67,9 @@ func validate_filetype(data string, filetype string) bool {
 	return false
 }
 
-func smt2(ir string, runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) *smt.Generator {
+func smt2(ir string, compiler *llvm.Compiler) *smt.Generator {
 	generator := smt.NewGenerator()
-	generator.LoadMeta(runs, uncertains, unknowns, asserts, assumes)
+	generator.LoadMeta(compiler)
 	generator.Run(ir)
 	return generator
 }
@@ -177,7 +177,10 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 			mc.EventLog(data)
 		}
 	case "ll":
-		generator := smt2(d, 0, uncertains, unknowns, nil, nil)
+		compiler := llvm.NewCompiler()
+		compiler.Uncertains = uncertains
+		compiler.Unknowns = unknowns
+		generator := smt2(d, compiler)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
 			return

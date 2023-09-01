@@ -1,0 +1,22 @@
+spec fibonacci;
+
+def n = stock{
+    value: 0,
+};
+
+def fib = flow{
+    num: new n,
+    increment: func{
+        if num.value == 0 {
+            num.value <- 1;
+        }else{
+            num.value <- num.value[now-1];
+        }
+    },
+};
+
+for 6 init{
+    f = new fib;
+}run{
+    f.increment;
+}

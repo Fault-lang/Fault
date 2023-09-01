@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/barkimedes/go-deepcopy"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
@@ -264,10 +265,18 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 
 	if !c.isImport {
 		for _, assert := range c.RawAsserts {
-			c.compileAssert(assert)
+			a, err := deepcopy.Anything(assert)
+			if err != nil {
+				panic(err)
+			}
+			c.compileAssert(a.(*ast.AssertionStatement))
 		}
 		for _, assert := range c.RawAssumes {
-			c.compileAssert(assert)
+			a, err := deepcopy.Anything(assert)
+			if err != nil {
+				panic(err)
+			}
+			c.compileAssert(a.(*ast.AssertionStatement))
 		}
 	}
 

@@ -28,12 +28,14 @@ type Generator struct {
 	branchId        int
 
 	// Raw input
-	Uncertains map[string][]float64
-	Unknowns   []string
-	functions  map[string]*ir.Func
-	rawAsserts []*ast.AssertionStatement
-	rawAssumes []*ast.AssertionStatement
-	rawRules   [][]rules.Rule
+	Uncertains      map[string][]float64
+	Unknowns        []string
+	functions       map[string]*ir.Func
+	compiledAsserts []*ast.AssertionStatement
+	compiledAssumes []*ast.AssertionStatement
+	rawAsserts      []*ast.AssertionStatement
+	rawAssumes      []*ast.AssertionStatement
+	rawRules        [][]rules.Rule
 
 	// Generated SMT
 	inits     []string
@@ -79,7 +81,7 @@ func NewGenerator() *Generator {
 
 func Execute(compiler *llvm.Compiler) *Generator {
 	generator := NewGenerator()
-	generator.LoadMeta(compiler.RunRound, compiler.Uncertains, compiler.Unknowns, compiler.Asserts, compiler.Assumes)
+	generator.LoadMeta(compiler)
 	generator.States = compiler.States
 	generator.Run(compiler.GetIR())
 	generator.LoadStringRules(compiler.StringRules) // Do last to get SSA values
@@ -97,17 +99,19 @@ func (g *Generator) LoadStringRules(sr map[string]string) {
 	}
 }
 
-func (g *Generator) LoadMeta(runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement) {
-	if runs == 0 {
+func (g *Generator) LoadMeta(compiler *llvm.Compiler /*runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement*/) {
+	if compiler.RunRound == 0 {
 		g.Rounds = 1 //even if runs are zero we need to generate asserts for initialization
 	} else {
-		g.Rounds = int(runs)
+		g.Rounds = int(compiler.RunRound)
 	}
 
-	g.Uncertains = uncertains
-	g.Unknowns = unknowns
-	g.rawAsserts = asserts
-	g.rawAssumes = assumes
+	g.Uncertains = compiler.Uncertains
+	g.Unknowns = compiler.Unknowns
+	g.compiledAsserts = compiler.Asserts
+	g.compiledAssumes = compiler.Assumes
+	g.rawAsserts = compiler.RawAsserts
+	g.rawAssumes = compiler.RawAssumes
 }
 
 func (g *Generator) Run(llopt string) {
@@ -277,9 +281,8 @@ func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
 
 func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
 	var arule []string
-	for _, v := range asserts {
-		g.Log.ProcessedAsserts = append(g.Log.ProcessedAsserts, v)
-		g.currentAssert = len(g.Log.ProcessedAsserts) - 1
+	for idx, v := range asserts {
+		g.currentAssert = idx
 		a := g.parseAssert(v)
 		arule = append(arule, a)
 	}
@@ -318,8 +321,9 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.rules = append(g.rules, g.generateRules()...)
 
-	g.newAsserts(g.rawAsserts)
-	g.newAssumes(g.rawAssumes)
+	g.processAsserts()
+	g.newAsserts(g.compiledAsserts)
+	g.newAssumes(g.compiledAssumes)
 
 }
 
@@ -337,6 +341,26 @@ func (g *Generator) generateFromCallstack(callstack []string) []rules.Rule {
 		fname := callstack[0]
 		v := g.functions[fname]
 		return g.parseFunction(v)
+	}
+}
+
+func (g *Generator) processAsserts() {
+	for i, a := range g.rawAsserts {
+		if l, ok := a.Constraint.Left.(*ast.PrefixExpression); ok {
+			l.Right = g.compiledAsserts[i].Constraint.Left
+			a.Constraint.Left = l
+		} else {
+			a.Constraint.Left = g.compiledAsserts[i].Constraint.Left
+		}
+
+		if r, ok := a.Constraint.Right.(*ast.PrefixExpression); ok {
+			r.Right = g.compiledAsserts[i].Constraint.Right
+			a.Constraint.Right = r
+		} else {
+			a.Constraint.Right = g.compiledAsserts[i].Constraint.Right
+		}
+
+		g.Log.ProcessedAsserts = append(g.Log.ProcessedAsserts, a)
 	}
 }
 
