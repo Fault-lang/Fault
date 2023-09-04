@@ -265,7 +265,63 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 	}
 }
 
+func (mc *ModelChecker) mixedClauseTypes(ltype string, rtype string) bool {
+	if ltype == "STRING" && rtype == "BOOL" || ltype == "BOOL" && rtype == "STRING" {
+		return true
+	}
+	return false
+}
+
+func (mc *ModelChecker) EvalMixedClauses(a *resultlog.Assert) bool {
+	var left string
+	var right string
+
+	switch l := a.Left.(type) {
+	case *resultlog.BoolClause:
+		left = a.Left.GetString()
+	case *resultlog.StringClause:
+		left = mc.EvalStringClause(l)
+	}
+
+	switch r := a.Right.(type) {
+	case *resultlog.BoolClause:
+		left = a.Right.GetString()
+	case *resultlog.StringClause:
+		left = mc.EvalStringClause(r)
+	}
+
+	if a.Op == "not" {
+		return left != right
+	} else {
+		return left == right
+	}
+
+}
+
+func (mc *ModelChecker) EvalStringClause(c *resultlog.StringClause) string {
+	var ret string
+	var ok bool
+	key := c.GetString()
+	if ret, ok = mc.ResultValues[key]; !ok {
+		if retres, ok := mc.Log.AssertClauses[key]; ok {
+			ret = fmt.Sprintf("%v", retres)
+		} else if retClause, ok2 := mc.Log.AssertChains[key]; ok2 {
+			rc := make(map[string]*rules.AssertChain)
+			rc[key] = retClause
+			mc.CheckAsserts(rc)
+			retres := mc.Log.AssertClauses[key]
+			ret = fmt.Sprintf("%v", retres)
+		} else {
+			panic(fmt.Sprintf("Cannot find clause %s", key))
+		}
+	}
+	return ret
+}
+
 func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
+	if mc.mixedClauseTypes(a.Left.Type(), a.Right.Type()) {
+		return mc.EvalMixedClauses(a)
+	}
 	if a.Left.Type() != a.Right.Type() && a.Left.Type() != "MULTI" {
 		panic(fmt.Sprintf("improperly formatted assertion clause %s got type left %s and type right %s", a.String(), a.Left.Type(), a.Right.Type()))
 	}
@@ -290,38 +346,8 @@ func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
 		}
 	case "STRING":
 		if a.Op == "=" || a.Op == "not" {
-			var left string
-			var right string
-			var ok bool
-			clauseL := a.Left.GetString()
-			clauseR := a.Right.GetString()
-			if left, ok = mc.ResultValues[clauseL]; !ok {
-				if leftres, ok := mc.Log.AssertClauses[clauseL]; ok {
-					left = fmt.Sprintf("%v", leftres)
-				} else if leftClause, ok2 := mc.Log.AssertChains[clauseL]; ok2 {
-					lc := make(map[string]*rules.AssertChain)
-					lc[clauseL] = leftClause
-					mc.CheckAsserts(lc)
-					leftres := mc.Log.AssertClauses[clauseL]
-					left = fmt.Sprintf("%v", leftres)
-				} else {
-					panic(fmt.Sprintf("Cannot find clause %s", clauseL))
-				}
-			}
-
-			if right, ok = mc.ResultValues[clauseR]; !ok {
-				if rightres, ok := mc.Log.AssertClauses[clauseR]; ok {
-					right = fmt.Sprintf("%v", rightres)
-				} else if rightClause, ok2 := mc.Log.AssertChains[clauseR]; ok2 {
-					rc := make(map[string]*rules.AssertChain)
-					rc[clauseR] = rightClause
-					mc.CheckAsserts(rc)
-					rightres := mc.Log.AssertClauses[clauseR]
-					right = fmt.Sprintf("%v", rightres)
-				} else {
-					panic(fmt.Sprintf("Cannot find clause %s", clauseR))
-				}
-			}
+			left := mc.EvalStringClause(a.Left.(*resultlog.StringClause))
+			right := mc.EvalStringClause(a.Right.(*resultlog.StringClause))
 
 			if a.Op == "not" {
 				res = left != right
