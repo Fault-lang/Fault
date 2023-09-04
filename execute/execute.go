@@ -7,7 +7,6 @@ import (
 	"fault/smt/forks"
 	"fault/smt/log"
 	resultlog "fault/smt/log"
-	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"
@@ -191,9 +190,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 			//Make sure the subclauses are handled first
 			if ch, ok2 := mc.Log.AssertChains[a.Left.String()]; ok2 {
 				if len(ch.Chain) > 0 {
-					chain := make(map[string]*rules.AssertChain)
-					chain[a.Left.String()] = ch
-					mc.CheckAsserts(chain)
+					mc.CheckChain(ch)
 				} else {
 					i := mc.LookupClause(a.Left.String())
 					if i < 0 {
@@ -229,9 +226,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 			//Make sure the subclauses are handled first
 			if ch, ok2 := mc.Log.AssertChains[a.Left.String()]; ok2 {
 				if len(ch.Chain) > 0 {
-					chain := make(map[string]*rules.AssertChain)
-					chain[a.Left.String()] = ch
-					mc.CheckAsserts(chain)
+					mc.CheckChain(ch)
 				} else {
 					i := mc.LookupClause(a.Left.String())
 					if i < 0 {
@@ -278,16 +273,16 @@ func (mc *ModelChecker) EvalMixedClauses(a *resultlog.Assert) bool {
 
 	switch l := a.Left.(type) {
 	case *resultlog.BoolClause:
-		left = a.Left.GetString()
+		left = a.Left.String()
 	case *resultlog.StringClause:
 		left = mc.EvalStringClause(l)
 	}
 
 	switch r := a.Right.(type) {
 	case *resultlog.BoolClause:
-		left = a.Right.GetString()
+		right = a.Right.String()
 	case *resultlog.StringClause:
-		left = mc.EvalStringClause(r)
+		right = mc.EvalStringClause(r)
 	}
 
 	if a.Op == "not" {
@@ -306,9 +301,7 @@ func (mc *ModelChecker) EvalStringClause(c *resultlog.StringClause) string {
 		if retres, ok := mc.Log.AssertClauses[key]; ok {
 			ret = fmt.Sprintf("%v", retres)
 		} else if retClause, ok2 := mc.Log.AssertChains[key]; ok2 {
-			rc := make(map[string]*rules.AssertChain)
-			rc[key] = retClause
-			mc.CheckAsserts(rc)
+			mc.CheckChain(retClause)
 			retres := mc.Log.AssertClauses[key]
 			ret = fmt.Sprintf("%v", retres)
 		} else {
@@ -364,10 +357,9 @@ func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
 						break
 					}
 				} else {
-					c := make(map[string]*rules.AssertChain)
-					c[v] = mc.Log.AssertChains[v]
-					c[v].Chain = []int{mc.LookupClause(v)}
-					mc.CheckAsserts(c)
+					c := mc.Log.AssertChains[v]
+					c.Chain = []int{mc.LookupClause(v)}
+					mc.CheckChain(c)
 					if res, ok = mc.Log.AssertClauses[v]; ok {
 						if !res {
 							break
@@ -386,10 +378,9 @@ func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
 						break
 					}
 				} else {
-					c := make(map[string]*rules.AssertChain)
-					c[v] = mc.Log.AssertChains[v]
-					c[v].Chain = []int{mc.LookupClause(v)}
-					mc.CheckAsserts(c)
+					c := mc.Log.AssertChains[v]
+					c.Chain = []int{mc.LookupClause(v)}
+					mc.CheckChain(c)
 					if res, ok = mc.Log.AssertClauses[v]; ok {
 						if !res {
 							break

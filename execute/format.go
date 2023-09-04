@@ -74,7 +74,7 @@ func (mc *ModelChecker) Static(results map[string]Scenario) {
 	var pass bool
 
 	if len(mc.Log.ProcessedAsserts) > 0 {
-		mc.CheckAsserts(mc.Log.AssertChains)
+		mc.CheckAsserts()
 		violations, pass = mc.FetchViolations()
 	}
 
@@ -102,7 +102,7 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	var pass bool
 
 	if len(mc.Log.ProcessedAsserts) > 0 {
-		mc.CheckAsserts(mc.Log.AssertChains)
+		mc.CheckAsserts()
 		violations, pass = mc.FetchViolations()
 	}
 
@@ -207,21 +207,25 @@ func generateRows(v Scenario) []string {
 	return nil
 }
 
-func (mc *ModelChecker) CheckAsserts(chains map[string]*rules.AssertChain) {
+func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 	cache := make(map[string]map[string]bool)
-	for _, c := range chains {
-		for _, ch := range c.Chain {
-			clause, ok := cache[mc.Log.ProcessedAsserts[c.Parent].String()]
+	for _, ch := range c.Chain {
+		clause, ok := cache[mc.Log.ProcessedAsserts[c.Parent].String()]
 
-			if !ok {
-				cache[mc.Log.ProcessedAsserts[c.Parent].String()] = make(map[string]bool)
-			}
-
-			if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
-				cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
-				mc.Log.ProcessedAsserts[c.Parent].Violated = mc.Eval(mc.Log.Asserts[ch])
-			}
+		if !ok {
+			cache[mc.Log.ProcessedAsserts[c.Parent].String()] = make(map[string]bool)
 		}
+
+		if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
+			cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
+			mc.Log.ProcessedAsserts[c.Parent].Violated = mc.Eval(mc.Log.Asserts[ch])
+		}
+	}
+}
+
+func (mc *ModelChecker) CheckAsserts() {
+	for _, c := range mc.Log.ChainOrder {
+		mc.CheckChain(mc.Log.AssertChains[c])
 	}
 }
 

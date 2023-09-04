@@ -214,7 +214,6 @@ func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rule
 		clean = chain
 	}
 	ret := &rules.AssertChain{Values: value, Chain: clean, Op: op, Parent: g.currentAssert}
-	//g.Log.AssertChains[ret.String()] = ret
 	return ret
 }
 
@@ -2130,11 +2129,11 @@ func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 		idx := g.Log.NewMultiClauseAssert(ir.Values[i:], "and")
 		chain = append(chain, idx)
 
-		g.Log.AssertChains[clause] = g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and")
-		g.Log.AssertChains[s] = g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and")
+		g.Log.AddChain(clause, g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
+		g.Log.AddChain(s, g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
 	}
 
 	parentClause := strings.Join(progression, " ")
-	g.Log.AssertChains[parentClause] = g.NewAssertChain(progression, chain, "or")
+	g.Log.AddChain(parentClause, g.NewAssertChain(progression, chain, "or"))
 	return fmt.Sprintf("(or %s)", parentClause)
 }

@@ -475,7 +475,7 @@ func (g *Generator) joinStates(sg *rules.StateGroup, operator string) string {
 		return asserts[0]
 	}
 	ret := g.writeAssertlessRule(operator, strings.Join(asserts, " "), "")
-	g.Log.AssertChains[ret] = g.NewAssertChain(asserts, chains, operator)
+	g.Log.AddChain(ret, g.NewAssertChain(asserts, chains, operator))
 	return ret
 }
 
@@ -636,17 +636,17 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				chainOn = append(chainOn, i)
 				clause := fmt.Sprintf("(%s %s %s)", op, on[0], on[1])
 				o = append(o, clause)
-				g.Log.AssertChains[clause] = g.NewAssertChain(on, []int{}, op)
+				g.Log.AddChain(clause, g.NewAssertChain(on, []int{}, op))
 			}
 			// For nmt any of the potential on states can be on
 			var onStr string
 			if len(o) == 1 {
-				g.Log.AssertChains[o[0]] = g.NewAssertChain(o, chainOn, op)
+				g.Log.AddChain(o[0], g.NewAssertChain(o, chainOn, op))
 				onStr = o[0]
 			} else {
 				clause := strings.Join(o, " ")
 				g.Log.NewMultiClauseAssert(o, "or")
-				g.Log.AssertChains[clause] = g.NewAssertChain(o, chainOn, "or")
+				g.Log.AddChain(clause, g.NewAssertChain(o, chainOn, "or"))
 				onStr = fmt.Sprintf("(%s %s)", "or", clause)
 			}
 
@@ -654,13 +654,13 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			for _, off := range p[1] {
 				if op == "=" {
 					clause := fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1])
-					g.Log.AssertChains[clause] = g.NewAssertChain(off, []int{}, "!=")
+					g.Log.AddChain(clause, g.NewAssertChain(off, []int{}, "!="))
 					i := g.Log.NewAssert(off[0], off[1], "!=")
 					chainOff = append(chainOff, i)
 					f = append(f, clause)
 				} else {
 					clause := fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1])
-					g.Log.AssertChains[clause] = g.NewAssertChain(off, []int{}, offOp)
+					g.Log.AddChain(clause, g.NewAssertChain(off, []int{}, offOp))
 					i := g.Log.NewAssert(off[0], off[1], offOp)
 					chainOff = append(chainOff, i)
 					f = append(f, clause)
@@ -669,11 +669,11 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			// But these states must be off
 			var offStr string
 			if len(f) == 1 {
-				g.Log.AssertChains[f[0]] = g.NewAssertChain(f, chainOff, "")
+				g.Log.AddChain(f[0], g.NewAssertChain(f, chainOff, ""))
 				offStr = f[0]
 			} else {
 				clause := strings.Join(f, " ")
-				g.Log.AssertChains[clause] = g.NewAssertChain(f, chainOff, "and")
+				g.Log.AddChain(clause, g.NewAssertChain(f, chainOff, "and"))
 				g.Log.NewMultiClauseAssert(f, "and")
 				offStr = fmt.Sprintf("(%s %s)", "and", clause)
 			}
@@ -734,7 +734,7 @@ func (g *Generator) packageStateGraph(x [][]string, op string, subchain []int, s
 
 				s = fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
 			}
-			g.Log.AssertChains[s] = g.NewAssertChain(a, subchain, op)
+			g.Log.AddChain(s, g.NewAssertChain(a, subchain, op))
 			i := g.Log.NewAssert(a[0], a[1], op)
 			chain = append(chain, i)
 			product = append(product, s)
