@@ -646,12 +646,23 @@ func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {
 
 	v := c.GetText()
 	param := strings.Split(v, ".")
+
+	// This is a variable from another spec, not a call
+	if util.InStringSlice(l.specs, param[0]) && len(param) == 2 {
+		ident := &ast.Identifier{
+			Token: token,
+			Spec:  param[0],
+			Value: param[1],
+		}
+		l.push(ident)
+		return
+	}
+
 	pc := &ast.ParameterCall{
 		Token: token,
 		Value: param,
 		Scope: l.structscope,
 	}
-
 	if util.InStringSlice(l.specs, param[0]) {
 		pc.Spec = param[0]
 	} else {
@@ -782,15 +793,18 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	switch len(txt) {
 	case 1:
 		pc := l.pop()
-		if r, ok := pc.(*ast.ParameterCall); !ok {
-			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
-		} else {
-
+		switch r := pc.(type){
+		case *ast.Identifier:
+			ident = r
+			right = txt[0].GetText()
+		case *ast.ParameterCall:
 			ident.Spec = r.Value[0]
 			ident.Value = r.Value[1]
 			right = txt[0].GetText()
+		default:
+			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 		}
-
+		
 	case 2:
 		ident.Spec = l.currSpec
 		ident.Value = txt[1].GetText()
@@ -1634,11 +1648,12 @@ func (l *FaultListener) intOrFloatOk(v ast.Node) (float64, error) {
 }
 
 func pathToIdent(path string) string {
-	s1 := strings.ReplaceAll(path, ".", "")
+	s1 := strings.ReplaceAll(path, ".fspec", "")
 	s2 := strings.ReplaceAll(s1, "~", "")
 	s3 := strings.ReplaceAll(s2, "\\", "")
 	s4 := strings.ReplaceAll(s3, `"`, "")
-	return strings.ReplaceAll(s4, "/", "")
+	s5 := strings.ReplaceAll(s4, ".", "")
+	return strings.ReplaceAll(s5, "/", "")
 }
 
 //////////////////////////////////////////////

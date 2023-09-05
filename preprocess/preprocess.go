@@ -1024,7 +1024,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		// an import
 		im := p.Specs[node.Spec]
 		_, check := im.FetchConstant(node.Value)
-		if check == nil {
+		_, check2 := im.FetchGlobal(node.Value)
+		if check == nil || check2 == nil {
 			spec = im
 		} else {
 			spec = p.Specs[p.trail.CurrentSpec()]

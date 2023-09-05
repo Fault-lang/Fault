@@ -16,6 +16,7 @@ type ResultLog struct {
 	Asserts          []*Assert
 	AssertClauses    map[string]bool
 	AssertChains     map[string]*rules.AssertChain
+	ChainOrder       []string
 	ProcessedAsserts []*ast.AssertionStatement
 	IsStringRule     map[string]bool   // Quick lookup
 	StringRules      map[string]string //Store the string value of the rule
@@ -207,6 +208,11 @@ func (rl *ResultLog) NewClause(x string) Clause {
 
 	return &StringClause{Value: x}
 
+}
+
+func (rl *ResultLog) AddChain(key string, chain *rules.AssertChain) {
+	rl.AssertChains[key] = chain
+	rl.ChainOrder = append(rl.ChainOrder, key)
 }
 
 func (rl *ResultLog) StoreEval(a *Assert, res bool) {
