@@ -793,15 +793,18 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	switch len(txt) {
 	case 1:
 		pc := l.pop()
-		if r, ok := pc.(*ast.ParameterCall); !ok {
-			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
-		} else {
-
+		switch r := pc.(type){
+		case *ast.Identifier:
+			ident = r
+			right = txt[0].GetText()
+		case *ast.ParameterCall:
 			ident.Spec = r.Value[0]
 			ident.Value = r.Value[1]
 			right = txt[0].GetText()
+		default:
+			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 		}
-
+		
 	case 2:
 		ident.Spec = l.currSpec
 		ident.Value = txt[1].GetText()
