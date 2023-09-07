@@ -793,7 +793,7 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	switch len(txt) {
 	case 1:
 		pc := l.pop()
-		switch r := pc.(type){
+		switch r := pc.(type) {
 		case *ast.Identifier:
 			ident = r
 			right = txt[0].GetText()
@@ -804,7 +804,7 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 		default:
 			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 		}
-		
+
 	case 2:
 		ident.Spec = l.currSpec
 		ident.Value = txt[1].GetText()
@@ -1428,6 +1428,13 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	case *ast.IntegerLiteral:
 		// Disregard, this is part of the temporal filter
+	case *ast.ParameterCall:
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
 	case *ast.Identifier:
 		con = &ast.InvariantClause{
 			Token:    e.Token,
@@ -1498,6 +1505,13 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	switch e := expr.(type) {
 	default:
 		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	case *ast.ParameterCall:
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
 	case *ast.Identifier:
 		con = &ast.InvariantClause{
 			Token:    e.Token,
