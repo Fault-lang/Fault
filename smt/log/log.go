@@ -293,6 +293,24 @@ func (rl *ResultLog) Index(name string) int {
 	return -1
 }
 
+func (rl *ResultLog) FilterTrigger(idx int) {
+	if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
+		// If there's a branch in the middle of a function some
+		// vars will be dead and others alive. Don't remove the
+		// trigger if there are live vars
+		for _, r := range rl.Events[idx+1:] {
+			if r.Scope != rl.Events[idx].Scope {
+				break
+			}
+
+			if !r.Dead {
+				return
+			}
+		}
+		rl.Events[idx-1].Kill()
+	}
+}
+
 func (rl *ResultLog) FilterStateTransitions() {
 	for idx, l := range rl.Events {
 		if idx > 1 && l.Type == "TRANSITION" {
@@ -326,9 +344,7 @@ func (rl *ResultLog) FilterOut(deadVars []string) {
 
 			// If this branch is really the result of
 			// a function call, remove that too.
-			if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
-				rl.Events[idx-1].Kill()
-			}
+			rl.FilterTrigger(idx)
 		}
 	}
 
@@ -357,7 +373,8 @@ func (rl *ResultLog) Static() string {
 
 func (rl *ResultLog) String() string {
 	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
-	for _, l := range rl.Events {
+	for idx, l := range rl.Events {
+		idx = idx
 		if l.Dead {
 			continue
 		}
