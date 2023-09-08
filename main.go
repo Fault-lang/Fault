@@ -74,6 +74,24 @@ func smt2(ir string, compiler *llvm.Compiler) *smt.Generator {
 	return generator
 }
 
+func plainSolve(smt string) {
+	ex := execute.NewModelChecker()
+	ex.LoadModel(smt, nil, nil, nil, nil)
+	ok, err := ex.Check()
+	if err != nil {
+		log.Fatalf("model checker has failed: %s", err)
+	}
+	if !ok {
+		fmt.Println("Fault could not find a failure case.")
+		return
+	}
+	scenario, err := ex.PlainSolve()
+	if err != nil {
+		log.Fatalf("error found fetching solution from solver: %s", err)
+	}
+	fmt.Println(scenario)
+}
+
 func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smtvar.VarChange, rlog *resultlog.ResultLog) (*execute.ModelChecker, map[string]execute.Scenario) {
 	ex := execute.NewModelChecker()
 	ex.LoadModel(smt, uncertains, unknowns, results, rlog)
@@ -146,6 +164,11 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 		generator := smt.Execute(compiler)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())
+			return
+		}
+
+		if output == "smt" {
+			plainSolve(generator.SMT())
 			return
 		}
 
@@ -238,7 +261,7 @@ func main() {
 	inputCommand := flag.String("i", "fspec", "format of the input file (default: fspec)")
 	fpCommand := flag.String("f", "", "path to file to compile")
 	reachCommand := flag.Bool("complete", false, "make sure the transitions to all defined states are specified in the model")
-	outputCommand := flag.String("format", "log", "format of the output: log, static, legacy, or visualize")
+	outputCommand := flag.String("format", "log", "format of the output: log, static, smt, legacy, or visualize")
 
 	flag.Parse()
 
@@ -273,6 +296,7 @@ func main() {
 		case "log":
 		case "legacy":
 		case "visualize":
+		case "smt":
 		default:
 			fmt.Printf("%s is not a valid mode\n", output)
 			os.Exit(1)

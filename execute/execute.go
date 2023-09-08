@@ -137,6 +137,10 @@ func (mc *ModelChecker) Solve() (map[string]Scenario, error) {
 	return l.Results, err
 }
 
+func (mc *ModelChecker) PlainSolve() (string, error) {
+	return mc.run("basic_run", []string{"(check-sat)", "(get-model)"})
+}
+
 func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario {
 	for k, uncertain := range mc.Uncertains {
 		if results[k] != nil {

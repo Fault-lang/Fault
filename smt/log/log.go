@@ -373,8 +373,7 @@ func (rl *ResultLog) Static() string {
 
 func (rl *ResultLog) String() string {
 	var str = "Round,Type,Scope,Variable,Previous,Current,Probability\n"
-	for idx, l := range rl.Events {
-		idx = idx
+	for _, l := range rl.Events {
 		if l.Dead {
 			continue
 		}
