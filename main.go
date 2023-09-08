@@ -237,8 +237,8 @@ func main() {
 	modeCommand := flag.String("m", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
 	inputCommand := flag.String("i", "fspec", "format of the input file (default: fspec)")
 	fpCommand := flag.String("f", "", "path to file to compile")
-	reachCommand := flag.String("c", "false", "make sure the transitions to all defined states are specified in the model")
-	outputCommand := flag.String("o", "log", "format of the output: log, static, legacy, or visualize")
+	reachCommand := flag.Bool("complete", false, "make sure the transitions to all defined states are specified in the model")
+	outputCommand := flag.String("format", "log", "format of the output: log, static, legacy, or visualize")
 
 	flag.Parse()
 
@@ -300,23 +300,8 @@ func main() {
 		}
 	}
 
-	if *reachCommand == "" {
-		reach = false
-	} else {
-		r := strings.ToLower(*reachCommand)
-		switch r {
-		case "true":
-			reach = true
-		case "false":
-			reach = false
-		case "t":
-			reach = true
-		case "f":
-			reach = false
-		default:
-			fmt.Printf("%s is not a valid option for completeness please use true or false\n", r)
-			os.Exit(1)
-		}
+	if *reachCommand {
+		reach = true
 	}
 
 	run(filepath, mode, input, output, reach)
