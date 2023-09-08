@@ -631,7 +631,6 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 			if len(meta) > 0 {
 				id := inst.Ident()
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-				inst.Metadata = nil // don't need this anymore
 				g.variables.Loads[refname] = inst
 			} else {
 				r := g.parseBuiltIn(inst, false)
@@ -715,30 +714,25 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, *
 	var t, f []rules.Rule
 	var a *ir.Block
 	g.branchId = g.branchId + 1
-	//branch := fmt.Sprint("branch_", g.branchId)
 	for _, term := range terms {
 		bname := strings.Split(term.Ident(), "-")
 		switch bname[len(bname)-1] {
 		case "true":
 			g.inPhiState.In()
-			//branchBlock := "true"
 			t = g.parseBlock(term)
 
 			t1 := g.executeCallstack()
 			t = append(t, t1...)
 
-			//t = rules.TagRules(t, branch, branchBlock)
 			g.inPhiState.Out()
 		case "false":
 			g.inPhiState.In()
-			//branchBlock := "false"
 			f = g.parseBlock(term)
 
 			g.localCallstack = []string{}
 			f1 := g.executeCallstack()
 			f = append(f, f1...)
 
-			//f = rules.TagRules(f, branch, branchBlock)
 			g.inPhiState.Out()
 		case "after":
 			a = term
