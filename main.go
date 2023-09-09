@@ -206,6 +206,11 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 			return
 		}
 
+		if output == "smt" {
+			plainSolve(generator.SMT())
+			return
+		}
+
 		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results, generator.Log)
 		if mode == "visualize" {
 			mc.Mermaid()
@@ -228,6 +233,11 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 			mc.EventLog(data)
 		}
 	case "smt2":
+		if output == "smt" {
+			plainSolve(d)
+			return
+		}
+
 		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange), &resultlog.ResultLog{})
 
 		if mode == "visualize" {
