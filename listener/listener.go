@@ -77,6 +77,12 @@ func (l *FaultListener) validate() {
 		if _, ok := v.(*ast.DefStatement); ok {
 			return
 		}
+
+		if forS, ok := v.(*ast.ForStatement); ok {
+			if len(forS.Inits.Statements) > 0 {
+				return
+			}
+		}
 	}
 
 	fmt.Println("Malformed fspec or fsystem file. No model possible.")
