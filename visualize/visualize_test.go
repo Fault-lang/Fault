@@ -114,7 +114,7 @@ func TestCombined(t *testing.T) {
 `
 
 	if stripAndEscape(got) != stripAndEscape(expected) {
-		t.Fatalf("incorrect visualization generated got=%s want=%s", got, expected)
+		t.Fatalf("incorrect visualization generated got=%s \nwant=%s", got, expected)
 	}
 
 }

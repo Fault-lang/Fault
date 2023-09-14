@@ -1670,7 +1670,9 @@ func (l *FaultListener) intOrFloatOk(v ast.Node) (float64, error) {
 }
 
 func pathToIdent(path string) string {
-	s1 := strings.ReplaceAll(path, ".fspec", "")
+	base := strings.Split(path, string(os.PathSeparator))
+
+	s1 := strings.ReplaceAll(base[len(base)-1], ".fspec", "")
 	s2 := strings.ReplaceAll(s1, "~", "")
 	s3 := strings.ReplaceAll(s2, "\\", "")
 	s4 := strings.ReplaceAll(s3, `"`, "")

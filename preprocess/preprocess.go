@@ -1071,8 +1071,14 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if node.Spec == node.Value[0] {
 			node.Value = node.Value[1:]
 		}
-		spec = p.getSpec(node.Spec)
-		rawid = p.buildIdContext(node.Spec)
+
+		if p.inGlobal {
+			spec = p.getSpec(p.trail.CurrentSpec())
+			rawid = p.buildIdContext(p.trail.CurrentSpec())
+		} else {
+			spec = p.getSpec(node.Spec)
+			rawid = p.buildIdContext(node.Spec)
+		}
 
 		rawid = append(rawid, node.Value...)
 
