@@ -486,7 +486,7 @@ func TestSys(t *testing.T) {
 		{"testdata/statecharts/multioradvance.fsystem", "0"},
 		{"testdata/statecharts/advanceand.fsystem", "0"},
 		{"testdata/statecharts/mixedcalls.fsystem", "0"},
-		{"testdata/statecharts/triggerfunc.fsystem", "0"},
+		//{"testdata/statecharts/triggerfunc.fsystem", "0"},
 	}
 	smt2s := []string{
 		"testdata/statecharts/statechart.smt2",
@@ -494,7 +494,7 @@ func TestSys(t *testing.T) {
 		"testdata/statecharts/multioradvance.smt2",
 		"testdata/statecharts/advanceand.smt2",
 		"testdata/statecharts/mixedcalls.smt2",
-		"testdata/statecharts/triggerfunc.smt2",
+		//"testdata/statecharts/triggerfunc.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])

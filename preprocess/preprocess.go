@@ -222,18 +222,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.SpecDeclStatement:
 		if p.initialPass {
-			p.Specs[node.Name.Value] = NewSpecRecord()
-			p.Specs[node.Name.Value].SpecName = node.Name.Value
-			p.trail = p.trail.PushSpec(node.Name.Value)
+			p.Specs[node.Name.Spec] = NewSpecRecord()
+			p.Specs[node.Name.Spec].SpecName = node.Name.Spec
+			p.trail = p.trail.PushSpec(node.Name.Spec)
 		} else {
-			p.trail = p.trail.PushSpec(node.Name.Value)
+			p.trail = p.trail.PushSpec(node.Name.Spec)
 		}
 		return node, err
 	case *ast.SysDeclStatement:
 		if p.initialPass {
-			p.Specs[node.Name.Value] = NewSpecRecord()
-			p.Specs[node.Name.Value].SpecName = node.Name.Value
-			p.trail = p.trail.PushSpec(node.Name.Value)
+			p.Specs[node.Name.Spec] = NewSpecRecord()
+			p.Specs[node.Name.Spec].SpecName = node.Name.Spec
+			p.trail = p.trail.PushSpec(node.Name.Spec)
 		}
 		return node, err
 	case *ast.ImportStatement:
@@ -249,10 +249,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
-		var spec *SpecRecord
-		if p.Specs[p.trail.CurrentSpec()] != nil {
-			spec = p.Specs[p.trail.CurrentSpec()]
-		}
+		spec := p.getSpec(p.trail.CurrentSpec())
 
 		// Has this already been defined?
 		_, err := spec.FetchConstant(node.Name.Value)
@@ -319,11 +316,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		p.structTypes[p.trail.CurrentSpec()][p.scope] = "STOCK"
 
 		var properties map[string]ast.Node
-		var spec *SpecRecord
 		var idx []string
-		if p.Specs[p.trail.CurrentSpec()] != nil {
-			spec = p.Specs[p.trail.CurrentSpec()]
-		}
+		spec := p.getSpec(p.trail.CurrentSpec())
 
 		if p.initialPass {
 			node.Pairs, idx = p.namePairs(node.Pairs)
@@ -374,11 +368,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		p.structTypes[p.trail.CurrentSpec()][p.scope] = "FLOW"
 
 		var properties map[string]ast.Node
-		var spec *SpecRecord
 		var idx []string
-		if p.Specs[p.trail.CurrentSpec()] != nil {
-			spec = p.Specs[p.trail.CurrentSpec()]
-		}
+		spec := p.getSpec(p.trail.CurrentSpec())
 
 		if p.initialPass {
 			node.Pairs, idx = p.namePairs(node.Pairs)
@@ -429,11 +420,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		p.structTypes[p.trail.CurrentSpec()][p.scope] = "COMPONENT"
 
 		var properties map[string]ast.Node
-		var spec *SpecRecord
 		var idx []string
-		if p.Specs[p.trail.CurrentSpec()] != nil {
-			spec = p.Specs[p.trail.CurrentSpec()]
-		}
+		spec := p.getSpec(p.trail.CurrentSpec())
 
 		if p.initialPass {
 			node.Pairs, idx = p.namePairs(node.Pairs)
@@ -872,7 +860,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		order := node.Order
 
 		var key string
-		importSpec := p.getSpec(node.Spec) //Where the struct definition lives
+		importSpec := p.getSpec(node.Parent[0]) //Where the struct definition lives
 
 		spec := p.getSpec(p.trail.CurrentSpec()) //Where the instance is being declared
 
@@ -1080,8 +1068,11 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		var rawid []string
 		var spec *SpecRecord
-		spec = p.getSpec(p.trail.CurrentSpec())
-		rawid = p.buildIdContext(p.trail.CurrentSpec())
+		if node.Spec == node.Value[0] {
+			node.Value = node.Value[1:]
+		}
+		spec = p.getSpec(node.Spec)
+		rawid = p.buildIdContext(node.Spec)
 
 		rawid = append(rawid, node.Value...)
 

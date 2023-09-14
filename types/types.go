@@ -987,14 +987,11 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		spec := c.SpecStructs[rawid[0]]
 		ty, _ := spec.GetStructType(rawid)
 		p, err := spec.FetchVar(rawid, ty)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			return c.lookupReference(p)
 		}
-		if p == nil {
-			id := b.Id()
-			return c.lookupStruct(id, ty)
-		}
-		return c.lookupReference(p)
+		id := b.Id()
+		return c.lookupStruct(id, ty)
 	case *ast.Identifier:
 		// Check to see if this variable is referencing
 		// a local variable

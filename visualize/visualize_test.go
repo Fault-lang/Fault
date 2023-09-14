@@ -82,7 +82,7 @@ func TestSys(t *testing.T) {
 
 func TestCombined(t *testing.T) {
 	test := `system test1;
-		import "../smt/testdata/simple.fspec"
+		import "../smt/testdata/simple.fspec";
 		
 		global f = new simple.fl; 
 

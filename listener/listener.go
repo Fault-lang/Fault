@@ -119,7 +119,9 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 }
 
 func (l *FaultListener) EnterSpecClause(c *parser.SpecClauseContext) {
-	l.currSpec = c.IDENT().GetText()
+	if l.currSpec == "" { //on import we may override the declared name
+		l.currSpec = c.IDENT().GetText()
+	}
 	l.specs = append(l.specs, l.currSpec)
 }
 
@@ -171,6 +173,17 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
 
+	// If no ident, create one from import path
+	var importId string
+	txt := c.GetText()
+	if len(c.GetChildren()) > 2 {
+		importId = c.IDENT().GetText()
+	} else if len(c.GetChildren()) == 2 && string(txt[len(txt)-1]) != "," {
+		importId = c.IDENT().GetText()
+	} else {
+		importId = pathToIdent(fpath.String())
+	}
+
 	var tree *ast.Spec
 	if !l.testing {
 		//Remove quotes
@@ -182,18 +195,7 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		if err != nil {
 			panic(fmt.Sprintf("spec file %s not found\n", fpath))
 		}
-		tree = l.parseImport(string(importFile))
-	}
-
-	// If no ident, create one from import path
-	var importId string
-	txt := c.GetText()
-	if len(c.GetChildren()) > 2 {
-		importId = c.IDENT().GetText()
-	} else if len(c.GetChildren()) == 2 && string(txt[len(txt)-1]) != "," {
-		importId = c.IDENT().GetText()
-	} else {
-		importId = pathToIdent(fpath.String())
+		tree = l.parseImport(importId, string(importFile))
 	}
 
 	ident := &ast.Identifier{
@@ -699,7 +701,6 @@ func (l *FaultListener) ExitInitBlock(c *parser.InitBlockContext) {
 		}
 
 		if t, ok := ex.(*ast.Instance); ok {
-			//swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
 			t.Swaps = append(t.Swaps, swaps...)
 
 			token2 := ex.GetToken()
@@ -1567,13 +1568,14 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	})
 }
 
-func (l *FaultListener) parseImport(spec string) *ast.Spec {
+func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
 	listener := NewListener("", false, true)
+	listener.currSpec = id
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
 	l.Uncertains, l.Unknowns, l.StructsPropertyOrder = mergeListeners(l, listener)
