@@ -209,8 +209,11 @@ func generateRows(v Scenario) []string {
 
 func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 	var violated bool
-	var longest int
 	cache := make(map[string]map[string]bool)
+	if len(c.Chain) == 0 {
+		return
+	}
+
 	for _, ch := range c.Chain {
 		clause, ok := cache[mc.Log.ProcessedAsserts[c.Parent].String()]
 
@@ -220,11 +223,8 @@ func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 
 		if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
 			cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
-			if !violated || len(mc.Log.Asserts[ch].String()) > longest {
+			if !violated {
 				violated = mc.Eval(mc.Log.Asserts[ch])
-			}
-			if len(mc.Log.Asserts[ch].String()) > longest {
-				longest = len(mc.Log.Asserts[ch].String())
 			}
 		}
 	}
@@ -232,8 +232,7 @@ func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 }
 
 func (mc *ModelChecker) CheckAsserts() {
-	for i, c := range mc.Log.ChainOrder {
-		fmt.Print(i)
+	for _, c := range mc.Log.ChainOrder {
 		mc.CheckChain(mc.Log.AssertChains[c])
 	}
 }

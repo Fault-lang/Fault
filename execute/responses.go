@@ -131,9 +131,11 @@ func (l *SMTListener) ExitTerm(c *parser.TermContext) {
 			p := l.pop()
 			parts = append([]string{p.(string)}, parts...)
 		}
-		term = mergeTermParts(parts)
+		merge := mergeTermParts(parts)
 		if strings.Contains(term, "-") {
-			term = fmt.Sprintf("-%s", term)
+			term = fmt.Sprintf("-%s", merge)
+		} else {
+			term = merge
 		}
 	}
 	l.push(term)
