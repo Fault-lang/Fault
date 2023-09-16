@@ -1837,6 +1837,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 	choiceId := uuid.NewString()
 	g.branchId = g.branchId + 1
 	g.Forks.Choices[choiceId] = []string{}
+	var allBranches = make(map[string][][]rules.Rule)
 
 	for i, calls := range perm {
 		branchBlock := fmt.Sprintf("%s_option_%d", choiceId, i)
@@ -1853,14 +1854,21 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 			raw = rules.TagRules(raw, branchBlock, choiceId)
 			opts = append(opts, raw)
 		}
+		allBranches[branchBlock] = opts
+		g.variables.LoadState(varState)
+	}
+
+	// Phis are set wrong if we don't wait until all branches
+	// are processed
+	for branchBlock, opts := range allBranches {
 		//Flat the rules
 		raw := g.parallelRules(opts)
 		// Pull all the variables out of the rules and
 		// sort them into fork choices
 		g.buildForkChoice(raw, choiceId, branchBlock)
-		g.variables.LoadState(varState)
 		ru = append(ru, raw...)
 	}
+
 	cappedRules := g.capParallel(choiceId)
 	cappedRules = rules.TagRules(cappedRules, "", choiceId)
 	ru = append(ru, cappedRules...)
