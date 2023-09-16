@@ -208,7 +208,6 @@ func generateRows(v Scenario) []string {
 }
 
 func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
-	var violated bool
 	cache := make(map[string]map[string]bool)
 	if len(c.Chain) == 0 {
 		return
@@ -223,12 +222,30 @@ func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 
 		if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
 			cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
-			if !violated {
-				violated = mc.Eval(mc.Log.Asserts[ch])
+			ret := mc.Eval(mc.Log.Asserts[ch])
+			if c.Op == "not" {
+				//If it's NOT and the ret is TRUE then the assert has been violated
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op == "or" && ret {
+				//If it's OR and one ret is true then the assert has been violated
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op == "and" && !ret {
+				//If it's AND and one ret is false then the assert has not been violated
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op != "and" && c.Op != "or" && c.Op != "not" {
+				panic(fmt.Sprintf("Undefined behavior. Operator not AND, OR or NOT got=%s", c.Op))
 			}
 		}
 	}
-	mc.Log.ProcessedAsserts[c.Parent].Violated = violated
 }
 
 func (mc *ModelChecker) CheckAsserts() {
