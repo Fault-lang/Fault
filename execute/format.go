@@ -241,6 +241,11 @@ func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 				return
 			}
 
+			if c.Op == "=" || c.Op == "!=" || c.Op == "not" {
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
 			if c.Op != "and" && c.Op != "or" && c.Op != "not" {
 				panic(fmt.Sprintf("Undefined behavior. Operator not AND, OR or NOT got=%s", c.Op))
 			}
