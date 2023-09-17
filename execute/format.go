@@ -71,7 +71,7 @@ func (mc *ModelChecker) Static(results map[string]Scenario) {
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
 	var violations []string
-	var pass bool
+	var pass = true
 
 	if len(mc.Log.ProcessedAsserts) > 0 {
 		mc.CheckAsserts()
@@ -99,7 +99,7 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
 	var violations []string
-	var pass bool
+	var pass = true
 
 	if len(mc.Log.ProcessedAsserts) > 0 {
 		mc.CheckAsserts()
@@ -247,6 +247,12 @@ func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 		}
 	}
 }
+
+// func (mc *ModelChecker) CheckValues(op string, values []string){
+// 	for _, v := range values {
+
+// 	}
+// }
 
 func (mc *ModelChecker) CheckAsserts() {
 	for _, c := range mc.Log.ChainOrder {

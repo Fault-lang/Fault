@@ -198,22 +198,35 @@ func (g *Generator) varRounds(base string, num string) map[int]*rules.AssertChai
 	return ir
 }
 
-func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
-	//There is a bug somewhere here related to varRounds
-	//and variable initialization
+func (g *Generator) NewMultiVAssertChain(value []string, chain []int, op string) *rules.AssertChain {
 	var clean []int
-	if len(value) != len(chain) {
-		for _, c := range chain {
-			for _, v := range value {
+	if len(value) > len(chain) && len(value) > 1 {
+		vals := &resultlog.MultiClause{}
+		for _, v := range value {
+			if len(chain) == 0 {
+				vals.Value = value
+			}
+
+			for _, c := range chain {
 				if g.Log.Asserts[c].String() == v {
 					clean = append(clean, c)
+				} else {
+					vals.Value = append(vals.Value, v)
 				}
 			}
+		}
+		if len(vals.Value) > 0 {
+			n := g.Log.NewMultiClauseAssert(vals.Value, op)
+			clean = append(clean, n)
 		}
 	} else {
 		clean = chain
 	}
-	ret := &rules.AssertChain{Values: value, Chain: clean, Op: op, Parent: g.currentAssert}
+	return g.NewAssertChain(value, clean, op)
+}
+
+func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
+	ret := &rules.AssertChain{Values: value, Chain: chain, Op: op, Parent: g.currentAssert}
 	return ret
 }
 
@@ -2131,11 +2144,11 @@ func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 		idx := g.Log.NewMultiClauseAssert(ir.Values[i:], "and")
 		chain = append(chain, idx)
 
-		g.Log.AddChain(clause, g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
-		g.Log.AddChain(s, g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
+		g.Log.AddChain(clause, g.NewMultiVAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
+		g.Log.AddChain(s, g.NewMultiVAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
 	}
 
 	parentClause := strings.Join(progression, " ")
-	g.Log.AddChain(parentClause, g.NewAssertChain(progression, chain, "or"))
+	g.Log.AddChain(parentClause, g.NewMultiVAssertChain(progression, chain, "or"))
 	return fmt.Sprintf("(or %s)", parentClause)
 }

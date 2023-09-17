@@ -162,6 +162,30 @@ func (mc *MultiClause) String() string {
 	return strings.Join(mc.Value, " ")
 }
 
+type NullClause struct {
+	Clause
+	Value string
+}
+
+func (nc *NullClause) Type() string {
+	return "NULL"
+}
+func (nc *NullClause) GetFloat() float64 {
+	return 0.0
+}
+func (nc *NullClause) GetInt() int64 {
+	return 0
+}
+func (nc *NullClause) GetBool() bool {
+	return false
+}
+func (nc *NullClause) GetString() string {
+	return ""
+}
+func (nc *NullClause) String() string {
+	return "NULL"
+}
+
 type Assert struct {
 	Left  Clause
 	Right Clause

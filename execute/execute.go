@@ -238,14 +238,10 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 					}
 					mc.Eval(mc.Log.Asserts[i])
 				}
-
-				// Now handle the main clause
-				res := mc.EvalAmbiguous(a)
-				mc.Log.StoreEval(a, res)
-				return res
-			} else {
-				panic(fmt.Errorf("cannot find clause for %s", a.Left.String()))
 			}
+			res := mc.EvalMultiClause(a.Left.(*resultlog.MultiClause), a.Op)
+			mc.Log.StoreEval(a, res)
+			return res
 		}
 
 		left, err := mc.EvalClause(a.Left)
@@ -262,6 +258,40 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 	default:
 		panic(fmt.Sprintf("no option for operator %s", a.Op))
 	}
+}
+
+func (mc *ModelChecker) EvalMultiClause(m *resultlog.MultiClause, op string) bool {
+	for _, v := range m.Value {
+		var res bool
+		var err error
+		if ret, ok2 := mc.ResultValues[v]; ok2 {
+			res, err = strconv.ParseBool(ret)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			i := mc.LookupClause(v)
+			if i < 0 {
+				panic(fmt.Errorf("cannot find clause for %s", v))
+			}
+			res = mc.Eval(mc.Log.Asserts[i])
+		}
+
+		if res && op == "or" {
+			return true
+		}
+
+		if res && op == "and" {
+			return false
+		}
+
+	}
+
+	if op == "or" {
+		return false
+	}
+
+	return false
 }
 
 func (mc *ModelChecker) mixedClauseTypes(ltype string, rtype string) bool {

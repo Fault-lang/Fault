@@ -40,7 +40,7 @@ func (g *Generator) parseAssert(a *ast.AssertionStatement) string {
 	if dset.Len() == 0 && (a.Temporal != "" || a.TemporalFilter != "") {
 		sg := g.mergeInvariantInfix(left, right, smtlibOperators(a.Constraint.Operator))
 		ir, chain := g.flattenStates(sg)
-		return g.applyTemporalLogic(a.Temporal, g.NewAssertChain(ir, chain, ""), a.TemporalFilter, on, off)
+		return g.applyTemporalLogic(a.Temporal, g.NewMultiVAssertChain(ir, chain, ""), a.TemporalFilter, on, off)
 	}
 
 	if a.Temporal != "" || a.TemporalFilter != "" {
@@ -189,7 +189,7 @@ func (g *Generator) mergeInvariantPrefix(right []*rules.States, operator string)
 		for i := 0; i <= g.Rounds; i++ {
 			if st, ok := r.States[i]; ok {
 				for _, s := range st.Values {
-					states[i] = g.NewAssertChain([]string{}, st.Chain, "")
+					states[i] = g.NewMultiVAssertChain([]string{}, st.Chain, "")
 					states[i].Values = append(states[i].Values, fmt.Sprintf("(%s %s)", operator, s))
 				}
 			}
@@ -475,7 +475,7 @@ func (g *Generator) joinStates(sg *rules.StateGroup, operator string) string {
 		return asserts[0]
 	}
 	ret := g.writeAssertlessRule(operator, strings.Join(asserts, " "), "")
-	g.Log.AddChain(ret, g.NewAssertChain(asserts, chains, operator))
+	g.Log.AddChain(ret, g.NewMultiVAssertChain(asserts, chains, operator))
 	return ret
 }
 
@@ -636,7 +636,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				chainOn = append(chainOn, i)
 				clause := fmt.Sprintf("(%s %s %s)", op, on[0], on[1])
 				o = append(o, clause)
-				g.Log.AddChain(clause, g.NewAssertChain(on, []int{}, op))
+				g.Log.AddChain(clause, g.NewMultiVAssertChain(on, []int{}, op))
 			}
 			// For nmt any of the potential on states can be on
 			var onStr string
@@ -646,7 +646,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			} else {
 				clause := strings.Join(o, " ")
 				g.Log.NewMultiClauseAssert(o, "or")
-				g.Log.AddChain(clause, g.NewAssertChain(o, chainOn, "or"))
+				g.Log.AddChain(clause, g.NewMultiVAssertChain(o, chainOn, "or"))
 				onStr = fmt.Sprintf("(%s %s)", "or", clause)
 			}
 
@@ -654,13 +654,13 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 			for _, off := range p[1] {
 				if op == "=" {
 					clause := fmt.Sprintf("(%s (%s %s %s))", "not", op, off[0], off[1])
-					g.Log.AddChain(clause, g.NewAssertChain(off, []int{}, "!="))
+					g.Log.AddChain(clause, g.NewMultiVAssertChain(off, []int{}, "!="))
 					i := g.Log.NewAssert(off[0], off[1], "!=")
 					chainOff = append(chainOff, i)
 					f = append(f, clause)
 				} else {
 					clause := fmt.Sprintf("(%s %s %s)", offOp, off[0], off[1])
-					g.Log.AddChain(clause, g.NewAssertChain(off, []int{}, offOp))
+					g.Log.AddChain(clause, g.NewMultiVAssertChain(off, []int{}, offOp))
 					i := g.Log.NewAssert(off[0], off[1], offOp)
 					chainOff = append(chainOff, i)
 					f = append(f, clause)
@@ -673,7 +673,7 @@ func (g *Generator) expandAssertStateGraph(left *rules.StateGroup, right *rules.
 				offStr = f[0]
 			} else {
 				clause := strings.Join(f, " ")
-				g.Log.AddChain(clause, g.NewAssertChain(f, chainOff, "and"))
+				g.Log.AddChain(clause, g.NewMultiVAssertChain(f, chainOff, "and"))
 				g.Log.NewMultiClauseAssert(f, "and")
 				offStr = fmt.Sprintf("(%s %s)", "and", clause)
 			}
@@ -740,7 +740,7 @@ func (g *Generator) packageStateGraph(x [][]string, op string, subchain []int, s
 			product = append(product, s)
 		}
 	}
-	return g.NewAssertChain(product, chain, "")
+	return g.NewMultiVAssertChain(product, chain, "")
 }
 
 func smtlibOperators(op string) string {
