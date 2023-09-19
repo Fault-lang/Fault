@@ -78,10 +78,12 @@ func (mc *ModelChecker) Static(results map[string]Scenario) {
 		violations, pass = mc.FetchViolations()
 	}
 
-	if !pass {
+	if !pass || len(mc.Log.ProcessedAsserts) == 0 {
 		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
-		out.WriteString("Model Properties and Invarients:\n")
-		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		if !pass {
+			out.WriteString("Model Properties and Invarients:\n")
+			out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		}
 		out.WriteString(mc.Log.Static())
 	} else {
 		out.WriteString("Fault could not find a failure case.\n")
@@ -106,10 +108,12 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 		violations, pass = mc.FetchViolations()
 	}
 
-	if !pass {
+	if !pass || len(mc.Log.ProcessedAsserts) == 0 {
 		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
-		out.WriteString("Model Properties and Invarients:\n")
-		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		if !pass {
+			out.WriteString("Model Properties and Invarients:\n")
+			out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		}
 		out.WriteString(mc.Log.String())
 	} else {
 		out.WriteString("Fault could not find a failure case.\n")
