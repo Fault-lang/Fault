@@ -29,7 +29,10 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [audio](https://anchor.fm/mwapl)
 - [transcripts](https://dev.to/bellmar/series/9711)
 
-### Current Status (8/31/2023)
+### Current Status (9/19/2023)
+Pushing a bunch of small patches and bug fixes in the ramp up to presenting Fault at Strange Loop 2023 \o/
+
+#### (8/31/2023)
 Been doing a lot of work on how model outputs are displayed. Needed to fix how dead branches are filtered first. The default display is now formatted like an event log. Also added a static format that just outputs variable values.
 
 #### (5/24/2023)
