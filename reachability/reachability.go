@@ -17,7 +17,6 @@ func NewTracer() *Tracer {
 	return &Tracer{graph: make(map[string]bool)}
 }
 
-
 func (t *Tracer) Scan(spec *ast.Spec) {
 	t.walk(spec)
 	ch, missing := t.check()
@@ -90,6 +89,11 @@ func (t *Tracer) walk(n ast.Node) {
 				t.removeUndefined(id[1])
 			}
 		}
+	case *ast.InfixExpression:
+		t.walk(node.Left)
+		t.walk(node.Right)
+	case *ast.PrefixExpression:
+		t.walk(node.Right)
 	}
 }
 

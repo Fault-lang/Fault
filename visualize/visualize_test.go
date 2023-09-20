@@ -82,7 +82,7 @@ func TestSys(t *testing.T) {
 
 func TestCombined(t *testing.T) {
 	test := `system test1;
-		import "../smt/testdata/simple.fspec"
+		import "../smt/testdata/simple.fspec";
 		
 		global f = new simple.fl; 
 
@@ -114,7 +114,7 @@ func TestCombined(t *testing.T) {
 `
 
 	if stripAndEscape(got) != stripAndEscape(expected) {
-		t.Fatalf("incorrect visualization generated got=%s want=%s", got, expected)
+		t.Fatalf("incorrect visualization generated got=%s \nwant=%s", got, expected)
 	}
 
 }

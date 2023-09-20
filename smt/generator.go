@@ -198,22 +198,35 @@ func (g *Generator) varRounds(base string, num string) map[int]*rules.AssertChai
 	return ir
 }
 
-func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
-	//There is a bug somewhere here related to varRounds
-	//and variable initialization
+func (g *Generator) NewMultiVAssertChain(value []string, chain []int, op string) *rules.AssertChain {
 	var clean []int
-	if len(value) != len(chain) {
-		for _, c := range chain {
-			for _, v := range value {
+	if len(value) > len(chain) && len(value) > 1 {
+		vals := &resultlog.MultiClause{}
+		for _, v := range value {
+			if len(chain) == 0 {
+				vals.Value = value
+			}
+
+			for _, c := range chain {
 				if g.Log.Asserts[c].String() == v {
 					clean = append(clean, c)
+				} else {
+					vals.Value = append(vals.Value, v)
 				}
 			}
+		}
+		if len(vals.Value) > 0 {
+			n := g.Log.NewMultiClauseAssert(vals.Value, op)
+			clean = append(clean, n)
 		}
 	} else {
 		clean = chain
 	}
-	ret := &rules.AssertChain{Values: value, Chain: clean, Op: op, Parent: g.currentAssert}
+	return g.NewAssertChain(value, clean, op)
+}
+
+func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
+	ret := &rules.AssertChain{Values: value, Chain: chain, Op: op, Parent: g.currentAssert}
 	return ret
 }
 
@@ -631,7 +644,6 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 			if len(meta) > 0 {
 				id := inst.Ident()
 				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
-				inst.Metadata = nil // don't need this anymore
 				g.variables.Loads[refname] = inst
 			} else {
 				r := g.parseBuiltIn(inst, false)
@@ -715,30 +727,25 @@ func (g *Generator) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, *
 	var t, f []rules.Rule
 	var a *ir.Block
 	g.branchId = g.branchId + 1
-	//branch := fmt.Sprint("branch_", g.branchId)
 	for _, term := range terms {
 		bname := strings.Split(term.Ident(), "-")
 		switch bname[len(bname)-1] {
 		case "true":
 			g.inPhiState.In()
-			//branchBlock := "true"
 			t = g.parseBlock(term)
 
 			t1 := g.executeCallstack()
 			t = append(t, t1...)
 
-			//t = rules.TagRules(t, branch, branchBlock)
 			g.inPhiState.Out()
 		case "false":
 			g.inPhiState.In()
-			//branchBlock := "false"
 			f = g.parseBlock(term)
 
 			g.localCallstack = []string{}
 			f1 := g.executeCallstack()
 			f = append(f, f1...)
 
-			//f = rules.TagRules(f, branch, branchBlock)
 			g.inPhiState.Out()
 		case "after":
 			a = term
@@ -1843,6 +1850,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 	choiceId := uuid.NewString()
 	g.branchId = g.branchId + 1
 	g.Forks.Choices[choiceId] = []string{}
+	var allBranches = make(map[string][][]rules.Rule)
 
 	for i, calls := range perm {
 		branchBlock := fmt.Sprintf("%s_option_%d", choiceId, i)
@@ -1859,14 +1867,21 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 			raw = rules.TagRules(raw, branchBlock, choiceId)
 			opts = append(opts, raw)
 		}
+		allBranches[branchBlock] = opts
+		g.variables.LoadState(varState)
+	}
+
+	// Phis are set wrong if we don't wait until all branches
+	// are processed
+	for branchBlock, opts := range allBranches {
 		//Flat the rules
 		raw := g.parallelRules(opts)
 		// Pull all the variables out of the rules and
 		// sort them into fork choices
 		g.buildForkChoice(raw, choiceId, branchBlock)
-		g.variables.LoadState(varState)
 		ru = append(ru, raw...)
 	}
+
 	cappedRules := g.capParallel(choiceId)
 	cappedRules = rules.TagRules(cappedRules, "", choiceId)
 	ru = append(ru, cappedRules...)
@@ -2129,11 +2144,11 @@ func (g *Generator) eventuallyAlways(ir *rules.AssertChain) string {
 		idx := g.Log.NewMultiClauseAssert(ir.Values[i:], "and")
 		chain = append(chain, idx)
 
-		g.Log.AddChain(clause, g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
-		g.Log.AddChain(s, g.NewAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
+		g.Log.AddChain(clause, g.NewMultiVAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
+		g.Log.AddChain(s, g.NewMultiVAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
 	}
 
 	parentClause := strings.Join(progression, " ")
-	g.Log.AddChain(parentClause, g.NewAssertChain(progression, chain, "or"))
+	g.Log.AddChain(parentClause, g.NewMultiVAssertChain(progression, chain, "or"))
 	return fmt.Sprintf("(or %s)", parentClause)
 }

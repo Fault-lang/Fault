@@ -71,17 +71,19 @@ func (mc *ModelChecker) Static(results map[string]Scenario) {
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
 	var violations []string
-	var pass bool
+	var pass = true
 
 	if len(mc.Log.ProcessedAsserts) > 0 {
 		mc.CheckAsserts()
 		violations, pass = mc.FetchViolations()
 	}
 
-	if !pass {
+	if !pass || len(mc.Log.ProcessedAsserts) == 0 {
 		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
-		out.WriteString("Model Properties and Invarients:\n")
-		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		if !pass {
+			out.WriteString("Model Properties and Invarients:\n")
+			out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		}
 		out.WriteString(mc.Log.Static())
 	} else {
 		out.WriteString("Fault could not find a failure case.\n")
@@ -99,17 +101,19 @@ func (mc *ModelChecker) EventLog(results map[string]Scenario) {
 	deadVars := mc.DeadVariables()
 	mc.Log.FilterOut(deadVars)
 	var violations []string
-	var pass bool
+	var pass = true
 
 	if len(mc.Log.ProcessedAsserts) > 0 {
 		mc.CheckAsserts()
 		violations, pass = mc.FetchViolations()
 	}
 
-	if !pass {
+	if !pass || len(mc.Log.ProcessedAsserts) == 0 {
 		out.WriteString("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~\n")
-		out.WriteString("Model Properties and Invarients:\n")
-		out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		if !pass {
+			out.WriteString("Model Properties and Invarients:\n")
+			out.WriteString(strings.Join(violations, "\n") + "\n\n")
+		}
 		out.WriteString(mc.Log.String())
 	} else {
 		out.WriteString("Fault could not find a failure case.\n")
@@ -209,6 +213,10 @@ func generateRows(v Scenario) []string {
 
 func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 	cache := make(map[string]map[string]bool)
+	if len(c.Chain) == 0 {
+		return
+	}
+
 	for _, ch := range c.Chain {
 		clause, ok := cache[mc.Log.ProcessedAsserts[c.Parent].String()]
 
@@ -218,10 +226,42 @@ func (mc *ModelChecker) CheckChain(c *rules.AssertChain) {
 
 		if !ok || mc.dontBackTrack(clause, mc.Log.Asserts[ch].String()) {
 			cache[mc.Log.ProcessedAsserts[c.Parent].String()][mc.Log.Asserts[ch].String()] = true
-			mc.Log.ProcessedAsserts[c.Parent].Violated = mc.Eval(mc.Log.Asserts[ch])
+			ret := mc.Eval(mc.Log.Asserts[ch])
+			if c.Op == "not" {
+				//If it's NOT and the ret is TRUE then the assert has been violated
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op == "or" && ret {
+				//If it's OR and one ret is true then the assert has been violated
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op == "and" && !ret {
+				//If it's AND and one ret is false then the assert has not been violated
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op == "=" || c.Op == "!=" || c.Op == "not" {
+				mc.Log.ProcessedAsserts[c.Parent].Violated = ret
+				return
+			}
+
+			if c.Op != "and" && c.Op != "or" && c.Op != "not" {
+				panic(fmt.Sprintf("Undefined behavior. Operator not AND, OR or NOT got=%s", c.Op))
+			}
 		}
 	}
 }
+
+// func (mc *ModelChecker) CheckValues(op string, values []string){
+// 	for _, v := range values {
+
+// 	}
+// }
 
 func (mc *ModelChecker) CheckAsserts() {
 	for _, c := range mc.Log.ChainOrder {
@@ -249,10 +289,12 @@ func (mc *ModelChecker) dontBackTrack(clauses map[string]bool, subclause string)
 func (mc *ModelChecker) FetchViolations() ([]string, bool) {
 	var checked []string
 	var pass = true
+	var foundViolation bool
 	for _, a := range mc.Log.ProcessedAsserts {
 		checked = append(checked, a.EvLogString(false))
-		if a.Violated {
+		if a.Violated && !foundViolation {
 			pass = false
+			foundViolation = true
 		}
 	}
 	return checked, pass

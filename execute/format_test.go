@@ -1,7 +1,10 @@
 package execute
 
 import (
+	"fault/ast"
 	"fault/smt/forks"
+	resultlog "fault/smt/log"
+	"fault/smt/rules"
 	"testing"
 )
 
@@ -146,7 +149,7 @@ func TestNestledPhis(t *testing.T) {
 	phis.AddVar("choice1_branch2", "test_value", "test_value_3", forks.NewVar("test_value", false, "3", "choice1", "9"))
 	phis.AddVar("choice1_branch2", "test_value", "test_value_4", forks.NewVar("test_value", false, "4", "choice1", "9"))
 	phis.AddVar("choice1_branch2", "test_value", "test_value_5", forks.NewVar("test_value", true, "5", "choice1", "9"))
-	
+
 	phis.Choices["choice2"] = []string{"choice2_branch1", "choice2_branch2"}
 	phis.AddVar("choice2_branch1", "test_value", "test_value_3", forks.NewVar("test_value", false, "3", "choice2", "9"))
 	phis.AddVar("choice2_branch1", "test_value", "test_value_4", forks.NewVar("test_value", false, "4", "choice2", "9"))
@@ -257,5 +260,40 @@ func TestMultiVarPhis(t *testing.T) {
 	}
 	if _, ok := v.(*FloatTrace).Index(6); ok {
 		t.Fatal("phi at index 6 was not removed")
+	}
+}
+
+func TestChains(t *testing.T) {
+	mc := NewModelChecker()
+	mc.Log = resultlog.NewLog()
+	mc.ResultValues["x"] = "false"
+	mc.ResultValues["y"] = "false"
+	mc.Log.ProcessedAsserts = []*ast.AssertionStatement{{Constraint: &ast.InvariantClause{Operator: "and", Left: &ast.InfixExpression{Operator: "=", Left: &ast.AssertVar{Instances: []string{"x"}}, Right: &ast.Boolean{Value: true}}, Right: &ast.InfixExpression{Operator: "=", Left: &ast.AssertVar{Instances: []string{"y"}}, Right: &ast.Boolean{Value: false}}}},
+		{Constraint: &ast.InvariantClause{Operator: "or", Left: &ast.InfixExpression{Operator: "=", Left: &ast.AssertVar{Instances: []string{"x"}}, Right: &ast.Boolean{Value: true}}, Right: &ast.InfixExpression{Operator: "=", Left: &ast.AssertVar{Instances: []string{"y"}}, Right: &ast.Boolean{Value: false}}}},
+	}
+	mc.Log.Asserts = []*resultlog.Assert{
+		{Op: "=",
+			Left:  &resultlog.StringClause{Value: "x"},
+			Right: &resultlog.BoolClause{Value: true}},
+		{Op: "=",
+			Left:  &resultlog.StringClause{Value: "y"},
+			Right: &resultlog.BoolClause{Value: false}},
+	}
+	mc.Log.AssertChains["(= x true)"] = &rules.AssertChain{Op: "=", Values: []string{"x", "true"}, Chain: []int{}, Parent: 0}
+	mc.Log.AssertChains["(= y false)"] = &rules.AssertChain{Op: "=", Values: []string{"y", "false"}, Chain: []int{}, Parent: 0}
+	mc.Log.AssertChains["(and (= x true)(= y false))"] = &rules.AssertChain{Op: "and", Values: []string{"(= x true)", "(= y false)"}, Chain: []int{0, 1}, Parent: 0}
+	mc.Log.AssertChains["(or (= x true)(= y false))"] = &rules.AssertChain{Op: "or", Values: []string{"(= x true)", "(= y false)"}, Chain: []int{0, 1}, Parent: 1}
+	mc.Log.AssertClauses["(= x true)"] = false
+	mc.Log.AssertClauses["(= y false)"] = true
+
+	mc.CheckChain(mc.Log.AssertChains["(and (= x true)(= y false))"])
+	mc.CheckChain(mc.Log.AssertChains["(or (= x true)(= y false))"])
+
+	if mc.Log.ProcessedAsserts[0].Violated {
+		t.Fatalf("Assert Check %s failed", mc.Log.ProcessedAsserts[0].String())
+	}
+
+	if !mc.Log.ProcessedAsserts[1].Violated {
+		t.Fatalf("Assert Check %s failed", mc.Log.ProcessedAsserts[1].String())
 	}
 }

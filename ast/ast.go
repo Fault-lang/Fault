@@ -566,7 +566,9 @@ type AssertVar struct {
 func (av *AssertVar) expressionNode()      {}
 func (av *AssertVar) TokenLiteral() string { return av.Token.Literal }
 func (av *AssertVar) Position() []int      { return av.Token.GetPosition() }
-func (av *AssertVar) String() string       { return strings.Join(av.Instances, " ") }
+func (av *AssertVar) String() string {
+	return fmt.Sprintf("(%s)", strings.Join(av.Instances, " or "))
+}
 func (av *AssertVar) Type() string {
 	t := av.InferredType
 	if t != nil {

@@ -162,6 +162,30 @@ func (mc *MultiClause) String() string {
 	return strings.Join(mc.Value, " ")
 }
 
+type NullClause struct {
+	Clause
+	Value string
+}
+
+func (nc *NullClause) Type() string {
+	return "NULL"
+}
+func (nc *NullClause) GetFloat() float64 {
+	return 0.0
+}
+func (nc *NullClause) GetInt() int64 {
+	return 0
+}
+func (nc *NullClause) GetBool() bool {
+	return false
+}
+func (nc *NullClause) GetString() string {
+	return ""
+}
+func (nc *NullClause) String() string {
+	return "NULL"
+}
+
 type Assert struct {
 	Left  Clause
 	Right Clause
@@ -293,6 +317,24 @@ func (rl *ResultLog) Index(name string) int {
 	return -1
 }
 
+func (rl *ResultLog) FilterTrigger(idx int) {
+	if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
+		// If there's a branch in the middle of a function some
+		// vars will be dead and others alive. Don't remove the
+		// trigger if there are live vars
+		for _, r := range rl.Events[idx+1:] {
+			if r.Scope != rl.Events[idx].Scope {
+				break
+			}
+
+			if !r.Dead {
+				return
+			}
+		}
+		rl.Events[idx-1].Kill()
+	}
+}
+
 func (rl *ResultLog) FilterStateTransitions() {
 	for idx, l := range rl.Events {
 		if idx > 1 && l.Type == "TRANSITION" {
@@ -326,9 +368,7 @@ func (rl *ResultLog) FilterOut(deadVars []string) {
 
 			// If this branch is really the result of
 			// a function call, remove that too.
-			if idx != 0 && rl.Events[idx-1].Type == "TRIGGER" {
-				rl.Events[idx-1].Kill()
-			}
+			rl.FilterTrigger(idx)
 		}
 	}
 

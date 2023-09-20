@@ -146,7 +146,7 @@ func TestString(t *testing.T) {
 			want = "foo.bar"
 		case *AssertVar:
 			got = t.String()
-			want = "foo bar"
+			want = "(foo or bar)"
 		case *Instance:
 			got = t.String()
 			want = "test= new foo"

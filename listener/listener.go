@@ -77,6 +77,12 @@ func (l *FaultListener) validate() {
 		if _, ok := v.(*ast.DefStatement); ok {
 			return
 		}
+
+		if forS, ok := v.(*ast.ForStatement); ok {
+			if len(forS.Inits.Statements) > 0 {
+				return
+			}
+		}
 	}
 
 	fmt.Println("Malformed fspec or fsystem file. No model possible.")
@@ -113,7 +119,9 @@ func (l *FaultListener) ExitSpec(c *parser.SpecContext) {
 }
 
 func (l *FaultListener) EnterSpecClause(c *parser.SpecClauseContext) {
-	l.currSpec = c.IDENT().GetText()
+	if l.currSpec == "" { //on import we may override the declared name
+		l.currSpec = c.IDENT().GetText()
+	}
 	l.specs = append(l.specs, l.currSpec)
 }
 
@@ -165,6 +173,17 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		panic(fmt.Sprintf("import path not a string: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), val))
 	}
 
+	// If no ident, create one from import path
+	var importId string
+	txt := c.GetText()
+	if len(c.GetChildren()) > 2 {
+		importId = c.IDENT().GetText()
+	} else if len(c.GetChildren()) == 2 && string(txt[len(txt)-1]) != "," {
+		importId = c.IDENT().GetText()
+	} else {
+		importId = pathToIdent(fpath.String())
+	}
+
 	var tree *ast.Spec
 	if !l.testing {
 		//Remove quotes
@@ -176,18 +195,7 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		if err != nil {
 			panic(fmt.Sprintf("spec file %s not found\n", fpath))
 		}
-		tree = l.parseImport(string(importFile))
-	}
-
-	// If no ident, create one from import path
-	var importId string
-	txt := c.GetText()
-	if len(c.GetChildren()) > 2 {
-		importId = c.IDENT().GetText()
-	} else if len(c.GetChildren()) == 2 && string(txt[len(txt)-1]) != "," {
-		importId = c.IDENT().GetText()
-	} else {
-		importId = pathToIdent(fpath.String())
+		tree = l.parseImport(importId, string(importFile))
 	}
 
 	ident := &ast.Identifier{
@@ -693,7 +701,6 @@ func (l *FaultListener) ExitInitBlock(c *parser.InitBlockContext) {
 		}
 
 		if t, ok := ex.(*ast.Instance); ok {
-			//swaps, orphanSwaps = l.filterSwaps(t.Name, orphanSwaps)
 			t.Swaps = append(t.Swaps, swaps...)
 
 			token2 := ex.GetToken()
@@ -793,7 +800,7 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 	switch len(txt) {
 	case 1:
 		pc := l.pop()
-		switch r := pc.(type){
+		switch r := pc.(type) {
 		case *ast.Identifier:
 			ident = r
 			right = txt[0].GetText()
@@ -804,7 +811,7 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 		default:
 			panic(fmt.Sprintf("%s is an invalid identifier line: %d col:%d", txt, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 		}
-		
+
 	case 2:
 		ident.Spec = l.currSpec
 		ident.Value = txt[1].GetText()
@@ -1428,6 +1435,13 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	case *ast.IntegerLiteral:
 		// Disregard, this is part of the temporal filter
+	case *ast.ParameterCall:
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
 	case *ast.Identifier:
 		con = &ast.InvariantClause{
 			Token:    e.Token,
@@ -1498,6 +1512,13 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	switch e := expr.(type) {
 	default:
 		panic(fmt.Sprintf("invariant unusable. Must be expression not %T line: %d, col: %d", e, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	case *ast.ParameterCall:
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e,
+			Operator: "==",
+			Right:    &ast.Boolean{Value: true},
+		}
 	case *ast.Identifier:
 		con = &ast.InvariantClause{
 			Token:    e.Token,
@@ -1547,13 +1568,14 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	})
 }
 
-func (l *FaultListener) parseImport(spec string) *ast.Spec {
+func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
 	listener := NewListener("", false, true)
+	listener.currSpec = id
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
 	l.Uncertains, l.Unknowns, l.StructsPropertyOrder = mergeListeners(l, listener)
@@ -1648,7 +1670,9 @@ func (l *FaultListener) intOrFloatOk(v ast.Node) (float64, error) {
 }
 
 func pathToIdent(path string) string {
-	s1 := strings.ReplaceAll(path, ".fspec", "")
+	base := strings.Split(path, string(os.PathSeparator))
+
+	s1 := strings.ReplaceAll(base[len(base)-1], ".fspec", "")
 	s2 := strings.ReplaceAll(s1, "~", "")
 	s3 := strings.ReplaceAll(s2, "\\", "")
 	s4 := strings.ReplaceAll(s3, `"`, "")
