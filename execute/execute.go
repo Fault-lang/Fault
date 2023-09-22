@@ -156,41 +156,46 @@ func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario 
 }
 
 func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
+	key := a.String()
 	a.Left = mc.ConvertVars(a.Left)
 	a.Right = mc.ConvertVars(a.Right)
 
 	switch a.Op {
 	case "=":
-		return mc.EvalAmbiguous(a) // Could be either bool == bool or float == float
+		res := mc.EvalAmbiguous(a) // Could be either bool == bool or float == float
+		mc.Log.StoreEval(key, res)
+		return res
 	case "not":
-		return mc.EvalAmbiguous(a)
+		res := mc.EvalAmbiguous(a)
+		mc.Log.StoreEval(key, res)
+		return res
 	case ">":
 		left := mc.ConvertClause(a.Left)
 		right := mc.ConvertClause(a.Right)
 
 		res := left > right
-		mc.Log.StoreEval(a, res)
+		mc.Log.StoreEval(key, res)
 		return res
 	case ">=":
 		left := mc.ConvertClause(a.Left)
 		right := mc.ConvertClause(a.Right)
 
 		res := left >= right
-		mc.Log.StoreEval(a, res)
+		mc.Log.StoreEval(key, res)
 		return res
 	case "<":
 		left := mc.ConvertClause(a.Left)
 		right := mc.ConvertClause(a.Right)
 
 		res := left < right
-		mc.Log.StoreEval(a, res)
+		mc.Log.StoreEval(key, res)
 		return res
 	case "<=":
 		left := mc.ConvertClause(a.Left)
 		right := mc.ConvertClause(a.Right)
 
 		res := left <= right
-		mc.Log.StoreEval(a, res)
+		mc.Log.StoreEval(key, res)
 		return res
 	case "and":
 		if a.Left.Type() == "MULTI" {
@@ -208,7 +213,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 
 				// Now handle the main clause
 				res := mc.EvalAmbiguous(a)
-				mc.Log.StoreEval(a, res)
+				mc.Log.StoreEval(key, res)
 				return res
 			} else {
 				panic(fmt.Errorf("cannot find clause for %s", a.Left.String()))
@@ -225,7 +230,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 			panic(err)
 		}
 		res := left && right
-		mc.Log.StoreEval(a, res)
+		mc.Log.StoreEval(key, res)
 		return res
 
 	case "or":
@@ -243,7 +248,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 				}
 			}
 			res := mc.EvalMultiClause(a.Left.(*resultlog.MultiClause), a.Op)
-			mc.Log.StoreEval(a, res)
+			mc.Log.StoreEval(key, res)
 			return res
 		}
 
@@ -256,7 +261,7 @@ func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
 			panic(err)
 		}
 		res := left || right
-		mc.Log.StoreEval(a, res)
+		mc.Log.StoreEval(key, res)
 		return res
 	default:
 		panic(fmt.Sprintf("no option for operator %s", a.Op))
@@ -443,7 +448,6 @@ func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
 			res = false
 		}
 	}
-	mc.Log.StoreEval(a, res)
 	return res
 }
 

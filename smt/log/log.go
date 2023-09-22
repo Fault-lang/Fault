@@ -244,8 +244,7 @@ func (rl *ResultLog) AddChain(key string, chain *rules.AssertChain) {
 	rl.ChainOrder = append(rl.ChainOrder, key)
 }
 
-func (rl *ResultLog) StoreEval(a *Assert, res bool) {
-	key := a.String()
+func (rl *ResultLog) StoreEval(key string, res bool) {
 	rl.AssertClauses[key] = res
 }
 
