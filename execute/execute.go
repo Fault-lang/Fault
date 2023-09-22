@@ -156,6 +156,9 @@ func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario 
 }
 
 func (mc *ModelChecker) Eval(a *resultlog.Assert) bool {
+	a.Left = mc.ConvertVars(a.Left)
+	a.Right = mc.ConvertVars(a.Right)
+
 	switch a.Op {
 	case "=":
 		return mc.EvalAmbiguous(a) // Could be either bool == bool or float == float
@@ -349,6 +352,19 @@ func (mc *ModelChecker) EvalAmbiguous(a *resultlog.Assert) bool {
 	if mc.mixedClauseTypes(a.Left.Type(), a.Right.Type()) {
 		return mc.EvalMixedClauses(a)
 	}
+
+	if a.Left.Type() == "INT" && a.Right.Type() == "FLOAT" {
+		l := &resultlog.FlClause{}
+		l.Value = mc.ConvertClause(a.Left)
+		a.Left = l
+	}
+
+	if a.Left.Type() == "FLOAT" && a.Right.Type() == "INT" {
+		r := &resultlog.FlClause{}
+		r.Value = mc.ConvertClause(a.Right)
+		a.Right = r
+	}
+
 	if a.Left.Type() != a.Right.Type() && a.Left.Type() != "MULTI" {
 		panic(fmt.Sprintf("improperly formatted assertion clause %s got type left %s and type right %s", a.String(), a.Left.Type(), a.Right.Type()))
 	}
@@ -458,6 +474,23 @@ func (mc *ModelChecker) EvalClause(c resultlog.Clause) (bool, error) {
 	default:
 		return false, fmt.Errorf("illegal assertion clause %s typed %s", c.GetString(), c.Type())
 	}
+}
+
+func (mc *ModelChecker) ConvertVars(a resultlog.Clause) resultlog.Clause {
+	// Convert "STRING" clauses that are really idents into proper types and values
+	switch a.Type() {
+	case "INT":
+		return a
+	case "FLOAT":
+		return a
+	case "BOOL":
+		return a
+	case "STRING":
+		if temp, ok := mc.ResultValues[a.String()]; ok {
+			return mc.Log.NewClause(temp)
+		}
+	}
+	return a
 }
 
 func (mc *ModelChecker) ConvertClause(a resultlog.Clause) float64 {

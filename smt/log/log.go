@@ -196,6 +196,11 @@ func (a *Assert) String() string {
 	if a.Right.String() == "" {
 		return fmt.Sprintf("(%s %s)", a.Op, a.Left.String())
 	}
+
+	if a.Op == "not" {
+		return fmt.Sprintf("(%s (= %s %s))", a.Op, a.Left.String(), a.Right.String())
+	}
+
 	return fmt.Sprintf("(%s %s %s)", a.Op, a.Left.String(), a.Right.String())
 }
 
