@@ -5,7 +5,7 @@ Fault is a modeling language for building system dynamic models and checking the
 Pre-alpha.
 
 ## Install
-Fault can be built for source if you like, but the best way to install Fault is by [downloading the correct release for your machine](https://github.com/Fault-lang/Fault/releases).
+Fault can be built from source if you like, but the best way to install Fault is by [downloading the correct release for your machine](https://github.com/Fault-lang/Fault/releases).
 
 Once installed the model checker of Fault needs access to a SMT solver, otherwise Fault will default to generating SMT of models only. Microsoft's Z3 is the recommended solver at this time and [can be downloaded here](https://github.com/Z3Prover/z3/releases)
 
@@ -30,7 +30,7 @@ The development Fault is documented in the series "Marianne Writes a Programming
 - [transcripts](https://dev.to/bellmar/series/9711)
 
 ### Current Status (9/19/2023)
-Pushing a bunch of small patches and bug fixes in the ramp up to presenting Fault at Strange Loop 2023 \o/
+Pushing a bunch of small patches and bug fixes in the ramp-up to presenting Fault at Strange Loop 2023 \o/
 
 #### (8/31/2023)
 Been doing a lot of work on how model outputs are displayed. Needed to fix how dead branches are filtered first. The default display is now formatted like an event log. Also added a static format that just outputs variable values.
