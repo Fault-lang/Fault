@@ -87,7 +87,6 @@ constSpec
 stringDecl
     : IDENT '=' string_ eos
     | IDENT '=' compoundString eos
-    | IDENT '=' compoundString eos
     ;
 
 compoundString
