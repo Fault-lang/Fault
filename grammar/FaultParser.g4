@@ -314,7 +314,7 @@ operandName
 
 prefix
     :
-    | ('+' | '-' | '!' | '^' | '*' | '&' ) expression
+    ('+' | '-' | '!' | '^' | '*' | '&' ) expression
     ;
 
 numeric
