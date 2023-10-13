@@ -546,23 +546,26 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 		case *ast.FunctionLiteral:
 			//These functions are treated as booleans too
 			//initialize them as false first
-			b := &ast.Boolean{Value: false, ProcessedName: v.ProcessedName}
-			val := c.compileValue(b)
+			rawid := v.RawId()
+			c.componentBool(rawid, false)
 
-			if val != nil {
-				rawid := b.RawId()
-				s := c.specs[rawid[0]]
-				if s.GetSpecVar(rawid) != nil {
-					vname := strings.Join(rawid, "_")
-					pointer := s.GetSpecVarPointer(rawid)
-					ty := s.GetSpecType(vname)
-					c.contextBlock.NewLoad(ty, pointer)
-				} else {
-					s.DefineSpecType(rawid, val.Type())
-					s.DefineSpecVar(rawid, val)
-					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
-				}
-			}
+			// b := &ast.Boolean{Value: false, ProcessedName: v.ProcessedName}
+			// val := c.compileValue(b)
+
+			// if val != nil {
+			// 	rawid := b.RawId()
+			// 	s := c.specs[rawid[0]]
+			// 	if s.GetSpecVar(rawid) != nil {
+			// 		vname := strings.Join(rawid, "_")
+			// 		pointer := s.GetSpecVarPointer(rawid)
+			// 		ty := s.GetSpecType(vname)
+			// 		c.contextBlock.NewLoad(ty, pointer)
+			// 	} else {
+			// 		s.DefineSpecType(rawid, val.Type())
+			// 		s.DefineSpecVar(rawid, val)
+			// 		c.allocVariable(rawid, val, []int{0, 0, 0, 0})
+			// 	}
+			// }
 
 			parentID := node.IdString()
 			c.structPropOrder[childId] = c.structPropOrder[parentID]
@@ -607,6 +610,26 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			}
 		}
 	}
+}
+
+func (c *Compiler) componentBool(rawid []string, placeholder bool) value.Value {
+	s := c.specs[rawid[0]]
+	if s.GetSpecVar(rawid) != nil {
+		vname := strings.Join(rawid, "_")
+		pointer := s.GetSpecVarPointer(rawid)
+		ty := s.GetSpecType(vname)
+		c.contextBlock.NewLoad(ty, pointer)
+	}
+
+	b := &ast.Boolean{Value: false, ProcessedName: rawid}
+	val := c.compileValue(b)
+
+	if val != nil && !placeholder {
+		s.DefineSpecType(rawid, val.Type())
+		s.DefineSpecVar(rawid, val)
+		c.allocVariable(rawid, val, []int{0, 0, 0, 0})
+	}
+	return val
 }
 
 func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
@@ -1034,7 +1057,17 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	switch v := node.(type) {
 	case *ast.ParameterCall:
 		id := c.AliasToBaseRaw(v.Id())
-		return c.lookupIdent(id, node.Position())
+		ret := c.lookupIdent(id, node.Position())
+		if ret != nil {
+			return ret
+		}
+
+		// Otherwise is this a component state?
+		if c.isComponent(v.RawId()) {
+			//Return a boolean as a placeholder
+			return c.componentBool(v.RawId(), true)
+		}
+		panic(fmt.Sprintf("infix node %s is invalid", v.String()))
 	case *ast.This:
 		id := v.Id()
 		return c.lookupIdent(id, node.Position())
@@ -1549,6 +1582,12 @@ func (c *Compiler) isFunction(node ast.Node) bool {
 	default:
 		return false
 	}
+}
+
+func (c *Compiler) isComponent(rawid []string) bool {
+	spec := c.specStructs[rawid[0]]
+	_, err := spec.FetchComponent(rawid[1])
+	return err == nil
 }
 
 func (c *Compiler) isConstant(rawid []string) bool {
