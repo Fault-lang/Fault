@@ -40,6 +40,7 @@ type Compiler struct {
 	instanceChildren map[string]string
 	structPropOrder  map[string][]string
 
+	block0          *ir.Block
 	contextBlock    *ir.Block
 	contextFunc     *ir.Func
 	contextFuncName string
@@ -547,25 +548,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			//These functions are treated as booleans too
 			//initialize them as false first
 			rawid := v.RawId()
-			c.componentBool(rawid, false)
-
-			// b := &ast.Boolean{Value: false, ProcessedName: v.ProcessedName}
-			// val := c.compileValue(b)
-
-			// if val != nil {
-			// 	rawid := b.RawId()
-			// 	s := c.specs[rawid[0]]
-			// 	if s.GetSpecVar(rawid) != nil {
-			// 		vname := strings.Join(rawid, "_")
-			// 		pointer := s.GetSpecVarPointer(rawid)
-			// 		ty := s.GetSpecType(vname)
-			// 		c.contextBlock.NewLoad(ty, pointer)
-			// 	} else {
-			// 		s.DefineSpecType(rawid, val.Type())
-			// 		s.DefineSpecVar(rawid, val)
-			// 		c.allocVariable(rawid, val, []int{0, 0, 0, 0})
-			// 	}
-			// }
+			c.componentBool(rawid)
 
 			parentID := node.IdString()
 			c.structPropOrder[childId] = c.structPropOrder[parentID]
@@ -612,23 +595,26 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 	}
 }
 
-func (c *Compiler) componentBool(rawid []string, placeholder bool) value.Value {
+func (c *Compiler) componentBool(rawid []string) value.Value {
+	oldBlock := c.contextBlock
+	c.contextBlock = c.block0
 	s := c.specs[rawid[0]]
 	if s.GetSpecVar(rawid) != nil {
 		vname := strings.Join(rawid, "_")
 		pointer := s.GetSpecVarPointer(rawid)
 		ty := s.GetSpecType(vname)
-		c.contextBlock.NewLoad(ty, pointer)
+		return c.contextBlock.NewLoad(ty, pointer)
 	}
 
 	b := &ast.Boolean{Value: false, ProcessedName: rawid}
 	val := c.compileValue(b)
 
-	if val != nil && !placeholder {
+	if val != nil {
 		s.DefineSpecType(rawid, val.Type())
 		s.DefineSpecVar(rawid, val)
 		c.allocVariable(rawid, val, []int{0, 0, 0, 0})
 	}
+	c.contextBlock = oldBlock
 	return val
 }
 
@@ -1065,7 +1051,7 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 		// Otherwise is this a component state?
 		if c.isComponent(v.RawId()) {
 			//Return a boolean as a placeholder
-			return c.componentBool(v.RawId(), true)
+			return c.componentBool(v.RawId())
 		}
 		panic(fmt.Sprintf("infix node %s is invalid", v.String()))
 	case *ast.This:
@@ -1798,6 +1784,7 @@ func (c *Compiler) setup() {
 	mainBlock := c.contextFunc.NewBlock(name.Block())
 	mainBlock.NewRet(nil)
 	c.contextBlock = mainBlock
+	c.block0 = mainBlock
 }
 
 type Panic string
