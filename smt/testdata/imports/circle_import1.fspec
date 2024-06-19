@@ -1,4 +1,4 @@
-spec circle;
+spec circle1;
 
 import circle2 "circle_import2.fspec";
 

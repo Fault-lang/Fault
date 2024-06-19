@@ -1587,6 +1587,7 @@ func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
 	listener := NewListener("", false, true)
 	listener.currSpec = id
 	listener.specs = l.specs
+	listener.Path = l.Path
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
 	l.Uncertains, l.Unknowns, l.StructsPropertyOrder, l.specs = mergeListeners(l, listener)
