@@ -60,7 +60,8 @@ importPath
     ;
 
 declaration
-    : constDecl
+    : importDecl
+    | constDecl
     | structDecl
     | assertion
     | assumption

@@ -1,13 +1,12 @@
-// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
+// Code generated from SMTLIBv2.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser
 
 import (
 	"fmt"
+	"github.com/antlr4-go/antlr/v4"
 	"sync"
 	"unicode"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 // Suppress unused import error
@@ -22,28 +21,28 @@ type SMTLIBv2Lexer struct {
 	// TODO: EOF string
 }
 
-var smtlibv2lexerLexerStaticData struct {
+var SMTLIBv2LexerLexerStaticData struct {
 	once                   sync.Once
 	serializedATN          []int32
-	channelNames           []string
-	modeNames              []string
-	literalNames           []string
-	symbolicNames          []string
-	ruleNames              []string
-	predictionContextCache *antlr.PredictionContextCache
+	ChannelNames           []string
+	ModeNames              []string
+	LiteralNames           []string
+	SymbolicNames          []string
+	RuleNames              []string
+	PredictionContextCache *antlr.PredictionContextCache
 	atn                    *antlr.ATN
 	decisionToDFA          []*antlr.DFA
 }
 
 func smtlibv2lexerLexerInit() {
-	staticData := &smtlibv2lexerLexerStaticData
-	staticData.channelNames = []string{
+	staticData := &SMTLIBv2LexerLexerStaticData
+	staticData.ChannelNames = []string{
 		"DEFAULT_TOKEN_CHANNEL", "HIDDEN",
 	}
-	staticData.modeNames = []string{
+	staticData.ModeNames = []string{
 		"DEFAULT_MODE",
 	}
-	staticData.literalNames = []string{
+	staticData.LiteralNames = []string{
 		"", "", "'('", "')'", "';'", "", "", "'not'", "'Bool'", "'continued-execution'",
 		"'error'", "'false'", "'immediate-exit'", "'incomplete'", "'logic'",
 		"'memout'", "'sat'", "'success'", "'theory'", "'true'", "'unknown'",
@@ -68,7 +67,7 @@ func smtlibv2lexerLexerInit() {
 		"':sorts'", "':sorts-description'", "':source'", "':status'", "':theories'",
 		"':values'", "':verbosity'", "':version'", "'model'",
 	}
-	staticData.symbolicNames = []string{
+	staticData.SymbolicNames = []string{
 		"", "Comment", "ParOpen", "ParClose", "Semicolon", "String_", "QuotedSymbol",
 		"PS_Not", "PS_Bool", "PS_ContinuedExecution", "PS_Error", "PS_False",
 		"PS_ImmediateExit", "PS_Incomplete", "PS_Logic", "PS_Memout", "PS_Sat",
@@ -95,7 +94,7 @@ func smtlibv2lexerLexerInit() {
 		"PK_Source", "PK_Status", "PK_Theories", "PK_Values", "PK_Verbosity",
 		"PK_Version", "RS_Model", "UndefinedSymbol", "WS",
 	}
-	staticData.ruleNames = []string{
+	staticData.RuleNames = []string{
 		"Comment", "ParOpen", "ParClose", "Semicolon", "String_", "QuotedSymbol",
 		"PS_Not", "PS_Bool", "PS_ContinuedExecution", "PS_Error", "PS_False",
 		"PS_ImmediateExit", "PS_Incomplete", "PS_Logic", "PS_Memout", "PS_Sat",
@@ -124,7 +123,7 @@ func smtlibv2lexerLexerInit() {
 		"PK_Source", "PK_Status", "PK_Theories", "PK_Values", "PK_Verbosity",
 		"PK_Version", "RS_Model", "UndefinedSymbol", "WS",
 	}
-	staticData.predictionContextCache = antlr.NewPredictionContextCache()
+	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
 		4, 0, 114, 1509, 6, -1, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3,
 		2, 4, 7, 4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9,
@@ -809,7 +808,7 @@ func smtlibv2lexerLexerInit() {
 // NewSMTLIBv2Lexer(). You can call this function if you wish to initialize the static state ahead
 // of time.
 func SMTLIBv2LexerInit() {
-	staticData := &smtlibv2lexerLexerStaticData
+	staticData := &SMTLIBv2LexerLexerStaticData
 	staticData.once.Do(smtlibv2lexerLexerInit)
 }
 
@@ -818,13 +817,13 @@ func NewSMTLIBv2Lexer(input antlr.CharStream) *SMTLIBv2Lexer {
 	SMTLIBv2LexerInit()
 	l := new(SMTLIBv2Lexer)
 	l.BaseLexer = antlr.NewBaseLexer(input)
-	staticData := &smtlibv2lexerLexerStaticData
-	l.Interpreter = antlr.NewLexerATNSimulator(l, staticData.atn, staticData.decisionToDFA, staticData.predictionContextCache)
-	l.channelNames = staticData.channelNames
-	l.modeNames = staticData.modeNames
-	l.RuleNames = staticData.ruleNames
-	l.LiteralNames = staticData.literalNames
-	l.SymbolicNames = staticData.symbolicNames
+	staticData := &SMTLIBv2LexerLexerStaticData
+	l.Interpreter = antlr.NewLexerATNSimulator(l, staticData.atn, staticData.decisionToDFA, staticData.PredictionContextCache)
+	l.channelNames = staticData.ChannelNames
+	l.modeNames = staticData.ModeNames
+	l.RuleNames = staticData.RuleNames
+	l.LiteralNames = staticData.LiteralNames
+	l.SymbolicNames = staticData.SymbolicNames
 	l.GrammarFileName = "SMTLIBv2.g4"
 	// TODO: l.EOF = antlr.TokenEOF
 

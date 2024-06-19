@@ -1,6 +1,6 @@
 spec imports;
 
-import ("simple.fspec");
+import ("../simple.fspec");
 
 def fl2 = flow{
     vault: new simple.st,

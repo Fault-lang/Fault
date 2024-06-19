@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/antlr4-go/antlr/v4"
 	"github.com/barkimedes/go-deepcopy"
 )
 
@@ -69,11 +69,17 @@ func (l *FaultListener) validate() {
 	}
 
 	if len(l.stack) < 2 {
-		fmt.Println("Malformed fspec or fsystem file. No model possible.")
+		fmt.Println(l.stack)
+		fmt.Println("Malformed fspec or fsystem file. Too few statements.")
 		os.Exit(1)
 	}
 
 	for _, v := range l.stack {
+
+		if _, ok := v.(*ast.AssertionStatement); ok {
+			return
+		}
+
 		if _, ok := v.(*ast.DefStatement); ok {
 			return
 		}
@@ -186,6 +192,10 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 
 	var tree *ast.Spec
 	if !l.testing {
+		//Have we already imported this spec?
+		if util.InStringSlice(l.specs, importId) {
+			return
+		}
 		//Remove quotes
 		trimmedFP := fpath.Value[1 : len(fpath.Value)-1]
 		//Does file exist?
@@ -1576,23 +1586,25 @@ func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
 	p := parser.NewFaultParser(stream)
 	listener := NewListener("", false, true)
 	listener.currSpec = id
+	listener.specs = l.specs
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
-	l.Uncertains, l.Unknowns, l.StructsPropertyOrder = mergeListeners(l, listener)
+	l.Uncertains, l.Unknowns, l.StructsPropertyOrder, l.specs = mergeListeners(l, listener)
 	return listener.AST
 }
 
-func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64, []string, map[string][]string) {
+func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64, []string, map[string][]string, []string) {
 	for k, v := range l2.Uncertains {
 		l1.Uncertains[k] = v
 	}
 
 	l1.Unknowns = append(l1.Unknowns, l2.Unknowns...)
+	l1.specs = append(l1.specs, l2.specs...)
 
 	for k, v := range l2.StructsPropertyOrder {
 		l1.StructsPropertyOrder[k] = v
 	}
-	return l1.Uncertains, l1.Unknowns, l1.StructsPropertyOrder
+	return l1.Uncertains, l1.Unknowns, l1.StructsPropertyOrder, l1.specs
 }
 
 func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expression, []string) {

@@ -479,6 +479,39 @@ func TestTestData(t *testing.T) {
 	}
 }
 
+func TestImports(t *testing.T) {
+	specs := []string{
+		//"testdata/imports/circle_import1.fspec",
+		"testdata/imports/single_import.fspec",
+	}
+	smt2s := []string{
+		//"testdata/imports/circle_import.smt2",
+		"testdata/imports/single_import.smt2",
+	}
+
+	for i, s := range specs {
+		data, err := os.ReadFile(s)
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s))
+		}
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		g := prepTest(s, string(data), true, false)
+
+		if err != nil {
+			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
+		}
+
+		err = compareResults(s, g.SMT(), string(expecting))
+
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
+}
+
 func TestSys(t *testing.T) {
 	specs := [][]string{
 		{"testdata/statecharts/statechart.fsystem", "0"},

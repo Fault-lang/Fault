@@ -1,0 +1,7 @@
+(set-logicQF_NRA)
+(declare-funimports_fl3_vault_value_1()Real)
+(declare-funimports_fl3_vault_value_0()Real)
+(declare-funimports_fl3_vault_value_2()Real)
+(assert(=imports_fl3_vault_value_1(+imports_fl3_vault_value_010.0)))
+(assert(=imports_fl3_vault_value_030.0))
+(assert(=imports_fl3_vault_value_2(+imports_fl3_vault_value_110.0)))

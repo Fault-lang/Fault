@@ -1,4 +1,4 @@
-// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
+// Code generated from SMTLIBv2.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // SMTLIBv2
 
@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // Suppress unused import errors
@@ -19,20 +19,20 @@ type SMTLIBv2Parser struct {
 	*antlr.BaseParser
 }
 
-var smtlibv2ParserStaticData struct {
+var SMTLIBv2ParserStaticData struct {
 	once                   sync.Once
 	serializedATN          []int32
-	literalNames           []string
-	symbolicNames          []string
-	ruleNames              []string
-	predictionContextCache *antlr.PredictionContextCache
+	LiteralNames           []string
+	SymbolicNames          []string
+	RuleNames              []string
+	PredictionContextCache *antlr.PredictionContextCache
 	atn                    *antlr.ATN
 	decisionToDFA          []*antlr.DFA
 }
 
 func smtlibv2ParserInit() {
-	staticData := &smtlibv2ParserStaticData
-	staticData.literalNames = []string{
+	staticData := &SMTLIBv2ParserStaticData
+	staticData.LiteralNames = []string{
 		"", "", "'('", "')'", "';'", "", "", "'not'", "'Bool'", "'continued-execution'",
 		"'error'", "'false'", "'immediate-exit'", "'incomplete'", "'logic'",
 		"'memout'", "'sat'", "'success'", "'theory'", "'true'", "'unknown'",
@@ -57,7 +57,7 @@ func smtlibv2ParserInit() {
 		"':sorts'", "':sorts-description'", "':source'", "':status'", "':theories'",
 		"':values'", "':verbosity'", "':version'", "'model'",
 	}
-	staticData.symbolicNames = []string{
+	staticData.SymbolicNames = []string{
 		"", "Comment", "ParOpen", "ParClose", "Semicolon", "String_", "QuotedSymbol",
 		"PS_Not", "PS_Bool", "PS_ContinuedExecution", "PS_Error", "PS_False",
 		"PS_ImmediateExit", "PS_Incomplete", "PS_Logic", "PS_Memout", "PS_Sat",
@@ -84,7 +84,7 @@ func smtlibv2ParserInit() {
 		"PK_Source", "PK_Status", "PK_Theories", "PK_Values", "PK_Verbosity",
 		"PK_Version", "RS_Model", "UndefinedSymbol", "WS",
 	}
-	staticData.ruleNames = []string{
+	staticData.RuleNames = []string{
 		"start", "generalReservedWord", "simpleSymbol", "quotedSymbol", "predefSymbol",
 		"predefKeyword", "symbol", "numeral", "decimal", "hexadecimal", "binary",
 		"string_", "keyword", "spec_constant", "s_expr", "index", "identifier",
@@ -107,7 +107,7 @@ func smtlibv2ParserInit() {
 		"get_unsat_assump_response", "get_unsat_core_response", "get_value_response",
 		"specific_success_response", "general_response",
 	}
-	staticData.predictionContextCache = antlr.NewPredictionContextCache()
+	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
 		4, 1, 114, 1105, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4,
 		7, 4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10,
@@ -622,7 +622,7 @@ func smtlibv2ParserInit() {
 // NewSMTLIBv2Parser(). You can call this function if you wish to initialize the static state ahead
 // of time.
 func SMTLIBv2ParserInit() {
-	staticData := &smtlibv2ParserStaticData
+	staticData := &SMTLIBv2ParserStaticData
 	staticData.once.Do(smtlibv2ParserInit)
 }
 
@@ -631,12 +631,12 @@ func NewSMTLIBv2Parser(input antlr.TokenStream) *SMTLIBv2Parser {
 	SMTLIBv2ParserInit()
 	this := new(SMTLIBv2Parser)
 	this.BaseParser = antlr.NewBaseParser(input)
-	staticData := &smtlibv2ParserStaticData
-	this.Interpreter = antlr.NewParserATNSimulator(this, staticData.atn, staticData.decisionToDFA, staticData.predictionContextCache)
-	this.RuleNames = staticData.ruleNames
-	this.LiteralNames = staticData.literalNames
-	this.SymbolicNames = staticData.symbolicNames
-	this.GrammarFileName = "java-escape"
+	staticData := &SMTLIBv2ParserStaticData
+	this.Interpreter = antlr.NewParserATNSimulator(this, staticData.atn, staticData.decisionToDFA, staticData.PredictionContextCache)
+	this.RuleNames = staticData.RuleNames
+	this.LiteralNames = staticData.LiteralNames
+	this.SymbolicNames = staticData.SymbolicNames
+	this.GrammarFileName = "SMTLIBv2.g4"
 
 	return this
 }
@@ -867,20 +867,32 @@ type IStartContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Logic() ILogicContext
+	EOF() antlr.TerminalNode
+	Theory_decl() ITheory_declContext
+	Script() IScriptContext
+	General_response() IGeneral_responseContext
+
 	// IsStartContext differentiates from other interfaces.
 	IsStartContext()
 }
 
 type StartContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyStartContext() *StartContext {
 	var p = new(StartContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_start
 	return p
+}
+
+func InitEmptyStartContext(p *StartContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_start
 }
 
 func (*StartContext) IsStartContext() {}
@@ -888,7 +900,7 @@ func (*StartContext) IsStartContext() {}
 func NewStartContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *StartContext {
 	var p = new(StartContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_start
@@ -996,32 +1008,16 @@ func (s *StartContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	}
 }
 
-func (p *SMTLIBv2Parser) Start() (localctx IStartContext) {
-	this := p
-	_ = this
-
+func (p *SMTLIBv2Parser) Start_() (localctx IStartContext) {
 	localctx = NewStartContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 0, SMTLIBv2ParserRULE_start)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(204)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 0, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 0, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -1031,6 +1027,10 @@ func (p *SMTLIBv2Parser) Start() (localctx IStartContext) {
 		{
 			p.SetState(193)
 			p.Match(SMTLIBv2ParserEOF)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -1042,6 +1042,10 @@ func (p *SMTLIBv2Parser) Start() (localctx IStartContext) {
 		{
 			p.SetState(196)
 			p.Match(SMTLIBv2ParserEOF)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -1053,6 +1057,10 @@ func (p *SMTLIBv2Parser) Start() (localctx IStartContext) {
 		{
 			p.SetState(199)
 			p.Match(SMTLIBv2ParserEOF)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -1064,11 +1072,27 @@ func (p *SMTLIBv2Parser) Start() (localctx IStartContext) {
 		{
 			p.SetState(202)
 			p.Match(SMTLIBv2ParserEOF)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGeneralReservedWordContext is an interface to support dynamic dispatch.
@@ -1078,20 +1102,41 @@ type IGeneralReservedWordContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	GRW_Exclamation() antlr.TerminalNode
+	GRW_Underscore() antlr.TerminalNode
+	GRW_As() antlr.TerminalNode
+	GRW_Binary() antlr.TerminalNode
+	GRW_Decimal() antlr.TerminalNode
+	GRW_Exists() antlr.TerminalNode
+	GRW_Hexadecimal() antlr.TerminalNode
+	GRW_Forall() antlr.TerminalNode
+	GRW_Let() antlr.TerminalNode
+	GRW_Match() antlr.TerminalNode
+	GRW_Numeral() antlr.TerminalNode
+	GRW_Par() antlr.TerminalNode
+	GRW_String() antlr.TerminalNode
+	RS_Model() antlr.TerminalNode
+
 	// IsGeneralReservedWordContext differentiates from other interfaces.
 	IsGeneralReservedWordContext()
 }
 
 type GeneralReservedWordContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGeneralReservedWordContext() *GeneralReservedWordContext {
 	var p = new(GeneralReservedWordContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_generalReservedWord
 	return p
+}
+
+func InitEmptyGeneralReservedWordContext(p *GeneralReservedWordContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_generalReservedWord
 }
 
 func (*GeneralReservedWordContext) IsGeneralReservedWordContext() {}
@@ -1099,7 +1144,7 @@ func (*GeneralReservedWordContext) IsGeneralReservedWordContext() {}
 func NewGeneralReservedWordContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *GeneralReservedWordContext {
 	var p = new(GeneralReservedWordContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_generalReservedWord
@@ -1196,28 +1241,9 @@ func (s *GeneralReservedWordContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *SMTLIBv2Parser) GeneralReservedWord() (localctx IGeneralReservedWordContext) {
-	this := p
-	_ = this
-
 	localctx = NewGeneralReservedWordContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 2, SMTLIBv2ParserRULE_generalReservedWord)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -1232,7 +1258,17 @@ func (p *SMTLIBv2Parser) GeneralReservedWord() (localctx IGeneralReservedWordCon
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISimpleSymbolContext is an interface to support dynamic dispatch.
@@ -1242,20 +1278,29 @@ type ISimpleSymbolContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PredefSymbol() IPredefSymbolContext
+	UndefinedSymbol() antlr.TerminalNode
+
 	// IsSimpleSymbolContext differentiates from other interfaces.
 	IsSimpleSymbolContext()
 }
 
 type SimpleSymbolContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySimpleSymbolContext() *SimpleSymbolContext {
 	var p = new(SimpleSymbolContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_simpleSymbol
 	return p
+}
+
+func InitEmptySimpleSymbolContext(p *SimpleSymbolContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_simpleSymbol
 }
 
 func (*SimpleSymbolContext) IsSimpleSymbolContext() {}
@@ -1263,7 +1308,7 @@ func (*SimpleSymbolContext) IsSimpleSymbolContext() {}
 func NewSimpleSymbolContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *SimpleSymbolContext {
 	var p = new(SimpleSymbolContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_simpleSymbol
@@ -1324,30 +1369,13 @@ func (s *SimpleSymbolContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) SimpleSymbol() (localctx ISimpleSymbolContext) {
-	this := p
-	_ = this
-
 	localctx = NewSimpleSymbolContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 4, SMTLIBv2ParserRULE_simpleSymbol)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(210)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserPS_Not, SMTLIBv2ParserPS_Bool, SMTLIBv2ParserPS_ContinuedExecution, SMTLIBv2ParserPS_Error, SMTLIBv2ParserPS_False, SMTLIBv2ParserPS_ImmediateExit, SMTLIBv2ParserPS_Incomplete, SMTLIBv2ParserPS_Logic, SMTLIBv2ParserPS_Memout, SMTLIBv2ParserPS_Sat, SMTLIBv2ParserPS_Success, SMTLIBv2ParserPS_Theory, SMTLIBv2ParserPS_True, SMTLIBv2ParserPS_Unknown, SMTLIBv2ParserPS_Unsupported, SMTLIBv2ParserPS_Unsat:
@@ -1362,13 +1390,28 @@ func (p *SMTLIBv2Parser) SimpleSymbol() (localctx ISimpleSymbolContext) {
 		{
 			p.SetState(209)
 			p.Match(SMTLIBv2ParserUndefinedSymbol)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IQuotedSymbolContext is an interface to support dynamic dispatch.
@@ -1378,20 +1421,28 @@ type IQuotedSymbolContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	QuotedSymbol() antlr.TerminalNode
+
 	// IsQuotedSymbolContext differentiates from other interfaces.
 	IsQuotedSymbolContext()
 }
 
 type QuotedSymbolContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyQuotedSymbolContext() *QuotedSymbolContext {
 	var p = new(QuotedSymbolContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_quotedSymbol
 	return p
+}
+
+func InitEmptyQuotedSymbolContext(p *QuotedSymbolContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_quotedSymbol
 }
 
 func (*QuotedSymbolContext) IsQuotedSymbolContext() {}
@@ -1399,7 +1450,7 @@ func (*QuotedSymbolContext) IsQuotedSymbolContext() {}
 func NewQuotedSymbolContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *QuotedSymbolContext {
 	var p = new(QuotedSymbolContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_quotedSymbol
@@ -1444,35 +1495,29 @@ func (s *QuotedSymbolContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) QuotedSymbol() (localctx IQuotedSymbolContext) {
-	this := p
-	_ = this
-
 	localctx = NewQuotedSymbolContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 6, SMTLIBv2ParserRULE_quotedSymbol)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(212)
 		p.Match(SMTLIBv2ParserQuotedSymbol)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPredefSymbolContext is an interface to support dynamic dispatch.
@@ -1482,20 +1527,43 @@ type IPredefSymbolContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PS_Not() antlr.TerminalNode
+	PS_Bool() antlr.TerminalNode
+	PS_ContinuedExecution() antlr.TerminalNode
+	PS_Error() antlr.TerminalNode
+	PS_False() antlr.TerminalNode
+	PS_ImmediateExit() antlr.TerminalNode
+	PS_Incomplete() antlr.TerminalNode
+	PS_Logic() antlr.TerminalNode
+	PS_Memout() antlr.TerminalNode
+	PS_Sat() antlr.TerminalNode
+	PS_Success() antlr.TerminalNode
+	PS_Theory() antlr.TerminalNode
+	PS_True() antlr.TerminalNode
+	PS_Unknown() antlr.TerminalNode
+	PS_Unsupported() antlr.TerminalNode
+	PS_Unsat() antlr.TerminalNode
+
 	// IsPredefSymbolContext differentiates from other interfaces.
 	IsPredefSymbolContext()
 }
 
 type PredefSymbolContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPredefSymbolContext() *PredefSymbolContext {
 	var p = new(PredefSymbolContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_predefSymbol
 	return p
+}
+
+func InitEmptyPredefSymbolContext(p *PredefSymbolContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_predefSymbol
 }
 
 func (*PredefSymbolContext) IsPredefSymbolContext() {}
@@ -1503,7 +1571,7 @@ func (*PredefSymbolContext) IsPredefSymbolContext() {}
 func NewPredefSymbolContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *PredefSymbolContext {
 	var p = new(PredefSymbolContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_predefSymbol
@@ -1608,28 +1676,9 @@ func (s *PredefSymbolContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) PredefSymbol() (localctx IPredefSymbolContext) {
-	this := p
-	_ = this
-
 	localctx = NewPredefSymbolContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 8, SMTLIBv2ParserRULE_predefSymbol)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -1644,7 +1693,17 @@ func (p *SMTLIBv2Parser) PredefSymbol() (localctx IPredefSymbolContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPredefKeywordContext is an interface to support dynamic dispatch.
@@ -1654,20 +1713,68 @@ type IPredefKeywordContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PK_AllStatistics() antlr.TerminalNode
+	PK_AssertionStackLevels() antlr.TerminalNode
+	PK_Authors() antlr.TerminalNode
+	PK_Category() antlr.TerminalNode
+	PK_Chainable() antlr.TerminalNode
+	PK_Definition() antlr.TerminalNode
+	PK_DiagnosticOutputChannel() antlr.TerminalNode
+	PK_ErrorBehaviour() antlr.TerminalNode
+	PK_Extension() antlr.TerminalNode
+	PK_Funs() antlr.TerminalNode
+	PK_FunsDescription() antlr.TerminalNode
+	PK_GlobalDeclarations() antlr.TerminalNode
+	PK_InteractiveMode() antlr.TerminalNode
+	PK_Language() antlr.TerminalNode
+	PK_LeftAssoc() antlr.TerminalNode
+	PK_License() antlr.TerminalNode
+	PK_Named() antlr.TerminalNode
+	PK_Name() antlr.TerminalNode
+	PK_Notes() antlr.TerminalNode
+	PK_Pattern() antlr.TerminalNode
+	PK_PrintSuccess() antlr.TerminalNode
+	PK_ProduceAssertions() antlr.TerminalNode
+	PK_ProduceAssignments() antlr.TerminalNode
+	PK_ProduceModels() antlr.TerminalNode
+	PK_ProduceProofs() antlr.TerminalNode
+	PK_ProduceUnsatAssumptions() antlr.TerminalNode
+	PK_ProduceUnsatCores() antlr.TerminalNode
+	PK_RandomSeed() antlr.TerminalNode
+	PK_ReasonUnknown() antlr.TerminalNode
+	PK_RegularOutputChannel() antlr.TerminalNode
+	PK_ReproducibleResourceLimit() antlr.TerminalNode
+	PK_RightAssoc() antlr.TerminalNode
+	PK_SmtLibVersion() antlr.TerminalNode
+	PK_Sorts() antlr.TerminalNode
+	PK_SortsDescription() antlr.TerminalNode
+	PK_Source() antlr.TerminalNode
+	PK_Status() antlr.TerminalNode
+	PK_Theories() antlr.TerminalNode
+	PK_Values() antlr.TerminalNode
+	PK_Verbosity() antlr.TerminalNode
+	PK_Version() antlr.TerminalNode
+
 	// IsPredefKeywordContext differentiates from other interfaces.
 	IsPredefKeywordContext()
 }
 
 type PredefKeywordContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPredefKeywordContext() *PredefKeywordContext {
 	var p = new(PredefKeywordContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_predefKeyword
 	return p
+}
+
+func InitEmptyPredefKeywordContext(p *PredefKeywordContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_predefKeyword
 }
 
 func (*PredefKeywordContext) IsPredefKeywordContext() {}
@@ -1675,7 +1782,7 @@ func (*PredefKeywordContext) IsPredefKeywordContext() {}
 func NewPredefKeywordContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *PredefKeywordContext {
 	var p = new(PredefKeywordContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_predefKeyword
@@ -1880,28 +1987,9 @@ func (s *PredefKeywordContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) PredefKeyword() (localctx IPredefKeywordContext) {
-	this := p
-	_ = this
-
 	localctx = NewPredefKeywordContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 10, SMTLIBv2ParserRULE_predefKeyword)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -1916,7 +2004,17 @@ func (p *SMTLIBv2Parser) PredefKeyword() (localctx IPredefKeywordContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISymbolContext is an interface to support dynamic dispatch.
@@ -1926,20 +2024,29 @@ type ISymbolContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	SimpleSymbol() ISimpleSymbolContext
+	QuotedSymbol() IQuotedSymbolContext
+
 	// IsSymbolContext differentiates from other interfaces.
 	IsSymbolContext()
 }
 
 type SymbolContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySymbolContext() *SymbolContext {
 	var p = new(SymbolContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_symbol
 	return p
+}
+
+func InitEmptySymbolContext(p *SymbolContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_symbol
 }
 
 func (*SymbolContext) IsSymbolContext() {}
@@ -1947,7 +2054,7 @@ func (*SymbolContext) IsSymbolContext() {}
 func NewSymbolContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *SymbolContext {
 	var p = new(SymbolContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_symbol
@@ -2020,30 +2127,13 @@ func (s *SymbolContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Symbol() (localctx ISymbolContext) {
-	this := p
-	_ = this
-
 	localctx = NewSymbolContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 12, SMTLIBv2ParserRULE_symbol)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(220)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserPS_Not, SMTLIBv2ParserPS_Bool, SMTLIBv2ParserPS_ContinuedExecution, SMTLIBv2ParserPS_Error, SMTLIBv2ParserPS_False, SMTLIBv2ParserPS_ImmediateExit, SMTLIBv2ParserPS_Incomplete, SMTLIBv2ParserPS_Logic, SMTLIBv2ParserPS_Memout, SMTLIBv2ParserPS_Sat, SMTLIBv2ParserPS_Success, SMTLIBv2ParserPS_Theory, SMTLIBv2ParserPS_True, SMTLIBv2ParserPS_Unknown, SMTLIBv2ParserPS_Unsupported, SMTLIBv2ParserPS_Unsat, SMTLIBv2ParserUndefinedSymbol:
@@ -2061,10 +2151,21 @@ func (p *SMTLIBv2Parser) Symbol() (localctx ISymbolContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // INumeralContext is an interface to support dynamic dispatch.
@@ -2074,20 +2175,28 @@ type INumeralContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Numeral() antlr.TerminalNode
+
 	// IsNumeralContext differentiates from other interfaces.
 	IsNumeralContext()
 }
 
 type NumeralContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyNumeralContext() *NumeralContext {
 	var p = new(NumeralContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_numeral
 	return p
+}
+
+func InitEmptyNumeralContext(p *NumeralContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_numeral
 }
 
 func (*NumeralContext) IsNumeralContext() {}
@@ -2095,7 +2204,7 @@ func (*NumeralContext) IsNumeralContext() {}
 func NewNumeralContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *NumeralContext {
 	var p = new(NumeralContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_numeral
@@ -2140,35 +2249,29 @@ func (s *NumeralContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Numeral() (localctx INumeralContext) {
-	this := p
-	_ = this
-
 	localctx = NewNumeralContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 14, SMTLIBv2ParserRULE_numeral)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(222)
 		p.Match(SMTLIBv2ParserNumeral)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDecimalContext is an interface to support dynamic dispatch.
@@ -2178,20 +2281,28 @@ type IDecimalContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Decimal() antlr.TerminalNode
+
 	// IsDecimalContext differentiates from other interfaces.
 	IsDecimalContext()
 }
 
 type DecimalContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyDecimalContext() *DecimalContext {
 	var p = new(DecimalContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_decimal
 	return p
+}
+
+func InitEmptyDecimalContext(p *DecimalContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_decimal
 }
 
 func (*DecimalContext) IsDecimalContext() {}
@@ -2199,7 +2310,7 @@ func (*DecimalContext) IsDecimalContext() {}
 func NewDecimalContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *DecimalContext {
 	var p = new(DecimalContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_decimal
@@ -2244,35 +2355,29 @@ func (s *DecimalContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Decimal() (localctx IDecimalContext) {
-	this := p
-	_ = this
-
 	localctx = NewDecimalContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 16, SMTLIBv2ParserRULE_decimal)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(224)
 		p.Match(SMTLIBv2ParserDecimal)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IHexadecimalContext is an interface to support dynamic dispatch.
@@ -2282,20 +2387,28 @@ type IHexadecimalContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	HexDecimal() antlr.TerminalNode
+
 	// IsHexadecimalContext differentiates from other interfaces.
 	IsHexadecimalContext()
 }
 
 type HexadecimalContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyHexadecimalContext() *HexadecimalContext {
 	var p = new(HexadecimalContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_hexadecimal
 	return p
+}
+
+func InitEmptyHexadecimalContext(p *HexadecimalContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_hexadecimal
 }
 
 func (*HexadecimalContext) IsHexadecimalContext() {}
@@ -2303,7 +2416,7 @@ func (*HexadecimalContext) IsHexadecimalContext() {}
 func NewHexadecimalContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *HexadecimalContext {
 	var p = new(HexadecimalContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_hexadecimal
@@ -2348,35 +2461,29 @@ func (s *HexadecimalContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *SMTLIBv2Parser) Hexadecimal() (localctx IHexadecimalContext) {
-	this := p
-	_ = this
-
 	localctx = NewHexadecimalContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 18, SMTLIBv2ParserRULE_hexadecimal)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(226)
 		p.Match(SMTLIBv2ParserHexDecimal)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IBinaryContext is an interface to support dynamic dispatch.
@@ -2386,20 +2493,28 @@ type IBinaryContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Binary() antlr.TerminalNode
+
 	// IsBinaryContext differentiates from other interfaces.
 	IsBinaryContext()
 }
 
 type BinaryContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyBinaryContext() *BinaryContext {
 	var p = new(BinaryContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_binary
 	return p
+}
+
+func InitEmptyBinaryContext(p *BinaryContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_binary
 }
 
 func (*BinaryContext) IsBinaryContext() {}
@@ -2407,7 +2522,7 @@ func (*BinaryContext) IsBinaryContext() {}
 func NewBinaryContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *BinaryContext {
 	var p = new(BinaryContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_binary
@@ -2452,35 +2567,29 @@ func (s *BinaryContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Binary() (localctx IBinaryContext) {
-	this := p
-	_ = this
-
 	localctx = NewBinaryContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 20, SMTLIBv2ParserRULE_binary)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(228)
 		p.Match(SMTLIBv2ParserBinary)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IString_Context is an interface to support dynamic dispatch.
@@ -2490,20 +2599,28 @@ type IString_Context interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	String_() antlr.TerminalNode
+
 	// IsString_Context differentiates from other interfaces.
 	IsString_Context()
 }
 
 type String_Context struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyString_Context() *String_Context {
 	var p = new(String_Context)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_string_
 	return p
+}
+
+func InitEmptyString_Context(p *String_Context) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_string_
 }
 
 func (*String_Context) IsString_Context() {}
@@ -2511,7 +2628,7 @@ func (*String_Context) IsString_Context() {}
 func NewString_Context(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *String_Context {
 	var p = new(String_Context)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_string_
@@ -2556,35 +2673,29 @@ func (s *String_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) String_() (localctx IString_Context) {
-	this := p
-	_ = this
-
 	localctx = NewString_Context(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 22, SMTLIBv2ParserRULE_string_)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(230)
 		p.Match(SMTLIBv2ParserString_)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IKeywordContext is an interface to support dynamic dispatch.
@@ -2594,20 +2705,30 @@ type IKeywordContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PredefKeyword() IPredefKeywordContext
+	Colon() antlr.TerminalNode
+	SimpleSymbol() ISimpleSymbolContext
+
 	// IsKeywordContext differentiates from other interfaces.
 	IsKeywordContext()
 }
 
 type KeywordContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyKeywordContext() *KeywordContext {
 	var p = new(KeywordContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_keyword
 	return p
+}
+
+func InitEmptyKeywordContext(p *KeywordContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_keyword
 }
 
 func (*KeywordContext) IsKeywordContext() {}
@@ -2615,7 +2736,7 @@ func (*KeywordContext) IsKeywordContext() {}
 func NewKeywordContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *KeywordContext {
 	var p = new(KeywordContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_keyword
@@ -2692,30 +2813,13 @@ func (s *KeywordContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Keyword() (localctx IKeywordContext) {
-	this := p
-	_ = this
-
 	localctx = NewKeywordContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 24, SMTLIBv2ParserRULE_keyword)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(235)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserPK_AllStatistics, SMTLIBv2ParserPK_AssertionStackLevels, SMTLIBv2ParserPK_Authors, SMTLIBv2ParserPK_Category, SMTLIBv2ParserPK_Chainable, SMTLIBv2ParserPK_Definition, SMTLIBv2ParserPK_DiagnosticOutputChannel, SMTLIBv2ParserPK_ErrorBehaviour, SMTLIBv2ParserPK_Extension, SMTLIBv2ParserPK_Funs, SMTLIBv2ParserPK_FunsDescription, SMTLIBv2ParserPK_GlobalDeclarations, SMTLIBv2ParserPK_InteractiveMode, SMTLIBv2ParserPK_Language, SMTLIBv2ParserPK_LeftAssoc, SMTLIBv2ParserPK_License, SMTLIBv2ParserPK_Named, SMTLIBv2ParserPK_Name, SMTLIBv2ParserPK_Notes, SMTLIBv2ParserPK_Pattern, SMTLIBv2ParserPK_PrintSuccess, SMTLIBv2ParserPK_ProduceAssertions, SMTLIBv2ParserPK_ProduceAssignments, SMTLIBv2ParserPK_ProduceModels, SMTLIBv2ParserPK_ProduceProofs, SMTLIBv2ParserPK_ProduceUnsatAssumptions, SMTLIBv2ParserPK_ProduceUnsatCores, SMTLIBv2ParserPK_RandomSeed, SMTLIBv2ParserPK_ReasonUnknown, SMTLIBv2ParserPK_RegularOutputChannel, SMTLIBv2ParserPK_ReproducibleResourceLimit, SMTLIBv2ParserPK_RightAssoc, SMTLIBv2ParserPK_SmtLibVersion, SMTLIBv2ParserPK_Sorts, SMTLIBv2ParserPK_SortsDescription, SMTLIBv2ParserPK_Source, SMTLIBv2ParserPK_Status, SMTLIBv2ParserPK_Theories, SMTLIBv2ParserPK_Values, SMTLIBv2ParserPK_Verbosity, SMTLIBv2ParserPK_Version:
@@ -2730,6 +2834,10 @@ func (p *SMTLIBv2Parser) Keyword() (localctx IKeywordContext) {
 		{
 			p.SetState(233)
 			p.Match(SMTLIBv2ParserColon)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(234)
@@ -2737,10 +2845,21 @@ func (p *SMTLIBv2Parser) Keyword() (localctx IKeywordContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISpec_constantContext is an interface to support dynamic dispatch.
@@ -2750,20 +2869,32 @@ type ISpec_constantContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Numeral() INumeralContext
+	Decimal() IDecimalContext
+	Hexadecimal() IHexadecimalContext
+	Binary() IBinaryContext
+	String_() IString_Context
+
 	// IsSpec_constantContext differentiates from other interfaces.
 	IsSpec_constantContext()
 }
 
 type Spec_constantContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySpec_constantContext() *Spec_constantContext {
 	var p = new(Spec_constantContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_spec_constant
 	return p
+}
+
+func InitEmptySpec_constantContext(p *Spec_constantContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_spec_constant
 }
 
 func (*Spec_constantContext) IsSpec_constantContext() {}
@@ -2771,7 +2902,7 @@ func (*Spec_constantContext) IsSpec_constantContext() {}
 func NewSpec_constantContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Spec_constantContext {
 	var p = new(Spec_constantContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_spec_constant
@@ -2892,30 +3023,13 @@ func (s *Spec_constantContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) Spec_constant() (localctx ISpec_constantContext) {
-	this := p
-	_ = this
-
 	localctx = NewSpec_constantContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 26, SMTLIBv2ParserRULE_spec_constant)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(242)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserNumeral:
@@ -2954,10 +3068,21 @@ func (p *SMTLIBv2Parser) Spec_constant() (localctx ISpec_constantContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IS_exprContext is an interface to support dynamic dispatch.
@@ -2967,20 +3092,34 @@ type IS_exprContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Spec_constant() ISpec_constantContext
+	Symbol() ISymbolContext
+	Keyword() IKeywordContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllS_expr() []IS_exprContext
+	S_expr(i int) IS_exprContext
+
 	// IsS_exprContext differentiates from other interfaces.
 	IsS_exprContext()
 }
 
 type S_exprContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyS_exprContext() *S_exprContext {
 	var p = new(S_exprContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_s_expr
 	return p
+}
+
+func InitEmptyS_exprContext(p *S_exprContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_s_expr
 }
 
 func (*S_exprContext) IsS_exprContext() {}
@@ -2988,7 +3127,7 @@ func (*S_exprContext) IsS_exprContext() {}
 func NewS_exprContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *S_exprContext {
 	var p = new(S_exprContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_s_expr
@@ -3126,31 +3265,15 @@ func (s *S_exprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) S_expr() (localctx IS_exprContext) {
-	this := p
-	_ = this
-
 	localctx = NewS_exprContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 28, SMTLIBv2ParserRULE_s_expr)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(255)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserString_, SMTLIBv2ParserNumeral, SMTLIBv2ParserBinary, SMTLIBv2ParserHexDecimal, SMTLIBv2ParserDecimal:
@@ -3179,12 +3302,19 @@ func (p *SMTLIBv2Parser) S_expr() (localctx IS_exprContext) {
 		{
 			p.SetState(247)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(251)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0 || (int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&211106232532991) != 0 {
+		for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&211106232532991) != 0) {
 			{
 				p.SetState(248)
 				p.S_expr()
@@ -3192,18 +3322,36 @@ func (p *SMTLIBv2Parser) S_expr() (localctx IS_exprContext) {
 
 			p.SetState(253)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(254)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IIndexContext is an interface to support dynamic dispatch.
@@ -3213,20 +3361,29 @@ type IIndexContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Numeral() INumeralContext
+	Symbol() ISymbolContext
+
 	// IsIndexContext differentiates from other interfaces.
 	IsIndexContext()
 }
 
 type IndexContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyIndexContext() *IndexContext {
 	var p = new(IndexContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_index
 	return p
+}
+
+func InitEmptyIndexContext(p *IndexContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_index
 }
 
 func (*IndexContext) IsIndexContext() {}
@@ -3234,7 +3391,7 @@ func (*IndexContext) IsIndexContext() {}
 func NewIndexContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *IndexContext {
 	var p = new(IndexContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_index
@@ -3307,30 +3464,13 @@ func (s *IndexContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Index() (localctx IIndexContext) {
-	this := p
-	_ = this
-
 	localctx = NewIndexContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 30, SMTLIBv2ParserRULE_index)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(259)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserNumeral:
@@ -3348,10 +3488,21 @@ func (p *SMTLIBv2Parser) Index() (localctx IIndexContext) {
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IIdentifierContext is an interface to support dynamic dispatch.
@@ -3361,20 +3512,33 @@ type IIdentifierContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Symbol() ISymbolContext
+	ParOpen() antlr.TerminalNode
+	GRW_Underscore() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllIndex() []IIndexContext
+	Index(i int) IIndexContext
+
 	// IsIdentifierContext differentiates from other interfaces.
 	IsIdentifierContext()
 }
 
 type IdentifierContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyIdentifierContext() *IdentifierContext {
 	var p = new(IdentifierContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_identifier
 	return p
+}
+
+func InitEmptyIdentifierContext(p *IdentifierContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_identifier
 }
 
 func (*IdentifierContext) IsIdentifierContext() {}
@@ -3382,7 +3546,7 @@ func (*IdentifierContext) IsIdentifierContext() {}
 func NewIdentifierContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *IdentifierContext {
 	var p = new(IdentifierContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_identifier
@@ -3492,31 +3656,15 @@ func (s *IdentifierContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Identifier() (localctx IIdentifierContext) {
-	this := p
-	_ = this
-
 	localctx = NewIdentifierContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 32, SMTLIBv2ParserRULE_identifier)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(272)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserQuotedSymbol, SMTLIBv2ParserPS_Not, SMTLIBv2ParserPS_Bool, SMTLIBv2ParserPS_ContinuedExecution, SMTLIBv2ParserPS_Error, SMTLIBv2ParserPS_False, SMTLIBv2ParserPS_ImmediateExit, SMTLIBv2ParserPS_Incomplete, SMTLIBv2ParserPS_Logic, SMTLIBv2ParserPS_Memout, SMTLIBv2ParserPS_Sat, SMTLIBv2ParserPS_Success, SMTLIBv2ParserPS_Theory, SMTLIBv2ParserPS_True, SMTLIBv2ParserPS_Unknown, SMTLIBv2ParserPS_Unsupported, SMTLIBv2ParserPS_Unsat, SMTLIBv2ParserUndefinedSymbol:
@@ -3531,10 +3679,18 @@ func (p *SMTLIBv2Parser) Identifier() (localctx IIdentifierContext) {
 		{
 			p.SetState(262)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(263)
 			p.Match(SMTLIBv2ParserGRW_Underscore)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(264)
@@ -3542,9 +3698,12 @@ func (p *SMTLIBv2Parser) Identifier() (localctx IIdentifierContext) {
 		}
 		p.SetState(266)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserNumeral || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserNumeral || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(265)
 				p.Index()
@@ -3552,18 +3711,36 @@ func (p *SMTLIBv2Parser) Identifier() (localctx IIdentifierContext) {
 
 			p.SetState(268)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(270)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAttribute_valueContext is an interface to support dynamic dispatch.
@@ -3573,20 +3750,33 @@ type IAttribute_valueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Spec_constant() ISpec_constantContext
+	Symbol() ISymbolContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllS_expr() []IS_exprContext
+	S_expr(i int) IS_exprContext
+
 	// IsAttribute_valueContext differentiates from other interfaces.
 	IsAttribute_valueContext()
 }
 
 type Attribute_valueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAttribute_valueContext() *Attribute_valueContext {
 	var p = new(Attribute_valueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_attribute_value
 	return p
+}
+
+func InitEmptyAttribute_valueContext(p *Attribute_valueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_attribute_value
 }
 
 func (*Attribute_valueContext) IsAttribute_valueContext() {}
@@ -3594,7 +3784,7 @@ func (*Attribute_valueContext) IsAttribute_valueContext() {}
 func NewAttribute_valueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Attribute_valueContext {
 	var p = new(Attribute_valueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_attribute_value
@@ -3716,31 +3906,15 @@ func (s *Attribute_valueContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *SMTLIBv2Parser) Attribute_value() (localctx IAttribute_valueContext) {
-	this := p
-	_ = this
-
 	localctx = NewAttribute_valueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 34, SMTLIBv2ParserRULE_attribute_value)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(284)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserString_, SMTLIBv2ParserNumeral, SMTLIBv2ParserBinary, SMTLIBv2ParserHexDecimal, SMTLIBv2ParserDecimal:
@@ -3762,12 +3936,19 @@ func (p *SMTLIBv2Parser) Attribute_value() (localctx IAttribute_valueContext) {
 		{
 			p.SetState(276)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(280)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0 || (int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&211106232532991) != 0 {
+		for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&211106232532991) != 0) {
 			{
 				p.SetState(277)
 				p.S_expr()
@@ -3775,18 +3956,36 @@ func (p *SMTLIBv2Parser) Attribute_value() (localctx IAttribute_valueContext) {
 
 			p.SetState(282)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(283)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IAttributeContext is an interface to support dynamic dispatch.
@@ -3796,20 +3995,29 @@ type IAttributeContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Keyword() IKeywordContext
+	Attribute_value() IAttribute_valueContext
+
 	// IsAttributeContext differentiates from other interfaces.
 	IsAttributeContext()
 }
 
 type AttributeContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyAttributeContext() *AttributeContext {
 	var p = new(AttributeContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_attribute
 	return p
+}
+
+func InitEmptyAttributeContext(p *AttributeContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_attribute
 }
 
 func (*AttributeContext) IsAttributeContext() {}
@@ -3817,7 +4025,7 @@ func (*AttributeContext) IsAttributeContext() {}
 func NewAttributeContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *AttributeContext {
 	var p = new(AttributeContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_attribute
@@ -3890,31 +4098,15 @@ func (s *AttributeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Attribute() (localctx IAttributeContext) {
-	this := p
-	_ = this
-
 	localctx = NewAttributeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 36, SMTLIBv2ParserRULE_attribute)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(290)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 12, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 12, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -3933,9 +4125,21 @@ func (p *SMTLIBv2Parser) Attribute() (localctx IAttributeContext) {
 			p.Attribute_value()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISortContext is an interface to support dynamic dispatch.
@@ -3945,20 +4149,32 @@ type ISortContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Identifier() IIdentifierContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllSort() []ISortContext
+	Sort(i int) ISortContext
+
 	// IsSortContext differentiates from other interfaces.
 	IsSortContext()
 }
 
 type SortContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySortContext() *SortContext {
 	var p = new(SortContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_sort
 	return p
+}
+
+func InitEmptySortContext(p *SortContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_sort
 }
 
 func (*SortContext) IsSortContext() {}
@@ -3966,7 +4182,7 @@ func (*SortContext) IsSortContext() {}
 func NewSortContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *SortContext {
 	var p = new(SortContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_sort
@@ -4072,32 +4288,17 @@ func (s *SortContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Sort() (localctx ISortContext) {
-	this := p
-	_ = this
-
 	localctx = NewSortContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 38, SMTLIBv2ParserRULE_sort)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(302)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 14, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 14, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -4110,6 +4311,10 @@ func (p *SMTLIBv2Parser) Sort() (localctx ISortContext) {
 		{
 			p.SetState(293)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(294)
@@ -4117,9 +4322,12 @@ func (p *SMTLIBv2Parser) Sort() (localctx ISortContext) {
 		}
 		p.SetState(296)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(295)
 				p.Sort()
@@ -4127,16 +4335,35 @@ func (p *SMTLIBv2Parser) Sort() (localctx ISortContext) {
 
 			p.SetState(298)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(300)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IQual_identiferContext is an interface to support dynamic dispatch.
@@ -4146,20 +4373,32 @@ type IQual_identiferContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Identifier() IIdentifierContext
+	ParOpen() antlr.TerminalNode
+	GRW_As() antlr.TerminalNode
+	Sort() ISortContext
+	ParClose() antlr.TerminalNode
+
 	// IsQual_identiferContext differentiates from other interfaces.
 	IsQual_identiferContext()
 }
 
 type Qual_identiferContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyQual_identiferContext() *Qual_identiferContext {
 	var p = new(Qual_identiferContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_qual_identifer
 	return p
+}
+
+func InitEmptyQual_identiferContext(p *Qual_identiferContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_qual_identifer
 }
 
 func (*Qual_identiferContext) IsQual_identiferContext() {}
@@ -4167,7 +4406,7 @@ func (*Qual_identiferContext) IsQual_identiferContext() {}
 func NewQual_identiferContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Qual_identiferContext {
 	var p = new(Qual_identiferContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_qual_identifer
@@ -4252,31 +4491,15 @@ func (s *Qual_identiferContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Qual_identifer() (localctx IQual_identiferContext) {
-	this := p
-	_ = this
-
 	localctx = NewQual_identiferContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 40, SMTLIBv2ParserRULE_qual_identifer)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(311)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 15, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 15, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -4289,10 +4512,18 @@ func (p *SMTLIBv2Parser) Qual_identifer() (localctx IQual_identiferContext) {
 		{
 			p.SetState(305)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(306)
 			p.Match(SMTLIBv2ParserGRW_As)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(307)
@@ -4305,11 +4536,27 @@ func (p *SMTLIBv2Parser) Qual_identifer() (localctx IQual_identiferContext) {
 		{
 			p.SetState(309)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IVar_bindingContext is an interface to support dynamic dispatch.
@@ -4319,20 +4566,31 @@ type IVar_bindingContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Term() ITermContext
+	ParClose() antlr.TerminalNode
+
 	// IsVar_bindingContext differentiates from other interfaces.
 	IsVar_bindingContext()
 }
 
 type Var_bindingContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyVar_bindingContext() *Var_bindingContext {
 	var p = new(Var_bindingContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_var_binding
 	return p
+}
+
+func InitEmptyVar_bindingContext(p *Var_bindingContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_var_binding
 }
 
 func (*Var_bindingContext) IsVar_bindingContext() {}
@@ -4340,7 +4598,7 @@ func (*Var_bindingContext) IsVar_bindingContext() {}
 func NewVar_bindingContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Var_bindingContext {
 	var p = new(Var_bindingContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_var_binding
@@ -4421,32 +4679,16 @@ func (s *Var_bindingContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *SMTLIBv2Parser) Var_binding() (localctx IVar_bindingContext) {
-	this := p
-	_ = this
-
 	localctx = NewVar_bindingContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 42, SMTLIBv2ParserRULE_var_binding)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(313)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(314)
@@ -4459,9 +4701,23 @@ func (p *SMTLIBv2Parser) Var_binding() (localctx IVar_bindingContext) {
 	{
 		p.SetState(316)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISorted_varContext is an interface to support dynamic dispatch.
@@ -4471,20 +4727,31 @@ type ISorted_varContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Sort() ISortContext
+	ParClose() antlr.TerminalNode
+
 	// IsSorted_varContext differentiates from other interfaces.
 	IsSorted_varContext()
 }
 
 type Sorted_varContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySorted_varContext() *Sorted_varContext {
 	var p = new(Sorted_varContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_sorted_var
 	return p
+}
+
+func InitEmptySorted_varContext(p *Sorted_varContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_sorted_var
 }
 
 func (*Sorted_varContext) IsSorted_varContext() {}
@@ -4492,7 +4759,7 @@ func (*Sorted_varContext) IsSorted_varContext() {}
 func NewSorted_varContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Sorted_varContext {
 	var p = new(Sorted_varContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_sorted_var
@@ -4573,32 +4840,16 @@ func (s *Sorted_varContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Sorted_var() (localctx ISorted_varContext) {
-	this := p
-	_ = this
-
 	localctx = NewSorted_varContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 44, SMTLIBv2ParserRULE_sorted_var)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(318)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(319)
@@ -4611,9 +4862,23 @@ func (p *SMTLIBv2Parser) Sorted_var() (localctx ISorted_varContext) {
 	{
 		p.SetState(321)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPatternContext is an interface to support dynamic dispatch.
@@ -4623,20 +4888,31 @@ type IPatternContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+
 	// IsPatternContext differentiates from other interfaces.
 	IsPatternContext()
 }
 
 type PatternContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPatternContext() *PatternContext {
 	var p = new(PatternContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_pattern
 	return p
+}
+
+func InitEmptyPatternContext(p *PatternContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_pattern
 }
 
 func (*PatternContext) IsPatternContext() {}
@@ -4644,7 +4920,7 @@ func (*PatternContext) IsPatternContext() {}
 func NewPatternContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *PatternContext {
 	var p = new(PatternContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_pattern
@@ -4734,31 +5010,15 @@ func (s *PatternContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Pattern() (localctx IPatternContext) {
-	this := p
-	_ = this
-
 	localctx = NewPatternContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 46, SMTLIBv2ParserRULE_pattern)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(333)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserQuotedSymbol, SMTLIBv2ParserPS_Not, SMTLIBv2ParserPS_Bool, SMTLIBv2ParserPS_ContinuedExecution, SMTLIBv2ParserPS_Error, SMTLIBv2ParserPS_False, SMTLIBv2ParserPS_ImmediateExit, SMTLIBv2ParserPS_Incomplete, SMTLIBv2ParserPS_Logic, SMTLIBv2ParserPS_Memout, SMTLIBv2ParserPS_Sat, SMTLIBv2ParserPS_Success, SMTLIBv2ParserPS_Theory, SMTLIBv2ParserPS_True, SMTLIBv2ParserPS_Unknown, SMTLIBv2ParserPS_Unsupported, SMTLIBv2ParserPS_Unsat, SMTLIBv2ParserUndefinedSymbol:
@@ -4773,6 +5033,10 @@ func (p *SMTLIBv2Parser) Pattern() (localctx IPatternContext) {
 		{
 			p.SetState(324)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(325)
@@ -4780,9 +5044,12 @@ func (p *SMTLIBv2Parser) Pattern() (localctx IPatternContext) {
 		}
 		p.SetState(327)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(326)
 				p.Symbol()
@@ -4790,18 +5057,36 @@ func (p *SMTLIBv2Parser) Pattern() (localctx IPatternContext) {
 
 			p.SetState(329)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(331)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IMatch_caseContext is an interface to support dynamic dispatch.
@@ -4811,20 +5096,31 @@ type IMatch_caseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Pattern() IPatternContext
+	Term() ITermContext
+	ParClose() antlr.TerminalNode
+
 	// IsMatch_caseContext differentiates from other interfaces.
 	IsMatch_caseContext()
 }
 
 type Match_caseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyMatch_caseContext() *Match_caseContext {
 	var p = new(Match_caseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_match_case
 	return p
+}
+
+func InitEmptyMatch_caseContext(p *Match_caseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_match_case
 }
 
 func (*Match_caseContext) IsMatch_caseContext() {}
@@ -4832,7 +5128,7 @@ func (*Match_caseContext) IsMatch_caseContext() {}
 func NewMatch_caseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Match_caseContext {
 	var p = new(Match_caseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_match_case
@@ -4913,32 +5209,16 @@ func (s *Match_caseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Match_case() (localctx IMatch_caseContext) {
-	this := p
-	_ = this
-
 	localctx = NewMatch_caseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 48, SMTLIBv2ParserRULE_match_case)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(335)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(336)
@@ -4951,9 +5231,23 @@ func (p *SMTLIBv2Parser) Match_case() (localctx IMatch_caseContext) {
 	{
 		p.SetState(338)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IVariableContext is an interface to support dynamic dispatch.
@@ -4963,20 +5257,28 @@ type IVariableContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Symbol() ISymbolContext
+
 	// IsVariableContext differentiates from other interfaces.
 	IsVariableContext()
 }
 
 type VariableContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyVariableContext() *VariableContext {
 	var p = new(VariableContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_variable
 	return p
+}
+
+func InitEmptyVariableContext(p *VariableContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_variable
 }
 
 func (*VariableContext) IsVariableContext() {}
@@ -4984,7 +5286,7 @@ func (*VariableContext) IsVariableContext() {}
 func NewVariableContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *VariableContext {
 	var p = new(VariableContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_variable
@@ -5041,35 +5343,25 @@ func (s *VariableContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Variable() (localctx IVariableContext) {
-	this := p
-	_ = this
-
 	localctx = NewVariableContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 50, SMTLIBv2ParserRULE_variable)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(340)
 		p.Symbol()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITermContext is an interface to support dynamic dispatch.
@@ -5079,20 +5371,48 @@ type ITermContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Spec_constant() ISpec_constantContext
+	Qual_identifer() IQual_identiferContext
+	AllParOpen() []antlr.TerminalNode
+	ParOpen(i int) antlr.TerminalNode
+	AllParClose() []antlr.TerminalNode
+	ParClose(i int) antlr.TerminalNode
+	AllTerm() []ITermContext
+	Term(i int) ITermContext
+	GRW_Let() antlr.TerminalNode
+	AllVar_binding() []IVar_bindingContext
+	Var_binding(i int) IVar_bindingContext
+	GRW_Forall() antlr.TerminalNode
+	AllSorted_var() []ISorted_varContext
+	Sorted_var(i int) ISorted_varContext
+	GRW_Exists() antlr.TerminalNode
+	GRW_Match() antlr.TerminalNode
+	AllMatch_case() []IMatch_caseContext
+	Match_case(i int) IMatch_caseContext
+	GRW_Exclamation() antlr.TerminalNode
+	AllAttribute() []IAttributeContext
+	Attribute(i int) IAttributeContext
+
 	// IsTermContext differentiates from other interfaces.
 	IsTermContext()
 }
 
 type TermContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTermContext() *TermContext {
 	var p = new(TermContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_term
 	return p
+}
+
+func InitEmptyTermContext(p *TermContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_term
 }
 
 func (*TermContext) IsTermContext() {}
@@ -5100,7 +5420,7 @@ func (*TermContext) IsTermContext() {}
 func NewTermContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *TermContext {
 	var p = new(TermContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_term
@@ -5414,32 +5734,17 @@ func (s *TermContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
-	this := p
-	_ = this
-
 	localctx = NewTermContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 52, SMTLIBv2ParserRULE_term)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(411)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 24, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 24, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -5459,6 +5764,10 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(344)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(345)
@@ -5466,9 +5775,12 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		}
 		p.SetState(347)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0 || (int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0 {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0) {
 			{
 				p.SetState(346)
 				p.Term()
@@ -5476,11 +5788,18 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 
 			p.SetState(349)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(351)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -5488,17 +5807,32 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(353)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(354)
 			p.Match(SMTLIBv2ParserGRW_Let)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(355)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(357)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -5509,11 +5843,18 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 
 			p.SetState(359)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(361)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(362)
@@ -5522,6 +5863,10 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(363)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 5:
@@ -5529,17 +5874,32 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(365)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(366)
 			p.Match(SMTLIBv2ParserGRW_Forall)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(367)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(369)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -5550,11 +5910,18 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 
 			p.SetState(371)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(373)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(374)
@@ -5563,6 +5930,10 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(375)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 6:
@@ -5570,17 +5941,32 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(377)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(378)
 			p.Match(SMTLIBv2ParserGRW_Exists)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(379)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(381)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -5591,11 +5977,18 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 
 			p.SetState(383)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(385)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(386)
@@ -5604,6 +5997,10 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(387)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 7:
@@ -5611,10 +6008,18 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(389)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(390)
 			p.Match(SMTLIBv2ParserGRW_Match)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(391)
@@ -5623,9 +6028,16 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(392)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(394)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -5636,15 +6048,26 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 
 			p.SetState(396)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(398)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(399)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 8:
@@ -5652,10 +6075,18 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		{
 			p.SetState(401)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(402)
 			p.Match(SMTLIBv2ParserGRW_Exclamation)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(403)
@@ -5663,9 +6094,12 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 		}
 		p.SetState(405)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
+		for ok := true; ok; ok = ((int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0) {
 			{
 				p.SetState(404)
 				p.Attribute()
@@ -5673,16 +6107,35 @@ func (p *SMTLIBv2Parser) Term() (localctx ITermContext) {
 
 			p.SetState(407)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(409)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISort_symbol_declContext is an interface to support dynamic dispatch.
@@ -5692,20 +6145,33 @@ type ISort_symbol_declContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Identifier() IIdentifierContext
+	Numeral() INumeralContext
+	ParClose() antlr.TerminalNode
+	AllAttribute() []IAttributeContext
+	Attribute(i int) IAttributeContext
+
 	// IsSort_symbol_declContext differentiates from other interfaces.
 	IsSort_symbol_declContext()
 }
 
 type Sort_symbol_declContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySort_symbol_declContext() *Sort_symbol_declContext {
 	var p = new(Sort_symbol_declContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_sort_symbol_decl
 	return p
+}
+
+func InitEmptySort_symbol_declContext(p *Sort_symbol_declContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_sort_symbol_decl
 }
 
 func (*Sort_symbol_declContext) IsSort_symbol_declContext() {}
@@ -5713,7 +6179,7 @@ func (*Sort_symbol_declContext) IsSort_symbol_declContext() {}
 func NewSort_symbol_declContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Sort_symbol_declContext {
 	var p = new(Sort_symbol_declContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_sort_symbol_decl
@@ -5835,33 +6301,18 @@ func (s *Sort_symbol_declContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) Sort_symbol_decl() (localctx ISort_symbol_declContext) {
-	this := p
-	_ = this
-
 	localctx = NewSort_symbol_declContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 54, SMTLIBv2ParserRULE_sort_symbol_decl)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(413)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(414)
@@ -5873,6 +6324,9 @@ func (p *SMTLIBv2Parser) Sort_symbol_decl() (localctx ISort_symbol_declContext) 
 	}
 	p.SetState(419)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
@@ -5883,14 +6337,31 @@ func (p *SMTLIBv2Parser) Sort_symbol_decl() (localctx ISort_symbol_declContext) 
 
 		p.SetState(421)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(422)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IMeta_spec_constantContext is an interface to support dynamic dispatch.
@@ -5900,20 +6371,30 @@ type IMeta_spec_constantContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	GRW_Numeral() antlr.TerminalNode
+	GRW_Decimal() antlr.TerminalNode
+	GRW_String() antlr.TerminalNode
+
 	// IsMeta_spec_constantContext differentiates from other interfaces.
 	IsMeta_spec_constantContext()
 }
 
 type Meta_spec_constantContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyMeta_spec_constantContext() *Meta_spec_constantContext {
 	var p = new(Meta_spec_constantContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_meta_spec_constant
 	return p
+}
+
+func InitEmptyMeta_spec_constantContext(p *Meta_spec_constantContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_meta_spec_constant
 }
 
 func (*Meta_spec_constantContext) IsMeta_spec_constantContext() {}
@@ -5921,7 +6402,7 @@ func (*Meta_spec_constantContext) IsMeta_spec_constantContext() {}
 func NewMeta_spec_constantContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Meta_spec_constantContext {
 	var p = new(Meta_spec_constantContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_meta_spec_constant
@@ -5974,28 +6455,9 @@ func (s *Meta_spec_constantContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *SMTLIBv2Parser) Meta_spec_constant() (localctx IMeta_spec_constantContext) {
-	this := p
-	_ = this
-
 	localctx = NewMeta_spec_constantContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 56, SMTLIBv2ParserRULE_meta_spec_constant)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -6010,7 +6472,17 @@ func (p *SMTLIBv2Parser) Meta_spec_constant() (localctx IMeta_spec_constantConte
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFun_symbol_declContext is an interface to support dynamic dispatch.
@@ -6020,20 +6492,36 @@ type IFun_symbol_declContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Spec_constant() ISpec_constantContext
+	AllSort() []ISortContext
+	Sort(i int) ISortContext
+	ParClose() antlr.TerminalNode
+	AllAttribute() []IAttributeContext
+	Attribute(i int) IAttributeContext
+	Meta_spec_constant() IMeta_spec_constantContext
+	Identifier() IIdentifierContext
+
 	// IsFun_symbol_declContext differentiates from other interfaces.
 	IsFun_symbol_declContext()
 }
 
 type Fun_symbol_declContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFun_symbol_declContext() *Fun_symbol_declContext {
 	var p = new(Fun_symbol_declContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_fun_symbol_decl
 	return p
+}
+
+func InitEmptyFun_symbol_declContext(p *Fun_symbol_declContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_fun_symbol_decl
 }
 
 func (*Fun_symbol_declContext) IsFun_symbol_declContext() {}
@@ -6041,7 +6529,7 @@ func (*Fun_symbol_declContext) IsFun_symbol_declContext() {}
 func NewFun_symbol_declContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Fun_symbol_declContext {
 	var p = new(Fun_symbol_declContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_fun_symbol_decl
@@ -6220,37 +6708,26 @@ func (s *Fun_symbol_declContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
-	this := p
-	_ = this
-
 	localctx = NewFun_symbol_declContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 58, SMTLIBv2ParserRULE_fun_symbol_decl)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(463)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 30, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(426)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(427)
@@ -6262,6 +6739,9 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 		}
 		p.SetState(432)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
@@ -6272,11 +6752,18 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 
 			p.SetState(434)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(435)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -6284,6 +6771,10 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 		{
 			p.SetState(437)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(438)
@@ -6295,6 +6786,9 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 		}
 		p.SetState(443)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
@@ -6305,11 +6799,18 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 
 			p.SetState(445)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(446)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -6317,6 +6818,10 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 		{
 			p.SetState(448)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(449)
@@ -6324,9 +6829,12 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 		}
 		p.SetState(451)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(450)
 				p.Sort()
@@ -6334,10 +6842,16 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 
 			p.SetState(453)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		p.SetState(458)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
@@ -6348,16 +6862,35 @@ func (p *SMTLIBv2Parser) Fun_symbol_decl() (localctx IFun_symbol_declContext) {
 
 			p.SetState(460)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(461)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IPar_fun_symbol_declContext is an interface to support dynamic dispatch.
@@ -6367,20 +6900,40 @@ type IPar_fun_symbol_declContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Fun_symbol_decl() IFun_symbol_declContext
+	AllParOpen() []antlr.TerminalNode
+	ParOpen(i int) antlr.TerminalNode
+	GRW_Par() antlr.TerminalNode
+	AllParClose() []antlr.TerminalNode
+	ParClose(i int) antlr.TerminalNode
+	Identifier() IIdentifierContext
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+	AllSort() []ISortContext
+	Sort(i int) ISortContext
+	AllAttribute() []IAttributeContext
+	Attribute(i int) IAttributeContext
+
 	// IsPar_fun_symbol_declContext differentiates from other interfaces.
 	IsPar_fun_symbol_declContext()
 }
 
 type Par_fun_symbol_declContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyPar_fun_symbol_declContext() *Par_fun_symbol_declContext {
 	var p = new(Par_fun_symbol_declContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_par_fun_symbol_decl
 	return p
+}
+
+func InitEmptyPar_fun_symbol_declContext(p *Par_fun_symbol_declContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_par_fun_symbol_decl
 }
 
 func (*Par_fun_symbol_declContext) IsPar_fun_symbol_declContext() {}
@@ -6388,7 +6941,7 @@ func (*Par_fun_symbol_declContext) IsPar_fun_symbol_declContext() {}
 func NewPar_fun_symbol_declContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Par_fun_symbol_declContext {
 	var p = new(Par_fun_symbol_declContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_par_fun_symbol_decl
@@ -6604,32 +7157,17 @@ func (s *Par_fun_symbol_declContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *SMTLIBv2Parser) Par_fun_symbol_decl() (localctx IPar_fun_symbol_declContext) {
-	this := p
-	_ = this
-
 	localctx = NewPar_fun_symbol_declContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 60, SMTLIBv2ParserRULE_par_fun_symbol_decl)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(491)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 34, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 34, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -6642,20 +7180,35 @@ func (p *SMTLIBv2Parser) Par_fun_symbol_decl() (localctx IPar_fun_symbol_declCon
 		{
 			p.SetState(466)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(467)
 			p.Match(SMTLIBv2ParserGRW_Par)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(468)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(470)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(469)
 				p.Symbol()
@@ -6663,15 +7216,26 @@ func (p *SMTLIBv2Parser) Par_fun_symbol_decl() (localctx IPar_fun_symbol_declCon
 
 			p.SetState(472)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(474)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(475)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(476)
@@ -6679,9 +7243,12 @@ func (p *SMTLIBv2Parser) Par_fun_symbol_decl() (localctx IPar_fun_symbol_declCon
 		}
 		p.SetState(478)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(477)
 				p.Sort()
@@ -6689,10 +7256,16 @@ func (p *SMTLIBv2Parser) Par_fun_symbol_decl() (localctx IPar_fun_symbol_declCon
 
 			p.SetState(480)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		p.SetState(485)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
@@ -6703,20 +7276,43 @@ func (p *SMTLIBv2Parser) Par_fun_symbol_decl() (localctx IPar_fun_symbol_declCon
 
 			p.SetState(487)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(488)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(489)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITheory_attributeContext is an interface to support dynamic dispatch.
@@ -6726,20 +7322,42 @@ type ITheory_attributeContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PK_Sorts() antlr.TerminalNode
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllSort_symbol_decl() []ISort_symbol_declContext
+	Sort_symbol_decl(i int) ISort_symbol_declContext
+	PK_Funs() antlr.TerminalNode
+	AllPar_fun_symbol_decl() []IPar_fun_symbol_declContext
+	Par_fun_symbol_decl(i int) IPar_fun_symbol_declContext
+	PK_SortsDescription() antlr.TerminalNode
+	String_() IString_Context
+	PK_FunsDescription() antlr.TerminalNode
+	PK_Definition() antlr.TerminalNode
+	PK_Values() antlr.TerminalNode
+	PK_Notes() antlr.TerminalNode
+	Attribute() IAttributeContext
+
 	// IsTheory_attributeContext differentiates from other interfaces.
 	IsTheory_attributeContext()
 }
 
 type Theory_attributeContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTheory_attributeContext() *Theory_attributeContext {
 	var p = new(Theory_attributeContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_theory_attribute
 	return p
+}
+
+func InitEmptyTheory_attributeContext(p *Theory_attributeContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_theory_attribute
 }
 
 func (*Theory_attributeContext) IsTheory_attributeContext() {}
@@ -6747,7 +7365,7 @@ func (*Theory_attributeContext) IsTheory_attributeContext() {}
 func NewTheory_attributeContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Theory_attributeContext {
 	var p = new(Theory_attributeContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_theory_attribute
@@ -6938,44 +7556,40 @@ func (s *Theory_attributeContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) {
-	this := p
-	_ = this
-
 	localctx = NewTheory_attributeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 62, SMTLIBv2ParserRULE_theory_attribute)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(522)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 37, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 37, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(493)
 			p.Match(SMTLIBv2ParserPK_Sorts)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(494)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(496)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -6986,11 +7600,18 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 
 			p.SetState(498)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(500)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -6998,13 +7619,24 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 		{
 			p.SetState(502)
 			p.Match(SMTLIBv2ParserPK_Funs)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(503)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(505)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -7015,11 +7647,18 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 
 			p.SetState(507)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(509)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -7027,6 +7666,10 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 		{
 			p.SetState(511)
 			p.Match(SMTLIBv2ParserPK_SortsDescription)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(512)
@@ -7038,6 +7681,10 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 		{
 			p.SetState(513)
 			p.Match(SMTLIBv2ParserPK_FunsDescription)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(514)
@@ -7049,6 +7696,10 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 		{
 			p.SetState(515)
 			p.Match(SMTLIBv2ParserPK_Definition)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(516)
@@ -7060,6 +7711,10 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 		{
 			p.SetState(517)
 			p.Match(SMTLIBv2ParserPK_Values)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(518)
@@ -7071,6 +7726,10 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 		{
 			p.SetState(519)
 			p.Match(SMTLIBv2ParserPK_Notes)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(520)
@@ -7084,9 +7743,21 @@ func (p *SMTLIBv2Parser) Theory_attribute() (localctx ITheory_attributeContext) 
 			p.Attribute()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ITheory_declContext is an interface to support dynamic dispatch.
@@ -7096,20 +7767,33 @@ type ITheory_declContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	PS_Theory() antlr.TerminalNode
+	Symbol() ISymbolContext
+	ParClose() antlr.TerminalNode
+	AllTheory_attribute() []ITheory_attributeContext
+	Theory_attribute(i int) ITheory_attributeContext
+
 	// IsTheory_declContext differentiates from other interfaces.
 	IsTheory_declContext()
 }
 
 type Theory_declContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyTheory_declContext() *Theory_declContext {
 	var p = new(Theory_declContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_theory_decl
 	return p
+}
+
+func InitEmptyTheory_declContext(p *Theory_declContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_theory_decl
 }
 
 func (*Theory_declContext) IsTheory_declContext() {}
@@ -7117,7 +7801,7 @@ func (*Theory_declContext) IsTheory_declContext() {}
 func NewTheory_declContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Theory_declContext {
 	var p = new(Theory_declContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_theory_decl
@@ -7227,37 +7911,26 @@ func (s *Theory_declContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *SMTLIBv2Parser) Theory_decl() (localctx ITheory_declContext) {
-	this := p
-	_ = this
-
 	localctx = NewTheory_declContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 64, SMTLIBv2ParserRULE_theory_decl)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(524)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(525)
 		p.Match(SMTLIBv2ParserPS_Theory)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(526)
@@ -7265,9 +7938,12 @@ func (p *SMTLIBv2Parser) Theory_decl() (localctx ITheory_declContext) {
 	}
 	p.SetState(528)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
+	for ok := true; ok; ok = ((int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0) {
 		{
 			p.SetState(527)
 			p.Theory_attribute()
@@ -7275,14 +7951,31 @@ func (p *SMTLIBv2Parser) Theory_decl() (localctx ITheory_declContext) {
 
 		p.SetState(530)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(532)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ILogic_attribueContext is an interface to support dynamic dispatch.
@@ -7292,20 +7985,38 @@ type ILogic_attribueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PK_Theories() antlr.TerminalNode
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+	PK_Language() antlr.TerminalNode
+	String_() IString_Context
+	PK_Extension() antlr.TerminalNode
+	PK_Values() antlr.TerminalNode
+	PK_Notes() antlr.TerminalNode
+	Attribute() IAttributeContext
+
 	// IsLogic_attribueContext differentiates from other interfaces.
 	IsLogic_attribueContext()
 }
 
 type Logic_attribueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyLogic_attribueContext() *Logic_attribueContext {
 	var p = new(Logic_attribueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_logic_attribue
 	return p
+}
+
+func InitEmptyLogic_attribueContext(p *Logic_attribueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_logic_attribue
 }
 
 func (*Logic_attribueContext) IsLogic_attribueContext() {}
@@ -7313,7 +8024,7 @@ func (*Logic_attribueContext) IsLogic_attribueContext() {}
 func NewLogic_attribueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Logic_attribueContext {
 	var p = new(Logic_attribueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_logic_attribue
@@ -7455,47 +8166,43 @@ func (s *Logic_attribueContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
-	this := p
-	_ = this
-
 	localctx = NewLogic_attribueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 66, SMTLIBv2ParserRULE_logic_attribue)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(552)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 40, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 40, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(534)
 			p.Match(SMTLIBv2ParserPK_Theories)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(535)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(537)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(536)
 				p.Symbol()
@@ -7503,11 +8210,18 @@ func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
 
 			p.SetState(539)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(541)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -7515,6 +8229,10 @@ func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
 		{
 			p.SetState(543)
 			p.Match(SMTLIBv2ParserPK_Language)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(544)
@@ -7526,6 +8244,10 @@ func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
 		{
 			p.SetState(545)
 			p.Match(SMTLIBv2ParserPK_Extension)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(546)
@@ -7537,6 +8259,10 @@ func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
 		{
 			p.SetState(547)
 			p.Match(SMTLIBv2ParserPK_Values)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(548)
@@ -7548,6 +8274,10 @@ func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
 		{
 			p.SetState(549)
 			p.Match(SMTLIBv2ParserPK_Notes)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(550)
@@ -7561,9 +8291,21 @@ func (p *SMTLIBv2Parser) Logic_attribue() (localctx ILogic_attribueContext) {
 			p.Attribute()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ILogicContext is an interface to support dynamic dispatch.
@@ -7573,20 +8315,33 @@ type ILogicContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	PS_Logic() antlr.TerminalNode
+	Symbol() ISymbolContext
+	ParClose() antlr.TerminalNode
+	AllLogic_attribue() []ILogic_attribueContext
+	Logic_attribue(i int) ILogic_attribueContext
+
 	// IsLogicContext differentiates from other interfaces.
 	IsLogicContext()
 }
 
 type LogicContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyLogicContext() *LogicContext {
 	var p = new(LogicContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_logic
 	return p
+}
+
+func InitEmptyLogicContext(p *LogicContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_logic
 }
 
 func (*LogicContext) IsLogicContext() {}
@@ -7594,7 +8349,7 @@ func (*LogicContext) IsLogicContext() {}
 func NewLogicContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *LogicContext {
 	var p = new(LogicContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_logic
@@ -7704,37 +8459,26 @@ func (s *LogicContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Logic() (localctx ILogicContext) {
-	this := p
-	_ = this
-
 	localctx = NewLogicContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 68, SMTLIBv2ParserRULE_logic)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(554)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(555)
 		p.Match(SMTLIBv2ParserPS_Logic)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(556)
@@ -7742,9 +8486,12 @@ func (p *SMTLIBv2Parser) Logic() (localctx ILogicContext) {
 	}
 	p.SetState(558)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
+	for ok := true; ok; ok = ((int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0) {
 		{
 			p.SetState(557)
 			p.Logic_attribue()
@@ -7752,14 +8499,31 @@ func (p *SMTLIBv2Parser) Logic() (localctx ILogicContext) {
 
 		p.SetState(560)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(562)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISort_decContext is an interface to support dynamic dispatch.
@@ -7769,20 +8533,31 @@ type ISort_decContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Numeral() INumeralContext
+	ParClose() antlr.TerminalNode
+
 	// IsSort_decContext differentiates from other interfaces.
 	IsSort_decContext()
 }
 
 type Sort_decContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySort_decContext() *Sort_decContext {
 	var p = new(Sort_decContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_sort_dec
 	return p
+}
+
+func InitEmptySort_decContext(p *Sort_decContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_sort_dec
 }
 
 func (*Sort_decContext) IsSort_decContext() {}
@@ -7790,7 +8565,7 @@ func (*Sort_decContext) IsSort_decContext() {}
 func NewSort_decContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Sort_decContext {
 	var p = new(Sort_decContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_sort_dec
@@ -7871,32 +8646,16 @@ func (s *Sort_decContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Sort_dec() (localctx ISort_decContext) {
-	this := p
-	_ = this
-
 	localctx = NewSort_decContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 70, SMTLIBv2ParserRULE_sort_dec)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(564)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(565)
@@ -7909,9 +8668,23 @@ func (p *SMTLIBv2Parser) Sort_dec() (localctx ISort_decContext) {
 	{
 		p.SetState(567)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISelector_decContext is an interface to support dynamic dispatch.
@@ -7921,20 +8694,31 @@ type ISelector_decContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Sort() ISortContext
+	ParClose() antlr.TerminalNode
+
 	// IsSelector_decContext differentiates from other interfaces.
 	IsSelector_decContext()
 }
 
 type Selector_decContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySelector_decContext() *Selector_decContext {
 	var p = new(Selector_decContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_selector_dec
 	return p
+}
+
+func InitEmptySelector_decContext(p *Selector_decContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_selector_dec
 }
 
 func (*Selector_decContext) IsSelector_decContext() {}
@@ -7942,7 +8726,7 @@ func (*Selector_decContext) IsSelector_decContext() {}
 func NewSelector_decContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Selector_decContext {
 	var p = new(Selector_decContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_selector_dec
@@ -8023,32 +8807,16 @@ func (s *Selector_decContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Selector_dec() (localctx ISelector_decContext) {
-	this := p
-	_ = this
-
 	localctx = NewSelector_decContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 72, SMTLIBv2ParserRULE_selector_dec)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(569)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(570)
@@ -8061,9 +8829,23 @@ func (p *SMTLIBv2Parser) Selector_dec() (localctx ISelector_decContext) {
 	{
 		p.SetState(572)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IConstructor_decContext is an interface to support dynamic dispatch.
@@ -8073,20 +8855,32 @@ type IConstructor_decContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Symbol() ISymbolContext
+	ParClose() antlr.TerminalNode
+	AllSelector_dec() []ISelector_decContext
+	Selector_dec(i int) ISelector_decContext
+
 	// IsConstructor_decContext differentiates from other interfaces.
 	IsConstructor_decContext()
 }
 
 type Constructor_decContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyConstructor_decContext() *Constructor_decContext {
 	var p = new(Constructor_decContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_constructor_dec
 	return p
+}
+
+func InitEmptyConstructor_decContext(p *Constructor_decContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_constructor_dec
 }
 
 func (*Constructor_decContext) IsConstructor_decContext() {}
@@ -8094,7 +8888,7 @@ func (*Constructor_decContext) IsConstructor_decContext() {}
 func NewConstructor_decContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Constructor_decContext {
 	var p = new(Constructor_decContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_constructor_dec
@@ -8200,33 +8994,18 @@ func (s *Constructor_decContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *SMTLIBv2Parser) Constructor_dec() (localctx IConstructor_decContext) {
-	this := p
-	_ = this
-
 	localctx = NewConstructor_decContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 74, SMTLIBv2ParserRULE_constructor_dec)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(574)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(575)
@@ -8234,6 +9013,9 @@ func (p *SMTLIBv2Parser) Constructor_dec() (localctx IConstructor_decContext) {
 	}
 	p.SetState(579)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == SMTLIBv2ParserParOpen {
@@ -8244,14 +9026,31 @@ func (p *SMTLIBv2Parser) Constructor_dec() (localctx IConstructor_decContext) {
 
 		p.SetState(581)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(582)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IDatatype_decContext is an interface to support dynamic dispatch.
@@ -8261,20 +9060,36 @@ type IDatatype_decContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllParOpen() []antlr.TerminalNode
+	ParOpen(i int) antlr.TerminalNode
+	AllParClose() []antlr.TerminalNode
+	ParClose(i int) antlr.TerminalNode
+	AllConstructor_dec() []IConstructor_decContext
+	Constructor_dec(i int) IConstructor_decContext
+	GRW_Par() antlr.TerminalNode
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+
 	// IsDatatype_decContext differentiates from other interfaces.
 	IsDatatype_decContext()
 }
 
 type Datatype_decContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyDatatype_decContext() *Datatype_decContext {
 	var p = new(Datatype_decContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_datatype_dec
 	return p
+}
+
+func InitEmptyDatatype_decContext(p *Datatype_decContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_datatype_dec
 }
 
 func (*Datatype_decContext) IsDatatype_decContext() {}
@@ -8282,7 +9097,7 @@ func (*Datatype_decContext) IsDatatype_decContext() {}
 func NewDatatype_decContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Datatype_decContext {
 	var p = new(Datatype_decContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_datatype_dec
@@ -8425,40 +9240,32 @@ func (s *Datatype_decContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Datatype_dec() (localctx IDatatype_decContext) {
-	this := p
-	_ = this
-
 	localctx = NewDatatype_decContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 76, SMTLIBv2ParserRULE_datatype_dec)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(610)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 46, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 46, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(584)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(586)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -8469,11 +9276,18 @@ func (p *SMTLIBv2Parser) Datatype_dec() (localctx IDatatype_decContext) {
 
 			p.SetState(588)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(590)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -8481,20 +9295,35 @@ func (p *SMTLIBv2Parser) Datatype_dec() (localctx IDatatype_decContext) {
 		{
 			p.SetState(592)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(593)
 			p.Match(SMTLIBv2ParserGRW_Par)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(594)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(596)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
-		for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+		for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 			{
 				p.SetState(595)
 				p.Symbol()
@@ -8502,18 +9331,32 @@ func (p *SMTLIBv2Parser) Datatype_dec() (localctx IDatatype_decContext) {
 
 			p.SetState(598)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(600)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(601)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(603)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -8524,20 +9367,43 @@ func (p *SMTLIBv2Parser) Datatype_dec() (localctx IDatatype_decContext) {
 
 			p.SetState(605)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(607)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(608)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFunction_decContext is an interface to support dynamic dispatch.
@@ -8547,20 +9413,35 @@ type IFunction_decContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllParOpen() []antlr.TerminalNode
+	ParOpen(i int) antlr.TerminalNode
+	Symbol() ISymbolContext
+	AllParClose() []antlr.TerminalNode
+	ParClose(i int) antlr.TerminalNode
+	Sort() ISortContext
+	AllSorted_var() []ISorted_varContext
+	Sorted_var(i int) ISorted_varContext
+
 	// IsFunction_decContext differentiates from other interfaces.
 	IsFunction_decContext()
 }
 
 type Function_decContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFunction_decContext() *Function_decContext {
 	var p = new(Function_decContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_function_dec
 	return p
+}
+
+func InitEmptyFunction_decContext(p *Function_decContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_function_dec
 }
 
 func (*Function_decContext) IsFunction_decContext() {}
@@ -8568,7 +9449,7 @@ func (*Function_decContext) IsFunction_decContext() {}
 func NewFunction_decContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Function_decContext {
 	var p = new(Function_decContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_function_dec
@@ -8698,33 +9579,18 @@ func (s *Function_decContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Function_dec() (localctx IFunction_decContext) {
-	this := p
-	_ = this
-
 	localctx = NewFunction_decContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 78, SMTLIBv2ParserRULE_function_dec)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(612)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(613)
@@ -8733,9 +9599,16 @@ func (p *SMTLIBv2Parser) Function_dec() (localctx IFunction_decContext) {
 	{
 		p.SetState(614)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(618)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == SMTLIBv2ParserParOpen {
@@ -8746,11 +9619,18 @@ func (p *SMTLIBv2Parser) Function_dec() (localctx IFunction_decContext) {
 
 		p.SetState(620)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(621)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(622)
@@ -8759,9 +9639,23 @@ func (p *SMTLIBv2Parser) Function_dec() (localctx IFunction_decContext) {
 	{
 		p.SetState(623)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IFunction_defContext is an interface to support dynamic dispatch.
@@ -8771,20 +9665,34 @@ type IFunction_defContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Variable() IVariableContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	Sort() ISortContext
+	Term() ITermContext
+	AllSorted_var() []ISorted_varContext
+	Sorted_var(i int) ISorted_varContext
+
 	// IsFunction_defContext differentiates from other interfaces.
 	IsFunction_defContext()
 }
 
 type Function_defContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyFunction_defContext() *Function_defContext {
 	var p = new(Function_defContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_function_def
 	return p
+}
+
+func InitEmptyFunction_defContext(p *Function_defContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_function_def
 }
 
 func (*Function_defContext) IsFunction_defContext() {}
@@ -8792,7 +9700,7 @@ func (*Function_defContext) IsFunction_defContext() {}
 func NewFunction_defContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Function_defContext {
 	var p = new(Function_defContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_function_def
@@ -8930,28 +9838,9 @@ func (s *Function_defContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Function_def() (localctx IFunction_defContext) {
-	this := p
-	_ = this
-
 	localctx = NewFunction_defContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 80, SMTLIBv2ParserRULE_function_def)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -8961,9 +9850,16 @@ func (p *SMTLIBv2Parser) Function_def() (localctx IFunction_defContext) {
 	{
 		p.SetState(626)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(630)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == SMTLIBv2ParserParOpen {
@@ -8974,11 +9870,18 @@ func (p *SMTLIBv2Parser) Function_def() (localctx IFunction_defContext) {
 
 		p.SetState(632)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(633)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(634)
@@ -8989,7 +9892,17 @@ func (p *SMTLIBv2Parser) Function_def() (localctx IFunction_defContext) {
 		p.Term()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IProp_literalContext is an interface to support dynamic dispatch.
@@ -8999,20 +9912,31 @@ type IProp_literalContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Symbol() ISymbolContext
+	ParOpen() antlr.TerminalNode
+	PS_Not() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+
 	// IsProp_literalContext differentiates from other interfaces.
 	IsProp_literalContext()
 }
 
 type Prop_literalContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyProp_literalContext() *Prop_literalContext {
 	var p = new(Prop_literalContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_prop_literal
 	return p
+}
+
+func InitEmptyProp_literalContext(p *Prop_literalContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_prop_literal
 }
 
 func (*Prop_literalContext) IsProp_literalContext() {}
@@ -9020,7 +9944,7 @@ func (*Prop_literalContext) IsProp_literalContext() {}
 func NewProp_literalContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Prop_literalContext {
 	var p = new(Prop_literalContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_prop_literal
@@ -9089,30 +10013,13 @@ func (s *Prop_literalContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Prop_literal() (localctx IProp_literalContext) {
-	this := p
-	_ = this
-
 	localctx = NewProp_literalContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 82, SMTLIBv2ParserRULE_prop_literal)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(643)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 
 	switch p.GetTokenStream().LA(1) {
 	case SMTLIBv2ParserQuotedSymbol, SMTLIBv2ParserPS_Not, SMTLIBv2ParserPS_Bool, SMTLIBv2ParserPS_ContinuedExecution, SMTLIBv2ParserPS_Error, SMTLIBv2ParserPS_False, SMTLIBv2ParserPS_ImmediateExit, SMTLIBv2ParserPS_Incomplete, SMTLIBv2ParserPS_Logic, SMTLIBv2ParserPS_Memout, SMTLIBv2ParserPS_Sat, SMTLIBv2ParserPS_Success, SMTLIBv2ParserPS_Theory, SMTLIBv2ParserPS_True, SMTLIBv2ParserPS_Unknown, SMTLIBv2ParserPS_Unsupported, SMTLIBv2ParserPS_Unsat, SMTLIBv2ParserUndefinedSymbol:
@@ -9127,10 +10034,18 @@ func (p *SMTLIBv2Parser) Prop_literal() (localctx IProp_literalContext) {
 		{
 			p.SetState(638)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(639)
 			p.Match(SMTLIBv2ParserPS_Not)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(640)
@@ -9139,13 +10054,28 @@ func (p *SMTLIBv2Parser) Prop_literal() (localctx IProp_literalContext) {
 		{
 			p.SetState(641)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		p.SetError(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IScriptContext is an interface to support dynamic dispatch.
@@ -9155,20 +10085,29 @@ type IScriptContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	AllCommand() []ICommandContext
+	Command(i int) ICommandContext
+
 	// IsScriptContext differentiates from other interfaces.
 	IsScriptContext()
 }
 
 type ScriptContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyScriptContext() *ScriptContext {
 	var p = new(ScriptContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_script
 	return p
+}
+
+func InitEmptyScriptContext(p *ScriptContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_script
 }
 
 func (*ScriptContext) IsScriptContext() {}
@@ -9176,7 +10115,7 @@ func (*ScriptContext) IsScriptContext() {}
 func NewScriptContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *ScriptContext {
 	var p = new(ScriptContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_script
@@ -9258,32 +10197,16 @@ func (s *ScriptContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Script() (localctx IScriptContext) {
-	this := p
-	_ = this
-
 	localctx = NewScriptContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 84, SMTLIBv2ParserRULE_script)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	p.SetState(648)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == SMTLIBv2ParserParOpen {
@@ -9294,10 +10217,23 @@ func (p *SMTLIBv2Parser) Script() (localctx IScriptContext) {
 
 		p.SetState(650)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_assertContext is an interface to support dynamic dispatch.
@@ -9307,20 +10243,29 @@ type ICmd_assertContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_Assert() antlr.TerminalNode
+	Term() ITermContext
+
 	// IsCmd_assertContext differentiates from other interfaces.
 	IsCmd_assertContext()
 }
 
 type Cmd_assertContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_assertContext() *Cmd_assertContext {
 	var p = new(Cmd_assertContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_assert
 	return p
+}
+
+func InitEmptyCmd_assertContext(p *Cmd_assertContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_assert
 }
 
 func (*Cmd_assertContext) IsCmd_assertContext() {}
@@ -9328,7 +10273,7 @@ func (*Cmd_assertContext) IsCmd_assertContext() {}
 func NewCmd_assertContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_assertContext {
 	var p = new(Cmd_assertContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_assert
@@ -9389,39 +10334,33 @@ func (s *Cmd_assertContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Cmd_assert() (localctx ICmd_assertContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_assertContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 86, SMTLIBv2ParserRULE_cmd_assert)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(651)
 		p.Match(SMTLIBv2ParserCMD_Assert)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(652)
 		p.Term()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_checkSatContext is an interface to support dynamic dispatch.
@@ -9431,20 +10370,28 @@ type ICmd_checkSatContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_CheckSat() antlr.TerminalNode
+
 	// IsCmd_checkSatContext differentiates from other interfaces.
 	IsCmd_checkSatContext()
 }
 
 type Cmd_checkSatContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_checkSatContext() *Cmd_checkSatContext {
 	var p = new(Cmd_checkSatContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_checkSat
 	return p
+}
+
+func InitEmptyCmd_checkSatContext(p *Cmd_checkSatContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_checkSat
 }
 
 func (*Cmd_checkSatContext) IsCmd_checkSatContext() {}
@@ -9452,7 +10399,7 @@ func (*Cmd_checkSatContext) IsCmd_checkSatContext() {}
 func NewCmd_checkSatContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_checkSatContext {
 	var p = new(Cmd_checkSatContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_checkSat
@@ -9497,35 +10444,29 @@ func (s *Cmd_checkSatContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Cmd_checkSat() (localctx ICmd_checkSatContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_checkSatContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 88, SMTLIBv2ParserRULE_cmd_checkSat)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(654)
 		p.Match(SMTLIBv2ParserCMD_CheckSat)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_checkSatAssumingContext is an interface to support dynamic dispatch.
@@ -9535,20 +10476,32 @@ type ICmd_checkSatAssumingContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_CheckSatAssuming() antlr.TerminalNode
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllProp_literal() []IProp_literalContext
+	Prop_literal(i int) IProp_literalContext
+
 	// IsCmd_checkSatAssumingContext differentiates from other interfaces.
 	IsCmd_checkSatAssumingContext()
 }
 
 type Cmd_checkSatAssumingContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_checkSatAssumingContext() *Cmd_checkSatAssumingContext {
 	var p = new(Cmd_checkSatAssumingContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_checkSatAssuming
 	return p
+}
+
+func InitEmptyCmd_checkSatAssumingContext(p *Cmd_checkSatAssumingContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_checkSatAssuming
 }
 
 func (*Cmd_checkSatAssumingContext) IsCmd_checkSatAssumingContext() {}
@@ -9556,7 +10509,7 @@ func (*Cmd_checkSatAssumingContext) IsCmd_checkSatAssumingContext() {}
 func NewCmd_checkSatAssumingContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_checkSatAssumingContext {
 	var p = new(Cmd_checkSatAssumingContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_checkSatAssuming
@@ -9650,43 +10603,35 @@ func (s *Cmd_checkSatAssumingContext) Accept(visitor antlr.ParseTreeVisitor) int
 }
 
 func (p *SMTLIBv2Parser) Cmd_checkSatAssuming() (localctx ICmd_checkSatAssumingContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_checkSatAssumingContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 90, SMTLIBv2ParserRULE_cmd_checkSatAssuming)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(656)
 		p.Match(SMTLIBv2ParserCMD_CheckSatAssuming)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(657)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(661)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 		{
 			p.SetState(658)
 			p.Prop_literal()
@@ -9694,14 +10639,31 @@ func (p *SMTLIBv2Parser) Cmd_checkSatAssuming() (localctx ICmd_checkSatAssumingC
 
 		p.SetState(663)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(664)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_declareConstContext is an interface to support dynamic dispatch.
@@ -9711,20 +10673,30 @@ type ICmd_declareConstContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DeclareConst() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Sort() ISortContext
+
 	// IsCmd_declareConstContext differentiates from other interfaces.
 	IsCmd_declareConstContext()
 }
 
 type Cmd_declareConstContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_declareConstContext() *Cmd_declareConstContext {
 	var p = new(Cmd_declareConstContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareConst
 	return p
+}
+
+func InitEmptyCmd_declareConstContext(p *Cmd_declareConstContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareConst
 }
 
 func (*Cmd_declareConstContext) IsCmd_declareConstContext() {}
@@ -9732,7 +10704,7 @@ func (*Cmd_declareConstContext) IsCmd_declareConstContext() {}
 func NewCmd_declareConstContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_declareConstContext {
 	var p = new(Cmd_declareConstContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareConst
@@ -9809,32 +10781,16 @@ func (s *Cmd_declareConstContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) Cmd_declareConst() (localctx ICmd_declareConstContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_declareConstContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 92, SMTLIBv2ParserRULE_cmd_declareConst)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(666)
 		p.Match(SMTLIBv2ParserCMD_DeclareConst)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(667)
@@ -9845,7 +10801,17 @@ func (p *SMTLIBv2Parser) Cmd_declareConst() (localctx ICmd_declareConstContext) 
 		p.Sort()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_declareDatatypeContext is an interface to support dynamic dispatch.
@@ -9855,20 +10821,30 @@ type ICmd_declareDatatypeContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DeclareDatatype() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Datatype_dec() IDatatype_decContext
+
 	// IsCmd_declareDatatypeContext differentiates from other interfaces.
 	IsCmd_declareDatatypeContext()
 }
 
 type Cmd_declareDatatypeContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_declareDatatypeContext() *Cmd_declareDatatypeContext {
 	var p = new(Cmd_declareDatatypeContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareDatatype
 	return p
+}
+
+func InitEmptyCmd_declareDatatypeContext(p *Cmd_declareDatatypeContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareDatatype
 }
 
 func (*Cmd_declareDatatypeContext) IsCmd_declareDatatypeContext() {}
@@ -9876,7 +10852,7 @@ func (*Cmd_declareDatatypeContext) IsCmd_declareDatatypeContext() {}
 func NewCmd_declareDatatypeContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_declareDatatypeContext {
 	var p = new(Cmd_declareDatatypeContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareDatatype
@@ -9953,32 +10929,16 @@ func (s *Cmd_declareDatatypeContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *SMTLIBv2Parser) Cmd_declareDatatype() (localctx ICmd_declareDatatypeContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_declareDatatypeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 94, SMTLIBv2ParserRULE_cmd_declareDatatype)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(670)
 		p.Match(SMTLIBv2ParserCMD_DeclareDatatype)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(671)
@@ -9989,7 +10949,17 @@ func (p *SMTLIBv2Parser) Cmd_declareDatatype() (localctx ICmd_declareDatatypeCon
 		p.Datatype_dec()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_declareDatatypesContext is an interface to support dynamic dispatch.
@@ -9999,20 +10969,36 @@ type ICmd_declareDatatypesContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DeclareDatatypes() antlr.TerminalNode
+	AllParOpen() []antlr.TerminalNode
+	ParOpen(i int) antlr.TerminalNode
+	AllParClose() []antlr.TerminalNode
+	ParClose(i int) antlr.TerminalNode
+	AllSort_dec() []ISort_decContext
+	Sort_dec(i int) ISort_decContext
+	AllDatatype_dec() []IDatatype_decContext
+	Datatype_dec(i int) IDatatype_decContext
+
 	// IsCmd_declareDatatypesContext differentiates from other interfaces.
 	IsCmd_declareDatatypesContext()
 }
 
 type Cmd_declareDatatypesContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_declareDatatypesContext() *Cmd_declareDatatypesContext {
 	var p = new(Cmd_declareDatatypesContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareDatatypes
 	return p
+}
+
+func InitEmptyCmd_declareDatatypesContext(p *Cmd_declareDatatypesContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareDatatypes
 }
 
 func (*Cmd_declareDatatypesContext) IsCmd_declareDatatypesContext() {}
@@ -10020,7 +11006,7 @@ func (*Cmd_declareDatatypesContext) IsCmd_declareDatatypesContext() {}
 func NewCmd_declareDatatypesContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_declareDatatypesContext {
 	var p = new(Cmd_declareDatatypesContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareDatatypes
@@ -10163,40 +11149,32 @@ func (s *Cmd_declareDatatypesContext) Accept(visitor antlr.ParseTreeVisitor) int
 }
 
 func (p *SMTLIBv2Parser) Cmd_declareDatatypes() (localctx ICmd_declareDatatypesContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_declareDatatypesContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 96, SMTLIBv2ParserRULE_cmd_declareDatatypes)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(674)
 		p.Match(SMTLIBv2ParserCMD_DeclareDatatypes)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(675)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(677)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -10207,18 +11185,32 @@ func (p *SMTLIBv2Parser) Cmd_declareDatatypes() (localctx ICmd_declareDatatypesC
 
 		p.SetState(679)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(681)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(682)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(684)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -10229,14 +11221,31 @@ func (p *SMTLIBv2Parser) Cmd_declareDatatypes() (localctx ICmd_declareDatatypesC
 
 		p.SetState(686)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(688)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_declareFunContext is an interface to support dynamic dispatch.
@@ -10246,20 +11255,33 @@ type ICmd_declareFunContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DeclareFun() antlr.TerminalNode
+	Symbol() ISymbolContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllSort() []ISortContext
+	Sort(i int) ISortContext
+
 	// IsCmd_declareFunContext differentiates from other interfaces.
 	IsCmd_declareFunContext()
 }
 
 type Cmd_declareFunContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_declareFunContext() *Cmd_declareFunContext {
 	var p = new(Cmd_declareFunContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareFun
 	return p
+}
+
+func InitEmptyCmd_declareFunContext(p *Cmd_declareFunContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareFun
 }
 
 func (*Cmd_declareFunContext) IsCmd_declareFunContext() {}
@@ -10267,7 +11289,7 @@ func (*Cmd_declareFunContext) IsCmd_declareFunContext() {}
 func NewCmd_declareFunContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_declareFunContext {
 	var p = new(Cmd_declareFunContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareFun
@@ -10377,33 +11399,18 @@ func (s *Cmd_declareFunContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Cmd_declareFun() (localctx ICmd_declareFunContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_declareFunContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 98, SMTLIBv2ParserRULE_cmd_declareFun)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(690)
 		p.Match(SMTLIBv2ParserCMD_DeclareFun)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(691)
@@ -10412,12 +11419,19 @@ func (p *SMTLIBv2Parser) Cmd_declareFun() (localctx ICmd_declareFunContext) {
 	{
 		p.SetState(692)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(696)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388548) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 		{
 			p.SetState(693)
 			p.Sort()
@@ -10425,18 +11439,35 @@ func (p *SMTLIBv2Parser) Cmd_declareFun() (localctx ICmd_declareFunContext) {
 
 		p.SetState(698)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(699)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(700)
 		p.Sort()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_declareSortContext is an interface to support dynamic dispatch.
@@ -10446,20 +11477,30 @@ type ICmd_declareSortContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DeclareSort() antlr.TerminalNode
+	Symbol() ISymbolContext
+	Numeral() INumeralContext
+
 	// IsCmd_declareSortContext differentiates from other interfaces.
 	IsCmd_declareSortContext()
 }
 
 type Cmd_declareSortContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_declareSortContext() *Cmd_declareSortContext {
 	var p = new(Cmd_declareSortContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareSort
 	return p
+}
+
+func InitEmptyCmd_declareSortContext(p *Cmd_declareSortContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareSort
 }
 
 func (*Cmd_declareSortContext) IsCmd_declareSortContext() {}
@@ -10467,7 +11508,7 @@ func (*Cmd_declareSortContext) IsCmd_declareSortContext() {}
 func NewCmd_declareSortContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_declareSortContext {
 	var p = new(Cmd_declareSortContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_declareSort
@@ -10544,32 +11585,16 @@ func (s *Cmd_declareSortContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *SMTLIBv2Parser) Cmd_declareSort() (localctx ICmd_declareSortContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_declareSortContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 100, SMTLIBv2ParserRULE_cmd_declareSort)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(702)
 		p.Match(SMTLIBv2ParserCMD_DeclareSort)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(703)
@@ -10580,7 +11605,17 @@ func (p *SMTLIBv2Parser) Cmd_declareSort() (localctx ICmd_declareSortContext) {
 		p.Numeral()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_defineFunContext is an interface to support dynamic dispatch.
@@ -10590,20 +11625,29 @@ type ICmd_defineFunContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DefineFun() antlr.TerminalNode
+	Function_def() IFunction_defContext
+
 	// IsCmd_defineFunContext differentiates from other interfaces.
 	IsCmd_defineFunContext()
 }
 
 type Cmd_defineFunContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_defineFunContext() *Cmd_defineFunContext {
 	var p = new(Cmd_defineFunContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFun
 	return p
+}
+
+func InitEmptyCmd_defineFunContext(p *Cmd_defineFunContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFun
 }
 
 func (*Cmd_defineFunContext) IsCmd_defineFunContext() {}
@@ -10611,7 +11655,7 @@ func (*Cmd_defineFunContext) IsCmd_defineFunContext() {}
 func NewCmd_defineFunContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_defineFunContext {
 	var p = new(Cmd_defineFunContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFun
@@ -10672,39 +11716,33 @@ func (s *Cmd_defineFunContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) Cmd_defineFun() (localctx ICmd_defineFunContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_defineFunContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 102, SMTLIBv2ParserRULE_cmd_defineFun)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(706)
 		p.Match(SMTLIBv2ParserCMD_DefineFun)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(707)
 		p.Function_def()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_defineFunRecContext is an interface to support dynamic dispatch.
@@ -10714,20 +11752,29 @@ type ICmd_defineFunRecContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DefineFunRec() antlr.TerminalNode
+	Function_def() IFunction_defContext
+
 	// IsCmd_defineFunRecContext differentiates from other interfaces.
 	IsCmd_defineFunRecContext()
 }
 
 type Cmd_defineFunRecContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_defineFunRecContext() *Cmd_defineFunRecContext {
 	var p = new(Cmd_defineFunRecContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFunRec
 	return p
+}
+
+func InitEmptyCmd_defineFunRecContext(p *Cmd_defineFunRecContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFunRec
 }
 
 func (*Cmd_defineFunRecContext) IsCmd_defineFunRecContext() {}
@@ -10735,7 +11782,7 @@ func (*Cmd_defineFunRecContext) IsCmd_defineFunRecContext() {}
 func NewCmd_defineFunRecContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_defineFunRecContext {
 	var p = new(Cmd_defineFunRecContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFunRec
@@ -10796,39 +11843,33 @@ func (s *Cmd_defineFunRecContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) Cmd_defineFunRec() (localctx ICmd_defineFunRecContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_defineFunRecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 104, SMTLIBv2ParserRULE_cmd_defineFunRec)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(709)
 		p.Match(SMTLIBv2ParserCMD_DefineFunRec)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(710)
 		p.Function_def()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_defineFunsRecContext is an interface to support dynamic dispatch.
@@ -10838,20 +11879,36 @@ type ICmd_defineFunsRecContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DefineFunsRec() antlr.TerminalNode
+	AllParOpen() []antlr.TerminalNode
+	ParOpen(i int) antlr.TerminalNode
+	AllParClose() []antlr.TerminalNode
+	ParClose(i int) antlr.TerminalNode
+	AllFunction_dec() []IFunction_decContext
+	Function_dec(i int) IFunction_decContext
+	AllTerm() []ITermContext
+	Term(i int) ITermContext
+
 	// IsCmd_defineFunsRecContext differentiates from other interfaces.
 	IsCmd_defineFunsRecContext()
 }
 
 type Cmd_defineFunsRecContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_defineFunsRecContext() *Cmd_defineFunsRecContext {
 	var p = new(Cmd_defineFunsRecContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFunsRec
 	return p
+}
+
+func InitEmptyCmd_defineFunsRecContext(p *Cmd_defineFunsRecContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFunsRec
 }
 
 func (*Cmd_defineFunsRecContext) IsCmd_defineFunsRecContext() {}
@@ -10859,7 +11916,7 @@ func (*Cmd_defineFunsRecContext) IsCmd_defineFunsRecContext() {}
 func NewCmd_defineFunsRecContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_defineFunsRecContext {
 	var p = new(Cmd_defineFunsRecContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineFunsRec
@@ -11002,40 +12059,32 @@ func (s *Cmd_defineFunsRecContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *SMTLIBv2Parser) Cmd_defineFunsRec() (localctx ICmd_defineFunsRecContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_defineFunsRecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 106, SMTLIBv2ParserRULE_cmd_defineFunsRec)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(712)
 		p.Match(SMTLIBv2ParserCMD_DefineFunsRec)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(713)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(715)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -11046,21 +12095,35 @@ func (p *SMTLIBv2Parser) Cmd_defineFunsRec() (localctx ICmd_defineFunsRecContext
 
 		p.SetState(717)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(719)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(720)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(722)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0 || (int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0 {
+	for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0) {
 		{
 			p.SetState(721)
 			p.Term()
@@ -11068,14 +12131,31 @@ func (p *SMTLIBv2Parser) Cmd_defineFunsRec() (localctx ICmd_defineFunsRecContext
 
 		p.SetState(724)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(726)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_defineSortContext is an interface to support dynamic dispatch.
@@ -11085,20 +12165,33 @@ type ICmd_defineSortContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_DefineSort() antlr.TerminalNode
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	Sort() ISortContext
+
 	// IsCmd_defineSortContext differentiates from other interfaces.
 	IsCmd_defineSortContext()
 }
 
 type Cmd_defineSortContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_defineSortContext() *Cmd_defineSortContext {
 	var p = new(Cmd_defineSortContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineSort
 	return p
+}
+
+func InitEmptyCmd_defineSortContext(p *Cmd_defineSortContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineSort
 }
 
 func (*Cmd_defineSortContext) IsCmd_defineSortContext() {}
@@ -11106,7 +12199,7 @@ func (*Cmd_defineSortContext) IsCmd_defineSortContext() {}
 func NewCmd_defineSortContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_defineSortContext {
 	var p = new(Cmd_defineSortContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_defineSort
@@ -11216,33 +12309,18 @@ func (s *Cmd_defineSortContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Cmd_defineSort() (localctx ICmd_defineSortContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_defineSortContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 108, SMTLIBv2ParserRULE_cmd_defineSort)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(728)
 		p.Match(SMTLIBv2ParserCMD_DefineSort)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(729)
@@ -11251,12 +12329,19 @@ func (p *SMTLIBv2Parser) Cmd_defineSort() (localctx ICmd_defineSortContext) {
 	{
 		p.SetState(730)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(734)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 		{
 			p.SetState(731)
 			p.Symbol()
@@ -11264,18 +12349,35 @@ func (p *SMTLIBv2Parser) Cmd_defineSort() (localctx ICmd_defineSortContext) {
 
 		p.SetState(736)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(737)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(738)
 		p.Sort()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_echoContext is an interface to support dynamic dispatch.
@@ -11285,20 +12387,29 @@ type ICmd_echoContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_Echo() antlr.TerminalNode
+	String_() IString_Context
+
 	// IsCmd_echoContext differentiates from other interfaces.
 	IsCmd_echoContext()
 }
 
 type Cmd_echoContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_echoContext() *Cmd_echoContext {
 	var p = new(Cmd_echoContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_echo
 	return p
+}
+
+func InitEmptyCmd_echoContext(p *Cmd_echoContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_echo
 }
 
 func (*Cmd_echoContext) IsCmd_echoContext() {}
@@ -11306,7 +12417,7 @@ func (*Cmd_echoContext) IsCmd_echoContext() {}
 func NewCmd_echoContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_echoContext {
 	var p = new(Cmd_echoContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_echo
@@ -11367,39 +12478,33 @@ func (s *Cmd_echoContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Cmd_echo() (localctx ICmd_echoContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_echoContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 110, SMTLIBv2ParserRULE_cmd_echo)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(740)
 		p.Match(SMTLIBv2ParserCMD_Echo)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(741)
 		p.String_()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_exitContext is an interface to support dynamic dispatch.
@@ -11409,20 +12514,28 @@ type ICmd_exitContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_Exit() antlr.TerminalNode
+
 	// IsCmd_exitContext differentiates from other interfaces.
 	IsCmd_exitContext()
 }
 
 type Cmd_exitContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_exitContext() *Cmd_exitContext {
 	var p = new(Cmd_exitContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_exit
 	return p
+}
+
+func InitEmptyCmd_exitContext(p *Cmd_exitContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_exit
 }
 
 func (*Cmd_exitContext) IsCmd_exitContext() {}
@@ -11430,7 +12543,7 @@ func (*Cmd_exitContext) IsCmd_exitContext() {}
 func NewCmd_exitContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_exitContext {
 	var p = new(Cmd_exitContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_exit
@@ -11475,35 +12588,29 @@ func (s *Cmd_exitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Cmd_exit() (localctx ICmd_exitContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_exitContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 112, SMTLIBv2ParserRULE_cmd_exit)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(743)
 		p.Match(SMTLIBv2ParserCMD_Exit)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getAssertionsContext is an interface to support dynamic dispatch.
@@ -11513,20 +12620,28 @@ type ICmd_getAssertionsContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetAssertions() antlr.TerminalNode
+
 	// IsCmd_getAssertionsContext differentiates from other interfaces.
 	IsCmd_getAssertionsContext()
 }
 
 type Cmd_getAssertionsContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getAssertionsContext() *Cmd_getAssertionsContext {
 	var p = new(Cmd_getAssertionsContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getAssertions
 	return p
+}
+
+func InitEmptyCmd_getAssertionsContext(p *Cmd_getAssertionsContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getAssertions
 }
 
 func (*Cmd_getAssertionsContext) IsCmd_getAssertionsContext() {}
@@ -11534,7 +12649,7 @@ func (*Cmd_getAssertionsContext) IsCmd_getAssertionsContext() {}
 func NewCmd_getAssertionsContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getAssertionsContext {
 	var p = new(Cmd_getAssertionsContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getAssertions
@@ -11579,35 +12694,29 @@ func (s *Cmd_getAssertionsContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *SMTLIBv2Parser) Cmd_getAssertions() (localctx ICmd_getAssertionsContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getAssertionsContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 114, SMTLIBv2ParserRULE_cmd_getAssertions)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(745)
 		p.Match(SMTLIBv2ParserCMD_GetAssertions)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getAssignmentContext is an interface to support dynamic dispatch.
@@ -11617,20 +12726,28 @@ type ICmd_getAssignmentContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetAssignment() antlr.TerminalNode
+
 	// IsCmd_getAssignmentContext differentiates from other interfaces.
 	IsCmd_getAssignmentContext()
 }
 
 type Cmd_getAssignmentContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getAssignmentContext() *Cmd_getAssignmentContext {
 	var p = new(Cmd_getAssignmentContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getAssignment
 	return p
+}
+
+func InitEmptyCmd_getAssignmentContext(p *Cmd_getAssignmentContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getAssignment
 }
 
 func (*Cmd_getAssignmentContext) IsCmd_getAssignmentContext() {}
@@ -11638,7 +12755,7 @@ func (*Cmd_getAssignmentContext) IsCmd_getAssignmentContext() {}
 func NewCmd_getAssignmentContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getAssignmentContext {
 	var p = new(Cmd_getAssignmentContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getAssignment
@@ -11683,35 +12800,29 @@ func (s *Cmd_getAssignmentContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *SMTLIBv2Parser) Cmd_getAssignment() (localctx ICmd_getAssignmentContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getAssignmentContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 116, SMTLIBv2ParserRULE_cmd_getAssignment)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(747)
 		p.Match(SMTLIBv2ParserCMD_GetAssignment)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getInfoContext is an interface to support dynamic dispatch.
@@ -11721,20 +12832,29 @@ type ICmd_getInfoContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetInfo() antlr.TerminalNode
+	Info_flag() IInfo_flagContext
+
 	// IsCmd_getInfoContext differentiates from other interfaces.
 	IsCmd_getInfoContext()
 }
 
 type Cmd_getInfoContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getInfoContext() *Cmd_getInfoContext {
 	var p = new(Cmd_getInfoContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getInfo
 	return p
+}
+
+func InitEmptyCmd_getInfoContext(p *Cmd_getInfoContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getInfo
 }
 
 func (*Cmd_getInfoContext) IsCmd_getInfoContext() {}
@@ -11742,7 +12862,7 @@ func (*Cmd_getInfoContext) IsCmd_getInfoContext() {}
 func NewCmd_getInfoContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getInfoContext {
 	var p = new(Cmd_getInfoContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getInfo
@@ -11803,39 +12923,33 @@ func (s *Cmd_getInfoContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *SMTLIBv2Parser) Cmd_getInfo() (localctx ICmd_getInfoContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getInfoContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 118, SMTLIBv2ParserRULE_cmd_getInfo)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(749)
 		p.Match(SMTLIBv2ParserCMD_GetInfo)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(750)
 		p.Info_flag()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getModelContext is an interface to support dynamic dispatch.
@@ -11845,20 +12959,28 @@ type ICmd_getModelContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetModel() antlr.TerminalNode
+
 	// IsCmd_getModelContext differentiates from other interfaces.
 	IsCmd_getModelContext()
 }
 
 type Cmd_getModelContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getModelContext() *Cmd_getModelContext {
 	var p = new(Cmd_getModelContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getModel
 	return p
+}
+
+func InitEmptyCmd_getModelContext(p *Cmd_getModelContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getModel
 }
 
 func (*Cmd_getModelContext) IsCmd_getModelContext() {}
@@ -11866,7 +12988,7 @@ func (*Cmd_getModelContext) IsCmd_getModelContext() {}
 func NewCmd_getModelContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getModelContext {
 	var p = new(Cmd_getModelContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getModel
@@ -11911,35 +13033,29 @@ func (s *Cmd_getModelContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Cmd_getModel() (localctx ICmd_getModelContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getModelContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 120, SMTLIBv2ParserRULE_cmd_getModel)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(752)
 		p.Match(SMTLIBv2ParserCMD_GetModel)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getOptionContext is an interface to support dynamic dispatch.
@@ -11949,20 +13065,29 @@ type ICmd_getOptionContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetOption() antlr.TerminalNode
+	Keyword() IKeywordContext
+
 	// IsCmd_getOptionContext differentiates from other interfaces.
 	IsCmd_getOptionContext()
 }
 
 type Cmd_getOptionContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getOptionContext() *Cmd_getOptionContext {
 	var p = new(Cmd_getOptionContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getOption
 	return p
+}
+
+func InitEmptyCmd_getOptionContext(p *Cmd_getOptionContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getOption
 }
 
 func (*Cmd_getOptionContext) IsCmd_getOptionContext() {}
@@ -11970,7 +13095,7 @@ func (*Cmd_getOptionContext) IsCmd_getOptionContext() {}
 func NewCmd_getOptionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getOptionContext {
 	var p = new(Cmd_getOptionContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getOption
@@ -12031,39 +13156,33 @@ func (s *Cmd_getOptionContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) Cmd_getOption() (localctx ICmd_getOptionContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getOptionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 122, SMTLIBv2ParserRULE_cmd_getOption)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(754)
 		p.Match(SMTLIBv2ParserCMD_GetOption)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(755)
 		p.Keyword()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getProofContext is an interface to support dynamic dispatch.
@@ -12073,20 +13192,28 @@ type ICmd_getProofContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetProof() antlr.TerminalNode
+
 	// IsCmd_getProofContext differentiates from other interfaces.
 	IsCmd_getProofContext()
 }
 
 type Cmd_getProofContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getProofContext() *Cmd_getProofContext {
 	var p = new(Cmd_getProofContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getProof
 	return p
+}
+
+func InitEmptyCmd_getProofContext(p *Cmd_getProofContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getProof
 }
 
 func (*Cmd_getProofContext) IsCmd_getProofContext() {}
@@ -12094,7 +13221,7 @@ func (*Cmd_getProofContext) IsCmd_getProofContext() {}
 func NewCmd_getProofContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getProofContext {
 	var p = new(Cmd_getProofContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getProof
@@ -12139,35 +13266,29 @@ func (s *Cmd_getProofContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Cmd_getProof() (localctx ICmd_getProofContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getProofContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 124, SMTLIBv2ParserRULE_cmd_getProof)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(757)
 		p.Match(SMTLIBv2ParserCMD_GetProof)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getUnsatAssumptionsContext is an interface to support dynamic dispatch.
@@ -12177,20 +13298,28 @@ type ICmd_getUnsatAssumptionsContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetUnsatAssumptions() antlr.TerminalNode
+
 	// IsCmd_getUnsatAssumptionsContext differentiates from other interfaces.
 	IsCmd_getUnsatAssumptionsContext()
 }
 
 type Cmd_getUnsatAssumptionsContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getUnsatAssumptionsContext() *Cmd_getUnsatAssumptionsContext {
 	var p = new(Cmd_getUnsatAssumptionsContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getUnsatAssumptions
 	return p
+}
+
+func InitEmptyCmd_getUnsatAssumptionsContext(p *Cmd_getUnsatAssumptionsContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getUnsatAssumptions
 }
 
 func (*Cmd_getUnsatAssumptionsContext) IsCmd_getUnsatAssumptionsContext() {}
@@ -12198,7 +13327,7 @@ func (*Cmd_getUnsatAssumptionsContext) IsCmd_getUnsatAssumptionsContext() {}
 func NewCmd_getUnsatAssumptionsContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getUnsatAssumptionsContext {
 	var p = new(Cmd_getUnsatAssumptionsContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getUnsatAssumptions
@@ -12243,35 +13372,29 @@ func (s *Cmd_getUnsatAssumptionsContext) Accept(visitor antlr.ParseTreeVisitor) 
 }
 
 func (p *SMTLIBv2Parser) Cmd_getUnsatAssumptions() (localctx ICmd_getUnsatAssumptionsContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getUnsatAssumptionsContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 126, SMTLIBv2ParserRULE_cmd_getUnsatAssumptions)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(759)
 		p.Match(SMTLIBv2ParserCMD_GetUnsatAssumptions)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getUnsatCoreContext is an interface to support dynamic dispatch.
@@ -12281,20 +13404,28 @@ type ICmd_getUnsatCoreContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetUnsatCore() antlr.TerminalNode
+
 	// IsCmd_getUnsatCoreContext differentiates from other interfaces.
 	IsCmd_getUnsatCoreContext()
 }
 
 type Cmd_getUnsatCoreContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getUnsatCoreContext() *Cmd_getUnsatCoreContext {
 	var p = new(Cmd_getUnsatCoreContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getUnsatCore
 	return p
+}
+
+func InitEmptyCmd_getUnsatCoreContext(p *Cmd_getUnsatCoreContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getUnsatCore
 }
 
 func (*Cmd_getUnsatCoreContext) IsCmd_getUnsatCoreContext() {}
@@ -12302,7 +13433,7 @@ func (*Cmd_getUnsatCoreContext) IsCmd_getUnsatCoreContext() {}
 func NewCmd_getUnsatCoreContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getUnsatCoreContext {
 	var p = new(Cmd_getUnsatCoreContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getUnsatCore
@@ -12347,35 +13478,29 @@ func (s *Cmd_getUnsatCoreContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) Cmd_getUnsatCore() (localctx ICmd_getUnsatCoreContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getUnsatCoreContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 128, SMTLIBv2ParserRULE_cmd_getUnsatCore)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(761)
 		p.Match(SMTLIBv2ParserCMD_GetUnsatCore)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_getValueContext is an interface to support dynamic dispatch.
@@ -12385,20 +13510,32 @@ type ICmd_getValueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_GetValue() antlr.TerminalNode
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllTerm() []ITermContext
+	Term(i int) ITermContext
+
 	// IsCmd_getValueContext differentiates from other interfaces.
 	IsCmd_getValueContext()
 }
 
 type Cmd_getValueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_getValueContext() *Cmd_getValueContext {
 	var p = new(Cmd_getValueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getValue
 	return p
+}
+
+func InitEmptyCmd_getValueContext(p *Cmd_getValueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getValue
 }
 
 func (*Cmd_getValueContext) IsCmd_getValueContext() {}
@@ -12406,7 +13543,7 @@ func (*Cmd_getValueContext) IsCmd_getValueContext() {}
 func NewCmd_getValueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_getValueContext {
 	var p = new(Cmd_getValueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_getValue
@@ -12500,43 +13637,35 @@ func (s *Cmd_getValueContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Cmd_getValue() (localctx ICmd_getValueContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_getValueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 130, SMTLIBv2ParserRULE_cmd_getValue)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(763)
 		p.Match(SMTLIBv2ParserCMD_GetValue)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(764)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(766)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0 || (int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0 {
+	for ok := true; ok; ok = ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0) {
 		{
 			p.SetState(765)
 			p.Term()
@@ -12544,14 +13673,31 @@ func (p *SMTLIBv2Parser) Cmd_getValue() (localctx ICmd_getValueContext) {
 
 		p.SetState(768)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(770)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_popContext is an interface to support dynamic dispatch.
@@ -12561,20 +13707,29 @@ type ICmd_popContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_Pop() antlr.TerminalNode
+	Numeral() INumeralContext
+
 	// IsCmd_popContext differentiates from other interfaces.
 	IsCmd_popContext()
 }
 
 type Cmd_popContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_popContext() *Cmd_popContext {
 	var p = new(Cmd_popContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_pop
 	return p
+}
+
+func InitEmptyCmd_popContext(p *Cmd_popContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_pop
 }
 
 func (*Cmd_popContext) IsCmd_popContext() {}
@@ -12582,7 +13737,7 @@ func (*Cmd_popContext) IsCmd_popContext() {}
 func NewCmd_popContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_popContext {
 	var p = new(Cmd_popContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_pop
@@ -12643,39 +13798,33 @@ func (s *Cmd_popContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Cmd_pop() (localctx ICmd_popContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_popContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 132, SMTLIBv2ParserRULE_cmd_pop)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(772)
 		p.Match(SMTLIBv2ParserCMD_Pop)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(773)
 		p.Numeral()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_pushContext is an interface to support dynamic dispatch.
@@ -12685,20 +13834,29 @@ type ICmd_pushContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_Push() antlr.TerminalNode
+	Numeral() INumeralContext
+
 	// IsCmd_pushContext differentiates from other interfaces.
 	IsCmd_pushContext()
 }
 
 type Cmd_pushContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_pushContext() *Cmd_pushContext {
 	var p = new(Cmd_pushContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_push
 	return p
+}
+
+func InitEmptyCmd_pushContext(p *Cmd_pushContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_push
 }
 
 func (*Cmd_pushContext) IsCmd_pushContext() {}
@@ -12706,7 +13864,7 @@ func (*Cmd_pushContext) IsCmd_pushContext() {}
 func NewCmd_pushContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_pushContext {
 	var p = new(Cmd_pushContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_push
@@ -12767,39 +13925,33 @@ func (s *Cmd_pushContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Cmd_push() (localctx ICmd_pushContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_pushContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 134, SMTLIBv2ParserRULE_cmd_push)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(775)
 		p.Match(SMTLIBv2ParserCMD_Push)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(776)
 		p.Numeral()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_resetContext is an interface to support dynamic dispatch.
@@ -12809,20 +13961,28 @@ type ICmd_resetContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_Reset() antlr.TerminalNode
+
 	// IsCmd_resetContext differentiates from other interfaces.
 	IsCmd_resetContext()
 }
 
 type Cmd_resetContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_resetContext() *Cmd_resetContext {
 	var p = new(Cmd_resetContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_reset
 	return p
+}
+
+func InitEmptyCmd_resetContext(p *Cmd_resetContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_reset
 }
 
 func (*Cmd_resetContext) IsCmd_resetContext() {}
@@ -12830,7 +13990,7 @@ func (*Cmd_resetContext) IsCmd_resetContext() {}
 func NewCmd_resetContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_resetContext {
 	var p = new(Cmd_resetContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_reset
@@ -12875,35 +14035,29 @@ func (s *Cmd_resetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Cmd_reset() (localctx ICmd_resetContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_resetContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 136, SMTLIBv2ParserRULE_cmd_reset)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(778)
 		p.Match(SMTLIBv2ParserCMD_Reset)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_resetAssertionsContext is an interface to support dynamic dispatch.
@@ -12913,20 +14067,28 @@ type ICmd_resetAssertionsContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_ResetAssertions() antlr.TerminalNode
+
 	// IsCmd_resetAssertionsContext differentiates from other interfaces.
 	IsCmd_resetAssertionsContext()
 }
 
 type Cmd_resetAssertionsContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_resetAssertionsContext() *Cmd_resetAssertionsContext {
 	var p = new(Cmd_resetAssertionsContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_resetAssertions
 	return p
+}
+
+func InitEmptyCmd_resetAssertionsContext(p *Cmd_resetAssertionsContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_resetAssertions
 }
 
 func (*Cmd_resetAssertionsContext) IsCmd_resetAssertionsContext() {}
@@ -12934,7 +14096,7 @@ func (*Cmd_resetAssertionsContext) IsCmd_resetAssertionsContext() {}
 func NewCmd_resetAssertionsContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_resetAssertionsContext {
 	var p = new(Cmd_resetAssertionsContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_resetAssertions
@@ -12979,35 +14141,29 @@ func (s *Cmd_resetAssertionsContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *SMTLIBv2Parser) Cmd_resetAssertions() (localctx ICmd_resetAssertionsContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_resetAssertionsContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 138, SMTLIBv2ParserRULE_cmd_resetAssertions)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(780)
 		p.Match(SMTLIBv2ParserCMD_ResetAssertions)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_setInfoContext is an interface to support dynamic dispatch.
@@ -13017,20 +14173,29 @@ type ICmd_setInfoContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_SetInfo() antlr.TerminalNode
+	Attribute() IAttributeContext
+
 	// IsCmd_setInfoContext differentiates from other interfaces.
 	IsCmd_setInfoContext()
 }
 
 type Cmd_setInfoContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_setInfoContext() *Cmd_setInfoContext {
 	var p = new(Cmd_setInfoContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setInfo
 	return p
+}
+
+func InitEmptyCmd_setInfoContext(p *Cmd_setInfoContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setInfo
 }
 
 func (*Cmd_setInfoContext) IsCmd_setInfoContext() {}
@@ -13038,7 +14203,7 @@ func (*Cmd_setInfoContext) IsCmd_setInfoContext() {}
 func NewCmd_setInfoContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_setInfoContext {
 	var p = new(Cmd_setInfoContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setInfo
@@ -13099,39 +14264,33 @@ func (s *Cmd_setInfoContext) Accept(visitor antlr.ParseTreeVisitor) interface{} 
 }
 
 func (p *SMTLIBv2Parser) Cmd_setInfo() (localctx ICmd_setInfoContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_setInfoContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 140, SMTLIBv2ParserRULE_cmd_setInfo)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(782)
 		p.Match(SMTLIBv2ParserCMD_SetInfo)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(783)
 		p.Attribute()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_setLogicContext is an interface to support dynamic dispatch.
@@ -13141,20 +14300,29 @@ type ICmd_setLogicContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_SetLogic() antlr.TerminalNode
+	Symbol() ISymbolContext
+
 	// IsCmd_setLogicContext differentiates from other interfaces.
 	IsCmd_setLogicContext()
 }
 
 type Cmd_setLogicContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_setLogicContext() *Cmd_setLogicContext {
 	var p = new(Cmd_setLogicContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setLogic
 	return p
+}
+
+func InitEmptyCmd_setLogicContext(p *Cmd_setLogicContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setLogic
 }
 
 func (*Cmd_setLogicContext) IsCmd_setLogicContext() {}
@@ -13162,7 +14330,7 @@ func (*Cmd_setLogicContext) IsCmd_setLogicContext() {}
 func NewCmd_setLogicContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_setLogicContext {
 	var p = new(Cmd_setLogicContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setLogic
@@ -13223,39 +14391,33 @@ func (s *Cmd_setLogicContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 }
 
 func (p *SMTLIBv2Parser) Cmd_setLogic() (localctx ICmd_setLogicContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_setLogicContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 142, SMTLIBv2ParserRULE_cmd_setLogic)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(785)
 		p.Match(SMTLIBv2ParserCMD_SetLogic)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(786)
 		p.Symbol()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICmd_setOptionContext is an interface to support dynamic dispatch.
@@ -13265,20 +14427,29 @@ type ICmd_setOptionContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	CMD_SetOption() antlr.TerminalNode
+	Option() IOptionContext
+
 	// IsCmd_setOptionContext differentiates from other interfaces.
 	IsCmd_setOptionContext()
 }
 
 type Cmd_setOptionContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCmd_setOptionContext() *Cmd_setOptionContext {
 	var p = new(Cmd_setOptionContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setOption
 	return p
+}
+
+func InitEmptyCmd_setOptionContext(p *Cmd_setOptionContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setOption
 }
 
 func (*Cmd_setOptionContext) IsCmd_setOptionContext() {}
@@ -13286,7 +14457,7 @@ func (*Cmd_setOptionContext) IsCmd_setOptionContext() {}
 func NewCmd_setOptionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Cmd_setOptionContext {
 	var p = new(Cmd_setOptionContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_cmd_setOption
@@ -13347,39 +14518,33 @@ func (s *Cmd_setOptionContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) Cmd_setOption() (localctx ICmd_setOptionContext) {
-	this := p
-	_ = this
-
 	localctx = NewCmd_setOptionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 144, SMTLIBv2ParserRULE_cmd_setOption)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(788)
 		p.Match(SMTLIBv2ParserCMD_SetOption)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(789)
 		p.Option()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICommandContext is an interface to support dynamic dispatch.
@@ -13389,20 +14554,59 @@ type ICommandContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Cmd_assert() ICmd_assertContext
+	ParClose() antlr.TerminalNode
+	Cmd_checkSat() ICmd_checkSatContext
+	Cmd_checkSatAssuming() ICmd_checkSatAssumingContext
+	Cmd_declareConst() ICmd_declareConstContext
+	Cmd_declareDatatype() ICmd_declareDatatypeContext
+	Cmd_declareDatatypes() ICmd_declareDatatypesContext
+	Cmd_declareFun() ICmd_declareFunContext
+	Cmd_declareSort() ICmd_declareSortContext
+	Cmd_defineFun() ICmd_defineFunContext
+	Cmd_defineFunRec() ICmd_defineFunRecContext
+	Cmd_defineFunsRec() ICmd_defineFunsRecContext
+	Cmd_defineSort() ICmd_defineSortContext
+	Cmd_echo() ICmd_echoContext
+	Cmd_exit() ICmd_exitContext
+	Cmd_getAssertions() ICmd_getAssertionsContext
+	Cmd_getAssignment() ICmd_getAssignmentContext
+	Cmd_getInfo() ICmd_getInfoContext
+	Cmd_getModel() ICmd_getModelContext
+	Cmd_getOption() ICmd_getOptionContext
+	Cmd_getProof() ICmd_getProofContext
+	Cmd_getUnsatAssumptions() ICmd_getUnsatAssumptionsContext
+	Cmd_getUnsatCore() ICmd_getUnsatCoreContext
+	Cmd_getValue() ICmd_getValueContext
+	Cmd_pop() ICmd_popContext
+	Cmd_push() ICmd_pushContext
+	Cmd_reset() ICmd_resetContext
+	Cmd_resetAssertions() ICmd_resetAssertionsContext
+	Cmd_setInfo() ICmd_setInfoContext
+	Cmd_setLogic() ICmd_setLogicContext
+	Cmd_setOption() ICmd_setOptionContext
+
 	// IsCommandContext differentiates from other interfaces.
 	IsCommandContext()
 }
 
 type CommandContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCommandContext() *CommandContext {
 	var p = new(CommandContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_command
 	return p
+}
+
+func InitEmptyCommandContext(p *CommandContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_command
 }
 
 func (*CommandContext) IsCommandContext() {}
@@ -13410,7 +14614,7 @@ func (*CommandContext) IsCommandContext() {}
 func NewCommandContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *CommandContext {
 	var p = new(CommandContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_command
@@ -13939,36 +15143,24 @@ func (s *CommandContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
-	this := p
-	_ = this
-
 	localctx = NewCommandContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 146, SMTLIBv2ParserRULE_command)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(911)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 59, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 59, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(791)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(792)
@@ -13977,6 +15169,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(793)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -13984,6 +15180,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(795)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(796)
@@ -13992,6 +15192,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(797)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -13999,6 +15203,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(799)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(800)
@@ -14007,6 +15215,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(801)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -14014,6 +15226,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(803)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(804)
@@ -14022,6 +15238,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(805)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 5:
@@ -14029,6 +15249,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(807)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(808)
@@ -14037,6 +15261,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(809)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 6:
@@ -14044,6 +15272,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(811)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(812)
@@ -14052,6 +15284,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(813)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 7:
@@ -14059,6 +15295,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(815)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(816)
@@ -14067,6 +15307,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(817)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 8:
@@ -14074,6 +15318,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(819)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(820)
@@ -14082,6 +15330,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(821)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 9:
@@ -14089,6 +15341,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(823)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(824)
@@ -14097,6 +15353,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(825)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 10:
@@ -14104,6 +15364,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(827)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(828)
@@ -14112,6 +15376,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(829)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 11:
@@ -14119,6 +15387,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(831)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(832)
@@ -14127,6 +15399,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(833)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 12:
@@ -14134,6 +15410,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(835)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(836)
@@ -14142,6 +15422,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(837)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 13:
@@ -14149,6 +15433,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(839)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(840)
@@ -14157,6 +15445,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(841)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 14:
@@ -14164,6 +15456,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(843)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(844)
@@ -14172,6 +15468,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(845)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 15:
@@ -14179,6 +15479,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(847)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(848)
@@ -14187,6 +15491,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(849)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 16:
@@ -14194,6 +15502,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(851)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(852)
@@ -14202,6 +15514,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(853)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 17:
@@ -14209,6 +15525,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(855)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(856)
@@ -14217,6 +15537,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(857)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 18:
@@ -14224,6 +15548,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(859)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(860)
@@ -14232,6 +15560,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(861)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 19:
@@ -14239,6 +15571,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(863)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(864)
@@ -14247,6 +15583,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(865)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 20:
@@ -14254,6 +15594,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(867)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(868)
@@ -14262,6 +15606,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(869)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 21:
@@ -14269,6 +15617,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(871)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(872)
@@ -14277,6 +15629,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(873)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 22:
@@ -14284,6 +15640,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(875)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(876)
@@ -14292,6 +15652,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(877)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 23:
@@ -14299,6 +15663,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(879)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(880)
@@ -14307,6 +15675,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(881)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 24:
@@ -14314,6 +15686,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(883)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(884)
@@ -14322,6 +15698,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(885)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 25:
@@ -14329,6 +15709,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(887)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(888)
@@ -14337,6 +15721,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(889)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 26:
@@ -14344,6 +15732,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(891)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(892)
@@ -14352,6 +15744,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(893)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 27:
@@ -14359,6 +15755,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(895)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(896)
@@ -14367,6 +15767,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(897)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 28:
@@ -14374,6 +15778,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(899)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(900)
@@ -14382,6 +15790,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(901)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 29:
@@ -14389,6 +15801,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(903)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(904)
@@ -14397,6 +15813,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(905)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 30:
@@ -14404,6 +15824,10 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(907)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(908)
@@ -14412,11 +15836,27 @@ func (p *SMTLIBv2Parser) Command() (localctx ICommandContext) {
 		{
 			p.SetState(909)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IB_valueContext is an interface to support dynamic dispatch.
@@ -14426,20 +15866,29 @@ type IB_valueContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PS_True() antlr.TerminalNode
+	PS_False() antlr.TerminalNode
+
 	// IsB_valueContext differentiates from other interfaces.
 	IsB_valueContext()
 }
 
 type B_valueContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyB_valueContext() *B_valueContext {
 	var p = new(B_valueContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_b_value
 	return p
+}
+
+func InitEmptyB_valueContext(p *B_valueContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_b_value
 }
 
 func (*B_valueContext) IsB_valueContext() {}
@@ -14447,7 +15896,7 @@ func (*B_valueContext) IsB_valueContext() {}
 func NewB_valueContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *B_valueContext {
 	var p = new(B_valueContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_b_value
@@ -14496,28 +15945,9 @@ func (s *B_valueContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) B_value() (localctx IB_valueContext) {
-	this := p
-	_ = this
-
 	localctx = NewB_valueContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 148, SMTLIBv2ParserRULE_b_value)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -14532,7 +15962,17 @@ func (p *SMTLIBv2Parser) B_value() (localctx IB_valueContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IOptionContext is an interface to support dynamic dispatch.
@@ -14542,20 +15982,45 @@ type IOptionContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PK_DiagnosticOutputChannel() antlr.TerminalNode
+	String_() IString_Context
+	PK_GlobalDeclarations() antlr.TerminalNode
+	B_value() IB_valueContext
+	PK_InteractiveMode() antlr.TerminalNode
+	PK_PrintSuccess() antlr.TerminalNode
+	PK_ProduceAssertions() antlr.TerminalNode
+	PK_ProduceAssignments() antlr.TerminalNode
+	PK_ProduceModels() antlr.TerminalNode
+	PK_ProduceProofs() antlr.TerminalNode
+	PK_ProduceUnsatAssumptions() antlr.TerminalNode
+	PK_ProduceUnsatCores() antlr.TerminalNode
+	PK_RandomSeed() antlr.TerminalNode
+	Numeral() INumeralContext
+	PK_RegularOutputChannel() antlr.TerminalNode
+	PK_ReproducibleResourceLimit() antlr.TerminalNode
+	PK_Verbosity() antlr.TerminalNode
+	Attribute() IAttributeContext
+
 	// IsOptionContext differentiates from other interfaces.
 	IsOptionContext()
 }
 
 type OptionContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyOptionContext() *OptionContext {
 	var p = new(OptionContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_option
 	return p
+}
+
+func InitEmptyOptionContext(p *OptionContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_option
 }
 
 func (*OptionContext) IsOptionContext() {}
@@ -14563,7 +16028,7 @@ func (*OptionContext) IsOptionContext() {}
 func NewOptionContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *OptionContext {
 	var p = new(OptionContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_option
@@ -14724,36 +16189,24 @@ func (s *OptionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
-	this := p
-	_ = this
-
 	localctx = NewOptionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 150, SMTLIBv2ParserRULE_option)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(944)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 60, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 60, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(915)
 			p.Match(SMTLIBv2ParserPK_DiagnosticOutputChannel)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(916)
@@ -14765,6 +16218,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(917)
 			p.Match(SMTLIBv2ParserPK_GlobalDeclarations)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(918)
@@ -14776,6 +16233,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(919)
 			p.Match(SMTLIBv2ParserPK_InteractiveMode)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(920)
@@ -14787,6 +16248,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(921)
 			p.Match(SMTLIBv2ParserPK_PrintSuccess)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(922)
@@ -14798,6 +16263,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(923)
 			p.Match(SMTLIBv2ParserPK_ProduceAssertions)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(924)
@@ -14809,6 +16278,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(925)
 			p.Match(SMTLIBv2ParserPK_ProduceAssignments)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(926)
@@ -14820,6 +16293,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(927)
 			p.Match(SMTLIBv2ParserPK_ProduceModels)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(928)
@@ -14831,6 +16308,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(929)
 			p.Match(SMTLIBv2ParserPK_ProduceProofs)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(930)
@@ -14842,6 +16323,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(931)
 			p.Match(SMTLIBv2ParserPK_ProduceUnsatAssumptions)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(932)
@@ -14853,6 +16338,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(933)
 			p.Match(SMTLIBv2ParserPK_ProduceUnsatCores)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(934)
@@ -14864,6 +16353,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(935)
 			p.Match(SMTLIBv2ParserPK_RandomSeed)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(936)
@@ -14875,6 +16368,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(937)
 			p.Match(SMTLIBv2ParserPK_RegularOutputChannel)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(938)
@@ -14886,6 +16383,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(939)
 			p.Match(SMTLIBv2ParserPK_ReproducibleResourceLimit)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(940)
@@ -14897,6 +16398,10 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 		{
 			p.SetState(941)
 			p.Match(SMTLIBv2ParserPK_Verbosity)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(942)
@@ -14910,9 +16415,21 @@ func (p *SMTLIBv2Parser) Option() (localctx IOptionContext) {
 			p.Attribute()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IInfo_flagContext is an interface to support dynamic dispatch.
@@ -14922,20 +16439,35 @@ type IInfo_flagContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PK_AllStatistics() antlr.TerminalNode
+	PK_AssertionStackLevels() antlr.TerminalNode
+	PK_Authors() antlr.TerminalNode
+	PK_ErrorBehaviour() antlr.TerminalNode
+	PK_Name() antlr.TerminalNode
+	PK_ReasonUnknown() antlr.TerminalNode
+	PK_Version() antlr.TerminalNode
+	Keyword() IKeywordContext
+
 	// IsInfo_flagContext differentiates from other interfaces.
 	IsInfo_flagContext()
 }
 
 type Info_flagContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyInfo_flagContext() *Info_flagContext {
 	var p = new(Info_flagContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_info_flag
 	return p
+}
+
+func InitEmptyInfo_flagContext(p *Info_flagContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_info_flag
 }
 
 func (*Info_flagContext) IsInfo_flagContext() {}
@@ -14943,7 +16475,7 @@ func (*Info_flagContext) IsInfo_flagContext() {}
 func NewInfo_flagContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Info_flagContext {
 	var p = new(Info_flagContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_info_flag
@@ -15028,36 +16560,24 @@ func (s *Info_flagContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 }
 
 func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
-	this := p
-	_ = this
-
 	localctx = NewInfo_flagContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 152, SMTLIBv2ParserRULE_info_flag)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(954)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 61, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 61, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(946)
 			p.Match(SMTLIBv2ParserPK_AllStatistics)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -15065,6 +16585,10 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 		{
 			p.SetState(947)
 			p.Match(SMTLIBv2ParserPK_AssertionStackLevels)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -15072,6 +16596,10 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 		{
 			p.SetState(948)
 			p.Match(SMTLIBv2ParserPK_Authors)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -15079,6 +16607,10 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 		{
 			p.SetState(949)
 			p.Match(SMTLIBv2ParserPK_ErrorBehaviour)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 5:
@@ -15086,6 +16618,10 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 		{
 			p.SetState(950)
 			p.Match(SMTLIBv2ParserPK_Name)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 6:
@@ -15093,6 +16629,10 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 		{
 			p.SetState(951)
 			p.Match(SMTLIBv2ParserPK_ReasonUnknown)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 7:
@@ -15100,6 +16640,10 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 		{
 			p.SetState(952)
 			p.Match(SMTLIBv2ParserPK_Version)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 8:
@@ -15109,9 +16653,21 @@ func (p *SMTLIBv2Parser) Info_flag() (localctx IInfo_flagContext) {
 			p.Keyword()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IError_behaviourContext is an interface to support dynamic dispatch.
@@ -15121,20 +16677,29 @@ type IError_behaviourContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PS_ImmediateExit() antlr.TerminalNode
+	PS_ContinuedExecution() antlr.TerminalNode
+
 	// IsError_behaviourContext differentiates from other interfaces.
 	IsError_behaviourContext()
 }
 
 type Error_behaviourContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyError_behaviourContext() *Error_behaviourContext {
 	var p = new(Error_behaviourContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_error_behaviour
 	return p
+}
+
+func InitEmptyError_behaviourContext(p *Error_behaviourContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_error_behaviour
 }
 
 func (*Error_behaviourContext) IsError_behaviourContext() {}
@@ -15142,7 +16707,7 @@ func (*Error_behaviourContext) IsError_behaviourContext() {}
 func NewError_behaviourContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Error_behaviourContext {
 	var p = new(Error_behaviourContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_error_behaviour
@@ -15191,28 +16756,9 @@ func (s *Error_behaviourContext) Accept(visitor antlr.ParseTreeVisitor) interfac
 }
 
 func (p *SMTLIBv2Parser) Error_behaviour() (localctx IError_behaviourContext) {
-	this := p
-	_ = this
-
 	localctx = NewError_behaviourContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 154, SMTLIBv2ParserRULE_error_behaviour)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -15227,7 +16773,17 @@ func (p *SMTLIBv2Parser) Error_behaviour() (localctx IError_behaviourContext) {
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IReason_unknownContext is an interface to support dynamic dispatch.
@@ -15237,20 +16793,30 @@ type IReason_unknownContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PS_Memout() antlr.TerminalNode
+	PS_Incomplete() antlr.TerminalNode
+	S_expr() IS_exprContext
+
 	// IsReason_unknownContext differentiates from other interfaces.
 	IsReason_unknownContext()
 }
 
 type Reason_unknownContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyReason_unknownContext() *Reason_unknownContext {
 	var p = new(Reason_unknownContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_reason_unknown
 	return p
+}
+
+func InitEmptyReason_unknownContext(p *Reason_unknownContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_reason_unknown
 }
 
 func (*Reason_unknownContext) IsReason_unknownContext() {}
@@ -15258,7 +16824,7 @@ func (*Reason_unknownContext) IsReason_unknownContext() {}
 func NewReason_unknownContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Reason_unknownContext {
 	var p = new(Reason_unknownContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_reason_unknown
@@ -15323,36 +16889,24 @@ func (s *Reason_unknownContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Reason_unknown() (localctx IReason_unknownContext) {
-	this := p
-	_ = this
-
 	localctx = NewReason_unknownContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 156, SMTLIBv2ParserRULE_reason_unknown)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(961)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 62, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 62, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(958)
 			p.Match(SMTLIBv2ParserPS_Memout)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -15360,6 +16914,10 @@ func (p *SMTLIBv2Parser) Reason_unknown() (localctx IReason_unknownContext) {
 		{
 			p.SetState(959)
 			p.Match(SMTLIBv2ParserPS_Incomplete)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -15369,9 +16927,21 @@ func (p *SMTLIBv2Parser) Reason_unknown() (localctx IReason_unknownContext) {
 			p.S_expr()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IModel_responseContext is an interface to support dynamic dispatch.
@@ -15381,20 +16951,32 @@ type IModel_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Cmd_defineFun() ICmd_defineFunContext
+	ParClose() antlr.TerminalNode
+	Cmd_defineFunRec() ICmd_defineFunRecContext
+	Cmd_defineFunsRec() ICmd_defineFunsRecContext
+
 	// IsModel_responseContext differentiates from other interfaces.
 	IsModel_responseContext()
 }
 
 type Model_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyModel_responseContext() *Model_responseContext {
 	var p = new(Model_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_model_response
 	return p
+}
+
+func InitEmptyModel_responseContext(p *Model_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_model_response
 }
 
 func (*Model_responseContext) IsModel_responseContext() {}
@@ -15402,7 +16984,7 @@ func (*Model_responseContext) IsModel_responseContext() {}
 func NewModel_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Model_responseContext {
 	var p = new(Model_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_model_response
@@ -15499,36 +17081,24 @@ func (s *Model_responseContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Model_response() (localctx IModel_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewModel_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 158, SMTLIBv2ParserRULE_model_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(975)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 63, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 63, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(963)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(964)
@@ -15537,6 +17107,10 @@ func (p *SMTLIBv2Parser) Model_response() (localctx IModel_responseContext) {
 		{
 			p.SetState(965)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -15544,6 +17118,10 @@ func (p *SMTLIBv2Parser) Model_response() (localctx IModel_responseContext) {
 		{
 			p.SetState(967)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(968)
@@ -15552,6 +17130,10 @@ func (p *SMTLIBv2Parser) Model_response() (localctx IModel_responseContext) {
 		{
 			p.SetState(969)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 3:
@@ -15559,6 +17141,10 @@ func (p *SMTLIBv2Parser) Model_response() (localctx IModel_responseContext) {
 		{
 			p.SetState(971)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(972)
@@ -15567,11 +17153,27 @@ func (p *SMTLIBv2Parser) Model_response() (localctx IModel_responseContext) {
 		{
 			p.SetState(973)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IInfo_responseContext is an interface to support dynamic dispatch.
@@ -15581,20 +17183,38 @@ type IInfo_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PK_AssertionStackLevels() antlr.TerminalNode
+	Numeral() INumeralContext
+	PK_Authors() antlr.TerminalNode
+	String_() IString_Context
+	PK_ErrorBehaviour() antlr.TerminalNode
+	Error_behaviour() IError_behaviourContext
+	PK_Name() antlr.TerminalNode
+	PK_ReasonUnknown() antlr.TerminalNode
+	Reason_unknown() IReason_unknownContext
+	PK_Version() antlr.TerminalNode
+	Attribute() IAttributeContext
+
 	// IsInfo_responseContext differentiates from other interfaces.
 	IsInfo_responseContext()
 }
 
 type Info_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyInfo_responseContext() *Info_responseContext {
 	var p = new(Info_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_info_response
 	return p
+}
+
+func InitEmptyInfo_responseContext(p *Info_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_info_response
 }
 
 func (*Info_responseContext) IsInfo_responseContext() {}
@@ -15602,7 +17222,7 @@ func (*Info_responseContext) IsInfo_responseContext() {}
 func NewInfo_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Info_responseContext {
 	var p = new(Info_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_info_response
@@ -15747,36 +17367,24 @@ func (s *Info_responseContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewInfo_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 160, SMTLIBv2ParserRULE_info_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(990)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 64, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 64, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(977)
 			p.Match(SMTLIBv2ParserPK_AssertionStackLevels)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(978)
@@ -15788,6 +17396,10 @@ func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
 		{
 			p.SetState(979)
 			p.Match(SMTLIBv2ParserPK_Authors)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(980)
@@ -15799,6 +17411,10 @@ func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
 		{
 			p.SetState(981)
 			p.Match(SMTLIBv2ParserPK_ErrorBehaviour)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(982)
@@ -15810,6 +17426,10 @@ func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
 		{
 			p.SetState(983)
 			p.Match(SMTLIBv2ParserPK_Name)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(984)
@@ -15821,6 +17441,10 @@ func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
 		{
 			p.SetState(985)
 			p.Match(SMTLIBv2ParserPK_ReasonUnknown)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(986)
@@ -15832,6 +17456,10 @@ func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
 		{
 			p.SetState(987)
 			p.Match(SMTLIBv2ParserPK_Version)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(988)
@@ -15845,9 +17473,21 @@ func (p *SMTLIBv2Parser) Info_response() (localctx IInfo_responseContext) {
 			p.Attribute()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IValuation_pairContext is an interface to support dynamic dispatch.
@@ -15857,20 +17497,31 @@ type IValuation_pairContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	AllTerm() []ITermContext
+	Term(i int) ITermContext
+	ParClose() antlr.TerminalNode
+
 	// IsValuation_pairContext differentiates from other interfaces.
 	IsValuation_pairContext()
 }
 
 type Valuation_pairContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyValuation_pairContext() *Valuation_pairContext {
 	var p = new(Valuation_pairContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_valuation_pair
 	return p
+}
+
+func InitEmptyValuation_pairContext(p *Valuation_pairContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_valuation_pair
 }
 
 func (*Valuation_pairContext) IsValuation_pairContext() {}
@@ -15878,7 +17529,7 @@ func (*Valuation_pairContext) IsValuation_pairContext() {}
 func NewValuation_pairContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Valuation_pairContext {
 	var p = new(Valuation_pairContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_valuation_pair
@@ -15968,32 +17619,16 @@ func (s *Valuation_pairContext) Accept(visitor antlr.ParseTreeVisitor) interface
 }
 
 func (p *SMTLIBv2Parser) Valuation_pair() (localctx IValuation_pairContext) {
-	this := p
-	_ = this
-
 	localctx = NewValuation_pairContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 162, SMTLIBv2ParserRULE_valuation_pair)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(992)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(993)
@@ -16006,9 +17641,23 @@ func (p *SMTLIBv2Parser) Valuation_pair() (localctx IValuation_pairContext) {
 	{
 		p.SetState(995)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IT_valuation_pairContext is an interface to support dynamic dispatch.
@@ -16018,20 +17667,31 @@ type IT_valuation_pairContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	Symbol() ISymbolContext
+	B_value() IB_valueContext
+	ParClose() antlr.TerminalNode
+
 	// IsT_valuation_pairContext differentiates from other interfaces.
 	IsT_valuation_pairContext()
 }
 
 type T_valuation_pairContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyT_valuation_pairContext() *T_valuation_pairContext {
 	var p = new(T_valuation_pairContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_t_valuation_pair
 	return p
+}
+
+func InitEmptyT_valuation_pairContext(p *T_valuation_pairContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_t_valuation_pair
 }
 
 func (*T_valuation_pairContext) IsT_valuation_pairContext() {}
@@ -16039,7 +17699,7 @@ func (*T_valuation_pairContext) IsT_valuation_pairContext() {}
 func NewT_valuation_pairContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *T_valuation_pairContext {
 	var p = new(T_valuation_pairContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_t_valuation_pair
@@ -16120,32 +17780,16 @@ func (s *T_valuation_pairContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) T_valuation_pair() (localctx IT_valuation_pairContext) {
-	this := p
-	_ = this
-
 	localctx = NewT_valuation_pairContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 164, SMTLIBv2ParserRULE_t_valuation_pair)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(997)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	{
 		p.SetState(998)
@@ -16158,9 +17802,23 @@ func (p *SMTLIBv2Parser) T_valuation_pair() (localctx IT_valuation_pairContext) 
 	{
 		p.SetState(1000)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ICheck_sat_responseContext is an interface to support dynamic dispatch.
@@ -16170,20 +17828,30 @@ type ICheck_sat_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PS_Sat() antlr.TerminalNode
+	PS_Unsat() antlr.TerminalNode
+	PS_Unknown() antlr.TerminalNode
+
 	// IsCheck_sat_responseContext differentiates from other interfaces.
 	IsCheck_sat_responseContext()
 }
 
 type Check_sat_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyCheck_sat_responseContext() *Check_sat_responseContext {
 	var p = new(Check_sat_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_check_sat_response
 	return p
+}
+
+func InitEmptyCheck_sat_responseContext(p *Check_sat_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_check_sat_response
 }
 
 func (*Check_sat_responseContext) IsCheck_sat_responseContext() {}
@@ -16191,7 +17859,7 @@ func (*Check_sat_responseContext) IsCheck_sat_responseContext() {}
 func NewCheck_sat_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Check_sat_responseContext {
 	var p = new(Check_sat_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_check_sat_response
@@ -16244,28 +17912,9 @@ func (s *Check_sat_responseContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *SMTLIBv2Parser) Check_sat_response() (localctx ICheck_sat_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewCheck_sat_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 166, SMTLIBv2ParserRULE_check_sat_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
@@ -16280,7 +17929,17 @@ func (p *SMTLIBv2Parser) Check_sat_response() (localctx ICheck_sat_responseConte
 		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IEcho_responseContext is an interface to support dynamic dispatch.
@@ -16290,20 +17949,28 @@ type IEcho_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	String_() IString_Context
+
 	// IsEcho_responseContext differentiates from other interfaces.
 	IsEcho_responseContext()
 }
 
 type Echo_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyEcho_responseContext() *Echo_responseContext {
 	var p = new(Echo_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_echo_response
 	return p
+}
+
+func InitEmptyEcho_responseContext(p *Echo_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_echo_response
 }
 
 func (*Echo_responseContext) IsEcho_responseContext() {}
@@ -16311,7 +17978,7 @@ func (*Echo_responseContext) IsEcho_responseContext() {}
 func NewEcho_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Echo_responseContext {
 	var p = new(Echo_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_echo_response
@@ -16368,35 +18035,25 @@ func (s *Echo_responseContext) Accept(visitor antlr.ParseTreeVisitor) interface{
 }
 
 func (p *SMTLIBv2Parser) Echo_response() (localctx IEcho_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewEcho_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 168, SMTLIBv2ParserRULE_echo_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1004)
 		p.String_()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_assertions_responseContext is an interface to support dynamic dispatch.
@@ -16406,20 +18063,31 @@ type IGet_assertions_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllTerm() []ITermContext
+	Term(i int) ITermContext
+
 	// IsGet_assertions_responseContext differentiates from other interfaces.
 	IsGet_assertions_responseContext()
 }
 
 type Get_assertions_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_assertions_responseContext() *Get_assertions_responseContext {
 	var p = new(Get_assertions_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_assertions_response
 	return p
+}
+
+func InitEmptyGet_assertions_responseContext(p *Get_assertions_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_assertions_response
 }
 
 func (*Get_assertions_responseContext) IsGet_assertions_responseContext() {}
@@ -16427,7 +18095,7 @@ func (*Get_assertions_responseContext) IsGet_assertions_responseContext() {}
 func NewGet_assertions_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_assertions_responseContext {
 	var p = new(Get_assertions_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_assertions_response
@@ -16517,39 +18185,27 @@ func (s *Get_assertions_responseContext) Accept(visitor antlr.ParseTreeVisitor) 
 }
 
 func (p *SMTLIBv2Parser) Get_assertions_response() (localctx IGet_assertions_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_assertions_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 170, SMTLIBv2ParserRULE_get_assertions_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1006)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1010)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0 || (int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0 {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388580) != 0) || ((int64((_la-66)) & ^0x3f) == 0 && ((int64(1)<<(_la-66))&140737488355343) != 0) {
 		{
 			p.SetState(1007)
 			p.Term()
@@ -16557,14 +18213,31 @@ func (p *SMTLIBv2Parser) Get_assertions_response() (localctx IGet_assertions_res
 
 		p.SetState(1012)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1013)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_assignment_responseContext is an interface to support dynamic dispatch.
@@ -16574,20 +18247,31 @@ type IGet_assignment_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllT_valuation_pair() []IT_valuation_pairContext
+	T_valuation_pair(i int) IT_valuation_pairContext
+
 	// IsGet_assignment_responseContext differentiates from other interfaces.
 	IsGet_assignment_responseContext()
 }
 
 type Get_assignment_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_assignment_responseContext() *Get_assignment_responseContext {
 	var p = new(Get_assignment_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_assignment_response
 	return p
+}
+
+func InitEmptyGet_assignment_responseContext(p *Get_assignment_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_assignment_response
 }
 
 func (*Get_assignment_responseContext) IsGet_assignment_responseContext() {}
@@ -16595,7 +18279,7 @@ func (*Get_assignment_responseContext) IsGet_assignment_responseContext() {}
 func NewGet_assignment_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_assignment_responseContext {
 	var p = new(Get_assignment_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_assignment_response
@@ -16685,36 +18369,24 @@ func (s *Get_assignment_responseContext) Accept(visitor antlr.ParseTreeVisitor) 
 }
 
 func (p *SMTLIBv2Parser) Get_assignment_response() (localctx IGet_assignment_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_assignment_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 172, SMTLIBv2ParserRULE_get_assignment_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1015)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1019)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for _la == SMTLIBv2ParserParOpen {
@@ -16725,14 +18397,31 @@ func (p *SMTLIBv2Parser) Get_assignment_response() (localctx IGet_assignment_res
 
 		p.SetState(1021)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1022)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_info_responseContext is an interface to support dynamic dispatch.
@@ -16742,20 +18431,31 @@ type IGet_info_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllInfo_response() []IInfo_responseContext
+	Info_response(i int) IInfo_responseContext
+
 	// IsGet_info_responseContext differentiates from other interfaces.
 	IsGet_info_responseContext()
 }
 
 type Get_info_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_info_responseContext() *Get_info_responseContext {
 	var p = new(Get_info_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_info_response
 	return p
+}
+
+func InitEmptyGet_info_responseContext(p *Get_info_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_info_response
 }
 
 func (*Get_info_responseContext) IsGet_info_responseContext() {}
@@ -16763,7 +18463,7 @@ func (*Get_info_responseContext) IsGet_info_responseContext() {}
 func NewGet_info_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_info_responseContext {
 	var p = new(Get_info_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_info_response
@@ -16853,39 +18553,27 @@ func (s *Get_info_responseContext) Accept(visitor antlr.ParseTreeVisitor) interf
 }
 
 func (p *SMTLIBv2Parser) Get_info_response() (localctx IGet_info_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_info_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 174, SMTLIBv2ParserRULE_get_info_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1024)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1026)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for ok := true; ok; ok = (int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0 {
+	for ok := true; ok; ok = ((int64((_la-70)) & ^0x3f) == 0 && ((int64(1)<<(_la-70))&4398046511103) != 0) {
 		{
 			p.SetState(1025)
 			p.Info_response()
@@ -16893,14 +18581,31 @@ func (p *SMTLIBv2Parser) Get_info_response() (localctx IGet_info_responseContext
 
 		p.SetState(1028)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1030)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_model_responseContext is an interface to support dynamic dispatch.
@@ -16910,20 +18615,32 @@ type IGet_model_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	RS_Model() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllModel_response() []IModel_responseContext
+	Model_response(i int) IModel_responseContext
+
 	// IsGet_model_responseContext differentiates from other interfaces.
 	IsGet_model_responseContext()
 }
 
 type Get_model_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_model_responseContext() *Get_model_responseContext {
 	var p = new(Get_model_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_model_response
 	return p
+}
+
+func InitEmptyGet_model_responseContext(p *Get_model_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_model_response
 }
 
 func (*Get_model_responseContext) IsGet_model_responseContext() {}
@@ -16931,7 +18648,7 @@ func (*Get_model_responseContext) IsGet_model_responseContext() {}
 func NewGet_model_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_model_responseContext {
 	var p = new(Get_model_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_model_response
@@ -17025,44 +18742,40 @@ func (s *Get_model_responseContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *SMTLIBv2Parser) Get_model_response() (localctx IGet_model_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_model_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 176, SMTLIBv2ParserRULE_get_model_response)
 	var _la int
 
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1049)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 70, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 70, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1032)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1033)
 			p.Match(SMTLIBv2ParserRS_Model)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1037)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == SMTLIBv2ParserParOpen {
@@ -17073,11 +18786,18 @@ func (p *SMTLIBv2Parser) Get_model_response() (localctx IGet_model_responseConte
 
 			p.SetState(1039)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1040)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -17085,9 +18805,16 @@ func (p *SMTLIBv2Parser) Get_model_response() (localctx IGet_model_responseConte
 		{
 			p.SetState(1041)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		p.SetState(1045)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == SMTLIBv2ParserParOpen {
@@ -17098,16 +18825,35 @@ func (p *SMTLIBv2Parser) Get_model_response() (localctx IGet_model_responseConte
 
 			p.SetState(1047)
 			p.GetErrorHandler().Sync(p)
+			if p.HasError() {
+				goto errorExit
+			}
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
 			p.SetState(1048)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_option_responseContext is an interface to support dynamic dispatch.
@@ -17117,20 +18863,28 @@ type IGet_option_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Attribute_value() IAttribute_valueContext
+
 	// IsGet_option_responseContext differentiates from other interfaces.
 	IsGet_option_responseContext()
 }
 
 type Get_option_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_option_responseContext() *Get_option_responseContext {
 	var p = new(Get_option_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_option_response
 	return p
+}
+
+func InitEmptyGet_option_responseContext(p *Get_option_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_option_response
 }
 
 func (*Get_option_responseContext) IsGet_option_responseContext() {}
@@ -17138,7 +18892,7 @@ func (*Get_option_responseContext) IsGet_option_responseContext() {}
 func NewGet_option_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_option_responseContext {
 	var p = new(Get_option_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_option_response
@@ -17195,35 +18949,25 @@ func (s *Get_option_responseContext) Accept(visitor antlr.ParseTreeVisitor) inte
 }
 
 func (p *SMTLIBv2Parser) Get_option_response() (localctx IGet_option_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_option_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 178, SMTLIBv2ParserRULE_get_option_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1051)
 		p.Attribute_value()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_proof_responseContext is an interface to support dynamic dispatch.
@@ -17233,20 +18977,28 @@ type IGet_proof_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	S_expr() IS_exprContext
+
 	// IsGet_proof_responseContext differentiates from other interfaces.
 	IsGet_proof_responseContext()
 }
 
 type Get_proof_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_proof_responseContext() *Get_proof_responseContext {
 	var p = new(Get_proof_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_proof_response
 	return p
+}
+
+func InitEmptyGet_proof_responseContext(p *Get_proof_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_proof_response
 }
 
 func (*Get_proof_responseContext) IsGet_proof_responseContext() {}
@@ -17254,7 +19006,7 @@ func (*Get_proof_responseContext) IsGet_proof_responseContext() {}
 func NewGet_proof_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_proof_responseContext {
 	var p = new(Get_proof_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_proof_response
@@ -17311,35 +19063,25 @@ func (s *Get_proof_responseContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *SMTLIBv2Parser) Get_proof_response() (localctx IGet_proof_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_proof_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 180, SMTLIBv2ParserRULE_get_proof_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1053)
 		p.S_expr()
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_unsat_assump_responseContext is an interface to support dynamic dispatch.
@@ -17349,20 +19091,31 @@ type IGet_unsat_assump_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+
 	// IsGet_unsat_assump_responseContext differentiates from other interfaces.
 	IsGet_unsat_assump_responseContext()
 }
 
 type Get_unsat_assump_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_unsat_assump_responseContext() *Get_unsat_assump_responseContext {
 	var p = new(Get_unsat_assump_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_unsat_assump_response
 	return p
+}
+
+func InitEmptyGet_unsat_assump_responseContext(p *Get_unsat_assump_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_unsat_assump_response
 }
 
 func (*Get_unsat_assump_responseContext) IsGet_unsat_assump_responseContext() {}
@@ -17370,7 +19123,7 @@ func (*Get_unsat_assump_responseContext) IsGet_unsat_assump_responseContext() {}
 func NewGet_unsat_assump_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_unsat_assump_responseContext {
 	var p = new(Get_unsat_assump_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_unsat_assump_response
@@ -17460,39 +19213,27 @@ func (s *Get_unsat_assump_responseContext) Accept(visitor antlr.ParseTreeVisitor
 }
 
 func (p *SMTLIBv2Parser) Get_unsat_assump_response() (localctx IGet_unsat_assump_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_unsat_assump_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 182, SMTLIBv2ParserRULE_get_unsat_assump_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1055)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1059)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 		{
 			p.SetState(1056)
 			p.Symbol()
@@ -17500,14 +19241,31 @@ func (p *SMTLIBv2Parser) Get_unsat_assump_response() (localctx IGet_unsat_assump
 
 		p.SetState(1061)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1062)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_unsat_core_responseContext is an interface to support dynamic dispatch.
@@ -17517,20 +19275,31 @@ type IGet_unsat_core_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllSymbol() []ISymbolContext
+	Symbol(i int) ISymbolContext
+
 	// IsGet_unsat_core_responseContext differentiates from other interfaces.
 	IsGet_unsat_core_responseContext()
 }
 
 type Get_unsat_core_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_unsat_core_responseContext() *Get_unsat_core_responseContext {
 	var p = new(Get_unsat_core_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_unsat_core_response
 	return p
+}
+
+func InitEmptyGet_unsat_core_responseContext(p *Get_unsat_core_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_unsat_core_response
 }
 
 func (*Get_unsat_core_responseContext) IsGet_unsat_core_responseContext() {}
@@ -17538,7 +19307,7 @@ func (*Get_unsat_core_responseContext) IsGet_unsat_core_responseContext() {}
 func NewGet_unsat_core_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_unsat_core_responseContext {
 	var p = new(Get_unsat_core_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_unsat_core_response
@@ -17628,39 +19397,27 @@ func (s *Get_unsat_core_responseContext) Accept(visitor antlr.ParseTreeVisitor) 
 }
 
 func (p *SMTLIBv2Parser) Get_unsat_core_response() (localctx IGet_unsat_core_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_unsat_core_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 184, SMTLIBv2ParserRULE_get_unsat_core_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1064)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1068)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0 || _la == SMTLIBv2ParserUndefinedSymbol {
+	for ((int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&8388544) != 0) || _la == SMTLIBv2ParserUndefinedSymbol {
 		{
 			p.SetState(1065)
 			p.Symbol()
@@ -17668,14 +19425,31 @@ func (p *SMTLIBv2Parser) Get_unsat_core_response() (localctx IGet_unsat_core_res
 
 		p.SetState(1070)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1071)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGet_value_responseContext is an interface to support dynamic dispatch.
@@ -17685,20 +19459,31 @@ type IGet_value_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	ParOpen() antlr.TerminalNode
+	ParClose() antlr.TerminalNode
+	AllValuation_pair() []IValuation_pairContext
+	Valuation_pair(i int) IValuation_pairContext
+
 	// IsGet_value_responseContext differentiates from other interfaces.
 	IsGet_value_responseContext()
 }
 
 type Get_value_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGet_value_responseContext() *Get_value_responseContext {
 	var p = new(Get_value_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_get_value_response
 	return p
+}
+
+func InitEmptyGet_value_responseContext(p *Get_value_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_get_value_response
 }
 
 func (*Get_value_responseContext) IsGet_value_responseContext() {}
@@ -17706,7 +19491,7 @@ func (*Get_value_responseContext) IsGet_value_responseContext() {}
 func NewGet_value_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Get_value_responseContext {
 	var p = new(Get_value_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_get_value_response
@@ -17796,36 +19581,24 @@ func (s *Get_value_responseContext) Accept(visitor antlr.ParseTreeVisitor) inter
 }
 
 func (p *SMTLIBv2Parser) Get_value_response() (localctx IGet_value_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGet_value_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 186, SMTLIBv2ParserRULE_get_value_response)
 	var _la int
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
 
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(1073)
 		p.Match(SMTLIBv2ParserParOpen)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 	p.SetState(1075)
 	p.GetErrorHandler().Sync(p)
+	if p.HasError() {
+		goto errorExit
+	}
 	_la = p.GetTokenStream().LA(1)
 
 	for ok := true; ok; ok = _la == SMTLIBv2ParserParOpen {
@@ -17836,14 +19609,31 @@ func (p *SMTLIBv2Parser) Get_value_response() (localctx IGet_value_responseConte
 
 		p.SetState(1077)
 		p.GetErrorHandler().Sync(p)
+		if p.HasError() {
+			goto errorExit
+		}
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
 		p.SetState(1079)
 		p.Match(SMTLIBv2ParserParClose)
+		if p.HasError() {
+			// Recognition error - abort rule
+			goto errorExit
+		}
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // ISpecific_success_responseContext is an interface to support dynamic dispatch.
@@ -17853,20 +19643,38 @@ type ISpecific_success_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	Check_sat_response() ICheck_sat_responseContext
+	Echo_response() IEcho_responseContext
+	Get_assertions_response() IGet_assertions_responseContext
+	Get_assignment_response() IGet_assignment_responseContext
+	Get_info_response() IGet_info_responseContext
+	Get_model_response() IGet_model_responseContext
+	Get_option_response() IGet_option_responseContext
+	Get_proof_response() IGet_proof_responseContext
+	Get_unsat_assump_response() IGet_unsat_assump_responseContext
+	Get_unsat_core_response() IGet_unsat_core_responseContext
+	Get_value_response() IGet_value_responseContext
+
 	// IsSpecific_success_responseContext differentiates from other interfaces.
 	IsSpecific_success_responseContext()
 }
 
 type Specific_success_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptySpecific_success_responseContext() *Specific_success_responseContext {
 	var p = new(Specific_success_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_specific_success_response
 	return p
+}
+
+func InitEmptySpecific_success_responseContext(p *Specific_success_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_specific_success_response
 }
 
 func (*Specific_success_responseContext) IsSpecific_success_responseContext() {}
@@ -17874,7 +19682,7 @@ func (*Specific_success_responseContext) IsSpecific_success_responseContext() {}
 func NewSpecific_success_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *Specific_success_responseContext {
 	var p = new(Specific_success_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_specific_success_response
@@ -18091,31 +19899,15 @@ func (s *Specific_success_responseContext) Accept(visitor antlr.ParseTreeVisitor
 }
 
 func (p *SMTLIBv2Parser) Specific_success_response() (localctx ISpecific_success_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewSpecific_success_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 188, SMTLIBv2ParserRULE_specific_success_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1092)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 74, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 74, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
@@ -18193,9 +19985,21 @@ func (p *SMTLIBv2Parser) Specific_success_response() (localctx ISpecific_success
 			p.Get_value_response()
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
 
 // IGeneral_responseContext is an interface to support dynamic dispatch.
@@ -18205,20 +20009,34 @@ type IGeneral_responseContext interface {
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
 
+	// Getter signatures
+	PS_Success() antlr.TerminalNode
+	Specific_success_response() ISpecific_success_responseContext
+	PS_Unsupported() antlr.TerminalNode
+	ParOpen() antlr.TerminalNode
+	PS_Error() antlr.TerminalNode
+	String_() IString_Context
+	ParClose() antlr.TerminalNode
+
 	// IsGeneral_responseContext differentiates from other interfaces.
 	IsGeneral_responseContext()
 }
 
 type General_responseContext struct {
-	*antlr.BaseParserRuleContext
+	antlr.BaseParserRuleContext
 	parser antlr.Parser
 }
 
 func NewEmptyGeneral_responseContext() *General_responseContext {
 	var p = new(General_responseContext)
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(nil, -1)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
 	p.RuleIndex = SMTLIBv2ParserRULE_general_response
 	return p
+}
+
+func InitEmptyGeneral_responseContext(p *General_responseContext) {
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, nil, -1)
+	p.RuleIndex = SMTLIBv2ParserRULE_general_response
 }
 
 func (*General_responseContext) IsGeneral_responseContext() {}
@@ -18226,7 +20044,7 @@ func (*General_responseContext) IsGeneral_responseContext() {}
 func NewGeneral_responseContext(parser antlr.Parser, parent antlr.ParserRuleContext, invokingState int) *General_responseContext {
 	var p = new(General_responseContext)
 
-	p.BaseParserRuleContext = antlr.NewBaseParserRuleContext(parent, invokingState)
+	antlr.InitBaseParserRuleContext(&p.BaseParserRuleContext, parent, invokingState)
 
 	p.parser = parser
 	p.RuleIndex = SMTLIBv2ParserRULE_general_response
@@ -18319,36 +20137,24 @@ func (s *General_responseContext) Accept(visitor antlr.ParseTreeVisitor) interfa
 }
 
 func (p *SMTLIBv2Parser) General_response() (localctx IGeneral_responseContext) {
-	this := p
-	_ = this
-
 	localctx = NewGeneral_responseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 190, SMTLIBv2ParserRULE_general_response)
-
-	defer func() {
-		p.ExitRule()
-	}()
-
-	defer func() {
-		if err := recover(); err != nil {
-			if v, ok := err.(antlr.RecognitionException); ok {
-				localctx.SetException(v)
-				p.GetErrorHandler().ReportError(p, v)
-				p.GetErrorHandler().Recover(p, v)
-			} else {
-				panic(err)
-			}
-		}
-	}()
-
 	p.SetState(1102)
 	p.GetErrorHandler().Sync(p)
-	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 75, p.GetParserRuleContext()) {
+	if p.HasError() {
+		goto errorExit
+	}
+
+	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 75, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1094)
 			p.Match(SMTLIBv2ParserPS_Success)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 2:
@@ -18363,6 +20169,10 @@ func (p *SMTLIBv2Parser) General_response() (localctx IGeneral_responseContext) 
 		{
 			p.SetState(1096)
 			p.Match(SMTLIBv2ParserPS_Unsupported)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
 	case 4:
@@ -18370,10 +20180,18 @@ func (p *SMTLIBv2Parser) General_response() (localctx IGeneral_responseContext) 
 		{
 			p.SetState(1097)
 			p.Match(SMTLIBv2ParserParOpen)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1098)
 			p.Match(SMTLIBv2ParserPS_Error)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 		{
 			p.SetState(1099)
@@ -18382,9 +20200,25 @@ func (p *SMTLIBv2Parser) General_response() (localctx IGeneral_responseContext) 
 		{
 			p.SetState(1100)
 			p.Match(SMTLIBv2ParserParClose)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
+			}
 		}
 
+	case antlr.ATNInvalidAltNumber:
+		goto errorExit
 	}
 
+errorExit:
+	if p.HasError() {
+		v := p.GetError()
+		localctx.SetException(v)
+		p.GetErrorHandler().ReportError(p, v)
+		p.GetErrorHandler().Recover(p, v)
+		p.SetError(nil)
+	}
+	p.ExitRule()
 	return localctx
+	goto errorExit // Trick to prevent compiler error if the label is not used
 }
