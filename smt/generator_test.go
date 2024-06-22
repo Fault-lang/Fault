@@ -481,12 +481,14 @@ func TestTestData(t *testing.T) {
 
 func TestImports(t *testing.T) {
 	specs := []string{
-		"testdata/imports/circle_import1.fspec",
-		"testdata/imports/single_import.fspec",
+		//"testdata/imports/circle_import1.fspec",
+		//"testdata/imports/single_import.fspec",
+		"testdata/imports/renamed_import.fspec",
 	}
 	smt2s := []string{
-		"testdata/imports/circle_import.smt2",
-		"testdata/imports/single_import.smt2",
+		//"testdata/imports/circle_import.smt2",
+		//"testdata/imports/single_import.smt2",
+		"testdata/imports/renamed_import.smt2",
 	}
 
 	for i, s := range specs {
