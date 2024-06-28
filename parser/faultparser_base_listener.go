@@ -297,6 +297,12 @@ func (s *BaseFaultParserListener) EnterTemporal(ctx *TemporalContext) {}
 // ExitTemporal is called when production temporal is exited.
 func (s *BaseFaultParserListener) ExitTemporal(ctx *TemporalContext) {}
 
+// EnterDefInvariant is called when production defInvariant is entered.
+func (s *BaseFaultParserListener) EnterDefInvariant(ctx *DefInvariantContext) {}
+
+// ExitDefInvariant is called when production defInvariant is exited.
+func (s *BaseFaultParserListener) ExitDefInvariant(ctx *DefInvariantContext) {}
+
 // EnterInvar is called when production invar is entered.
 func (s *BaseFaultParserListener) EnterInvar(ctx *InvarContext) {}
 
@@ -428,6 +434,12 @@ func (s *BaseFaultParserListener) EnterSolvable(ctx *SolvableContext) {}
 
 // ExitSolvable is called when production solvable is exited.
 func (s *BaseFaultParserListener) ExitSolvable(ctx *SolvableContext) {}
+
+// EnterPostfix is called when production postfix is entered.
+func (s *BaseFaultParserListener) EnterPostfix(ctx *PostfixContext) {}
+
+// ExitPostfix is called when production postfix is exited.
+func (s *BaseFaultParserListener) ExitPostfix(ctx *PostfixContext) {}
 
 // EnterTyped is called when production Typed is entered.
 func (s *BaseFaultParserListener) EnterTyped(ctx *TypedContext) {}

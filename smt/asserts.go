@@ -324,6 +324,7 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 		var l, r *rules.AssertChain
 		var okleft, okright bool
 		if l, okleft = left.States[i]; !okleft {
+			l = &rules.AssertChain{}
 			if llast == nil {
 				if invalidBase(left.Base) {
 					panic("assert left variable base name is invalid")
@@ -335,6 +336,7 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 		}
 
 		if r, okright = right.States[i]; !okright {
+			r = &rules.AssertChain{}
 			if rlast == nil {
 				if invalidBase(right.Base) {
 					panic("assert left variable base name is invalid")

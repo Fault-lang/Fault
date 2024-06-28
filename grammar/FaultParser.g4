@@ -204,7 +204,8 @@ temporal
     ;
 
 invariant
-    : expression                            # invar
+    : operand ('==' | '!=' | '<' | '<=' | '>' | '>=') expression  # defInvariant
+    | expression                            # invar
     | 'when' expression 'then' expression   # stageInvariant
     ;
 
@@ -283,6 +284,11 @@ solvable
     : faultType '(' operand? (',' operand)* ')' 
     ;
 
+postfix
+    : operand
+    | solvable
+    ;
+
 expression
     : operand                                                            #Expr
     | solvable                                                           #Typed
@@ -315,7 +321,7 @@ operandName
 
 prefix
     :
-    ('+' | '-' | '!' | '^' | '*' | '&' ) expression
+    ('+' | '-' | '!' | '^' | '*' | '&' ) postfix
     ;
 
 numeric

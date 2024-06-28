@@ -146,6 +146,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#temporal.
 	VisitTemporal(ctx *TemporalContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#defInvariant.
+	VisitDefInvariant(ctx *DefInvariantContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#invar.
 	VisitInvar(ctx *InvarContext) interface{}
 
@@ -211,6 +214,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#solvable.
 	VisitSolvable(ctx *SolvableContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#postfix.
+	VisitPostfix(ctx *PostfixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#Typed.
 	VisitTyped(ctx *TypedContext) interface{}

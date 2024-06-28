@@ -192,6 +192,10 @@ func (v *BaseFaultParserVisitor) VisitTemporal(ctx *TemporalContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitDefInvariant(ctx *DefInvariantContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitInvar(ctx *InvarContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -277,6 +281,10 @@ func (v *BaseFaultParserVisitor) VisitFaultType(ctx *FaultTypeContext) interface
 }
 
 func (v *BaseFaultParserVisitor) VisitSolvable(ctx *SolvableContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitPostfix(ctx *PostfixContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

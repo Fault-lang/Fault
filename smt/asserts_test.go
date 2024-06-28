@@ -112,6 +112,28 @@ func TestCompoundAssertAnd(t *testing.T) {
 	}
 }
 
+func TestCompoundAssertNeg(t *testing.T) {
+	test := `spec test1;
+	
+	testa = "this is test a";
+	testb = "this is test b";
+	testc = "this is test c";
+
+	theTests = (testa || testb || testc);
+
+	assert !theTests || (testa && testb);
+	`
+	expecting := ``
+
+	g := prepTest("", test, true, false)
+
+	err := compareResults("CompoundAssert", g.SMT(), expecting)
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
 func TestCompoundAssertOr(t *testing.T) {
 	test := `spec test1;
 	

@@ -1408,6 +1408,18 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	}
 }
 
+func (l *FaultListener) ExitDefInvariant(c *parser.DefInvariantContext) {
+	right := l.pop()
+	left := l.pop()
+	token := ast.GenerateToken("ASSERT", "assert", c.GetStart(), c.GetStop())
+	l.push(&ast.InvariantClause{
+		Token:    token,
+		Left:     left.(ast.Expression),
+		Operator: "==",
+		Right:    right.(ast.Expression),
+	})
+}
+
 func (l *FaultListener) ExitStageInvariant(c *parser.StageInvariantContext) {
 	right := l.pop()
 	left := l.pop()
