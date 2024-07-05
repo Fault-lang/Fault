@@ -322,7 +322,7 @@ func faultparserParserInit() {
 		494, 493, 1, 0, 0, 0, 494, 495, 1, 0, 0, 0, 495, 496, 1, 0, 0, 0, 496,
 		497, 3, 136, 68, 0, 497, 73, 1, 0, 0, 0, 498, 502, 7, 3, 0, 0, 499, 500,
 		7, 4, 0, 0, 500, 502, 3, 122, 61, 0, 501, 498, 1, 0, 0, 0, 501, 499, 1,
-		0, 0, 0, 502, 75, 1, 0, 0, 0, 503, 504, 3, 114, 57, 0, 504, 505, 7, 1,
+		0, 0, 0, 502, 75, 1, 0, 0, 0, 503, 504, 3, 114, 57, 0, 504, 505, 5, 45,
 		0, 0, 505, 506, 3, 112, 56, 0, 506, 514, 1, 0, 0, 0, 507, 514, 3, 112,
 		56, 0, 508, 509, 5, 20, 0, 0, 509, 510, 3, 112, 56, 0, 510, 511, 5, 19,
 		0, 0, 511, 512, 3, 112, 56, 0, 512, 514, 1, 0, 0, 0, 513, 503, 1, 0, 0,
@@ -9461,6 +9461,10 @@ func (s *DefInvariantContext) Operand() IOperandContext {
 	return t.(IOperandContext)
 }
 
+func (s *DefInvariantContext) ASSIGN() antlr.TerminalNode {
+	return s.GetToken(FaultParserASSIGN, 0)
+}
+
 func (s *DefInvariantContext) Expression() IExpressionContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
@@ -9475,30 +9479,6 @@ func (s *DefInvariantContext) Expression() IExpressionContext {
 	}
 
 	return t.(IExpressionContext)
-}
-
-func (s *DefInvariantContext) EQUALS() antlr.TerminalNode {
-	return s.GetToken(FaultParserEQUALS, 0)
-}
-
-func (s *DefInvariantContext) NOT_EQUALS() antlr.TerminalNode {
-	return s.GetToken(FaultParserNOT_EQUALS, 0)
-}
-
-func (s *DefInvariantContext) LESS() antlr.TerminalNode {
-	return s.GetToken(FaultParserLESS, 0)
-}
-
-func (s *DefInvariantContext) LESS_OR_EQUALS() antlr.TerminalNode {
-	return s.GetToken(FaultParserLESS_OR_EQUALS, 0)
-}
-
-func (s *DefInvariantContext) GREATER() antlr.TerminalNode {
-	return s.GetToken(FaultParserGREATER, 0)
-}
-
-func (s *DefInvariantContext) GREATER_OR_EQUALS() antlr.TerminalNode {
-	return s.GetToken(FaultParserGREATER_OR_EQUALS, 0)
 }
 
 func (s *DefInvariantContext) EnterRule(listener antlr.ParseTreeListener) {
@@ -9526,8 +9506,6 @@ func (s *DefInvariantContext) Accept(visitor antlr.ParseTreeVisitor) interface{}
 func (p *FaultParser) Invariant() (localctx IInvariantContext) {
 	localctx = NewInvariantContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 76, FaultParserRULE_invariant)
-	var _la int
-
 	p.SetState(513)
 	p.GetErrorHandler().Sync(p)
 	if p.HasError() {
@@ -9544,13 +9522,10 @@ func (p *FaultParser) Invariant() (localctx IInvariantContext) {
 		}
 		{
 			p.SetState(504)
-			_la = p.GetTokenStream().LA(1)
-
-			if !((int64((_la-63)) & ^0x3f) == 0 && ((int64(1)<<(_la-63))&63) != 0) {
-				p.GetErrorHandler().RecoverInline(p)
-			} else {
-				p.GetErrorHandler().ReportMatch(p)
-				p.Consume()
+			p.Match(FaultParserASSIGN)
+			if p.HasError() {
+				// Recognition error - abort rule
+				goto errorExit
 			}
 		}
 		{

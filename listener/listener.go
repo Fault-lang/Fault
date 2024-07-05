@@ -1415,7 +1415,7 @@ func (l *FaultListener) ExitDefInvariant(c *parser.DefInvariantContext) {
 	l.push(&ast.InvariantClause{
 		Token:    token,
 		Left:     left.(ast.Expression),
-		Operator: "==",
+		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
 		Right:    right.(ast.Expression),
 	})
 }

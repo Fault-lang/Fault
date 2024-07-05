@@ -204,7 +204,7 @@ temporal
     ;
 
 invariant
-    : operand ('==' | '!=' | '<' | '<=' | '>' | '>=') expression  # defInvariant
+    : operand '=' expression  # defInvariant
     | expression                            # invar
     | 'when' expression 'then' expression   # stageInvariant
     ;
