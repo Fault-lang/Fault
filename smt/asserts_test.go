@@ -123,7 +123,15 @@ func TestCompoundAssertNeg(t *testing.T) {
 
 	assert !theTests || (testa && testb);
 	`
-	expecting := ``
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_testa_0 () Bool)
+	(declare-fun test1_testb_0 () Bool)
+	(declare-fun test1_testc_0 () Bool)
+	(declare-fun test1_testa_test1_testb_0 () Bool)
+	(declare-fun test1_theTests_0 () Bool)
+	(assert (= test1_testa_test1_testb_0 (or test1_testa_0 test1_testb_0)))
+	(assert (= test1_theTests_0 (or test1_testc_0 test1_testa_test1_testb_0)))
+	(assert (and (or test1_testa_0 test1_testb_0) test1_theTests_0))`
 
 	g := prepTest("", test, true, false)
 
@@ -172,6 +180,72 @@ func TestCompoundAssertOr(t *testing.T) {
 	g := prepTest("", test, true, false)
 
 	err := compareResults("CompoundAssert", g.SMT(), expecting)
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestDefAssert1(t *testing.T) {
+	test := `spec test1;
+	
+	testa = "this is test a";
+	testb = "this is test b";
+	testc = "this is test c";
+	theTests = "these are all our tests";
+
+	assert theTests = (!testa || !testb || !testc) || (testa && testb);`
+
+	expecting := `(set-logic QF_NRA )
+(declare-fun test1_testa_0 () Bool)
+(declare-fun test1_testb_0 () Bool)
+(declare-fun test1_testc_0 () Bool)
+(declare-fun test1_theTests_0 () Bool)
+(assert (not
+                (= (and
+                    (and
+                        (and test1_testa_0 test1_testb_0)
+                        test1_testc_0)
+                    (or test1_testa_0 test1_testb_0))
+                test1_theTests_0))
+        )`
+
+	g := prepTest("", test, true, false)
+
+	err := compareResults("DefAssert1", g.SMT(), expecting)
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestDefAssert2(t *testing.T) {
+	test := `spec test1;
+	
+	testa = "this is test a";
+	testb = "this is test b";
+	testc = "this is test c";
+	theTests = "these are all our tests";
+
+	assert theTests == ((!testa || !testb || !testc) || (testa && testb));`
+
+	expecting := `(set-logic QF_NRA )
+(declare-fun test1_testa_0 () Bool)
+(declare-fun test1_testb_0 () Bool)
+(declare-fun test1_testc_0 () Bool)
+(declare-fun test1_theTests_0 () Bool)
+(assert (not
+                (= (and
+                    (and
+                        (and test1_testa_0 test1_testb_0)
+                        test1_testc_0)
+                    (or test1_testa_0 test1_testb_0))
+                test1_theTests_0))
+        )`
+
+	g := prepTest("", test, true, false)
+
+	err := compareResults("DefAssert2", g.SMT(), expecting)
 
 	if err != nil {
 		t.Fatalf(err.Error())
