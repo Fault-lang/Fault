@@ -4,7 +4,8 @@ import (
 	"fault/execute/parser"
 	"testing"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/antlr4-go/antlr/v4"
+
 )
 
 func TestParseReals(t *testing.T) {
@@ -92,6 +93,6 @@ func prepTestParser(response string) map[string]Scenario {
 
 	p := parser.NewSMTLIBv2Parser(stream)
 	l := NewSMTListener()
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Start())
+	antlr.ParseTreeWalkerDefault.Walk(l, p.Start_())
 	return l.Results
 }

@@ -578,7 +578,8 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			Scope:      0,
 			Parameters: nil}
 		return node, err
-
+	
+	
 	case *ast.InfixExpression:
 		if COMPARE[node.Operator] {
 			node.InferredType = &ast.Type{Type: "BOOL",

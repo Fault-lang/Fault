@@ -186,7 +186,7 @@ func (g *Generator) mergeInvariantPrefix(right []*rules.States, operator string)
 	sg := rules.NewStateGroup()
 	for _, r := range right {
 		states := make(map[int]*rules.AssertChain)
-		for i := 0; i <= g.Rounds; i++ {
+		for i := 0; i < g.Rounds; i++ {
 			if st, ok := r.States[i]; ok {
 				for _, s := range st.Values {
 					states[i] = g.NewMultiVAssertChain([]string{}, st.Chain, "")
@@ -250,7 +250,7 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 		}
 
 		//Pair based on same state
-		for i := 0; i <= g.Rounds; i++ {
+		for i := 0; i < g.Rounds; i++ {
 			var pairs [][]string
 			var slast *rules.AssertChain
 
@@ -320,10 +320,11 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 	}
 
 	var llast, rlast []string
-	for i := 0; i <= g.Rounds; i++ {
+	for i := 0; i < g.Rounds; i++ {
 		var l, r *rules.AssertChain
 		var okleft, okright bool
 		if l, okleft = left.States[i]; !okleft {
+			l = &rules.AssertChain{}
 			if llast == nil {
 				if invalidBase(left.Base) {
 					panic("assert left variable base name is invalid")
@@ -335,6 +336,7 @@ func (g *Generator) mergeByRound(left *rules.States, right *rules.States, operat
 		}
 
 		if r, okright = right.States[i]; !okright {
+			r = &rules.AssertChain{}
 			if rlast == nil {
 				if invalidBase(right.Base) {
 					panic("assert left variable base name is invalid")
@@ -446,7 +448,7 @@ func (g *Generator) termCombos(lbase string, rbase string) map[int][][]string {
 
 func (g *Generator) balance(vr *rules.States, con *rules.States, operator string) map[int]*rules.AssertChain {
 	ret := make(map[int]*rules.AssertChain)
-	for i := 0; i <= g.Rounds; i++ {
+	for i := 0; i < len(vr.States); i++ {
 		if v, ok := vr.States[i]; ok {
 			combos := util.PairCombinations(v.Values, con.States[0].Values)
 			ret[i] = g.packageStateGraph(combos, operator, v.Chain, [][]int{})
@@ -459,7 +461,7 @@ func (g *Generator) flattenStates(sg *rules.StateGroup) ([]string, []int) {
 	var asserts []string
 	var chains []int
 	for _, w := range sg.Wraps {
-		for i := 0; i <= g.Rounds; i++ {
+		for i := 0; i < len(w.States); i++ {
 			if s, ok := w.States[i]; ok {
 				asserts = append(asserts, s.Values...)
 				chains = append(chains, s.Chain...)
