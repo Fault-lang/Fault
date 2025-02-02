@@ -22,20 +22,11 @@ import (
 )
 
 type Generator struct {
-	currentFunction string
-	currentBlock    string
-	currentAssert   int
-	branchId        int
-
+	current *Current
 	// Raw input
-	Uncertains      map[string][]float64
-	Unknowns        []string
-	functions       map[string]*ir.Func
-	compiledAsserts []*ast.AssertionStatement
-	compiledAssumes []*ast.AssertionStatement
-	rawAsserts      []*ast.AssertionStatement
-	rawAssumes      []*ast.AssertionStatement
-	rawRules        [][]rules.Rule
+	RawInputs *llvm.RawInputs
+	functions map[string]*ir.Func
+	rawRules  [][]rules.Rule
 
 	// Generated SMT
 	inits     []string
@@ -47,12 +38,9 @@ type Generator struct {
 	blocks         map[string][]rules.Rule
 	localCallstack []string
 
-	Forks            *forks.Fork
-	storedChoice     map[string]rules.Rule
-	inPhiState       *forks.PhiState //Flag, are we in a conditional or parallel?
-	parallelGrouping string
-	parallelRunStart bool            //Flag, make sure all branches with parallel runs begin from the same point
-	returnVoid       *forks.PhiState //Flag, escape parseFunc before moving to next block
+	Forks        *forks.Fork
+	storedChoice map[string]rules.Rule
+	returnVoid   *forks.PhiState //Flag, escape parseFunc before moving to next block
 
 	Rounds     int
 	RoundVars  [][][]string
@@ -64,18 +52,16 @@ type Generator struct {
 
 func NewGenerator() *Generator {
 	return &Generator{
-		variables:       variables.NewVariables(),
-		functions:       make(map[string]*ir.Func),
-		blocks:          make(map[string][]rules.Rule),
-		storedChoice:    make(map[string]rules.Rule),
-		currentFunction: "@__run",
-		Forks:           forks.InitFork(),
-		Uncertains:      make(map[string][]float64),
-		inPhiState:      forks.NewPhiState(),
-		returnVoid:      forks.NewPhiState(),
-		Results:         make(map[string][]*variables.VarChange),
-		RVarLookup:      make(map[string][][]int),
-		Log:             resultlog.NewLog(),
+		current:      NewCurrent(),
+		variables:    variables.NewVariables(),
+		functions:    make(map[string]*ir.Func),
+		blocks:       make(map[string][]rules.Rule),
+		storedChoice: make(map[string]rules.Rule),
+		Forks:        forks.InitFork(),
+		returnVoid:   forks.NewPhiState(),
+		Results:      make(map[string][]*variables.VarChange),
+		RVarLookup:   make(map[string][][]int),
+		Log:          resultlog.NewLog(),
 	}
 }
 
@@ -99,19 +85,14 @@ func (g *Generator) LoadStringRules(sr map[string]string) {
 	}
 }
 
-func (g *Generator) LoadMeta(compiler *llvm.Compiler /*runs int16, uncertains map[string][]float64, unknowns []string, asserts []*ast.AssertionStatement, assumes []*ast.AssertionStatement*/) {
+func (g *Generator) LoadMeta(compiler *llvm.Compiler) {
 	if compiler.RunRound == 0 {
 		g.Rounds = 1 //even if runs are zero we need to generate asserts for initialization
 	} else {
 		g.Rounds = int(compiler.RunRound)
 	}
 
-	g.Uncertains = compiler.Uncertains
-	g.Unknowns = compiler.Unknowns
-	g.compiledAsserts = compiler.Asserts
-	g.compiledAssumes = compiler.Assumes
-	g.rawAsserts = compiler.RawAsserts
-	g.rawAssumes = compiler.RawAssumes
+	g.RawInputs = compiler.RawInputs
 }
 
 func (g *Generator) Run(llopt string) {
@@ -139,7 +120,7 @@ func (g *Generator) addVarToRound(base string, num int) {
 	if g.currentRound() == -1 {
 		g.initVarRound(base, num)
 		g.addVarToRoundLookup(base, num, 0, len(g.RoundVars[g.currentRound()])-1)
-		event := resultlog.NewInit(g.currentRound(), g.currentFunction, fmt.Sprintf("%s_%d", base, num))
+		event := resultlog.NewInit(g.currentRound(), g.CurrentFunction(), fmt.Sprintf("%s_%d", base, num))
 		g.Log.Add(event)
 		return
 	}
@@ -149,13 +130,13 @@ func (g *Generator) addVarToRound(base string, num int) {
 
 	id := fmt.Sprintf("%s_%d", base, num)
 	if g.States[base] {
-		event := resultlog.NewStateVar(g.currentRound(), g.currentFunction, id)
+		event := resultlog.NewStateVar(g.currentRound(), g.CurrentFunction(), id)
 		g.Log.Add(event)
 	} else if g.variables.SSA[base] != 0 {
-		event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+		event := resultlog.NewChange(g.currentRound(), g.CurrentFunction(), id)
 		g.Log.Add(event)
 	} else {
-		event := resultlog.NewInit(g.currentRound(), g.currentFunction, id)
+		event := resultlog.NewInit(g.currentRound(), g.CurrentFunction(), id)
 		g.Log.Add(event)
 	}
 }
@@ -226,7 +207,7 @@ func (g *Generator) NewMultiVAssertChain(value []string, chain []int, op string)
 }
 
 func (g *Generator) NewAssertChain(value []string, chain []int, op string) *rules.AssertChain {
-	ret := &rules.AssertChain{Values: value, Chain: chain, Op: op, Parent: g.currentAssert}
+	ret := &rules.AssertChain{Values: value, Chain: chain, Op: op, Parent: g.CurrentAssert()}
 	return ret
 }
 
@@ -294,7 +275,7 @@ func (g *Generator) newAssumes(asserts []*ast.AssertionStatement) {
 func (g *Generator) newAsserts(asserts []*ast.AssertionStatement) {
 	var arule []string
 	for idx, v := range asserts {
-		g.currentAssert = idx
+		g.SetCurrentAssert(idx)
 		a := g.parseAssert(v)
 		arule = append(arule, a)
 	}
@@ -334,8 +315,8 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.rules = append(g.rules, g.generateRules()...)
 
 	g.processAsserts()
-	g.newAsserts(g.compiledAsserts)
-	g.newAssumes(g.compiledAssumes)
+	g.newAsserts(g.RawInputs.Asserts)
+	g.newAssumes(g.RawInputs.Assumes)
 
 }
 
@@ -357,19 +338,19 @@ func (g *Generator) generateFromCallstack(callstack []string) []rules.Rule {
 }
 
 func (g *Generator) processAsserts() {
-	for i, a := range g.rawAsserts {
+	for i, a := range g.RawInputs.RawAsserts {
 		if l, ok := a.Constraint.Left.(*ast.PrefixExpression); ok {
-			l.Right = g.compiledAsserts[i].Constraint.Left
+			l.Right = g.RawInputs.Asserts[i].Constraint.Left
 			a.Constraint.Left = l
 		} else {
-			a.Constraint.Left = g.compiledAsserts[i].Constraint.Left
+			a.Constraint.Left = g.RawInputs.Asserts[i].Constraint.Left
 		}
 
 		if r, ok := a.Constraint.Right.(*ast.PrefixExpression); ok {
-			r.Right = g.compiledAsserts[i].Constraint.Right
+			r.Right = g.RawInputs.Asserts[i].Constraint.Right
 			a.Constraint.Right = r
 		} else {
-			a.Constraint.Right = g.compiledAsserts[i].Constraint.Right
+			a.Constraint.Right = g.RawInputs.Asserts[i].Constraint.Right
 		}
 
 		g.Log.ProcessedAsserts = append(g.Log.ProcessedAsserts, a)
@@ -402,13 +383,14 @@ func (g *Generator) parseFunction(f *ir.Func) []rules.Rule {
 	}
 
 	if g.currentRound() != -1 {
+		// If we are in a round (not initializing) we need to log that the function has triggered
 		name := util.FormatIdent(f.Ident())
-		event := resultlog.NewTrigger(g.currentRound(), g.currentFunction, name)
+		event := resultlog.NewTrigger(g.currentRound(), g.CurrentFunction(), name)
 		g.Log.Add(event)
 	}
 
-	oldfunc := g.currentFunction
-	g.currentFunction = f.Ident()
+	oldfunc := g.CurrentFunction()
+	g.SetCurrentFunction(f.Ident())
 
 	for _, block := range f.Blocks {
 		if !g.returnVoid.Check() {
@@ -419,14 +401,14 @@ func (g *Generator) parseFunction(f *ir.Func) []rules.Rule {
 
 	g.returnVoid.Out()
 
-	g.currentFunction = oldfunc
+	g.SetCurrentFunction(oldfunc)
 	return ru
 }
 
 func (g *Generator) parseBlock(block *ir.Block) []rules.Rule {
 	var ru []rules.Rule
-	oldBlock := g.currentBlock
-	g.currentBlock = block.Ident()
+	oldBlock := g.CurrentBlock()
+	g.SetCurrentBlock(block.Ident())
 
 	// For each non-branching instruction of the basic block.
 	for _, inst := range block.Insts {
@@ -454,7 +436,7 @@ func (g *Generator) parseBlock(block *ir.Block) []rules.Rule {
 	}
 	ru = append(ru, r2...)
 
-	g.currentBlock = oldBlock
+	g.SetCurrentBlock(oldBlock)
 	return ru
 }
 
@@ -463,10 +445,10 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	var cond rules.Rule
 	var phis map[string]int16
 
-	g.inPhiState.In()
+	g.InPhiState().In()
 	id := term.Cond.Ident()
 	if g.variables.IsTemp(id) {
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 		if v, ok := g.variables.Ref[refname]; ok {
 			cond = v
 		}
@@ -474,7 +456,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		g.variables.IsNumeric(id) {
 		cond = &rules.Wrap{Value: id}
 	}
-	g.inPhiState.Out()
+	g.InPhiState().Out()
 
 	g.variables.InitPhis()
 
@@ -505,7 +487,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		ru = append(ru, t...)
 		ru = append(ru, f...)
 
-		g.inPhiState.In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
+		g.InPhiState().In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
 		//g.buildForkChoice(t, choiceId, branchT)
 		//g.buildForkChoice(f, choiceId, branchF)
 
@@ -521,7 +503,7 @@ func (g *Generator) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 		fEnds = rules.TagRules(fEnds, branchF, choiceId)
 
 		ru = append(ru, &rules.Ite{Cond: cond, T: tEnds, F: fEnds})
-		g.inPhiState.Out()
+		g.InPhiState().Out()
 	}
 
 	g.variables.PopPhis()
@@ -570,7 +552,7 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 
 		switch inst.Src.Type().(type) {
 		case *irtypes.ArrayType:
-			refname := fmt.Sprintf("%s-%s", g.currentFunction, inst.Dst.Ident())
+			refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), inst.Dst.Ident())
 			g.variables.Loads[refname] = inst.Src
 		default:
 			ru = append(ru, g.storeRule(inst)...)
@@ -612,7 +594,7 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 		// Happens in conditionals
 		id := inst.Ident()
 		if g.variables.IsTemp(id) {
-			refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+			refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 			g.variables.Ref[refname] = r
 			return ru
 		}
@@ -631,7 +613,7 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 
 		id := inst.Ident()
 		if g.variables.IsTemp(id) {
-			refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+			refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 			g.variables.Ref[refname] = r
 			return ru
 		}
@@ -643,7 +625,7 @@ func (g *Generator) parseInstruct(instruction ir.Instruction) []rules.Rule {
 			meta := inst.Metadata // Is this in a "b || b" construction?
 			if len(meta) > 0 {
 				id := inst.Ident()
-				refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+				refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 				g.variables.Loads[refname] = inst
 			} else {
 				r := g.parseBuiltIn(inst, false)
@@ -726,27 +708,27 @@ func (g *Generator) parseConstExpr(con constant.Constant) rules.Rule {
 func (g *Generator) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, *ir.Block) {
 	var t, f []rules.Rule
 	var a *ir.Block
-	g.branchId = g.branchId + 1
+	g.SetBranchId(g.BranchId() + 1)
 	for _, term := range terms {
 		bname := strings.Split(term.Ident(), "-")
 		switch bname[len(bname)-1] {
 		case "true":
-			g.inPhiState.In()
+			g.InPhiState().In()
 			t = g.parseBlock(term)
 
 			t1 := g.executeCallstack()
 			t = append(t, t1...)
 
-			g.inPhiState.Out()
+			g.InPhiState().Out()
 		case "false":
-			g.inPhiState.In()
+			g.InPhiState().In()
 			f = g.parseBlock(term)
 
 			g.localCallstack = []string{}
 			f1 := g.executeCallstack()
 			f = append(f, f1...)
 
-			g.inPhiState.Out()
+			g.InPhiState().Out()
 		case "after":
 			a = term
 		default:
@@ -764,8 +746,8 @@ func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (*rul
 		return sc, append(ret, branch)
 	case *ir.InstOr:
 		op := "or"
-		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
-		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		refnamex := fmt.Sprintf("%s-%s", g.CurrentFunction(), branch.X.Ident())
+		refnamey := fmt.Sprintf("%s-%s", g.CurrentFunction(), branch.Y.Ident())
 		vxR := g.variables.Ref[refnamex]
 		vxL := g.variables.Loads[refnamex]
 		sc = g.mergeStateChange(refnamex, vxL, sc, op)
@@ -797,8 +779,8 @@ func (g *Generator) parseChoice(branch value.Value, sc *rules.StateChange) (*rul
 		return sc, ret
 	case *ir.InstAnd:
 		op := "and"
-		refnamex := fmt.Sprintf("%s-%s", g.currentFunction, branch.X.Ident())
-		refnamey := fmt.Sprintf("%s-%s", g.currentFunction, branch.Y.Ident())
+		refnamex := fmt.Sprintf("%s-%s", g.CurrentFunction(), branch.X.Ident())
+		refnamey := fmt.Sprintf("%s-%s", g.CurrentFunction(), branch.Y.Ident())
 		vxR := g.variables.Ref[refnamex]
 		vxL := g.variables.Loads[refnamex]
 		sc = g.mergeStateChange(refnamex, vxL, sc, op)
@@ -844,13 +826,13 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	}
 
 	id := bc.From.Ident()
-	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 	state := g.variables.Loads[refname]
 	newState := state.Ident()
 	base := newState[2 : len(newState)-1] //Because this is a charArray LLVM adds c"..." formatting we need to remove
 	n := g.variables.GetSSANum(base)
 	prev := g.variables.GetSSA(base)
-	if !g.inPhiState.Check() {
+	if !g.InPhiState().Check() {
 		g.variables.NewPhi(base, n+1)
 	} else {
 		g.variables.StoreLastState(base, n+1)
@@ -864,14 +846,16 @@ func (g *Generator) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	}
 	r1 := g.createRule(newState, "true", "Bool", "=")
 
-	if g.currentFunction[len(g.currentFunction)-7:] != "__state" {
+	currentFunction := g.CurrentFunction()
+
+	if currentFunction[len(currentFunction)-7:] != "__state" {
 		panic("calling advance from outside the state chart")
 	}
 
-	base2 := g.currentFunction[1 : len(g.currentFunction)-7]
+	base2 := currentFunction[1 : len(currentFunction)-7]
 	n2 := g.variables.GetSSANum(base2)
 	prev2 := fmt.Sprintf("%s_%d", base2, n2)
-	if !g.inPhiState.Check() {
+	if !g.InPhiState().Check() {
 		g.variables.NewPhi(base2, n2+1)
 	} else {
 		g.variables.StoreLastState(base2, n2+1)
@@ -915,7 +899,7 @@ func (g *Generator) createInfixRule(id string, x string, y string, op string) ru
 	x = g.convertInfixVar(x)
 	y = g.convertInfixVar(y)
 
-	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 	g.variables.Ref[refname] = g.createRule(x, y, "", op)
 	return g.variables.Ref[refname]
 }
@@ -923,7 +907,7 @@ func (g *Generator) createInfixRule(id string, x string, y string, op string) ru
 func (g *Generator) createPrefixRule(id string, x string, op string) rules.Rule {
 	x = g.variables.GetSSA(x)
 
-	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 	g.variables.Ref[refname] = &rules.Prefix{X: &rules.Wrap{Value: x}, Op: op}
 	return g.variables.Ref[refname]
 }
@@ -946,12 +930,12 @@ func (g *Generator) createCondRule(cond rules.Rule) rules.Rule {
 
 func (g *Generator) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
 	if op == "not" {
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 		g.variables.Ref[refname] = &rules.Prefix{X: x, Ty: "Bool", Op: op}
 		return g.variables.Ref[refname]
 	}
 
-	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 	g.variables.Ref[refname] = &rules.Infix{X: x, Ty: "Bool", Y: y, Op: op}
 	return g.variables.Ref[refname]
 }
@@ -1131,10 +1115,10 @@ func (g *Generator) tempToIdent(ru rules.Rule) rules.Rule {
 
 func (g *Generator) fetchIdent(id string, r rules.Rule) rules.Rule {
 	if g.variables.IsTemp(id) {
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 		if v, ok := g.variables.Loads[refname]; ok {
 			n := g.variables.GetSSANum(id)
-			if !g.inPhiState.Check() {
+			if !g.InPhiState().Check() {
 				g.variables.NewPhi(id, n+1)
 			} else {
 				g.variables.StoreLastState(id, n+1)
@@ -1162,14 +1146,14 @@ func (g *Generator) fetchIdent(id string, r rules.Rule) rules.Rule {
 
 func (g *Generator) convertInfixVar(x string) string {
 	if g.variables.IsTemp(x) {
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, x)
+		refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), x)
 		if v, ok := g.variables.Loads[refname]; ok {
 			xid := v.Ident()
 			xidNoPercent := util.FormatIdent(xid)
-			if g.parallelRunStart {
+			if g.ParallelRunStart() {
 				n := g.variables.GetStartState(xidNoPercent)
 				x = fmt.Sprintf("%s_%d", xidNoPercent, n)
-				g.parallelRunStart = false
+				g.SetParallelRunStart(false)
 			} else {
 				x = g.variables.GetSSA(xidNoPercent)
 			}
@@ -1184,12 +1168,12 @@ func (g *Generator) convertInfixVar(x string) string {
 }
 func (g *Generator) isASolvable(id string) bool {
 	id, _ = util.GetVarBase(id)
-	for _, v := range g.Unknowns {
+	for _, v := range g.RawInputs.Unknowns {
 		if v == id {
 			return true
 		}
 	}
-	for k := range g.Uncertains {
+	for k := range g.RawInputs.Uncertains {
 		if k == id {
 			return true
 		}
@@ -1488,7 +1472,7 @@ func (g *Generator) constantRule(id string, c constant.Constant) string {
 
 func (g *Generator) loadsRule(inst *ir.InstLoad) {
 	id := inst.Ident()
-	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 	g.variables.Loads[refname] = inst.Src
 }
 
@@ -1497,12 +1481,12 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 	base := util.FormatIdent(inst.Dst.Ident())
 	if g.variables.IsTemp(inst.Src.Ident()) {
 		srcId := inst.Src.Ident()
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, srcId)
+		refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), srcId)
 		if val, ok := g.variables.Loads[refname]; ok {
 			ty := g.variables.LookupType(refname, val)
 			n := g.variables.GetSSANum(base)
 			prev := fmt.Sprintf("%s_%d", base, n)
-			if !g.inPhiState.Check() {
+			if !g.InPhiState().Check() {
 				g.variables.NewPhi(base, n+1)
 			} else {
 				g.variables.StoreLastState(base, n+1)
@@ -1516,7 +1500,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 			}
 			g.AddNewVarChange(base, id, prev)
 
-			// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+			// event := resultlog.NewChange(g.currentRound(), g.CurrentFunction(), id)
 			// g.Log.Add(event)
 
 			ru = append(ru, g.createRule(id, v, ty, ""))
@@ -1527,7 +1511,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				r.Y = g.tempToIdent(r.Y)
 				n := g.variables.GetSSANum(base)
 				prev := fmt.Sprintf("%s_%d", base, n)
-				if !g.inPhiState.Check() {
+				if !g.InPhiState().Check() {
 					g.variables.NewPhi(base, n+1)
 				} else {
 					g.variables.StoreLastState(base, n+1)
@@ -1537,7 +1521,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				g.AddNewVarChange(base, id, prev)
 				wid := &rules.Wrap{Value: id}
 
-				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				// event := resultlog.NewChange(g.currentRound(), g.CurrentFunction(), id)
 				// g.Log.Add(event)
 
 				if g.variables.IsBoolean(r.Y.String()) {
@@ -1550,7 +1534,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 			default:
 				n := g.variables.GetSSANum(base)
 				prev := fmt.Sprintf("%s_%d", base, n)
-				if !g.inPhiState.Check() {
+				if !g.InPhiState().Check() {
 					g.variables.NewPhi(base, n+1)
 				} else {
 					g.variables.StoreLastState(base, n+1)
@@ -1560,7 +1544,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 				g.addVarToRound(base, int(n+1))
 				g.AddNewVarChange(base, id, prev)
 
-				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				// event := resultlog.NewChange(g.currentRound(), g.CurrentFunction(), id)
 				// g.Log.Add(event)
 
 				wid := &rules.Wrap{Value: id}
@@ -1573,7 +1557,7 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 		ty := g.variables.LookupType(base, inst.Src)
 		n := g.variables.GetSSANum(base)
 		prev := fmt.Sprintf("%s_%d", base, n)
-		if !g.inPhiState.Check() {
+		if !g.InPhiState().Check() {
 			g.variables.NewPhi(base, n+1)
 		} else {
 			g.variables.StoreLastState(base, n+1)
@@ -1589,10 +1573,10 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 		}
 
 		// if g.variables.SSA[base] != 0 {
-		// 	event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+		// 	event := resultlog.NewChange(g.currentRound(), g.CurrentFunction(), id)
 		// 	g.Log.Add(event)
 		// } else {
-		// 	event := resultlog.NewInit(g.currentRound(), g.currentFunction, id)
+		// 	event := resultlog.NewInit(g.currentRound(), g.CurrentFunction(), id)
 		// 	g.Log.Add(event)
 		// }
 	}
@@ -1602,9 +1586,9 @@ func (g *Generator) storeRule(inst *ir.InstStore) []rules.Rule {
 func (g *Generator) xorRule(inst *ir.InstXor) rules.Rule {
 	id := inst.Ident()
 	x := inst.X.Ident()
-	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.CurrentFunction(), x)
 	if xRule == nil {
-		x = g.variables.ConvertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.CurrentFunction(), x)
 		xRule = &rules.Wrap{Value: x}
 	}
 	return g.createMultiCondRule(id, xRule, &rules.Wrap{}, "not")
@@ -1615,15 +1599,15 @@ func (g *Generator) andRule(inst *ir.InstAnd) rules.Rule {
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
 
-	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.CurrentFunction(), x)
 	if xRule == nil {
-		x = g.variables.ConvertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.CurrentFunction(), x)
 		xRule = &rules.Wrap{Value: x}
 	}
 
-	yRule := g.variables.LookupCondPart(g.currentFunction, y)
+	yRule := g.variables.LookupCondPart(g.CurrentFunction(), y)
 	if yRule == nil {
-		y = g.variables.ConvertIdent(g.currentFunction, y)
+		y = g.variables.ConvertIdent(g.CurrentFunction(), y)
 		yRule = &rules.Wrap{Value: y}
 	}
 	return g.createMultiCondRule(id, xRule, yRule, "and")
@@ -1633,15 +1617,15 @@ func (g *Generator) orRule(inst *ir.InstOr) rules.Rule {
 	x := inst.X.Ident()
 	y := inst.Y.Ident()
 	id := inst.Ident()
-	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.CurrentFunction(), x)
 	if xRule == nil {
-		x = g.variables.ConvertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.CurrentFunction(), x)
 		xRule = &rules.Wrap{Value: x}
 	}
 
-	yRule := g.variables.LookupCondPart(g.currentFunction, y)
+	yRule := g.variables.LookupCondPart(g.CurrentFunction(), y)
 	if yRule == nil {
-		y = g.variables.ConvertIdent(g.currentFunction, y)
+		y = g.variables.ConvertIdent(g.CurrentFunction(), y)
 		yRule = &rules.Wrap{Value: y}
 	}
 	return g.createMultiCondRule(id, xRule, yRule, "or")
@@ -1651,9 +1635,9 @@ func (g *Generator) negRule(inst *ir.InstFNeg) rules.Rule {
 	id := inst.Ident()
 	x := inst.X.Ident()
 
-	xRule := g.variables.LookupCondPart(g.currentFunction, x)
+	xRule := g.variables.LookupCondPart(g.CurrentFunction(), x)
 	if xRule == nil {
-		x = g.variables.ConvertIdent(g.currentFunction, x)
+		x = g.variables.ConvertIdent(g.CurrentFunction(), x)
 		xRule = &rules.Wrap{Value: x}
 	}
 
@@ -1667,7 +1651,7 @@ func (g *Generator) storeStateChange(inst value.Value) {
 	}
 	andAd, _ := g.parseChoice(inst, sc)
 	id := inst.Ident()
-	refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 	g.variables.Loads[refname] = inst
 	g.storedChoice[refname] = andAd
 }
@@ -1735,21 +1719,21 @@ func (g *Generator) stateRules(key string, sc *rules.StateChange) rules.Rule {
 }
 
 func (g *Generator) orStateRule(choiceK string, choiceV []value.Value) map[string][]rules.Rule {
-	g.inPhiState.In()
+	g.InPhiState().In()
 
 	and := make(map[string][]rules.Rule)
 	for _, b := range choiceV {
-		refname := fmt.Sprintf("%s_%s-%s", uuid.New(), g.currentFunction, b.Ident())
+		refname := fmt.Sprintf("%s_%s-%s", uuid.New(), g.CurrentFunction(), b.Ident())
 		and[refname] = g.parseBuiltIn(b.(*ir.InstCall), true)
 	}
 	delete(g.storedChoice, choiceK)
 
-	g.inPhiState.Out()
+	g.InPhiState().Out()
 	return and
 }
 
 func (g *Generator) andStateRule(andK string, andV []value.Value) []rules.Rule {
-	g.inPhiState.In()
+	g.InPhiState().In()
 
 	var ands []rules.Rule
 	for _, b := range andV {
@@ -1758,12 +1742,12 @@ func (g *Generator) andStateRule(andK string, andV []value.Value) []rules.Rule {
 	}
 	delete(g.storedChoice, andK)
 
-	g.inPhiState.Out()
+	g.InPhiState().Out()
 	return ands
 }
 
 func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.Ands {
-	g.inPhiState.In()
+	g.InPhiState().In()
 
 	var e []rules.Rule
 	var keys []string
@@ -1793,7 +1777,7 @@ func (g *Generator) syncStateRules(branches map[string][]rules.Rule) []*rules.An
 		a = rules.TagRule(a, k, choiceId).(*rules.Ands)
 		x = append(x, a)
 	}
-	g.inPhiState.Out()
+	g.InPhiState().Out()
 	return x
 }
 
@@ -1801,7 +1785,7 @@ func (g *Generator) tempRule(inst value.Value, r rules.Rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()
 	if g.variables.IsTemp(id) {
-		refname := fmt.Sprintf("%s-%s", g.currentFunction, id)
+		refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
 		g.variables.Ref[refname] = r
 	}
 }
@@ -1848,7 +1832,7 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 	var ru []rules.Rule
 
 	choiceId := uuid.NewString()
-	g.branchId = g.branchId + 1
+	g.SetBranchId(g.BranchId() + 1)
 	g.Forks.Choices[choiceId] = []string{}
 	var allBranches = make(map[string][][]rules.Rule)
 
@@ -1859,11 +1843,11 @@ func (g *Generator) runParallel(perm [][]string) []rules.Rule {
 		var opts [][]rules.Rule
 		varState := g.variables.SaveState()
 		for _, c := range calls {
-			g.parallelRunStart = true
-			g.inPhiState.Out() //Don't behave like we're in Phi inside the function
+			g.SetParallelRunStart(true)
+			g.InPhiState().Out() //Don't behave like we're in Phi inside the function
 			v := g.functions[c]
 			raw := g.parseFunction(v)
-			g.inPhiState.In()
+			g.InPhiState().In()
 			raw = rules.TagRules(raw, branchBlock, choiceId)
 			opts = append(opts, raw)
 		}
@@ -1899,11 +1883,11 @@ func (g *Generator) parallelRules(r [][]rules.Rule) []rules.Rule {
 func (g *Generator) isSameParallelGroup(meta ir.Metadata) bool {
 	for _, v := range meta {
 
-		if v.Name == g.parallelGrouping {
+		if v.Name == g.ParallelGrouping() {
 			return true
 		}
 
-		if g.parallelGrouping == "" {
+		if g.ParallelGrouping() == "" {
 			return true
 		}
 	}
@@ -1926,7 +1910,7 @@ func (g *Generator) singleParallelStep(callee string) bool {
 func (g *Generator) updateParallelGroup(meta ir.Metadata) {
 	for _, v := range meta {
 		if v.Name[0:5] != "round-" {
-			g.parallelGrouping = v.Name
+			g.SetParallelGrouping(v.Name)
 		}
 	}
 }
@@ -1962,7 +1946,7 @@ func (g *Generator) capParallel(choiceId string) []rules.Rule {
 		ru = append(ru, rule)
 
 		base, n := util.GetVarBase(id)
-		if g.inPhiState.Level() == 1 {
+		if g.InPhiState().Level() == 1 {
 			g.variables.NewPhi(base, int16(n))
 		} else {
 			g.variables.StoreLastState(base, int16(n))
@@ -2020,7 +2004,7 @@ func (g *Generator) capCond(choiceId string, b string, phis map[string]int16) ([
 			n1 := g.variables.GetSSANum(base)
 			if base == k && variable.Last[choiceId] {
 				rules = append(rules, g.capRule(base, []int16{int16(n)}, id)...)
-				// event := resultlog.NewChange(g.currentRound(), g.currentFunction, id)
+				// event := resultlog.NewChange(g.currentRound(), g.CurrentFunction(), id)
 				// g.Log.Add(event)
 				v := forks.NewVar(base, false, fmt.Sprint(n1), choiceId, fmt.Sprint(n1))
 				v.AddPrevious(b, fmt.Sprintf("%s_%d", base, n))
@@ -2047,7 +2031,7 @@ func (g *Generator) capCondSyncRules(branches []string) map[string][]rules.Rule 
 				id := g.variables.GetSSA(base)
 				e = append(e, g.capRule(base, []int16{start}, id)...)
 				n := g.variables.SSA[base]
-				if g.inPhiState.Level() == 1 {
+				if g.InPhiState().Level() == 1 {
 					g.variables.NewPhi(base, n)
 				} else {
 					g.variables.StoreLastState(base, n)

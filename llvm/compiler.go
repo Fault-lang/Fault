@@ -23,6 +23,27 @@ import (
 var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
 
+type RawInputs struct {
+	RawAsserts     []*ast.AssertionStatement
+	RawAssumes     []*ast.AssertionStatement
+	Asserts        []*ast.AssertionStatement
+	Assumes        []*ast.AssertionStatement
+	Uncertains     map[string][]float64
+	Unknowns       []string
+}
+
+func NewRawInputs() *RawInputs {
+	return &RawInputs{
+		RawAsserts: []*ast.AssertionStatement{},
+		RawAssumes: []*ast.AssertionStatement{},
+		Asserts:    []*ast.AssertionStatement{},
+		Assumes:    []*ast.AssertionStatement{},
+		Uncertains: make(map[string][]float64),
+		Unknowns:   []string{},
+	}
+}
+
+
 type Compiler struct {
 	module  *ir.Module
 	markers []*ir.Global // 0-index -> Round
@@ -39,6 +60,7 @@ type Compiler struct {
 	instances        map[string][]string
 	instanceChildren map[string]string
 	structPropOrder  map[string][]string
+	RawInputs		*RawInputs
 
 	block0          *ir.Block
 	contextBlock    *ir.Block
@@ -58,12 +80,6 @@ type Compiler struct {
 	specFunctions  map[string]value.Value
 	specGlobals    map[string]*ir.Global
 	sysGlobals     []*ir.Param
-	RawAsserts     []*ast.AssertionStatement
-	RawAssumes     []*ast.AssertionStatement
-	Asserts        []*ast.AssertionStatement
-	Assumes        []*ast.AssertionStatement
-	Uncertains     map[string][]float64
-	Unknowns       []string
 	Components     map[string]*StateFunc
 	ComponentOrder []string
 	States         map[string]bool
@@ -83,6 +99,7 @@ func NewCompiler() *Compiler {
 		instances:        make(map[string][]string),
 		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
+		RawInputs: 	  NewRawInputs(),
 
 		hasRunBlock:   false,
 		IsValid:       false,
@@ -91,7 +108,6 @@ func NewCompiler() *Compiler {
 		specStructs:   make(map[string]*preprocess.SpecRecord),
 		specFunctions: make(map[string]value.Value),
 		specGlobals:   make(map[string]*ir.Global),
-		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
 		States:        make(map[string]bool),
 		StringRules:   make(map[string]string),
@@ -114,8 +130,8 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, test bool) {
 
 	c.specStructs = structs
-	c.Unknowns = unknowns
-	c.Uncertains = uncertains
+	c.RawInputs.Unknowns = unknowns
+	c.RawInputs.Uncertains = uncertains
 	c.isTesting = test
 	c.Alias = aliases
 }
@@ -265,14 +281,14 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 	}
 
 	if !c.isImport {
-		for _, assert := range c.RawAsserts {
+		for _, assert := range c.RawInputs.RawAsserts {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
 				panic(err)
 			}
 			c.compileAssert(a.(*ast.AssertionStatement))
 		}
-		for _, assert := range c.RawAssumes {
+		for _, assert := range c.RawInputs.RawAssumes {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
 				panic(err)
@@ -281,7 +297,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 		}
 	}
 
-	return c.Asserts, c.Assumes
+	return c.RawInputs.Asserts, c.RawInputs.Assumes
 }
 
 func (c *Compiler) compile(node ast.Node) {
@@ -339,9 +355,9 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.AssertionStatement:
 		if v.Assume {
-			c.RawAssumes = append(c.RawAssumes, v)
+			c.RawInputs.RawAssumes = append(c.RawInputs.RawAssumes, v)
 		} else {
-			c.RawAsserts = append(c.RawAsserts, v)
+			c.RawInputs.RawAsserts = append(c.RawInputs.RawAsserts, v)
 		}
 
 	case *ast.ForStatement:
@@ -1230,7 +1246,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	if a.Assume {
 		a.Constraint.Left = c.convertAssertVariables(a.Constraint.Left)
 		a.Constraint.Right = c.convertAssertVariables(a.Constraint.Right)
-		c.Assumes = append(c.Assumes, a)
+		c.RawInputs.Assumes = append(c.RawInputs.Assumes, a)
 		return
 	}
 
@@ -1249,7 +1265,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	}
 	a.Constraint.Left = c.convertAssertVariables(l)
 	a.Constraint.Right = c.convertAssertVariables(r)
-	c.Asserts = append(c.Asserts, a)
+	c.RawInputs.Asserts = append(c.RawInputs.Asserts, a)
 
 }
 
@@ -1443,10 +1459,10 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		// asserts on the struct and honor them for all instances
 		vname := strings.Join(id, "_")
 		if isUnknown {
-			c.Unknowns = append(c.Unknowns, vname)
+			c.RawInputs.Unknowns = append(c.RawInputs.Unknowns, vname)
 		}
 		if isUncertain != nil {
-			c.Uncertains[vname] = isUncertain
+			c.RawInputs.Uncertains[vname] = isUncertain
 		}
 		children[vname] = node.Parent[1]
 	}

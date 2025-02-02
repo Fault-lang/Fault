@@ -18,6 +18,79 @@ type Rule interface {
 	Branch() string
 }
 
+type Basic struct {
+	Rule
+	X   Rule
+	Y   Rule
+	tag *branch
+}
+
+func (b *Basic) ruleNode() {}
+
+func (b *Basic) String() string {
+	return fmt.Sprintf("basic %s %s", b.X, b.Y)
+}
+
+func (b *Basic) Assertless() string {
+	return ""
+}
+
+func (b *Basic) IsTagged() bool {
+	return b.tag != nil
+}
+
+func (b *Basic) Choice() string {
+	return b.tag.block
+}
+
+func (b *Basic) Branch() string {
+	return b.tag.branch
+}
+
+func (b *Basic) Tag(k1 string, k2 string) {
+	b.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+type Init struct {
+	Rule
+	Ident string
+	Type  string
+	Value string
+	tag   *branch
+}
+
+func (i *Init) ruleNode() {}
+
+func (i *Init) String() string {
+	return fmt.Sprintf("init %s %s", i.Ident, i.Type)
+}
+
+func (i *Init) Assertless() string {
+	return ""
+}
+
+func (i *Init) IsTagged() bool {
+	return i.tag != nil
+}
+
+func (i *Init) Choice() string {
+	return i.tag.block
+}
+
+func (i *Init) Branch() string {
+	return i.tag.branch
+}
+
+func (i *Init) Tag(k1 string, k2 string) {
+	i.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type Ands struct {
 	Rule
 	X   []Rule

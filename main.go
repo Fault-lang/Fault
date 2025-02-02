@@ -142,8 +142,8 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 
 		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
 
-		uncertains = compiler.Uncertains
-		unknowns = compiler.Unknowns
+		uncertains = compiler.RawInputs.Uncertains
+		unknowns = compiler.RawInputs.Unknowns
 
 		if mode == "ir" {
 			fmt.Println(compiler.GetIR())
@@ -198,8 +198,8 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 		}
 	case "ll":
 		compiler := llvm.NewCompiler()
-		compiler.Uncertains = uncertains
-		compiler.Unknowns = unknowns
+		compiler.RawInputs.Uncertains = uncertains
+		compiler.RawInputs.Unknowns = unknowns
 		generator := smt2(d, compiler)
 		if mode == "smt" {
 			fmt.Println(generator.SMT())

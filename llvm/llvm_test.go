@@ -480,12 +480,12 @@ func TestUncertains(t *testing.T) {
 	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Uncertain{Mean: 2.0, Sigma: .3, ProcessedName: []string{"test", "foo", "bar"}}}}}
 	c.processStruct(test)
 
-	if len(c.Uncertains["test_foo_bar"]) == 0 {
+	if len(c.RawInputs.Uncertains["test_foo_bar"]) == 0 {
 		t.Fatal("uncertain value not stored")
 	}
 
-	if c.Uncertains["test_foo_bar"][0] != 2.0 || c.Uncertains["test_foo_bar"][1] != .3 {
-		t.Fatalf("uncertain stored value is incorrect, got=%f", c.Uncertains["test_foo_bar"])
+	if c.RawInputs.Uncertains["test_foo_bar"][0] != 2.0 || c.RawInputs.Uncertains["test_foo_bar"][1] != .3 {
+		t.Fatalf("uncertain stored value is incorrect, got=%f", c.RawInputs.Uncertains["test_foo_bar"])
 	}
 
 }
@@ -496,12 +496,12 @@ func TestUnknowns2(t *testing.T) {
 	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Unknown{Name: &ast.Identifier{Spec: "test", Value: "bar"}, ProcessedName: []string{"test", "foo", "bar"}}}}}
 	c.processStruct(test)
 
-	if len(c.Unknowns) == 0 {
+	if len(c.RawInputs.Unknowns) == 0 {
 		t.Fatal("unknown value not stored")
 	}
 
-	if c.Unknowns[0] != "test_foo_bar" {
-		t.Fatalf("unknowns stored value is incorrect, got=%s", c.Unknowns[0])
+	if c.RawInputs.Unknowns[0] != "test_foo_bar" {
+		t.Fatalf("unknowns stored value is incorrect, got=%s", c.RawInputs.Unknowns[0])
 	}
 
 }
