@@ -1,7 +1,9 @@
 package unroll
 
 import (
+	"fault/generator/rules"
 	"fault/llvm"
+	"fault/util"
 	"fmt"
 	"strconv"
 	"strings"
@@ -68,6 +70,13 @@ func GetClockBase(id string) string {
 	return strings.Join(v[0:len(v)-1], "_")
 }
 
+func IsStaticValue(id string) bool {
+	if IsBoolean(id) || IsNumeric(id) {
+		return true
+	}
+	return false
+}
+
 func LookupType(id string, value value.Value) string {
 
 	if _, ok := value.(*constant.ExprAnd); ok {
@@ -114,4 +123,38 @@ func isASolvable(id string, RawInputs *llvm.RawInputs) bool {
 		}
 	}
 	return false
+}
+
+func FormatValue(val value.Value) string {
+	v := strings.Split(val.String(), " ")
+	return v[1]
+}
+
+func (b *LLBlock) ConvertIdent(f string, val string) string {
+	if IsTemp(val) {
+		refname := fmt.Sprintf("%s-%s", f, val)
+		if v, ok := b.Env.VarLoads[refname]; ok {
+			id := util.FormatIdent(v.Ident())
+			return id
+		} else {
+			panic(fmt.Sprintf("variable %s not initialized", val))
+		}
+	} else {
+		id := val
+		if string(id[0]) == "%" || IsGlobal(id) {
+			id = util.FormatIdent(id)
+			return id
+		}
+		return id //Is a value, not an identifier
+	}
+}
+
+func (b *LLBlock) LookupCondPart(f string, val string) rules.Rule {
+	if IsTemp(val) {
+		refname := fmt.Sprintf("%s-%s", f, val)
+		if v, ok := b.irRefs[refname]; ok {
+			return v
+		}
+	}
+	return nil
 }

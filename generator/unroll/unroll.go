@@ -1,8 +1,8 @@
 package unroll
 
 import (
+	"fault/generator/rules"
 	"fault/llvm"
-	"fault/smt/rules"
 	"fault/util"
 	"fmt"
 	"strings"
@@ -17,15 +17,50 @@ import (
 // various branches of the state graph
 
 type Env struct {
-	VarLoads        map[string]value.Value
-	VarTypes        map[string]string
-	CurrentFunction string
+	RawInputs        *llvm.RawInputs
+	VarLoads         map[string]value.Value
+	VarTypes         map[string]string
+	CurrentFunction  string
+	CurrentRound     int
+	returnVoid       *PhiState
+	ParallelGrouping string
 }
 
-func NewEnv() *Env {
+func NewEnv(ri *llvm.RawInputs) *Env {
 	return &Env{
-		VarLoads: make(map[string]value.Value),
-		VarTypes: make(map[string]string),
+		RawInputs:    ri,
+		VarLoads:     make(map[string]value.Value),
+		VarTypes:     make(map[string]string),
+		CurrentRound: 0,
+		returnVoid:   NewPhiState(),
+	}
+}
+
+type PhiState struct {
+	levels int
+}
+
+func NewPhiState() *PhiState {
+	return &PhiState{
+		levels: 0,
+	}
+}
+
+func (p *PhiState) Check() bool {
+	return p.levels > 0
+}
+
+func (p *PhiState) Level() int {
+	return p.levels
+}
+
+func (p *PhiState) In() {
+	p.levels = p.levels + 1
+}
+
+func (p *PhiState) Out() {
+	if p.levels != 0 {
+		p.levels = p.levels - 1
 	}
 }
 
@@ -33,11 +68,12 @@ type LLUnit interface {
 	Unroll()
 	AddRules([]rules.Rule)
 	AddBlock(LLUnit)
-	ExecuteCallstack() *LLFunc
+	ExecuteCallstack() []rules.Rule
 	String() string
 }
 
 type LLFunc struct {
+	Ident          string
 	Env            *Env
 	Rules          []rules.Rule
 	Start          *LLBlock
@@ -47,17 +83,45 @@ type LLFunc struct {
 	rawIR          *ir.Func
 }
 
-func NewLLFunc(e *Env, irf *ir.Func) *LLFunc {
+func NewLLFunc(e *Env, rawFunc map[string]*ir.Func, irf *ir.Func) *LLFunc {
 	return &LLFunc{
+		Ident:        irf.Ident(),
 		Env:          e,
 		Rules:        []rules.Rule{},
 		functions:    make(map[string]*LLFunc),
-		rawFunctions: make(map[string]*ir.Func),
+		rawFunctions: rawFunc,
 		rawIR:        irf,
 	}
 }
 
-func (f *LLFunc) Unroll() {}
+func (f *LLFunc) Unroll() {
+
+	if isBuiltIn(f.Ident) {
+		return
+	}
+
+	f.Env.CurrentFunction = util.FormatIdent(f.Ident)
+
+	for _, block := range f.rawIR.Blocks {
+		if !f.Env.returnVoid.Check() {
+			b := NewLLBlock(f.Env, f.rawFunctions, block)
+			b.ParentFunction = util.FormatIdent(f.Ident)
+			b.Unroll()
+			f.AddBlock(b)
+		}
+	}
+
+	f.Env.returnVoid.Out()
+}
+
+func (f *LLFunc) GetAllRules() []rules.Rule {
+	var r []rules.Rule
+	r = append(r, f.Rules...)
+	if f.Start != nil {
+		r = append(r, f.Start.GetAllRules()...)
+	}
+	return r
+}
 
 func (f *LLFunc) String() string {
 	var sb strings.Builder
@@ -94,7 +158,7 @@ func (f *LLFunc) AddBlock(b LLUnit) {
 	}
 }
 
-func (f *LLFunc) ExecuteCallstack() *LLFunc {
+func (f *LLFunc) ExecuteCallstack() []rules.Rule {
 	stack := util.Copy(f.localCallstack)
 	f.localCallstack = []string{}
 	r := GenerateCallstack(f, stack)
@@ -102,26 +166,59 @@ func (f *LLFunc) ExecuteCallstack() *LLFunc {
 }
 
 type LLBlock struct {
+	Ident          string
 	Env            *Env
+	ParentFunction string
 	Rules          []rules.Rule
 	After          *LLBlock
 	localCallstack []string
 	functions      map[string]*LLFunc
 	rawFunctions   map[string]*ir.Func
 	rawIR          *ir.Block
+	irRefs         map[string]rules.Rule //Happens in conditionals, LLVM reference to a value
 }
 
-func NewLLBlock(e *Env, irb *ir.Block) *LLBlock {
+func NewLLBlock(e *Env, rawFunc map[string]*ir.Func, irb *ir.Block) *LLBlock {
 	return &LLBlock{
+		Ident:        irb.Ident(),
 		Env:          e,
 		Rules:        []rules.Rule{},
 		functions:    make(map[string]*LLFunc),
-		rawFunctions: make(map[string]*ir.Func),
+		rawFunctions: rawFunc,
 		rawIR:        irb,
+		irRefs:       make(map[string]rules.Rule),
 	}
 }
 
-func (b *LLBlock) Unroll() {}
+func (b *LLBlock) Unroll() {
+
+	// For each non-branching instruction of the basic block.
+	for _, inst := range b.rawIR.Insts {
+		r := b.parseInstruct(inst)
+		if len(r) > 0 {
+			b.AddRules(r)
+		}
+	}
+	//Make sure call stack is clear
+	r1 := b.ExecuteCallstack()
+	b.AddRules(r1)
+
+	switch term := b.rawIR.Term.(type) {
+	case *ir.TermCondBr:
+		b.parseTermCon(term)
+	case *ir.TermRet:
+		b.Env.returnVoid.In()
+	}
+}
+
+func (b *LLBlock) GetAllRules() []rules.Rule {
+	var ru []rules.Rule
+	ru = append(ru, b.Rules...)
+	if b.After != nil {
+		ru = append(ru, b.After.GetAllRules()...)
+	}
+	return ru
+}
 
 func (b *LLBlock) String() string {
 	var sb strings.Builder
@@ -158,41 +255,45 @@ func (b *LLBlock) AddBlock(after LLUnit) {
 	}
 }
 
-func (f *LLBlock) ExecuteCallstack() *LLFunc {
+func (f *LLBlock) ExecuteCallstack() []rules.Rule {
 	stack := util.Copy(f.localCallstack)
 	f.localCallstack = []string{}
 	r := GenerateCallstack(f, stack)
 	return r
 }
 
-func GenerateCallstack(llu LLUnit, callstack []string) *LLFunc {
+func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 	if len(callstack) == 0 {
 		return nil
 	}
 
-	// if len(callstack) > 1 {
-	// 	//Generate parallel runs
-	// 	perm := g.parallelPermutations(callstack)
-	// 	return g.runParallel(perm)
-	// } else {
-	var v *LLFunc
-	var ok bool
-	fname := callstack[0]
+	p := rules.NewParallels(parallelPermutations(callstack))
 
-	switch u := llu.(type) {
-	case *LLFunc:
-		v, ok = u.functions[fname]
-		if !ok {
-			v = NewLLFunc(u.Env, u.rawFunctions[fname])
+	for _, fname := range callstack {
+		var v *LLFunc
+		var ok bool
+
+		switch u := llu.(type) {
+		case *LLFunc:
+			v, ok = u.functions[fname]
+			if !ok {
+				v = NewLLFunc(u.Env, u.rawFunctions, u.rawFunctions[fname])
+				v.Unroll()
+			}
+		case *LLBlock:
+			v, ok = u.functions[fname]
+			if !ok {
+				v = NewLLFunc(u.Env, u.rawFunctions, u.rawFunctions[fname])
+				v.Unroll()
+
+			}
 		}
-	case *LLBlock:
-		v, ok = u.functions[fname]
-		if !ok {
-			v = NewLLFunc(u.Env, u.rawFunctions[fname])
+		if len(callstack) == 1 {
+			return v.Rules
 		}
+		p.Calls[fname] = v.GetAllRules()
 	}
-	return v
-	//}
+	return []rules.Rule{p}
 }
 
 func declareVar(id string, ty string, val string) *rules.Init {
@@ -203,11 +304,58 @@ func declareVar(id string, ty string, val string) *rules.Init {
 	}
 }
 
+func (b *LLBlock) tempToIdent(ru rules.Rule) rules.Rule {
+	switch r := ru.(type) {
+	case *rules.Wrap:
+		return b.fetchIdent(r.Value, r)
+	case *rules.Infix:
+		r.X = b.tempToIdent(r.X)
+		r.Y = b.tempToIdent(r.Y)
+		return r
+	case *rules.Prefix:
+		r.X = b.tempToIdent(r.X)
+		return r
+	}
+	return ru
+}
+
+func (b *LLBlock) fetchIdent(id string, r rules.Rule) rules.Rule {
+	if IsTemp(id) {
+		refname := fmt.Sprintf("%s-%s", b.ParentFunction, id)
+		if load, ok := b.Env.VarLoads[refname]; ok {
+			wid := &rules.Vwrap{Value: load}
+			return wid
+		} else if ref, ok := b.irRefs[refname]; ok {
+			switch r := ref.(type) {
+			case *rules.Infix:
+				r.X = b.tempToIdent(r.X)
+				r.Y = b.tempToIdent(r.Y)
+				return r
+			case *rules.Prefix:
+				r.X = b.tempToIdent(r.X)
+				return r
+			}
+		} else {
+			panic(fmt.Sprintf("smt generation error, value for %s not found", id))
+		}
+	}
+	return r
+}
+
 func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rules.Rule {
 	// Constants cannot be changed and therefore don't increment
 	// in SSA. So instead of return a *rule we can skip directly
 	// to a set of strings
-	b := NewLLBlock(e, nil)
+	b := &LLBlock{
+		Ident:        "__constants",
+		Env:          e,
+		Rules:        []rules.Rule{},
+		functions:    make(map[string]*LLFunc),
+		rawFunctions: make(map[string]*ir.Func),
+		rawIR:        nil,
+		irRefs:       make(map[string]rules.Rule),
+	}
+
 	r := []rules.Rule{}
 	for _, gl := range globals {
 		id := util.FormatIdent(gl.GlobalIdent.Ident())
@@ -269,34 +417,116 @@ func (b *LLBlock) constExpr(con constant.Constant) rules.Rule {
 	}
 }
 
-func convertInfixVar(e *Env, x string) string {
+func isBuiltIn(c string) bool {
+	if c == "@advance" || c == "@stay" {
+		return true
+	}
+	return false
+}
+
+func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
 		if v, ok := e.VarLoads[refname]; ok {
+			ty := LookupType(refname, v)
 			xid := v.Ident()
-			return util.FormatIdent(xid)
+			return util.FormatIdent(xid), ty, true
 		}
 	}
 
 	if IsGlobal(x) {
-		return util.FormatIdent(x)
+		return util.FormatIdent(x), e.VarTypes[x], true
 	}
-	return x
+
+	if IsInt(x) {
+		return x, "Bool", false
+	}
+
+	if IsNumeric(x) {
+		return x, "Real", false
+	}
+
+	if IsBoolean(x) {
+		return x, "Bool", false
+	}
+
+	return x, e.VarTypes[x], false
 }
 
 func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rules.Rule {
-	x = convertInfixVar(b.Env, x)
-	y = convertInfixVar(b.Env, y)
+	var tyX, tyY string
+	var vrX, vrY bool
+
+	x, tyX, vrX = convertInfixVar(b.Env, x)
+	y, tyY, vrY = convertInfixVar(b.Env, y)
 	return &rules.Infix{
-		X:  &rules.Wrap{Value: x},
-		Y:  &rules.Wrap{Value: y},
+		X:  rules.NewWrap(x, tyX, vrX, "unroll.go", "466", false),
+		Y:  rules.NewWrap(y, tyY, vrY, "unroll.go", "467", false),
 		Op: op,
 	}
 }
 
 func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
+	var vr bool
+	if _, ok := b.Env.VarTypes[x]; ok {
+		vr = true
+	}
+
 	return &rules.Prefix{
-		X:  &rules.Wrap{Value: x},
+		X:  rules.NewWrap(x, "Bool", vr, "unroll.go", "476", false),
 		Op: op,
+	}
+}
+
+func parallelPermutations(p []string) (permuts [][]string) {
+	var rc func([]string, int)
+	rc = func(a []string, k int) {
+		if k == len(a) {
+			permuts = append(permuts, append([]string{}, a...))
+		} else {
+			for i := k; i < len(p); i++ {
+				a[k], a[i] = a[i], a[k]
+				rc(a, k+1)
+				a[k], a[i] = a[i], a[k]
+			}
+		}
+	}
+	rc(p, 0)
+
+	return permuts
+}
+
+func (b *LLBlock) isSameParallelGroup(meta ir.Metadata) bool {
+	for _, v := range meta {
+
+		if v.Name == b.Env.ParallelGrouping {
+			return true
+		}
+
+		if b.Env.ParallelGrouping == "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (b *LLBlock) singleParallelStep(callee string) bool {
+	if len(b.localCallstack) == 0 {
+		return false
+	}
+
+	if callee == b.localCallstack[len(b.localCallstack)-1] {
+		return true
+	}
+
+	return false
+}
+
+func (b *LLBlock) updateParallelGroup(meta ir.Metadata) {
+	for _, v := range meta {
+		if v.Name[0:5] != "round-" {
+			b.Env.ParallelGrouping = v.Name
+		}
 	}
 }

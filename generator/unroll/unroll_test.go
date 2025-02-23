@@ -1,8 +1,8 @@
 package unroll
 
 import (
+	"fault/generator/rules"
 	"fault/llvm"
-	"fault/smt/rules"
 	"testing"
 
 	"github.com/llir/llvm/ir"
@@ -12,16 +12,16 @@ import (
 )
 
 func TestNewEnv(t *testing.T) {
-	env := NewEnv()
+	env := NewEnv(llvm.NewRawInputs())
 	assert.NotNil(t, env)
 	assert.Empty(t, env.VarLoads)
 	assert.Empty(t, env.VarTypes)
 }
 
 func TestNewLLFunc(t *testing.T) {
-	env := NewEnv()
+	env := NewEnv(llvm.NewRawInputs())
 	irf := &ir.Func{}
-	llFunc := NewLLFunc(env, irf)
+	llFunc := NewLLFunc(env, make(map[string]*ir.Func), irf)
 	assert.NotNil(t, llFunc)
 	assert.Equal(t, env, llFunc.Env)
 	assert.Empty(t, llFunc.Rules)
@@ -32,33 +32,8 @@ func TestNewLLFunc(t *testing.T) {
 	assert.Equal(t, irf, llFunc.rawIR)
 }
 
-// Add more tests for other functions and types...
-func TestGenerateCallstack(t *testing.T) {
-	// Test case 1: Callstack with one function name
-	llf := NewLLFunc(NewEnv(), ir.NewFunc("test", irtypes.Void))
-	callstack := []string{"foo"}
-	functions := make(map[string]*LLFunc)
-	functions["foo"] = &LLFunc{
-		Env:          llf.Env,
-		Rules:        []rules.Rule{},
-		functions:    make(map[string]*LLFunc),
-		rawFunctions: make(map[string]*ir.Func),
-		rawIR:        ir.NewFunc("foo", irtypes.Void),
-	}
-	llf.functions = functions
-	result := GenerateCallstack(llf, callstack)
-	assert.Equal(t, functions["foo"].String(), result.String())
-
-	// Test case 2: Callstack with one block name
-	llb := NewLLBlock(NewEnv(), ir.NewBlock("test"))
-	llb.functions = functions
-	callstack = []string{"foo"}
-	result = GenerateCallstack(llb, callstack)
-	assert.Equal(t, functions["foo"].String(), result.String())
-}
-
 func TestNewConstants(t *testing.T) {
-	e := NewEnv()
+	e := NewEnv(llvm.NewRawInputs())
 	globals := []*ir.Global{
 		ir.NewGlobalDef("test_global1", constant.NewFloat(irtypes.Double, 10)),
 		ir.NewGlobalDef("test_global2", constant.NewInt(irtypes.I1, 0)),
@@ -75,3 +50,33 @@ func TestNewConstants(t *testing.T) {
 	result := NewConstants(e, globals, rawInputs)
 	assert.Equal(t, expected, result)
 }
+func TestUnroll(t *testing.T) {
+	env := NewEnv(llvm.NewRawInputs())
+	irf := ir.NewFunc("test", irtypes.Void)
+	llFunc := NewLLFunc(env, make(map[string]*ir.Func), irf)
+
+	// Test case 1: Empty function
+	llFunc.Unroll()
+	assert.Nil(t, llFunc.Start)
+
+	// Test case 2: Function with one block
+	block := ir.NewBlock("test1")
+	block.Insts = []ir.Instruction{ir.NewFAdd(constant.NewInt(irtypes.I32, 0), constant.NewInt(irtypes.I32, 1))}
+	irf.Blocks = append(irf.Blocks, block)
+	llFunc.Unroll()
+	assert.NotNil(t, llFunc.Start)
+	assert.Equal(t, block, llFunc.Start.rawIR)
+
+	// Test case 3: Function with multiple blocks
+	b2 := ir.NewBlock("test2")
+	block2 := NewLLBlock(env, llFunc.rawFunctions, b2)
+	llFunc.Start.After = block2
+	irf.Blocks = append(irf.Blocks, b2)
+	llFunc.Unroll()
+	assert.NotNil(t, llFunc.Start)
+	assert.Equal(t, block, llFunc.Start.rawIR)
+	assert.NotNil(t, llFunc.Start.After)
+	assert.Equal(t, block2.rawIR, llFunc.Start.After.rawIR)
+}
+
+

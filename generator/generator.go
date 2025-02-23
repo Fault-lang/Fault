@@ -1,9 +1,12 @@
 package generator
 
 import (
+	"fault/generator/rules"
+	"fault/generator/unpack"
 	"fault/generator/unroll"
 	"fault/llvm"
-	"fault/smt/rules"
+	"fault/util"
+	"strings"
 
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
@@ -23,16 +26,18 @@ type Generator struct {
 	Env       *unroll.Env
 	RawInputs *llvm.RawInputs
 	RunBlock  *unroll.LLFunc
+	smt       []string
 }
 
-func NewGenerator() *Generator {
+func NewGenerator(ri *llvm.RawInputs) *Generator {
 	return &Generator{
 		functions: make(map[string]*ir.Func),
-		Env:       unroll.NewEnv(),
+		Env:       unroll.NewEnv(ri),
+		smt:       []string{"(set-logic QF_NRA)"},
 	}
 }
 func Execute(compiler *llvm.Compiler) *Generator {
-	generator := NewGenerator()
+	generator := NewGenerator(compiler.RawInputs)
 	//generator.LoadMeta(compiler)
 	//generator.States = compiler.States
 	generator.Run(compiler.GetIR())
@@ -51,6 +56,10 @@ func (g *Generator) LoadStringRules(sr map[string]string) {
 	// }
 }
 
+func (g *Generator) AppendSMT(new_smt []string) {
+	g.smt = append(g.smt, new_smt...)
+}
+
 func (g *Generator) Run(llopt string) {
 	m, err := asm.ParseString("", llopt) //"" because ParseString has a path variable
 	if err != nil {
@@ -64,8 +73,14 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
 	g.sortFuncs(m.Funcs)
 
-	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions["@__run"])
+	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()
+
+	p := unpack.NewUnpacker()
+	p.VarTypes = g.Env.VarTypes
+	smt := p.Unpack(g.RunBlock)
+	g.AppendSMT(p.InitVars())
+	g.AppendSMT(smt)
 
 	// g.processAsserts()
 	// g.newAsserts(g.RawInputs.Asserts)
@@ -78,11 +93,11 @@ func (g *Generator) sortFuncs(funcs []*ir.Func) {
 	// function call name.
 	for _, f := range funcs {
 		// Get function name.
-		fname := f.Ident()
-
-		if fname != "@__run" {
-			g.functions[f.Ident()] = f
-			continue
-		}
+		g.functions[util.FormatIdent(f.Ident())] = f
+		continue
 	}
+}
+
+func (g *Generator) SMT() string {
+	return strings.Join(g.smt, "\n")
 }
