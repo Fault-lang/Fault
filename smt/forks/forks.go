@@ -1,7 +1,7 @@
 package forks
 
 import (
-	"fault/smt/rules"
+	"fault/generator/rules"
 	"fmt"
 	"strconv"
 )

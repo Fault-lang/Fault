@@ -3,10 +3,10 @@ package smt
 import (
 	"bytes"
 	"fault/ast"
+	"fault/generator/rules"
 	"fault/llvm"
 	"fault/smt/forks"
 	resultlog "fault/smt/log"
-	"fault/smt/rules"
 	"fault/smt/variables"
 	"fault/util"
 	"fmt"

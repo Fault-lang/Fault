@@ -2,9 +2,9 @@ package execute
 
 import (
 	"fault/ast"
+	"fault/generator/rules"
 	"fault/smt/forks"
 	resultlog "fault/smt/log"
-	"fault/smt/rules"
 	"testing"
 )
 

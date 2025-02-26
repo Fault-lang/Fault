@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fault/generator/scenario"
 	"testing"
 )
 
@@ -57,7 +58,7 @@ func TestBasic_LoadContext(t *testing.T) {
 	b := &Basic{}
 	haveSeen := map[string]bool{"a": true}
 	onEntry := map[string][]int16{"a": {1}}
-	b.LoadContext(1, haveSeen, onEntry)
+	b.LoadContext(1, haveSeen, onEntry, scenario.NewLogger())
 	if b.PhiLevel != 1 {
 		t.Errorf("Basic.LoadContext() PhiLevel = %v, want %v", b.PhiLevel, 1)
 	}
@@ -140,7 +141,7 @@ func TestInfix_LoadContext(t *testing.T) {
 	i := &Infix{}
 	haveSeen := map[string]bool{"a": true}
 	onEntry := map[string][]int16{"a": {1}}
-	i.LoadContext(1, haveSeen, onEntry)
+	i.LoadContext(1, haveSeen, onEntry, scenario.NewLogger())
 	if i.PhiLevel != 1 {
 		t.Errorf("Infix.LoadContext() PhiLevel = %v, want %v", i.PhiLevel, 1)
 	}
@@ -226,7 +227,7 @@ func TestWrap_LoadContext(t *testing.T) {
 	w := &Wrap{}
 	haveSeen := map[string]bool{"a": true}
 	onEntry := map[string][]int16{"a": {1}}
-	w.LoadContext(1, haveSeen, onEntry)
+	w.LoadContext(1, haveSeen, onEntry, scenario.NewLogger())
 	if w.PhiLevel != 1 {
 		t.Errorf("Wrap.LoadContext() PhiLevel = %v, want %v", w.PhiLevel, 1)
 	}

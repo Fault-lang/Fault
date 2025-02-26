@@ -2,7 +2,7 @@ package log
 
 import (
 	"fault/ast"
-	"fault/smt/rules"
+	"fault/generator/rules"
 	"fault/util"
 	"fmt"
 	"strconv"

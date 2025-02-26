@@ -2,6 +2,7 @@ package rules
 
 import (
 	"bytes"
+	"fault/generator/scenario"
 	"fmt"
 	"strings"
 
@@ -49,7 +50,7 @@ func NewSSA() *SSA {
 
 type Rule interface {
 	ruleNode()
-	LoadContext(int, map[string]bool, map[string][]int16)
+	LoadContext(int, map[string]bool, map[string][]int16, *scenario.Logger)
 	String() string
 	Assertless() string
 	IsTagged() bool
@@ -65,20 +66,22 @@ type Basic struct {
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 	tag      *branch
 }
 
 func (b *Basic) ruleNode() {}
 
-func (b *Basic) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {
+func (b *Basic) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	b.PhiLevel = PhiLevel
 	b.HaveSeen = HaveSeen
 	b.OnEntry = OnEntry
+	b.Log = Log
 }
 
 func (b *Basic) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
-	b.X.LoadContext(b.PhiLevel, b.HaveSeen, b.OnEntry)
-	b.Y.LoadContext(b.PhiLevel, b.HaveSeen, b.OnEntry)
+	b.X.LoadContext(b.PhiLevel, b.HaveSeen, b.OnEntry, b.Log)
+	b.Y.LoadContext(b.PhiLevel, b.HaveSeen, b.OnEntry, b.Log)
 
 	init1, x, ssa := b.X.WriteRule(ssa)
 	init2, y, ssa := b.Y.WriteRule(ssa)
@@ -118,12 +121,15 @@ type Init struct {
 	Ident string
 	Type  string
 	Value string
+	Log   *scenario.Logger
 	tag   *branch
 }
 
 func (i *Init) ruleNode() {}
 
-func (i *Init) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {}
+func (i *Init) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	i.Log = Log
+}
 
 func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	return nil, fmt.Sprintf("(declare-fun %s () %s)", i.Ident, i.Type), ssa
@@ -162,15 +168,17 @@ type Ands struct {
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 	tag      *branch
 }
 
 func (a *Ands) ruleNode() {}
 
-func (a *Ands) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {
+func (a *Ands) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	a.PhiLevel = PhiLevel
 	a.HaveSeen = HaveSeen
 	a.OnEntry = OnEntry
+	a.Log = Log
 }
 
 func (a *Ands) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
@@ -178,7 +186,7 @@ func (a *Ands) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	var ru string
 	var init, i []*Init
 	for _, r := range a.X {
-		r.LoadContext(a.PhiLevel, a.HaveSeen, a.OnEntry)
+		r.LoadContext(a.PhiLevel, a.HaveSeen, a.OnEntry, a.Log)
 		init, ru, ssa = r.WriteRule(ssa)
 		rules = append(rules, ru)
 		i = append(i, init...)
@@ -219,12 +227,12 @@ func (a *Ands) Branch() string {
 	return a.tag.branch
 }
 
-// type AssertChain struct {
-// 	Op     string
-// 	Values []string
-// 	Chain  []int
-// 	Parent int
-// }
+type AssertChain struct {
+	Op     string
+	Values []string
+	Chain  []int
+	Parent int
+}
 
 // func (ac *AssertChain) String() string {
 // 	if ac.Op == "" {
@@ -319,6 +327,8 @@ type Parallels struct {
 	Rule
 	Permutations [][]string
 	Calls        map[string][]Rule
+	Round        int
+	Log          *scenario.Logger
 	tag          *branch
 }
 
@@ -331,7 +341,8 @@ func NewParallels(permutations [][]string) *Parallels {
 
 func (p *Parallels) ruleNode() {}
 
-func (p *Parallels) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {}
+func (p *Parallels) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+}
 
 func (p *Parallels) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	return nil, "", ssa
@@ -424,25 +435,32 @@ type Infix struct {
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 }
 
 func (i *Infix) ruleNode() {}
-func (i *Infix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {
+func (i *Infix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	i.PhiLevel = PhiLevel
 	i.HaveSeen = HaveSeen
 	i.OnEntry = OnEntry
+	i.Log = Log
 }
 func (i *Infix) String() string {
 	return fmt.Sprintf("%s %s %s", i.X.String(), i.Op, i.Y.String())
 }
 
 func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
-	i.Y.LoadContext(i.PhiLevel, i.HaveSeen, i.OnEntry)
-	i.X.LoadContext(i.PhiLevel, i.HaveSeen, i.OnEntry)
+	i.Y.LoadContext(i.PhiLevel, i.HaveSeen, i.OnEntry, i.Log)
+	i.X.LoadContext(i.PhiLevel, i.HaveSeen, i.OnEntry, i.Log)
 
 	initY, y, ssa := i.Y.WriteRule(ssa) // Y first because nestled rules will assign ssa wrong (eg X' = X + N)
 	initX, x, ssa := i.X.WriteRule(ssa)
 	init := append(initX, initY...)
+
+	if _, ok := i.X.(*Wrap); ok && i.Op == "=" {
+		i.Log.UpdateVariable(x)
+	}
+
 	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
 }
 
@@ -476,14 +494,16 @@ type Prefix struct {
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 	tag      *branch
 }
 
 func (pr *Prefix) ruleNode() {}
-func (pr *Prefix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {
+func (pr *Prefix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	pr.PhiLevel = PhiLevel
 	pr.HaveSeen = HaveSeen
 	pr.OnEntry = OnEntry
+	pr.Log = Log
 }
 func (pr *Prefix) String() string {
 	return fmt.Sprintf("%s %s", pr.Op, pr.X.String())
@@ -521,11 +541,13 @@ type Ite struct {
 	Cond Rule
 	T    []Rule
 	F    []Rule
+	Log  *scenario.Logger
 	tag  *branch
 }
 
-func (it *Ite) ruleNode()                                                                      {}
-func (it *Ite) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {}
+func (it *Ite) ruleNode() {}
+func (it *Ite) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+}
 func (it *Ite) String() string {
 	return fmt.Sprintf("if %s then %s else %s", it.Cond.String(), it.T, it.F)
 }
@@ -707,14 +729,16 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 	tag      *branch
 }
 
 func (w *Wrap) ruleNode() {}
-func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {
+func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	w.PhiLevel = PhiLevel
 	w.HaveSeen = HaveSeen
 	w.OnEntry = OnEntry
+	w.Log = Log
 }
 func NewWrap(v string, t string, vr bool, file string, line string, init bool) *Wrap {
 	return &Wrap{
@@ -845,15 +869,17 @@ type WrapGroup struct {
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 	tag      *branch
 }
 
 func (wg *WrapGroup) ruleNode() {}
 
-func (wg *WrapGroup) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {
+func (wg *WrapGroup) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	wg.PhiLevel = PhiLevel
 	wg.HaveSeen = HaveSeen
 	wg.OnEntry = OnEntry
+	wg.Log = Log
 }
 
 func (wg *WrapGroup) String() string {
@@ -897,8 +923,9 @@ type Vwrap struct {
 	tag   *branch
 }
 
-func (vw *Vwrap) ruleNode()                                                                      {}
-func (vw *Vwrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16) {}
+func (vw *Vwrap) ruleNode() {}
+func (vw *Vwrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+}
 func (vw *Vwrap) String() string {
 	return vw.Value.String()
 }

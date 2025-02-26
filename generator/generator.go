@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fault/generator/rules"
+	"fault/generator/scenario"
 	"fault/generator/unpack"
 	"fault/generator/unroll"
 	"fault/llvm"
@@ -27,6 +28,7 @@ type Generator struct {
 	RawInputs *llvm.RawInputs
 	RunBlock  *unroll.LLFunc
 	smt       []string
+	ResultLog *scenario.Logger
 }
 
 func NewGenerator(ri *llvm.RawInputs) *Generator {
@@ -81,6 +83,8 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	smt := p.Unpack(g.RunBlock)
 	g.AppendSMT(p.InitVars())
 	g.AppendSMT(smt)
+
+	g.ResultLog = p.Log
 
 	// g.processAsserts()
 	// g.newAsserts(g.RawInputs.Asserts)

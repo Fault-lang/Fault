@@ -275,12 +275,14 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 
 		switch u := llu.(type) {
 		case *LLFunc:
+			p.Round = u.Env.CurrentRound
 			v, ok = u.functions[fname]
 			if !ok {
 				v = NewLLFunc(u.Env, u.rawFunctions, u.rawFunctions[fname])
 				v.Unroll()
 			}
 		case *LLBlock:
+			p.Round = u.Env.CurrentRound
 			v, ok = u.functions[fname]
 			if !ok {
 				v = NewLLFunc(u.Env, u.rawFunctions, u.rawFunctions[fname])

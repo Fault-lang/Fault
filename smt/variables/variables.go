@@ -2,8 +2,8 @@ package variables
 
 import (
 	"fault/ast"
+	"fault/generator/rules"
 	"fault/llvm"
-	"fault/smt/rules"
 	"fault/util"
 	"fmt"
 	"strconv"

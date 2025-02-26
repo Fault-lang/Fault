@@ -9,6 +9,7 @@ require (
 	github.com/llir/llvm v0.3.3
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	gonum.org/v1/gonum v0.9.3
 )
 
@@ -20,7 +21,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/tools v0.1.10 // indirect

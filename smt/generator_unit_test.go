@@ -1,7 +1,7 @@
 package smt
 
 import (
-	"fault/smt/rules"
+	"fault/generator/rules"
 	"testing"
 
 	"github.com/llir/llvm/ir"

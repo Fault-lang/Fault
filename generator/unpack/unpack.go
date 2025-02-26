@@ -2,6 +2,7 @@ package unpack
 
 import (
 	"fault/generator/rules"
+	"fault/generator/scenario"
 	"fault/generator/unroll"
 	"fmt"
 	"strings"
@@ -13,6 +14,10 @@ import (
 // the Rules in the LLUnits to produce a flat
 // set of SMT that reflects all state branches, forks
 // phis and parallell scenarios
+
+// Create an Event log that makes it easier to display Z3 output
+// in a user friendly way
+
 type Unpacker struct {
 	Inits    []*rules.Init
 	SSA      *rules.SSA
@@ -21,6 +26,7 @@ type Unpacker struct {
 	HaveSeen map[string]bool    // Have we seen this variable so far in this fork?
 	OnEntry  map[string][]int16 // SSA of variables on entry to a fork
 	VarTypes map[string]string
+	Log      *scenario.Logger
 }
 
 func NewUnpacker() *Unpacker {
@@ -30,6 +36,7 @@ func NewUnpacker() *Unpacker {
 		HaveSeen: make(map[string]bool),
 		OnEntry:  make(map[string][]int16),
 		VarTypes: make(map[string]string),
+		Log:      scenario.NewLogger(),
 	}
 }
 
@@ -38,6 +45,7 @@ func (u *Unpacker) Inherits(u1 *Unpacker) {
 	u.PhiLevel = u1.PhiLevel
 	u.OnEntry = u1.OnEntry
 	u.VarTypes = u1.VarTypes
+	u.Log = u1.Log
 }
 
 func (u *Unpacker) NewLevel() {
@@ -101,6 +109,8 @@ func (u *Unpacker) InitVars() []string {
 }
 
 func (u *Unpacker) Unpack(f *unroll.LLFunc) []string {
+	u.Log.EnterFunction(f.Ident, f.Env.CurrentRound)
+
 	// Unpack the rules
 	r := u.unpackBlock(f.Start)
 
@@ -131,7 +141,7 @@ func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
 func (u *Unpacker) unpackRule(r rules.Rule) string {
 	var rule string
 	var inits []*rules.Init
-	r.LoadContext(u.PhiLevel, u.HaveSeen, u.OnEntry)
+	r.LoadContext(u.PhiLevel, u.HaveSeen, u.OnEntry, u.Log)
 
 	switch ru := r.(type) {
 	case *rules.Basic:
@@ -175,10 +185,15 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16) ([]*rules.Init, []string
 			ends := fmt.Sprintf("%s_%d", var_name, vals[1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 			inits = append(inits, &rules.Init{Ident: phi, Type: u.VarTypes[var_name], Value: rules.DefaultValue(u.VarTypes[var_name])})
+			u.Log.AddPhiOption(phi, ends)
 
 			rule_set = append(rule_set, fmt.Sprintf("(= %s %s)", phi, ends))
 		}
-		caps = append(caps, fmt.Sprintf("(and %s)", strings.Join(rule_set, " ")))
+		if len(rule_set) == 1 {
+			caps = append(caps, rule_set...)
+		} else {
+			caps = append(caps, fmt.Sprintf("(and %s)", strings.Join(rule_set, " ")))
+		}
 	}
 	return inits, caps
 }
@@ -194,6 +209,7 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		u2.Inherits(u)
 
 		for _, call := range perm {
+			u.Log.EnterFunction(call, p.Round)
 			function_rules := []string{}
 			for _, ru := range p.Calls[call] {
 				line := u.FormatRule(ru, u2.unpackRule(ru))
