@@ -171,10 +171,13 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	return rule
 }
 
-func (u *Unpacker) buildPhis(phis []map[string][]int16) ([]*rules.Init, []string) {
+func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) ([]*rules.Init, []string, map[string]bool) {
 	var inits []*rules.Init
 	var caps []string
-	hasPhi := make(map[string]bool)
+	if hasPhi == nil {
+		hasPhi = make(map[string]bool)
+	}
+
 	for _, p := range phis {
 		var rule_set []string
 		for var_name, vals := range p {
@@ -197,7 +200,25 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16) ([]*rules.Init, []string
 			caps = append(caps, fmt.Sprintf("(and %s)", strings.Join(rule_set, " ")))
 		}
 	}
-	return inits, caps
+	return inits, caps, hasPhi
+}
+
+func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][]int16) ([]*rules.Init, []string, []string) {
+	var tInit, fInit []*rules.Init
+	var tRules, fRules []string
+	var hasPhi map[string]bool
+	tInit, tRules, hasPhi = u.buildPhis(tPhis, nil)
+
+	if len(fPhis) > 0 {
+		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
+	} else {
+		// If there are no rules in the false branch we still need the phis
+		for k, _ := range u.Phis {
+			fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
+		}
+	}
+	inits := append(tInit, fInit...)
+	return inits, tRules, fRules
 }
 
 func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
@@ -231,7 +252,7 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		phis = append(phis, PhiClone.(map[string][]int16))
 		u.AddInit(u2.Inits)
 	}
-	inits, caps := u.buildPhis(phis)
+	inits, caps, _ := u.buildPhis(phis, nil)
 	u.Inits = append(u.Inits, inits...)
 	capRulePhi := fmt.Sprintf("(assert (or %s))", strings.Join(caps, " "))
 	rule_set = append(rule_set, capRulePhi)
@@ -248,6 +269,7 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	cond := u.unpackRule(ite.Cond)
 
 	var t, f string
+	var tPhis, fPhis []map[string][]int16
 	var tRules, fRules, aRules []string
 	var tEnds, fEnds []string
 	var inits []*rules.Init
@@ -269,15 +291,8 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 			panic(err)
 		}
 
-		phis = append(phis, PhiClone.(map[string][]int16))
+		tPhis = append(tPhis, PhiClone.(map[string][]int16))
 		u.AddInit(u2.Inits)
-		inits, tEnds = u.buildPhis(phis)
-		u.Inits = append(u.Inits, inits...)
-		if len(tEnds) == 1 {
-			t = tEnds[0]
-		} else {
-			t = fmt.Sprintf("(and %s)", strings.Join(tEnds, " "))
-		}
 	}
 
 	if len(ite.F) > 0 {
@@ -295,15 +310,17 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 			panic(err)
 		}
 
-		phis = append(phis, PhiClone.(map[string][]int16))
+		fPhis = append(phis, PhiClone.(map[string][]int16))
 		u.AddInit(u2.Inits)
-		inits, fEnds = u.buildPhis(phis)
-		u.Inits = append(u.Inits, inits...)
+	}
+
+	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis)
+
+	u.AddInit(inits)
+	if len(tEnds) == 1 {
+		t = tEnds[0]
 	} else {
-		// If there are no rules in the false branch we still need the phis
-		for k, _ := range u.Phis {
-			fEnds = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
-		}
+		t = fmt.Sprintf("(and %s)", strings.Join(tEnds, " "))
 	}
 
 	if len(fEnds) == 1 {
