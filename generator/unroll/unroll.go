@@ -5,6 +5,7 @@ import (
 	"fault/llvm"
 	"fault/util"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -205,7 +206,8 @@ func (b *LLBlock) Unroll() {
 
 	switch term := b.rawIR.Term.(type) {
 	case *ir.TermCondBr:
-		b.parseTermCon(term)
+		r := b.parseTermCon(term)
+		b.AddRules(r)
 	case *ir.TermRet:
 		b.Env.returnVoid.In()
 	}
@@ -291,7 +293,7 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 			}
 		}
 		if len(callstack) == 1 {
-			return v.Rules
+			return v.GetAllRules()
 		}
 		p.Calls[fname] = v.GetAllRules()
 	}
@@ -461,9 +463,10 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 
 	x, tyX, vrX = convertInfixVar(b.Env, x)
 	y, tyY, vrY = convertInfixVar(b.Env, y)
+	_, file, line, _ := runtime.Caller(1)
 	return &rules.Infix{
-		X:  rules.NewWrap(x, tyX, vrX, "unroll.go", "466", false),
-		Y:  rules.NewWrap(y, tyY, vrY, "unroll.go", "467", false),
+		X:  rules.NewWrap(x, tyX, vrX, file, line, false),
+		Y:  rules.NewWrap(y, tyY, vrY, file, line, false),
 		Op: op,
 	}
 }
@@ -473,9 +476,9 @@ func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 	if _, ok := b.Env.VarTypes[x]; ok {
 		vr = true
 	}
-
+	_, file, line, _ := runtime.Caller(1)
 	return &rules.Prefix{
-		X:  rules.NewWrap(x, "Bool", vr, "unroll.go", "476", false),
+		X:  rules.NewWrap(x, "Bool", vr, file, line, false),
 		Op: op,
 	}
 }

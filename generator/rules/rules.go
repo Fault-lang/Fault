@@ -538,11 +538,12 @@ func (pr *Prefix) Branch() string {
 
 type Ite struct {
 	Rule
-	Cond Rule
-	T    []Rule
-	F    []Rule
-	Log  *scenario.Logger
-	tag  *branch
+	Cond  Rule
+	T     []Rule
+	F     []Rule
+	After []Rule
+	Log   *scenario.Logger
+	tag   *branch
 }
 
 func (it *Ite) ruleNode() {}
@@ -740,7 +741,7 @@ func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[s
 	w.OnEntry = OnEntry
 	w.Log = Log
 }
-func NewWrap(v string, t string, vr bool, file string, line string, init bool) *Wrap {
+func NewWrap(v string, t string, vr bool, file string, line int, init bool) *Wrap {
 	return &Wrap{
 		Value:    v,
 		Variable: vr,
@@ -748,7 +749,7 @@ func NewWrap(v string, t string, vr bool, file string, line string, init bool) *
 		Init:     init,
 		Debugger: map[string]string{
 			"file": file,
-			"line": line,
+			"line": fmt.Sprintf("%d", line),
 		},
 	}
 }

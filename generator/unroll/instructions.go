@@ -4,6 +4,8 @@ import (
 	"fault/generator/rules"
 	"fault/util"
 	"fmt"
+	"runtime"
+	"strings"
 
 	"github.com/llir/llvm/ir"
 	irtypes "github.com/llir/llvm/ir/types"
@@ -96,7 +98,8 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				case *rules.Infix:
 					r.X = b.tempToIdent(r.X)
 					r.Y = b.tempToIdent(r.Y)
-					wid := rules.NewWrap(base, "", true, "instructions.go", "97", true)
+					_, file, line, _ := runtime.Caller(1)
+					wid := rules.NewWrap(base, "", true, file, line, true)
 
 					if IsStaticValue(r.X.String()) {
 						wid.Variable = false
@@ -113,14 +116,14 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
 					} else {
 						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r.Y, Op: r.Op})
+						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
 					}
 					b.Env.VarTypes[base] = wid.Type
 				default:
 					ty := LookupType(base, nil)
 					b.Env.VarTypes[base] = ty
-
-					wid := rules.NewWrap(base, ty, true, "instructions.go", "118", true)
+					_, file, line, _ := runtime.Caller(1)
+					wid := rules.NewWrap(base, ty, true, file, line, true)
 					ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
 				}
 			} else {
@@ -138,15 +141,19 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 }
 
 func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.Rule {
-	wid := rules.NewWrap(id, ty, true, "instructions.go", "134", true)
+	_, file, line, _ := runtime.Caller(1)
+	wid := rules.NewWrap(id, ty, true, file, line, true)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {
-		wval = rules.NewWrap(val, "Bool", false, "instructions.go", "135", false)
+		_, file, line, _ := runtime.Caller(1)
+		wval = rules.NewWrap(val, "Bool", false, file, line, false)
 	} else if IsNumeric(val) {
-		wval = rules.NewWrap(val, ty, false, "instructions.go", "137", false)
+		_, file, line, _ := runtime.Caller(1)
+		wval = rules.NewWrap(val, ty, false, file, line, false)
 	} else {
-		wval = rules.NewWrap(val, ty, true, "instructions.go", "139", false)
+		_, file, line, _ := runtime.Caller(1)
+		wval = rules.NewWrap(val, ty, true, file, line, false)
 	}
 	return &rules.Infix{X: wid, Ty: ty, Y: wval, Op: op}
 }
@@ -303,82 +310,63 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	return []rules.Rule{r1, r2}
 }
 
+func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule) {
+	var t, f, a []rules.Rule
+	for _, term := range terms {
+		bname := strings.Split(term.Ident(), "-")
+		switch bname[len(bname)-1] {
+		case "true":
+			b.Env.returnVoid.In()
+			true_block := NewLLBlock(b.Env, b.rawFunctions, term)
+			true_block.ParentFunction = b.Env.CurrentFunction
+			true_block.Unroll()
+			t = true_block.GetAllRules()
+			b.Env.returnVoid.Out()
+		case "false":
+			b.Env.returnVoid.In()
+			false_block := NewLLBlock(b.Env, b.rawFunctions, term)
+			false_block.ParentFunction = b.Env.CurrentFunction
+			false_block.Unroll()
+			f = false_block.GetAllRules()
+
+			b.Env.returnVoid.Out()
+		case "after":
+			after_block := NewLLBlock(b.Env, b.rawFunctions, term)
+			after_block.ParentFunction = b.Env.CurrentFunction
+			after_block.Unroll()
+			a = after_block.GetAllRules()
+		default:
+			panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
+		}
+	}
+
+	return t, f, a
+}
+
 func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
-	var ru []rules.Rule
-	return ru
-	// var cond rules.Rule
-	// var phis map[string]int16
+	var cond rules.Rule
+	b.Env.returnVoid.In()
+	id := term.Cond.Ident()
+	if IsTemp(id) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			cond = v
+		}
+	} else if IsBoolean(id) ||
+		IsNumeric(id) {
+		ty := LookupType(id, nil)
+		_, file, line, _ := runtime.Caller(1)
+		cond = rules.NewWrap(id, ty, false, file, line, true)
+	}
+	b.Env.returnVoid.Out()
 
-	// g.InPhiState().In()
-	// id := term.Cond.Ident()
-	// if g.variables.IsTemp(id) {
-	// 	refname := fmt.Sprintf("%s-%s", g.CurrentFunction(), id)
-	// 	if v, ok := g.variables.Ref[refname]; ok {
-	// 		cond = v
-	// 	}
-	// } else if g.variables.IsBoolean(id) ||
-	// 	g.variables.IsNumeric(id) {
-	// 	cond = &rules.Wrap{Value: id} //Add Variable and Type and Init
-	// }
-	// g.InPhiState().Out()
-
-	// g.variables.InitPhis()
-
-	// t, f, a := g.parseTerms(term.Succs())
+	t, f, a := b.parseTerms(term.Succs())
 	// if len(t) == 0 && len(f) == 0 { // This happens in a construction like func{stay();}
 	// 	g.variables.PopPhis() // in state charts since we convert them to if state{ stay(); }
 	// 	g.variables.AppendState(phis)
 
-	// 	if a != nil {
-	// 		after := g.parseAfterBlock(a)
-	// 		ru = append(ru, after...)
-	// 	}
-	// 	return ru
-	// }
-
-	// choiceId := uuid.NewString()
-	// branchT := fmt.Sprintf("%s-%s", choiceId, "true")
-	// branchF := fmt.Sprintf("%s-%s", choiceId, "false")
-	// g.Forks.Choices[choiceId] = []string{branchT, branchF}
-	// t = rules.TagRules(t, branchT, choiceId)
-	// f = rules.TagRules(f, branchF, choiceId)
-
-	// g.buildForkChoice(t, choiceId, branchT)
-	// g.buildForkChoice(f, choiceId, branchF)
-
-	// if !g.isBranchClosed(t, f) {
-	// 	var tEnds, fEnds []rules.Rule
-	// 	ru = append(ru, t...)
-	// 	ru = append(ru, f...)
-
-	// 	g.InPhiState().In() //We need to step back into a Phi state to make sure multiconditionals are handling correctly
-	// 	//g.buildForkChoice(t, choiceId, branchT)
-	// 	//g.buildForkChoice(f, choiceId, branchF)
-
-	// 	tEnds, phis = g.capCond(choiceId, branchT, make(map[string]int16))
-	// 	fEnds, _ = g.capCond(choiceId, branchF, phis)
-
-	// 	// Keep variable names in sync across branches
-	// 	syncs := g.capCondSyncRules([]string{branchT, branchF})
-	// 	tEnds = append(tEnds, syncs[branchT]...)
-	// 	fEnds = append(fEnds, syncs[branchF]...)
-
-	// 	tEnds = rules.TagRules(tEnds, branchT, choiceId)
-	// 	fEnds = rules.TagRules(fEnds, branchF, choiceId)
-
-	// 	ru = append(ru, &rules.Ite{Cond: cond, T: tEnds, F: fEnds})
-	// 	g.InPhiState().Out()
-	// }
-
-	// g.variables.PopPhis()
-	// g.variables.AppendState(phis)
-
-	// if a != nil {
-	// 	after := g.parseAfterBlock(a)
-	// 	ru = append(ru, after...)
-	// }
-
-	// return ru
+	ite := &rules.Ite{Cond: cond, T: t, F: f, After: a}
+	return []rules.Rule{ite}
 }
 
 func (b *LLBlock) parsePhi(inst *ir.InstPhi) []rules.Rule {
@@ -395,9 +383,11 @@ func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 	xRule := b.LookupCondPart(b.Env.CurrentFunction, x)
 	if xRule == nil {
 		x = b.ConvertIdent(b.Env.CurrentFunction, x)
-		xRule = rules.NewWrap(x, "Bool", true, "instructions.go", "388", false)
+		_, file, line, _ := runtime.Caller(1)
+		xRule = rules.NewWrap(x, "Bool", true, file, line, false)
 	}
-	return []rules.Rule{b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, "instructions", "390", false), "not")}
+	_, file, line, _ := runtime.Caller(1)
+	return []rules.Rule{b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false), "not")}
 }
 
 func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
@@ -433,9 +423,11 @@ func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {
 	op = b.compareRuleOp(op)
 	switch op {
 	case "false":
-		y = rules.NewWrap("False", "Bool", false, "instructions.go", "426", false)
+		_, file, line, _ := runtime.Caller(1)
+		y = rules.NewWrap("False", "Bool", false, file, line, false)
 	case "true":
-		y = rules.NewWrap("True", "Bool", false, "instructions.go", "428", false)
+		_, file, line, _ := runtime.Caller(1)
+		y = rules.NewWrap("True", "Bool", false, file, line, false)
 	}
 	return op, y
 }

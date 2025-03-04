@@ -79,7 +79,9 @@ func (u *Unpacker) GetEntry(var_name string) int16 {
 
 func (u *Unpacker) SetPhis(start *rules.SSA, end *rules.SSA) {
 	for var_name := range end.Iter() {
-		u.UpsertPhi(var_name, end.Get(var_name))
+		if end.Get(var_name) != start.Get(var_name) {
+			u.UpsertPhi(var_name, end.Get(var_name))
+		}
 	}
 }
 
@@ -149,7 +151,7 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	case *rules.Init:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Ite:
-		inits, rule, u.SSA = ru.WriteRule(u.SSA)
+		inits, rule = u.unPackIte(ru)
 	case *rules.Prefix:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Infix:
@@ -239,11 +241,102 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	return u.Inits, fmt.Sprintf("%s", strings.Join(rule_set, "\n"))
 }
 
+func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
+	u.NewLevel()
+	u.SetEntries(u.SSA)
+
+	cond := u.unpackRule(ite.Cond)
+
+	var t, f string
+	var tRules, fRules, aRules []string
+	var tEnds, fEnds []string
+	var inits []*rules.Init
+	var phis []map[string][]int16
+
+	if len(ite.T) > 0 {
+		u2 := NewUnpacker()
+		u2.Inherits(u)
+		for _, ru := range ite.T {
+			line := u.FormatRule(ru, u2.unpackRule(ru))
+			tRules = append(tRules, line)
+		}
+
+		u.SetPhis(u.SSA, u2.SSA)
+		u.SSA = u2.SSA.Clone()
+		PhiClone, err := deepcopy.Anything(u.Phis)
+
+		if err != nil {
+			panic(err)
+		}
+
+		phis = append(phis, PhiClone.(map[string][]int16))
+		u.AddInit(u2.Inits)
+		inits, tEnds = u.buildPhis(phis)
+		u.Inits = append(u.Inits, inits...)
+		if len(tEnds) == 1 {
+			t = tEnds[0]
+		} else {
+			t = fmt.Sprintf("(and %s)", strings.Join(tEnds, " "))
+		}
+	}
+
+	if len(ite.F) > 0 {
+		u2 := NewUnpacker()
+		u2.Inherits(u)
+		for _, ru := range ite.F {
+			line := u.FormatRule(ru, u2.unpackRule(ru))
+			fRules = append(fRules, line)
+		}
+		u.SetPhis(u.SSA, u2.SSA)
+		u.SSA = u2.SSA.Clone()
+		PhiClone, err := deepcopy.Anything(u.Phis)
+
+		if err != nil {
+			panic(err)
+		}
+
+		phis = append(phis, PhiClone.(map[string][]int16))
+		u.AddInit(u2.Inits)
+		inits, fEnds = u.buildPhis(phis)
+		u.Inits = append(u.Inits, inits...)
+	} else {
+		// If there are no rules in the false branch we still need the phis
+		for k, _ := range u.Phis {
+			fEnds = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
+		}
+	}
+
+	if len(fEnds) == 1 {
+		f = fEnds[0]
+	} else {
+		f = fmt.Sprintf("(and %s)", strings.Join(fEnds, " "))
+	}
+
+	if len(ite.After) > 0 {
+		u2 := NewUnpacker()
+		u2.Inherits(u)
+		for _, ru := range ite.After {
+			line := u.FormatRule(ru, u2.unpackRule(ru))
+			aRules = append(aRules, line)
+		}
+	}
+	u.PopEntries()
+	//True rules
+	//False rules
+	// ite cond t_phi f_phi
+	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
+	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert)
+}
+
 func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 	switch r.(type) {
 	case *rules.Parallels:
 		return rule // Already formatted
 	default:
+		if rule[0:7] == "(assert" { //Already formatted
+			return rule
+		}
+
 		return fmt.Sprintf("(assert %s)", rule)
 	}
 }
