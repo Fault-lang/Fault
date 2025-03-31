@@ -206,6 +206,17 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	return results
 }
 
+func MergeStringSliceMaps(m1 map[string][]string, m2 map[string][]string) map[string][]string {
+	for k, v := range m2 {
+		if _, ok := m1[k]; ok {
+			m1[k] = append(m1[k], v...)
+		} else {
+			m1[k] = v
+		}
+	}
+	return m1
+}
+
 func InStringSlice(sl []string, sub string) bool {
 	for _, s := range sl {
 		if s == sub {

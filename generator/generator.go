@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"fault/ast"
+	"fault/generator/asserts"
 	"fault/generator/rules"
 	"fault/generator/scenario"
 	"fault/generator/unpack"
@@ -36,6 +38,7 @@ func NewGenerator(ri *llvm.RawInputs) *Generator {
 		functions: make(map[string]*ir.Func),
 		Env:       unroll.NewEnv(ri),
 		smt:       []string{"(set-logic QF_NRA)"},
+		RawInputs: ri,
 	}
 }
 func Execute(compiler *llvm.Compiler) *Generator {
@@ -78,7 +81,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()
 
-	p := unpack.NewUnpacker()
+	p := unpack.NewUnpacker(g.RunBlock.Ident)
 	p.VarTypes = g.Env.VarTypes
 	smt := p.Unpack(g.RunBlock)
 	g.AppendSMT(p.InitVars())
@@ -86,10 +89,20 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.ResultLog = p.Log
 
-	// g.processAsserts()
-	// g.newAsserts(g.RawInputs.Asserts)
-	// g.newAssumes(g.RawInputs.Assumes)
+	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry)
+	g.AppendSMT(assertSMT)
+	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry)
+	g.AppendSMT(assumeSMT)
+}
 
+func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string) []string {
+	var rules []string
+
+	for _, as := range assertList {
+		c := asserts.NewConstraint(as, rounds, registry)
+		rules = append(rules, c.Parse()...)
+	}
+	return rules
 }
 
 func (g *Generator) sortFuncs(funcs []*ir.Func) {

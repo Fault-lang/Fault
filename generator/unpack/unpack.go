@@ -19,24 +19,30 @@ import (
 // in a user friendly way
 
 type Unpacker struct {
-	Inits    []*rules.Init
-	SSA      *rules.SSA
-	Phis     map[string][]int16
-	PhiLevel int
-	HaveSeen map[string]bool    // Have we seen this variable so far in this fork?
-	OnEntry  map[string][]int16 // SSA of variables on entry to a fork
-	VarTypes map[string]string
-	Log      *scenario.Logger
+	Inits        []*rules.Init
+	CurrentBlock string
+	Registry     map[string][][]string // current_round_current_block -> [(var_instance, ssa), (var_instance, ssa)]
+	SSA          *rules.SSA
+	Phis         map[string][]int16
+	PhiLevel     int
+	HaveSeen     map[string]bool    // Have we seen this variable so far in this fork?
+	OnEntry      map[string][]int16 // SSA of variables on entry to a fork
+	VarTypes     map[string]string
+	Log          *scenario.Logger
+	Round        int // Current round
 }
 
-func NewUnpacker() *Unpacker {
+func NewUnpacker(block_id string) *Unpacker {
 	return &Unpacker{
-		SSA:      rules.NewSSA(),
-		Phis:     make(map[string][]int16),
-		HaveSeen: make(map[string]bool),
-		OnEntry:  make(map[string][]int16),
-		VarTypes: make(map[string]string),
-		Log:      scenario.NewLogger(),
+		SSA:          rules.NewSSA(),
+		CurrentBlock: block_id,
+		Registry:     make(map[string][][]string),
+		Phis:         make(map[string][]int16),
+		HaveSeen:     make(map[string]bool),
+		OnEntry:      make(map[string][]int16),
+		VarTypes:     make(map[string]string),
+		Log:          scenario.NewLogger(),
+		Round:        0,
 	}
 }
 
@@ -46,10 +52,15 @@ func (u *Unpacker) Inherits(u1 *Unpacker) {
 	u.OnEntry = u1.OnEntry
 	u.VarTypes = u1.VarTypes
 	u.Log = u1.Log
+	u.Round = u1.Round
 }
 
 func (u *Unpacker) NewLevel() {
 	u.PhiLevel++
+}
+
+func (u *Unpacker) SetRound(round int) {
+	u.Round = round
 }
 
 func (u *Unpacker) SetEntries(start *rules.SSA) {
@@ -97,14 +108,41 @@ func (u *Unpacker) AddInit(inits []*rules.Init) {
 	u.Inits = append(u.Inits, inits...)
 }
 
+func (u *Unpacker) Register(inits []*rules.Init) {
+	// We need to know in which scope variables are declared
+	// in order to correctly write asserts.
+	// for example assert A > B should ONLY evaluate As and Bs
+	// that occur at the same time in the model. Otherwise the
+	// rule becomes every possible value of A is greater than
+	// every possible value of B, which probably isn't what people
+	// expect.
+	key := fmt.Sprintf("%s-%d_%s", "round", u.Round, u.CurrentBlock)
+	if u.Registry[key] == nil {
+		u.Registry[key] = [][]string{}
+	}
+
+	for _, i := range inits {
+		u.Registry[key] = append(u.Registry[key], i.Tuple())
+	}
+}
+
+func (u *Unpacker) UpdateRegistry(reg map[string][][]string) {
+	for k, v := range reg {
+		if u.Registry[k] == nil {
+			u.Registry[k] = [][]string{}
+		}
+		u.Registry[k] = append(u.Registry[k], v...)
+	}
+}
+
 func (u *Unpacker) InitVars() []string {
 	smt := []string{}
 	declareOnce := make(map[string]bool)
 	for _, i := range u.Inits {
-		if !declareOnce[i.Ident] {
+		if !declareOnce[i.FullVar()] {
 			_, r, _ := i.WriteRule(u.SSA)
 			smt = append(smt, r)
-			declareOnce[i.Ident] = true
+			declareOnce[i.FullVar()] = true
 		}
 	}
 	return smt
@@ -127,6 +165,8 @@ func (u *Unpacker) Unpack(f *unroll.LLFunc) []string {
 }
 
 func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
+	u.SetRound(b.Env.CurrentRound)
+
 	smt := []string{}
 	for _, r := range b.Rules {
 		line := u.FormatRule(r, u.unpackRule(r))
@@ -168,6 +208,7 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
 	u.AddInit(inits)
+	u.Register(inits)
 	return rule
 }
 
@@ -189,7 +230,12 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 
 			ends := fmt.Sprintf("%s_%d", var_name, vals[1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
-			inits = append(inits, &rules.Init{Ident: phi, Type: u.VarTypes[var_name], Value: rules.DefaultValue(u.VarTypes[var_name])})
+			i := &rules.Init{
+				Ident: var_name,
+				SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
+				Type:  u.VarTypes[var_name],
+				Value: rules.DefaultValue(u.VarTypes[var_name])}
+			inits = append(inits, i)
 			u.Log.AddPhiOption(phi, ends)
 
 			rule_set = append(rule_set, fmt.Sprintf("(= %s %s)", phi, ends))
@@ -227,8 +273,8 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	u.NewLevel()
 	u.SetEntries(u.SSA)
 
-	for _, perm := range p.Permutations {
-		u2 := NewUnpacker()
+	for i, perm := range p.Permutations {
+		u2 := NewUnpacker(fmt.Sprintf("%s-v%d", u.CurrentBlock, i)) //Creating a unique block name for each parallel scenario
 		u2.Inherits(u)
 
 		for _, call := range perm {
@@ -251,6 +297,7 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		}
 		phis = append(phis, PhiClone.(map[string][]int16))
 		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
 	}
 	inits, caps, _ := u.buildPhis(phis, nil)
 	u.Inits = append(u.Inits, inits...)
@@ -276,7 +323,7 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	var phis []map[string][]int16
 
 	if len(ite.T) > 0 {
-		u2 := NewUnpacker()
+		u2 := NewUnpacker(ite.BlockNames["true"])
 		u2.Inherits(u)
 		for _, ru := range ite.T {
 			line := u.FormatRule(ru, u2.unpackRule(ru))
@@ -293,10 +340,11 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 
 		tPhis = append(tPhis, PhiClone.(map[string][]int16))
 		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
 	}
 
 	if len(ite.F) > 0 {
-		u2 := NewUnpacker()
+		u2 := NewUnpacker(ite.BlockNames["false"])
 		u2.Inherits(u)
 		for _, ru := range ite.F {
 			line := u.FormatRule(ru, u2.unpackRule(ru))
@@ -312,11 +360,13 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 
 		fPhis = append(phis, PhiClone.(map[string][]int16))
 		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
 	}
 
 	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis)
 
 	u.AddInit(inits)
+	u.Register(inits)
 	if len(tEnds) == 1 {
 		t = tEnds[0]
 	} else {
@@ -330,7 +380,7 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	}
 
 	if len(ite.After) > 0 {
-		u2 := NewUnpacker()
+		u2 := NewUnpacker(ite.BlockNames["after"])
 		u2.Inherits(u)
 		for _, ru := range ite.After {
 			line := u.FormatRule(ru, u2.unpackRule(ru))
@@ -338,22 +388,18 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 		}
 	}
 	u.PopEntries()
-	//True rules
-	//False rules
-	// ite cond t_phi f_phi
 	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
 	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert)
 }
 
 func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
-	switch r.(type) {
-	case *rules.Parallels:
-		return rule // Already formatted
-	default:
-		if rule[0:7] == "(assert" { //Already formatted
-			return rule
-		}
-
-		return fmt.Sprintf("(assert %s)", rule)
+	if rule == "" {
+		return ""
 	}
+
+	if rule[0:7] == "(assert" { //Already formatted
+		return rule
+	}
+
+	return fmt.Sprintf("(assert %s)", rule)
 }

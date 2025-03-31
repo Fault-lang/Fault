@@ -303,6 +303,7 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 func declareVar(id string, ty string, val string) *rules.Init {
 	return &rules.Init{
 		Ident: id,
+		SSA:   "",
 		Type:  ty,
 		Value: val,
 	}

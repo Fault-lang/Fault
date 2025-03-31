@@ -310,12 +310,14 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	return []rules.Rule{r1, r2}
 }
 
-func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule) {
+func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule, []string) {
 	var t, f, a []rules.Rule
+	var block_names []string
 	for _, term := range terms {
 		bname := strings.Split(term.Ident(), "-")
 		switch bname[len(bname)-1] {
 		case "true":
+			block_names[0] = term.Ident()
 			b.Env.returnVoid.In()
 			true_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			true_block.ParentFunction = b.Env.CurrentFunction
@@ -323,6 +325,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 			t = true_block.GetAllRules()
 			b.Env.returnVoid.Out()
 		case "false":
+			block_names[1] = term.Ident()
 			b.Env.returnVoid.In()
 			false_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			false_block.ParentFunction = b.Env.CurrentFunction
@@ -331,6 +334,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 
 			b.Env.returnVoid.Out()
 		case "after":
+			block_names[2] = term.Ident()
 			after_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			after_block.ParentFunction = b.Env.CurrentFunction
 			after_block.Unroll()
@@ -340,7 +344,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 		}
 	}
 
-	return t, f, a
+	return t, f, a, block_names
 }
 
 func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
@@ -360,12 +364,12 @@ func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	}
 	b.Env.returnVoid.Out()
 
-	t, f, a := b.parseTerms(term.Succs())
+	t, f, a, block_names := b.parseTerms(term.Succs())
 	// if len(t) == 0 && len(f) == 0 { // This happens in a construction like func{stay();}
 	// 	g.variables.PopPhis() // in state charts since we convert them to if state{ stay(); }
 	// 	g.variables.AppendState(phis)
 
-	ite := &rules.Ite{Cond: cond, T: t, F: f, After: a}
+	ite := rules.NewIte(cond, t, f, a, block_names)
 	return []rules.Rule{ite}
 }
 

@@ -118,7 +118,10 @@ func (b *Basic) Tag(k1 string, k2 string) {
 
 type Init struct {
 	Rule
-	Ident string
+	Ident string //base variable name
+	SSA   string //Specific instance of the variable
+	//String so that we can tell the difference
+	//between "" for constant and "0"
 	Type  string
 	Value string
 	Log   *scenario.Logger
@@ -132,7 +135,18 @@ func (i *Init) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[s
 }
 
 func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
-	return nil, fmt.Sprintf("(declare-fun %s () %s)", i.Ident, i.Type), ssa
+	return nil, fmt.Sprintf("(declare-fun %s_%s () %s)", i.Ident, i.SSA, i.Type), ssa
+}
+
+func (i *Init) Tuple() []string {
+	return []string{i.Ident, i.SSA}
+}
+
+func (i *Init) FullVar() string {
+	if i.SSA == "" {
+		return i.Ident
+	}
+	return fmt.Sprintf("%s_%s", i.Ident, i.SSA)
 }
 
 func (i *Init) String() string {
@@ -234,58 +248,83 @@ type AssertChain struct {
 	Parent int
 }
 
-// func (ac *AssertChain) String() string {
-// 	if ac.Op == "" {
-// 		return strings.Join(ac.Values, " ")
-// 	}
-// 	if ac.Op == "!=" {
-// 		return fmt.Sprintf("(not (= %s)", strings.Join(ac.Values, " "))
-// 	}
-// 	return fmt.Sprintf("(%s %s)", ac.Op, strings.Join(ac.Values, " "))
-// }
+func (ac *AssertChain) String() string {
+	if ac.Op == "" {
+		return strings.Join(ac.Values, " ")
+	}
+	if ac.Op == "!=" {
+		return fmt.Sprintf("(not (= %s)", strings.Join(ac.Values, " "))
+	}
+	return fmt.Sprintf("(%s %s)", ac.Op, strings.Join(ac.Values, " "))
+}
 
-// type States struct {
-// 	Rule
-// 	Terminal bool
-// 	Base     string
-// 	States   map[int]*AssertChain
-// 	Constant bool
-// 	tag      *branch
-// }
+// Used to generate SMT based on Assert/Assume logic.
+// Lists all possible vars in a scope (if conditional,
+// parallel branches, etc)
+type PossibleVars struct {
+	Rule
+	Terminal bool
+	Base     []string
+	Vars     map[string]*AssertChain
+	Constant bool
+	tag      *branch
+}
 
-// func (s *States) ruleNode() {}
-// func (s *States) String() string {
-// 	return s.Base
-// }
-// func (s *States) Assertless() string {
-// 	return ""
-// }
-// func (s *States) Tag(k1 string, k2 string) {
-// 	s.tag = &branch{
-// 		branch: k1,
-// 		block:  k2,
-// 	}
-// }
+func NewPossibleVars() *PossibleVars {
+	return &PossibleVars{
+		Vars: make(map[string]*AssertChain),
+	}
+}
 
-// func (s *States) IsTagged() bool {
-// 	return s.tag != nil
-// }
+func (s *PossibleVars) ruleNode() {}
 
-// func (s *States) Choice() string {
-// 	return s.tag.block
-// }
+func (s *PossibleVars) String() string {
+	return strings.Join(s.Base, " ")
+}
 
-// func (s *States) Branch() string {
-// 	return s.tag.branch
-// }
+func (s *PossibleVars) Assertless() string {
+	return ""
+}
 
-// func (s *States) GetChains() []int {
-// 	var ret []int
-// 	for _, a := range s.States {
-// 		ret = append(ret, a.Chain...)
-// 	}
-// 	return ret
-// }
+func (s *PossibleVars) Tag(k1 string, k2 string) {
+	s.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+func (s *PossibleVars) IsTagged() bool {
+	return s.tag != nil
+}
+
+func (s *PossibleVars) Choice() string {
+	return s.tag.block
+}
+
+func (s *PossibleVars) Branch() string {
+	return s.tag.branch
+}
+
+func (s *PossibleVars) Add(base string) {
+	s.Base = append(s.Base, base)
+}
+
+func (s *PossibleVars) GetChains() []int {
+	var ret []int
+	for _, a := range s.Vars {
+		ret = append(ret, a.Chain...)
+	}
+	return ret
+}
+
+func (s *PossibleVars) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	// Implement LoadContext if needed
+}
+
+func (s *PossibleVars) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	// Implement WriteRule if needed
+	return nil, "", ssa
+}
 
 // type Assrt struct {
 // 	Rule
@@ -457,6 +496,10 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	initX, x, ssa := i.X.WriteRule(ssa)
 	init := append(initX, initY...)
 
+	if y == "0x3DA3CA8CB153A753" { //Unknown or uncertain type
+		return init, "", ssa
+	}
+
 	if _, ok := i.X.(*Wrap); ok && i.Op == "=" {
 		i.Log.UpdateVariable(x)
 	}
@@ -538,15 +581,29 @@ func (pr *Prefix) Branch() string {
 
 type Ite struct {
 	Rule
-	Cond  Rule
-	T     []Rule
-	F     []Rule
-	After []Rule
-	Log   *scenario.Logger
-	tag   *branch
+	Cond       Rule
+	T          []Rule
+	F          []Rule
+	After      []Rule
+	BlockNames map[string]string
+	Log        *scenario.Logger
+	tag        *branch
 }
 
 func (it *Ite) ruleNode() {}
+func NewIte(cond Rule, t []Rule, f []Rule, a []Rule, block_names []string) *Ite {
+	return &Ite{
+		Cond:  cond,
+		T:     t,
+		F:     f,
+		After: a,
+		BlockNames: map[string]string{
+			"true":  block_names[0],
+			"false": block_names[1],
+			"after": block_names[2],
+		},
+	}
+}
 func (it *Ite) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 }
 func (it *Ite) String() string {
@@ -773,19 +830,26 @@ func DefaultValue(t string) string {
 }
 func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	var rule string
+
+	if w.Value == "0x3DA3CA8CB153A753" { //An uncertain or unknown value
+		return nil, "0x3DA3CA8CB153A753", ssa
+	}
+
 	if w.Variable {
 		if w.Init {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
 			default_value := DefaultValue(w.Type)
 			i := &Init{
-				Ident: rule,
+				Ident: w.Value,
+				SSA:   fmt.Sprintf("%d", ssa.Get(w.Value)),
 				Type:  w.Type,
 				Value: default_value,
 			}
 			return []*Init{i}, rule, ssa
 		}
 
-		if w.HaveSeen[w.Value] {
+		if w.HaveSeen[w.Value] ||
+			len(w.OnEntry) == 0 {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Get(w.Value))
 			return nil, rule, ssa
 		}
@@ -819,50 +883,68 @@ func (w *Wrap) Branch() string {
 	return w.tag.branch
 }
 
-// type StateGroup struct {
-// 	Rule
-// 	Bases *util.StringSet
-// 	Wraps []*States
-// 	tag   *branch
-// }
+type VarSets struct {
+	Rule
+	Vars map[string][]string // [round_0_scope_name] => {this_variable_0, this_variable_1}
+	tag  *branch
+}
 
-// func NewStateGroup() *StateGroup {
-// 	sg := &StateGroup{}
-// 	sg.Bases = util.NewStrSet()
-// 	return sg
-// }
-// func (sg *StateGroup) ruleNode() {}
-// func (sg *StateGroup) AddWrap(w *States) {
-// 	sg.Wraps = append(sg.Wraps, w)
-// }
-// func (sg *StateGroup) String() string {
-// 	var out bytes.Buffer
-// 	for _, v := range sg.Wraps {
-// 		out.WriteString(v.Base)
-// 	}
-// 	return out.String()
-// }
-// func (sg *StateGroup) Assertless() string {
-// 	return ""
-// }
-// func (sg *StateGroup) Tag(k1 string, k2 string) {
-// 	sg.tag = &branch{
-// 		branch: k1,
-// 		block:  k2,
-// 	}
-// }
+func NewVarSets(vars map[string][]string) *VarSets {
+	varset := &VarSets{
+		Vars: vars,
+	}
+	return varset
+}
 
-// func (sg *StateGroup) IsTagged() bool {
-// 	return sg.tag != nil
-// }
+func (sg *VarSets) ruleNode() {}
 
-// func (sg *StateGroup) Choice() string {
-// 	return sg.tag.block
-// }
+func (sg *VarSets) String() string {
+	var out bytes.Buffer
+	for _, v := range sg.Vars {
+		out.WriteString(strings.Join(v, "\n"))
+	}
+	return out.String()
+}
 
-// func (sg *StateGroup) Branch() string {
-// 	return sg.tag.branch
-// }
+func (sg *VarSets) List() []string {
+	var ret []string
+	for _, v := range sg.Vars {
+		ret = append(ret, v...)
+	}
+	return ret
+}
+
+func (sg *VarSets) Assertless() string {
+	return ""
+}
+
+func (sg *VarSets) Tag(k1 string, k2 string) {
+	sg.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+func (sg *VarSets) IsTagged() bool {
+	return sg.tag != nil
+}
+
+func (sg *VarSets) Choice() string {
+	return sg.tag.block
+}
+
+func (sg *VarSets) Branch() string {
+	return sg.tag.branch
+}
+
+func (sg *VarSets) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	// Implement LoadContext if needed
+}
+
+func (sg *VarSets) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	// Implement WriteRule if needed
+	return nil, "", ssa
+}
 
 type WrapGroup struct {
 	Rule
