@@ -259,7 +259,7 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
 	} else {
 		// If there are no rules in the false branch we still need the phis
-		for k, _ := range u.Phis {
+		for k := range u.Phis {
 			fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
 		}
 	}

@@ -70,7 +70,7 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 
 func (c *Constraint) RegistryConstant(cons string) map[string][]string {
 	subset := make(map[string][]string)
-	for k, _ := range c.Registry {
+	for k := range c.Registry {
 		subset[k] = []string{cons}
 	}
 	return subset
@@ -199,10 +199,10 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 		reg := c.RegistryConstant(fmt.Sprintf("%d", e.Value))
 		return rules.NewVarSets(reg)
 	case *ast.FloatLiteral:
-		reg := c.RegistryConstant(fmt.Sprintf("%d", e.Value))
+		reg := c.RegistryConstant(fmt.Sprintf("%v", e.Value))
 		return rules.NewVarSets(reg)
 	case *ast.Boolean:
-		reg := c.RegistryConstant(fmt.Sprintf("%b", e.Value))
+		reg := c.RegistryConstant(fmt.Sprintf("%v", e.Value))
 		return rules.NewVarSets(reg)
 	case *ast.StringLiteral:
 		reg := c.RegistryConstant(e.Value)
