@@ -312,7 +312,7 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 
 func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule, []string) {
 	var t, f, a []rules.Rule
-	var block_names []string
+	block_names := []string{"", "", ""}
 	for _, term := range terms {
 		bname := strings.Split(term.Ident(), "-")
 		switch bname[len(bname)-1] {

@@ -82,6 +82,8 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.RunBlock.Unroll()
 
 	p := unpack.NewUnpacker(g.RunBlock.Ident)
+	p.Log.Uncertains = g.RawInputs.Uncertains
+
 	p.VarTypes = g.Env.VarTypes
 	smt := p.Unpack(g.RunBlock)
 	g.AppendSMT(p.InitVars())

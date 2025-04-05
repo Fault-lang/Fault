@@ -2,13 +2,16 @@ package scenario
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"golang.org/x/exp/slices"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 type Logger struct {
 	Events        []Event
+	Uncertains    map[string][]float64
 	BranchIndexes map[string][]int    // function_name : [event_index_1, event_index_2]
 	FuncIndexes   map[string][]int    // function_name : [entry_index, exit_index]
 	BranchVars    map[string][]string // function_name : [var_name_1, var_name_2]
@@ -19,6 +22,7 @@ type Logger struct {
 func NewLogger() *Logger {
 	return &Logger{
 		Events:        []Event{},
+		Uncertains:    make(map[string][]float64),
 		Forks:         make(map[string][]string),
 		Results:       make(map[string]string),
 		BranchIndexes: make(map[string][]int),
@@ -45,6 +49,12 @@ func (l *Logger) ExitFunction(fname string, round int) {
 
 func (l *Logger) UpdateVariable(variable string) {
 	l.Events = append(l.Events, &VariableUpdate{
+		Variable: variable,
+	})
+}
+
+func (l *Logger) UpdateSolvable(variable string) {
+	l.Events = append(l.Events, &Solvable{
 		Variable: variable,
 	})
 }
@@ -80,11 +90,10 @@ func (f *FunctionCall) IsDead() bool {
 
 type VariableUpdate struct {
 	Event
-	Round       int
-	Scope       string
-	Variable    string
-	Probability string
-	Dead        bool //Filters out events not in solution
+	Round    int
+	Scope    string
+	Variable string
+	Dead     bool //Filters out events not in solution
 }
 
 func (v *VariableUpdate) MarkDead() {
@@ -93,6 +102,46 @@ func (v *VariableUpdate) MarkDead() {
 
 func (v *VariableUpdate) IsDead() bool {
 	return v.Dead
+}
+
+type Solvable struct {
+	Event
+	Round        int
+	Scope        string
+	Variable     string
+	Probability  string
+	Type         string //Unknown or uncertain
+	Distrubution string //Default to Normal
+	Dead         bool   //Filters out events not in solution
+}
+
+func (s *Solvable) MarkDead() {
+	s.Dead = true
+}
+
+func (s *Solvable) IsDead() bool {
+	return s.Dead
+}
+
+func (s *Solvable) SetProbability(val string, mu float64, sigma float64) {
+	if s.Type == "Unknown" {
+		return
+	}
+
+	v, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse '%s' as float64: %v", val, err))
+	}
+
+	dist := distuv.Normal{
+		Mu:    mu,
+		Sigma: sigma,
+	}
+	s.Probability = fmt.Sprintf("%f", dist.Prob(v))
+}
+
+func (s *Solvable) GetProbability() string {
+	return s.Probability
 }
 
 type Choice struct {
@@ -133,6 +182,19 @@ func (l *Logger) Trace() {
 			scope := functions[len(functions)-1]
 			l.BranchIndexes[scope] = append(l.BranchIndexes[scope], i)
 			l.BranchVars[scope] = append(l.BranchVars[scope], event.Variable)
+		case *Solvable:
+			scope := functions[len(functions)-1]
+			l.BranchIndexes[scope] = append(l.BranchIndexes[scope], i)
+			l.BranchVars[scope] = append(l.BranchVars[scope], event.Variable)
+
+			if event.Type == "Uncertain" {
+				// Set probability distribution
+				if u, ok := l.Uncertains[event.Variable]; ok {
+					event.SetProbability(event.Probability, u[0], u[1])
+				} else {
+					panic(fmt.Sprintf("Uncertain variable %s not found in Uncertains map", event.Variable))
+				}
+			}
 		}
 	}
 }
@@ -184,10 +246,17 @@ func (l *Logger) Print() {
 		switch event := e.(type) {
 		case *FunctionCall:
 			if event.Type == "Entry" {
-				fmt.Printf("Run function %s\n", event.FunctionName)
+				fmt.Printf("Run function %s (round %d)\n", event.FunctionName, event.Round)
 			}
 		case *VariableUpdate:
 			fmt.Printf("Update variable %s to value %s\n", getBase(event.Variable), l.Results[event.Variable])
+
+		case *Solvable:
+			if event.Type == "Uncertain" {
+				fmt.Printf("Resolving variable %s to value %s (%s) \n", getBase(event.Variable), l.Results[event.Variable], event.Probability)
+			} else {
+				fmt.Printf("Resolving variable %s to value %s\n", getBase(event.Variable), l.Results[event.Variable])
+			}
 		}
 	}
 }

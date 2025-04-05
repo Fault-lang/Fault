@@ -497,6 +497,7 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	init := append(initX, initY...)
 
 	if y == "0x3DA3CA8CB153A753" { //Unknown or uncertain type
+		i.Log.UpdateSolvable(x)
 		return init, "", ssa
 	}
 
