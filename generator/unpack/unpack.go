@@ -135,6 +135,16 @@ func (u *Unpacker) UpdateRegistry(reg map[string][][]string) {
 	}
 }
 
+func (u *Unpacker) InspectRule(ru rules.Rule) {
+	if r, ok := ru.(*rules.FuncCall); ok {
+		if r.Type == "Enter" {
+			u.Log.EnterFunction(r.FunctionName, r.Round)
+		} else {
+			u.Log.ExitFunction(r.FunctionName, r.Round)
+		}
+	}
+}
+
 func (u *Unpacker) InitVars() []string {
 	smt := []string{}
 	declareOnce := make(map[string]bool)
@@ -149,13 +159,15 @@ func (u *Unpacker) InitVars() []string {
 }
 
 func (u *Unpacker) Unpack(f *unroll.LLFunc) []string {
-	u.Log.EnterFunction(f.Ident, f.Env.CurrentRound)
+	round := fmt.Sprintf("%d", f.Env.CurrentRound)
+	u.Log.EnterFunction(f.Ident, round)
 
 	// Unpack the rules
 	r := u.unpackBlock(f.Start)
 
 	function_rules := []string{}
 	for _, ru := range f.Rules {
+		u.InspectRule(ru)
 		line := u.FormatRule(ru, u.unpackRule(ru))
 		function_rules = append(function_rules, line)
 	}
@@ -169,6 +181,7 @@ func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
 
 	smt := []string{}
 	for _, r := range b.Rules {
+		u.InspectRule(r)
 		line := u.FormatRule(r, u.unpackRule(r))
 		smt = append(smt, line)
 	}
@@ -203,6 +216,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	case *rules.Wrap:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Vwrap:
+		inits, rule, u.SSA = ru.WriteRule(u.SSA)
+	case *rules.FuncCall:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
@@ -278,7 +293,8 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		u2.Inherits(u)
 
 		for _, call := range perm {
-			u.Log.EnterFunction(call, p.Round)
+			round := fmt.Sprintf("%d", p.Round)
+			u.Log.EnterFunction(call, round)
 			function_rules := []string{}
 			for _, ru := range p.Calls[call] {
 				line := u.FormatRule(ru, u2.unpackRule(ru))

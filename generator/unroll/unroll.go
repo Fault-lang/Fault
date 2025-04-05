@@ -115,11 +115,19 @@ func (f *LLFunc) Unroll() {
 	f.Env.returnVoid.Out()
 }
 
-func (f *LLFunc) GetAllRules() []rules.Rule {
+func (f *LLFunc) GetAllRules(enter rules.Rule, exit rules.Rule) []rules.Rule {
 	var r []rules.Rule
+	if enter != nil {
+		r = []rules.Rule{enter}
+	}
+
 	r = append(r, f.Rules...)
 	if f.Start != nil {
-		r = append(r, f.Start.GetAllRules()...)
+		r = append(r, f.Start.GetAllRules(nil, nil)...)
+	}
+
+	if exit != nil {
+		r = append(r, exit)
 	}
 	return r
 }
@@ -213,11 +221,19 @@ func (b *LLBlock) Unroll() {
 	}
 }
 
-func (b *LLBlock) GetAllRules() []rules.Rule {
+func (b *LLBlock) GetAllRules(enter rules.Rule, exit rules.Rule) []rules.Rule {
 	var ru []rules.Rule
+	if enter != nil {
+		ru = []rules.Rule{enter}
+	}
+
 	ru = append(ru, b.Rules...)
 	if b.After != nil {
-		ru = append(ru, b.After.GetAllRules()...)
+		ru = append(ru, b.After.GetAllRules(nil, nil)...)
+	}
+
+	if exit != nil {
+		ru = append(ru, exit)
 	}
 	return ru
 }
@@ -272,11 +288,14 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 	p := rules.NewParallels(parallelPermutations(callstack))
 
 	for _, fname := range callstack {
+		var enter, exit *rules.FuncCall
 		var v *LLFunc
 		var ok bool
 
 		switch u := llu.(type) {
 		case *LLFunc:
+			enter = rules.NewFuncCall(fname, "Enter", u.Env.CurrentRound)
+			exit = rules.NewFuncCall(fname, "Exit", u.Env.CurrentRound)
 			p.Round = u.Env.CurrentRound
 			v, ok = u.functions[fname]
 			if !ok {
@@ -284,6 +303,8 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 				v.Unroll()
 			}
 		case *LLBlock:
+			enter = rules.NewFuncCall(fname, "Enter", u.Env.CurrentRound)
+			exit = rules.NewFuncCall(fname, "Exit", u.Env.CurrentRound)
 			p.Round = u.Env.CurrentRound
 			v, ok = u.functions[fname]
 			if !ok {
@@ -293,9 +314,9 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 			}
 		}
 		if len(callstack) == 1 {
-			return v.GetAllRules()
+			return v.GetAllRules(enter, exit)
 		}
-		p.Calls[fname] = v.GetAllRules()
+		p.Calls[fname] = v.GetAllRules(enter, exit)
 	}
 	return []rules.Rule{p}
 }

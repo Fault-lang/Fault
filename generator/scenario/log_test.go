@@ -28,14 +28,14 @@ func TestNewLogger(t *testing.T) {
 
 func TestLogger_EnterFunction(t *testing.T) {
 	logger := NewLogger()
-	logger.EnterFunction("foo", 1)
+	logger.EnterFunction("foo", "1")
 	if len(logger.Events) != 1 {
 		t.Errorf("Logger.EnterFunction() = %v, want %v", len(logger.Events), 1)
 	}
 	if logger.Events[0].(*FunctionCall).FunctionName != "foo" {
 		t.Errorf("Logger.EnterFunction().FunctionName = %v, want %v", logger.Events[0].(*FunctionCall).FunctionName, "foo")
 	}
-	if logger.Events[0].(*FunctionCall).Round != 1 {
+	if logger.Events[0].(*FunctionCall).Round != "1" {
 		t.Errorf("Logger.EnterFunction().Round = %v, want %v", logger.Events[0].(*FunctionCall).Round, 1)
 	}
 	if logger.Events[0].(*FunctionCall).Type != "Entry" {
@@ -45,14 +45,14 @@ func TestLogger_EnterFunction(t *testing.T) {
 
 func TestLogger_ExitFunction(t *testing.T) {
 	logger := NewLogger()
-	logger.ExitFunction("foo", 1)
+	logger.ExitFunction("foo", "1")
 	if len(logger.Events) != 1 {
 		t.Errorf("Logger.ExitFunction() = %v, want %v", len(logger.Events), 1)
 	}
 	if logger.Events[0].(*FunctionCall).FunctionName != "foo" {
 		t.Errorf("Logger.ExitFunction().FunctionName = %v, want %v", logger.Events[0].(*FunctionCall).FunctionName, "foo")
 	}
-	if logger.Events[0].(*FunctionCall).Round != 1 {
+	if logger.Events[0].(*FunctionCall).Round != "1" {
 		t.Errorf("Logger.ExitFunction().Round = %v, want %v", logger.Events[0].(*FunctionCall).Round, 1)
 	}
 	if logger.Events[0].(*FunctionCall).Type != "Exit" {
@@ -84,12 +84,12 @@ func TestLogger_AddPhiOption(t *testing.T) {
 
 func TestFunctionCall_MarkDead(t *testing.T) {
 	logger := NewLogger()
-	logger.EnterFunction("test1", 1)
+	logger.EnterFunction("test1", "1")
 	logger.UpdateVariable("a_1")
-	logger.ExitFunction("test1", 1)
-	logger.EnterFunction("test2", 1)
+	logger.ExitFunction("test1", "1")
+	logger.EnterFunction("test2", "1")
 	logger.UpdateVariable("a_2")
-	logger.ExitFunction("test2", 1)
+	logger.ExitFunction("test2", "1")
 	logger.AddPhiOption("a_3", "a_1")
 	logger.AddPhiOption("a_3", "a_2")
 

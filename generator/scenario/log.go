@@ -31,7 +31,7 @@ func NewLogger() *Logger {
 	}
 }
 
-func (l *Logger) EnterFunction(fname string, round int) {
+func (l *Logger) EnterFunction(fname string, round string) {
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
 		Round:        round,
@@ -39,7 +39,7 @@ func (l *Logger) EnterFunction(fname string, round int) {
 	})
 }
 
-func (l *Logger) ExitFunction(fname string, round int) {
+func (l *Logger) ExitFunction(fname string, round string) {
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
 		Round:        round,
@@ -75,7 +75,7 @@ type Event interface {
 type FunctionCall struct {
 	Event
 	FunctionName string
-	Round        int
+	Round        string
 	Type         string //Entry or Exit
 	Dead         bool
 }
@@ -90,7 +90,7 @@ func (f *FunctionCall) IsDead() bool {
 
 type VariableUpdate struct {
 	Event
-	Round    int
+	Round    string
 	Scope    string
 	Variable string
 	Dead     bool //Filters out events not in solution
@@ -106,7 +106,7 @@ func (v *VariableUpdate) IsDead() bool {
 
 type Solvable struct {
 	Event
-	Round        int
+	Round        string
 	Scope        string
 	Variable     string
 	Probability  string
@@ -239,24 +239,41 @@ func getBase(s string) string {
 }
 
 func (l *Logger) Print() {
+	fmt.Print("\n===================================\n")
+	fmt.Printf("Fault found the following scenario\n")
+	identLevel := ""
 	for _, e := range l.Events {
 		if e.IsDead() {
 			continue
 		}
 		switch event := e.(type) {
 		case *FunctionCall:
+			if event.FunctionName == "@__run" {
+				fmt.Print("\n")
+				fmt.Printf("%sStart model, run for %s rounds\n", identLevel, event.Round)
+				fmt.Printf("-----------------------------------\n")
+				identLevel += "   "
+				continue
+			}
+
 			if event.Type == "Entry" {
-				fmt.Printf("Run function %s (round %d)\n", event.FunctionName, event.Round)
+				fmt.Printf("%sRun function %s (round %s)\n", identLevel, event.FunctionName, event.Round)
+				identLevel += "   "
+			}
+
+			if event.Type == "Exit" {
+				identLevel = identLevel[:len(identLevel)-3]
 			}
 		case *VariableUpdate:
-			fmt.Printf("Update variable %s to value %s\n", getBase(event.Variable), l.Results[event.Variable])
+			fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
 
 		case *Solvable:
 			if event.Type == "Uncertain" {
-				fmt.Printf("Resolving variable %s to value %s (%s) \n", getBase(event.Variable), l.Results[event.Variable], event.Probability)
+				fmt.Printf("%sResolving variable %s to value %s (%s) \n", identLevel, getBase(event.Variable), l.Results[event.Variable], event.Probability)
 			} else {
-				fmt.Printf("Resolving variable %s to value %s\n", getBase(event.Variable), l.Results[event.Variable])
+				fmt.Printf("%sResolving variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
 			}
 		}
 	}
+	fmt.Print("\n")
 }

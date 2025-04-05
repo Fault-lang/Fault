@@ -242,6 +242,7 @@ func (b *LLBlock) parseFCmp(inst *ir.InstFCmp) []rules.Rule {
 
 func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 	var r []rules.Rule
+
 	callee := inst.Callee.Ident()
 	if isBuiltIn(callee) {
 		meta := inst.Metadata // Is this in a "b || b" construction?
@@ -254,16 +255,21 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 		}
 		return []rules.Rule{}
 	}
+
 	meta := inst.Metadata
 	callee = util.FormatIdent(callee)
+
 	if b.isSameParallelGroup(meta) {
 		b.localCallstack = append(b.localCallstack, callee)
 	} else if b.singleParallelStep(callee) {
-		r = b.ExecuteCallstack()
+		r0 := b.ExecuteCallstack()
+		r = append(r, r0...)
+
 		r1 := GenerateCallstack(b, []string{callee})
 		r = append(r, r1...)
 	} else {
-		r = b.ExecuteCallstack()
+		r0 := b.ExecuteCallstack()
+		r = append(r, r0...)
 		b.localCallstack = append(b.localCallstack, callee)
 	}
 	b.updateParallelGroup(meta)
@@ -322,7 +328,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 			true_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			true_block.ParentFunction = b.Env.CurrentFunction
 			true_block.Unroll()
-			t = true_block.GetAllRules()
+			t = true_block.GetAllRules(nil, nil)
 			b.Env.returnVoid.Out()
 		case "false":
 			block_names[1] = term.Ident()
@@ -330,7 +336,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 			false_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			false_block.ParentFunction = b.Env.CurrentFunction
 			false_block.Unroll()
-			f = false_block.GetAllRules()
+			f = false_block.GetAllRules(nil, nil)
 
 			b.Env.returnVoid.Out()
 		case "after":
@@ -338,7 +344,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 			after_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			after_block.ParentFunction = b.Env.CurrentFunction
 			after_block.Unroll()
-			a = after_block.GetAllRules()
+			a = after_block.GetAllRules(nil,nil)
 		default:
 			panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
 		}

@@ -176,6 +176,52 @@ func (i *Init) Tag(k1 string, k2 string) {
 	}
 }
 
+type FuncCall struct { //A marker rule, generates no SMT but used by the Scenario logger to interpret results
+	Rule
+	FunctionName string
+	Type         string //Enter or Exit
+	Round        string
+	tag          *branch
+}
+
+func NewFuncCall(name string, typ string, round int) *FuncCall {
+	return &FuncCall{
+		FunctionName: name,
+		Type:         typ,
+		Round:        fmt.Sprintf("%d", round),
+	}
+}
+
+func (e *FuncCall) ruleNode() {}
+func (e *FuncCall) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	// Implement LoadContext if needed
+}
+func (e *FuncCall) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	// Implement WriteRule if needed
+	return nil, "", ssa
+}
+func (e *FuncCall) String() string {
+	return fmt.Sprintf("(enter %s)", e.FunctionName)
+}
+func (e *FuncCall) Assertless() string {
+	return ""
+}
+func (e *FuncCall) IsTagged() bool {
+	return e.tag != nil
+}
+func (e *FuncCall) Choice() string {
+	return e.tag.block
+}
+func (e *FuncCall) Branch() string {
+	return e.tag.branch
+}
+func (e *FuncCall) Tag(k1 string, k2 string) {
+	e.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
 type Ands struct {
 	Rule
 	X        []Rule
