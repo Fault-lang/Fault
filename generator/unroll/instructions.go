@@ -98,8 +98,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				case *rules.Infix:
 					r.X = b.tempToIdent(r.X)
 					r.Y = b.tempToIdent(r.Y)
+					xIs := IsIndexed(base)
 					_, file, line, _ := runtime.Caller(1)
-					wid := rules.NewWrap(base, "", true, file, line, true)
+					wid := rules.NewWrap(base, "", true, file, line, true, xIs)
 
 					if IsStaticValue(r.X.String()) {
 						wid.Variable = false
@@ -122,8 +123,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				default:
 					ty := LookupType(base, nil)
 					b.Env.VarTypes[base] = ty
+					xIs := IsIndexed(base)
 					_, file, line, _ := runtime.Caller(1)
-					wid := rules.NewWrap(base, ty, true, file, line, true)
+					wid := rules.NewWrap(base, ty, true, file, line, true, xIs)
 					ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
 				}
 			} else {
@@ -141,19 +143,20 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 }
 
 func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.Rule {
+	xIs := IsIndexed(id)
 	_, file, line, _ := runtime.Caller(1)
-	wid := rules.NewWrap(id, ty, true, file, line, true)
+	wid := rules.NewWrap(id, ty, true, file, line, true, xIs)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {
 		_, file, line, _ := runtime.Caller(1)
-		wval = rules.NewWrap(val, "Bool", false, file, line, false)
+		wval = rules.NewWrap(val, "Bool", false, file, line, false, false)
 	} else if IsNumeric(val) {
 		_, file, line, _ := runtime.Caller(1)
-		wval = rules.NewWrap(val, ty, false, file, line, false)
+		wval = rules.NewWrap(val, ty, false, file, line, false, false)
 	} else {
 		_, file, line, _ := runtime.Caller(1)
-		wval = rules.NewWrap(val, ty, true, file, line, false)
+		wval = rules.NewWrap(val, ty, true, file, line, false, false)
 	}
 	return &rules.Infix{X: wid, Ty: ty, Y: wval, Op: op}
 }
@@ -344,7 +347,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 			after_block := NewLLBlock(b.Env, b.rawFunctions, term)
 			after_block.ParentFunction = b.Env.CurrentFunction
 			after_block.Unroll()
-			a = after_block.GetAllRules(nil,nil)
+			a = after_block.GetAllRules(nil, nil)
 		default:
 			panic(fmt.Sprintf("unrecognized terminal branch: %s", term.Ident()))
 		}
@@ -365,8 +368,9 @@ func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	} else if IsBoolean(id) ||
 		IsNumeric(id) {
 		ty := LookupType(id, nil)
+		xIs := IsIndexed(id)
 		_, file, line, _ := runtime.Caller(1)
-		cond = rules.NewWrap(id, ty, false, file, line, true)
+		cond = rules.NewWrap(id, ty, false, file, line, true, xIs)
 	}
 	b.Env.returnVoid.Out()
 
@@ -393,11 +397,12 @@ func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 	xRule := b.LookupCondPart(b.Env.CurrentFunction, x)
 	if xRule == nil {
 		x = b.ConvertIdent(b.Env.CurrentFunction, x)
+		xIs := IsIndexed(x)
 		_, file, line, _ := runtime.Caller(1)
-		xRule = rules.NewWrap(x, "Bool", true, file, line, false)
+		xRule = rules.NewWrap(x, "Bool", true, file, line, false, xIs)
 	}
 	_, file, line, _ := runtime.Caller(1)
-	return []rules.Rule{b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false), "not")}
+	return []rules.Rule{b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false, false), "not")}
 }
 
 func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
@@ -434,10 +439,10 @@ func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {
 	switch op {
 	case "false":
 		_, file, line, _ := runtime.Caller(1)
-		y = rules.NewWrap("False", "Bool", false, file, line, false)
+		y = rules.NewWrap("False", "Bool", false, file, line, false, false)
 	case "true":
 		_, file, line, _ := runtime.Caller(1)
-		y = rules.NewWrap("True", "Bool", false, file, line, false)
+		y = rules.NewWrap("True", "Bool", false, file, line, false, false)
 	}
 	return op, y
 }

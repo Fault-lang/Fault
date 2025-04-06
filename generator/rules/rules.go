@@ -122,10 +122,11 @@ type Init struct {
 	SSA   string //Specific instance of the variable
 	//String so that we can tell the difference
 	//between "" for constant and "0"
-	Type  string
-	Value string
-	Log   *scenario.Logger
-	tag   *branch
+	Type    string
+	Value   string
+	Indexed bool
+	Log     *scenario.Logger
+	tag     *branch
 }
 
 func (i *Init) ruleNode() {}
@@ -135,6 +136,9 @@ func (i *Init) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[s
 }
 
 func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	if i.Indexed {
+		return nil, fmt.Sprintf("(declare-fun %s () %s)", i.Ident, i.Type), ssa
+	}
 	return nil, fmt.Sprintf("(declare-fun %s_%s () %s)", i.Ident, i.SSA, i.Type), ssa
 }
 
@@ -829,7 +833,8 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	Value    string
 	Variable bool
 	Type     string
-	Init     bool              //Are we referencing a existing value or initializating a new one?
+	Init     bool //Are we referencing a existing value or initializating a new one?
+	Indexed  bool
 	Debugger map[string]string //For debugging, the location in the code where this rule was created
 	PhiLevel int
 	HaveSeen map[string]bool
@@ -845,12 +850,13 @@ func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[s
 	w.OnEntry = OnEntry
 	w.Log = Log
 }
-func NewWrap(v string, t string, vr bool, file string, line int, init bool) *Wrap {
+func NewWrap(v string, t string, vr bool, file string, line int, init bool, indexed bool) *Wrap {
 	return &Wrap{
 		Value:    v,
 		Variable: vr,
 		Type:     t,
 		Init:     init,
+		Indexed:  indexed,
 		Debugger: map[string]string{
 			"file": file,
 			"line": fmt.Sprintf("%d", line),
@@ -883,6 +889,10 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	}
 
 	if w.Variable {
+		if w.Indexed {
+			return nil, w.Value, ssa
+		}
+
 		if w.Init {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
 			default_value := DefaultValue(w.Type)

@@ -322,11 +322,17 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 }
 
 func declareVar(id string, ty string, val string) *rules.Init {
+	var indexed bool
+	if IsIndexed(id) {
+		indexed = true
+	}
+
 	return &rules.Init{
-		Ident: id,
-		SSA:   "",
-		Type:  ty,
-		Value: val,
+		Ident:   id,
+		SSA:     "",
+		Type:    ty,
+		Value:   val,
+		Indexed: indexed,
 	}
 }
 
@@ -485,10 +491,13 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 
 	x, tyX, vrX = convertInfixVar(b.Env, x)
 	y, tyY, vrY = convertInfixVar(b.Env, y)
+	xIs := IsIndexed(x)
+	yIs := IsIndexed(y)
 	_, file, line, _ := runtime.Caller(1)
+
 	return &rules.Infix{
-		X:  rules.NewWrap(x, tyX, vrX, file, line, false),
-		Y:  rules.NewWrap(y, tyY, vrY, file, line, false),
+		X:  rules.NewWrap(x, tyX, vrX, file, line, false, xIs),
+		Y:  rules.NewWrap(y, tyY, vrY, file, line, false, yIs),
 		Op: op,
 	}
 }
@@ -498,9 +507,10 @@ func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 	if _, ok := b.Env.VarTypes[x]; ok {
 		vr = true
 	}
+	xIs := IsIndexed(x)
 	_, file, line, _ := runtime.Caller(1)
 	return &rules.Prefix{
-		X:  rules.NewWrap(x, "Bool", vr, file, line, false),
+		X:  rules.NewWrap(x, "Bool", vr, file, line, false, xIs),
 		Op: op,
 	}
 }
