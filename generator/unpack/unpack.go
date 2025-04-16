@@ -438,10 +438,12 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 			line := u.FormatRule(ru, u2.unpackRule(ru))
 			aRules = append(aRules, line)
 		}
+		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
 	}
 	u.PopEntries()
 	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
-	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert)
+	return u.Inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
 }
 
 func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
