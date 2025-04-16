@@ -24,41 +24,31 @@ import (
 // and flatten to a single set of rules
 
 type Generator struct {
-	constants []rules.Rule
-	functions map[string]*ir.Func
-	Env       *unroll.Env
-	RawInputs *llvm.RawInputs
-	RunBlock  *unroll.LLFunc
-	smt       []string
-	ResultLog *scenario.Logger
+	constants   []rules.Rule
+	functions   map[string]*ir.Func
+	Env         *unroll.Env
+	RawInputs   *llvm.RawInputs
+	RunBlock    *unroll.LLFunc
+	smt         []string
+	ResultLog   *scenario.Logger
+	StringRules map[string]string
 }
 
-func NewGenerator(ri *llvm.RawInputs) *Generator {
+func NewGenerator(ri *llvm.RawInputs, sr map[string]string) *Generator {
 	return &Generator{
-		functions: make(map[string]*ir.Func),
-		Env:       unroll.NewEnv(ri),
-		smt:       []string{"(set-logic QF_NRA)"},
-		RawInputs: ri,
+		functions:   make(map[string]*ir.Func),
+		Env:         unroll.NewEnv(ri),
+		smt:         []string{"(set-logic QF_NRA)"},
+		RawInputs:   ri,
+		StringRules: sr,
 	}
 }
 func Execute(compiler *llvm.Compiler) *Generator {
-	generator := NewGenerator(compiler.RawInputs)
+	generator := NewGenerator(compiler.RawInputs, compiler.StringRules)
 	//generator.LoadMeta(compiler)
 	//generator.States = compiler.States
 	generator.Run(compiler.GetIR())
-	generator.LoadStringRules(compiler.StringRules) // Do last to get SSA values
 	return generator
-}
-
-func (g *Generator) LoadStringRules(sr map[string]string) {
-	// g.Log.StringRules = sr
-	// for k := range sr {
-	// 	num := g.variables.GetSSANum(k)
-	// 	for i := 0; i < int(num)+1; i++ {
-	// 		state := fmt.Sprintf("%s_%v", k, i)
-	// 		g.Log.IsStringRule[state] = true
-	// 	}
-	// }
 }
 
 func (g *Generator) AppendSMT(new_smt []string) {
@@ -82,10 +72,11 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.RunBlock.Unroll()
 
 	p := unpack.NewUnpacker(g.RunBlock.Ident)
+	p.LoadStringRules(g.StringRules)
 	p.Log.Uncertains = g.RawInputs.Uncertains
 
 	p.VarTypes = g.Env.VarTypes
-	smt := p.Unpack(g.RunBlock)
+	smt := p.Unpack(g.constants, g.RunBlock)
 	g.AppendSMT(p.InitVars())
 	g.AppendSMT(smt)
 

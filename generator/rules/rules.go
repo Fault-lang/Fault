@@ -118,12 +118,11 @@ func (b *Basic) Tag(k1 string, k2 string) {
 
 type Init struct {
 	Rule
-	Ident string //base variable name
-	SSA   string //Specific instance of the variable
-	//String so that we can tell the difference
-	//between "" for constant and "0"
+	Ident   string //base variable name
+	SSA     string
+	Global  bool
 	Type    string
-	Value   string
+	Value   Rule
 	Indexed bool
 	Log     *scenario.Logger
 	tag     *branch
@@ -136,10 +135,24 @@ func (i *Init) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[s
 }
 
 func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
-	if i.Indexed {
-		return nil, fmt.Sprintf("(declare-fun %s () %s)", i.Ident, i.Type), ssa
+	var id string
+	var d string
+	var val string
+	var rule string
+
+	id = fmt.Sprintf("%s_%s", i.Ident, i.SSA)
+
+	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
+
+	if i.Value != nil && i.Global {
+		_, rule, ssa = i.Value.WriteRule(ssa)
+		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
+		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else {
+		rule = d
 	}
-	return nil, fmt.Sprintf("(declare-fun %s_%s () %s)", i.Ident, i.SSA, i.Type), ssa
+
+	return nil, rule, ssa
 }
 
 func (i *Init) Tuple() []string {
@@ -600,16 +613,17 @@ func (pr *Prefix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry ma
 	pr.Log = Log
 }
 func (pr *Prefix) String() string {
-	return fmt.Sprintf("%s %s", pr.Op, pr.X.String())
+	return fmt.Sprintf("(%s %s)", pr.Op, pr.X.String())
 }
 
 func (pr *Prefix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
-	panic(fmt.Sprintf("WriteRule not implemented for %T", pr))
-	//return "", ssa
+	init, x, ssa := pr.X.WriteRule(ssa)
+	r := fmt.Sprintf("(%s %s)", pr.Op, x)
+	return init, r, ssa
 }
 
 func (pr *Prefix) Assertless() string {
-	return fmt.Sprintf("(%s %s)", pr.Op, pr.X)
+	return fmt.Sprintf("(%s %s)", pr.Op, pr.X.Assertless())
 }
 func (pr *Prefix) Tag(k1 string, k2 string) {
 	pr.tag = &branch{
@@ -895,12 +909,13 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 
 		if w.Init {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
-			default_value := DefaultValue(w.Type)
+			//default_value := DefaultValue(w.Type)
 			i := &Init{
 				Ident: w.Value,
 				SSA:   fmt.Sprintf("%d", ssa.Get(w.Value)),
 				Type:  w.Type,
-				Value: default_value,
+				//Value: &Wrap{Value: default_value},
+				Value: nil,
 			}
 			return []*Init{i}, rule, ssa
 		}

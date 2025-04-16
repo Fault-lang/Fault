@@ -430,30 +430,30 @@ import (
 
 func TestTestData(t *testing.T) {
 	specs := []string{
-		/*"testdata/bathtub.fspec",
+		"testdata/bathtub.fspec",
 		"testdata/simple.fspec",
 		"testdata/bathtub2.fspec",
 		"testdata/booleans.fspec",
 		"testdata/unknowns.fspec",
 		"testdata/swaps/swaps.fspec",
 		"testdata/swaps/swaps1.fspec",
-		"testdata/swaps/swaps2.fspec",*/
+		"testdata/swaps/swaps2.fspec",
 		"testdata/indexes.fspec",
-		/*"testdata/strings.fspec",
-		"testdata/strings2.fspec",*/
+		"testdata/strings.fspec",
+		"testdata/strings2.fspec",
 	}
 	smt2s := []string{
-		/*"testdata/bathtub.smt2",
+		"testdata/bathtub.smt2",
 		"testdata/simple.smt2",
 		"testdata/bathtub2.smt2",
 		"testdata/booleans.smt2",
 		"testdata/unknowns.smt2",
 		"testdata/swaps/swaps.smt2",
 		"testdata/swaps/swaps1.smt2",
-		"testdata/swaps/swaps2.smt2",*/
+		"testdata/swaps/swaps2.smt2",
 		"testdata/indexes.smt2",
-		/*"testdata/strings.smt2",
-		"testdata/strings2.smt2",*/
+		"testdata/strings.smt2",
+		"testdata/strings2.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)
@@ -520,47 +520,47 @@ func TestTestData(t *testing.T) {
 // 	}
 // }
 
-// func TestMultiCond(t *testing.T) {
-// 	specs := []string{
-// 		"testdata/conditionals/multicond.fspec",
-// 		"testdata/conditionals/multicond2.fspec",
-// 		"testdata/conditionals/multicond3.fspec",
-// 		"testdata/conditionals/multicond4.fspec",
-// 		"testdata/conditionals/multicond5.fspec",
-// 		"testdata/conditionals/condwelse.fspec",
-// 	}
-// 	smt2s := []string{
-// 		"testdata/conditionals/multicond.smt2",
-// 		"testdata/conditionals/multicond2.smt2",
-// 		"testdata/conditionals/multicond3.smt2",
-// 		"testdata/conditionals/multicond4.smt2",
-// 		"testdata/conditionals/multicond5.smt2",
-// 		"testdata/conditionals/condwelse.smt2",
-// 	}
+func TestMultiCond(t *testing.T) {
+	specs := []string{
+		"testdata/conditionals/multicond.fspec",
+		/*"testdata/conditionals/multicond2.fspec",
+		"testdata/conditionals/multicond3.fspec",
+		"testdata/conditionals/multicond4.fspec",
+		"testdata/conditionals/multicond5.fspec",
+		"testdata/conditionals/condwelse.fspec",*/
+	}
+	smt2s := []string{
+		"testdata/conditionals/multicond.smt2",
+		/*"testdata/conditionals/multicond2.smt2",
+		"testdata/conditionals/multicond3.smt2",
+		"testdata/conditionals/multicond4.smt2",
+		"testdata/conditionals/multicond5.smt2",
+		"testdata/conditionals/condwelse.smt2",*/
+	}
 
-// 	for i, s := range specs {
-// 		data, err := os.ReadFile(s)
-// 		if err != nil {
-// 			panic(fmt.Sprintf("spec %s is not valid", s))
-// 		}
-// 		expecting, err := os.ReadFile(smt2s[i])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
-// 		}
-// 		g := prepTest(s, string(data), true, true)
+	for i, s := range specs {
+		data, err := os.ReadFile(s)
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s))
+		}
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		g := prepTest(s, string(data), true, true)
 
-// 		if err != nil {
-// 			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
-// 		}
+		if err != nil {
+			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
+		}
 
-// 		err = compareResults(s, g.SMT(), string(expecting))
+		err = compareResults(s, g.SMT(), string(expecting))
 
-// 		if err != nil {
-// 			t.Fatalf(err.Error())
-// 		}
-// 	}
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
 
-// }
+}
 
 func compareResults(s string, smt string, expecting string) error {
 	if !strings.Contains(smt, "(declare-fun") {

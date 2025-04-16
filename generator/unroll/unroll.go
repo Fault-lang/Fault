@@ -321,7 +321,7 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 	return []rules.Rule{p}
 }
 
-func declareVar(id string, ty string, val string) *rules.Init {
+func declareVar(id string, ty string, val rules.Rule) *rules.Init {
 	var indexed bool
 	if IsIndexed(id) {
 		indexed = true
@@ -329,7 +329,6 @@ func declareVar(id string, ty string, val string) *rules.Init {
 
 	return &rules.Init{
 		Ident:   id,
-		SSA:     "",
 		Type:    ty,
 		Value:   val,
 		Indexed: indexed,
@@ -391,8 +390,14 @@ func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rul
 	r := []rules.Rule{}
 	for _, gl := range globals {
 		id := util.FormatIdent(gl.GlobalIdent.Ident())
+		b.Env.VarTypes[id] = gl.Type().String()
+
 		if !IsIndexed(id) && !IsClocked(id) {
-			r = append(r, b.constantRule(id, gl.Init, RawInputs))
+			ru := b.constantRule(id, gl.Init, RawInputs)
+			if ru == nil {
+				continue
+			}
+			r = append(r, ru)
 		}
 	}
 	return r
@@ -406,22 +411,24 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	switch val := c.(type) {
 	case *constant.Int:
 		ty := LookupType(id, val)
-		return declareVar(id, ty, val.X.String())
+		return declareVar(id, ty, &rules.Wrap{Value: val.X.String()})
 	case *constant.ExprAnd, *constant.ExprOr, *constant.ExprFNeg:
-		return b.constExpr(val)
+		ty := LookupType(id, val)
+		x := b.constExpr(val)
+		return declareVar(id, ty, x)
 	default:
 		ty := LookupType(id, val)
-		return declareVar(id, ty, val.String())
+		return declareVar(id, ty, &rules.Wrap{Value: val.String()})
 	case *constant.Float:
 		ty := LookupType(id, val)
 		if isASolvable(id, RawInputs) {
-			return declareVar(id, ty, val.X.String())
+			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()})
 		} else {
 			v := val.X.String()
 			if strings.Contains(v, ".") {
-				return declareVar(id, ty, v)
+				return declareVar(id, ty, &rules.Wrap{Value: v})
 			}
-			return declareVar(id, ty, v+".0")
+			return declareVar(id, ty, &rules.Wrap{Value: v + ".0"})
 		}
 	}
 }

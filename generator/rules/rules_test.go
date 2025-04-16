@@ -255,7 +255,7 @@ func TestWrap_WriteRule(t *testing.T) {
 	if init[0].Type != "Int" {
 		t.Errorf("Wrap.WriteRule() init Type = %v, want %v", init[0].Type, "Int")
 	}
-	if init[0].Value != "0" {
+	if init[0].Value.String() != "0" {
 		t.Errorf("Wrap.WriteRule() init Value = %v, want %v", init[0].Value, "0")
 	}
 }

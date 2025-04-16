@@ -42,9 +42,9 @@ func TestNewConstants(t *testing.T) {
 	rawInputs := &llvm.RawInputs{}
 
 	expected := []rules.Rule{
-		declareVar("test_global1", "Real", "10.0"),
-		declareVar("test_global2", "Bool", "0"),
-		declareVar("test_global3", "Real", "30.0"),
+		declareVar("test_global1", "Real", &rules.Wrap{Value: "10.0"}),
+		declareVar("test_global2", "Bool", &rules.Wrap{Value: "0"}),
+		declareVar("test_global3", "Real", &rules.Wrap{Value: "30.0"}),
 	}
 
 	result := NewConstants(e, globals, rawInputs)
@@ -78,5 +78,3 @@ func TestUnroll(t *testing.T) {
 	assert.NotNil(t, llFunc.Start.After)
 	assert.Equal(t, block2.rawIR, llFunc.Start.After.rawIR)
 }
-
-

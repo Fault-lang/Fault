@@ -158,12 +158,17 @@ func (u *Unpacker) InitVars() []string {
 	return smt
 }
 
-func (u *Unpacker) Unpack(f *unroll.LLFunc) []string {
+func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
 	round := fmt.Sprintf("%d", f.Env.CurrentRound)
+
+	//Unpack the constants
+	r := u.unpackConstants(con)
+
 	u.Log.EnterFunction(f.Ident, round)
 
 	// Unpack the rules
-	r := u.unpackBlock(f.Start)
+	r0 := u.unpackBlock(f.Start)
+	r = append(r, r0...)
 
 	function_rules := []string{}
 	for _, ru := range f.Rules {
@@ -172,8 +177,31 @@ func (u *Unpacker) Unpack(f *unroll.LLFunc) []string {
 		function_rules = append(function_rules, line)
 	}
 
-	r = append(function_rules, r...)
+	r = append(r, function_rules...)
 	return r
+}
+
+func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
+	r := []string{}
+	for _, c := range con {
+		if con, ok := c.(*rules.Init); ok {
+			con.Global = true
+			con.SSA = fmt.Sprintf("%d", u.SSA.Get(con.Ident))
+			u.Register([]*rules.Init{con})
+			c = con
+		}
+		line := u.FormatRule(c, u.unpackRule(c))
+		r = append(r, line)
+	}
+	return r
+}
+
+func (u *Unpacker) LoadStringRules(StringRules map[string]string) {
+	u.Log.StringRules = StringRules
+	for k := range StringRules {
+		u.Log.UpdateVariable(k)
+		u.Log.IsStringRule[k] = true
+	}
 }
 
 func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
@@ -202,6 +230,12 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	case *rules.Basic:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Init:
+		if u.Log.IsStringRule[ru.Ident] {
+			// u.SSA.Update(ru.Ident)
+			// ru.SSA = fmt.Sprintf("%d", u.SSA.Get(ru.Ident))
+			ru.Value = nil //Assumed false for LLVM but we don't need the value
+		}
+
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Ite:
 		inits, rule = u.unPackIte(ru)
@@ -249,7 +283,9 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 				Ident: var_name,
 				SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
 				Type:  u.VarTypes[var_name],
-				Value: rules.DefaultValue(u.VarTypes[var_name])}
+				//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
+				Value: nil,
+			}
 			inits = append(inits, i)
 			u.Log.AddPhiOption(phi, ends)
 
@@ -413,7 +449,11 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 		return ""
 	}
 
-	if rule[0:7] == "(assert" { //Already formatted
+	if rule[0:7] == "(assert" || rule[0:8] == "\n(assert" { //Already formatted
+		return rule
+	}
+
+	if _, ok := r.(*rules.Init); ok {
 		return rule
 	}
 

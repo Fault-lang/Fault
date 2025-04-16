@@ -17,6 +17,8 @@ type Logger struct {
 	BranchVars    map[string][]string // function_name : [var_name_1, var_name_2]
 	Forks         map[string][]string // var_name_phi : [var_name_1, var_name_2]
 	Results       map[string]string   // var_name : solution value
+	StringRules   map[string]string   // var_name : string rule
+	IsStringRule  map[string]bool
 }
 
 func NewLogger() *Logger {
@@ -28,6 +30,8 @@ func NewLogger() *Logger {
 		BranchIndexes: make(map[string][]int),
 		BranchVars:    make(map[string][]string),
 		FuncIndexes:   make(map[string][]int),
+		StringRules:   make(map[string]string),
+		IsStringRule:  make(map[string]bool),
 	}
 }
 
