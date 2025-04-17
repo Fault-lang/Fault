@@ -199,7 +199,6 @@ func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 func (u *Unpacker) LoadStringRules(StringRules map[string]string) {
 	u.Log.StringRules = StringRules
 	for k := range StringRules {
-		u.Log.UpdateVariable(k)
 		u.Log.IsStringRule[k] = true
 	}
 }
@@ -230,7 +229,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	case *rules.Basic:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Init:
-		if u.Log.IsStringRule[ru.Ident] {
+		_, ok := ru.Value.(*rules.Wrap)
+		if u.Log.IsStringRule[ru.Ident] && ok {
 			// u.SSA.Update(ru.Ident)
 			// ru.SSA = fmt.Sprintf("%d", u.SSA.Get(ru.Ident))
 			ru.Value = nil //Assumed false for LLVM but we don't need the value

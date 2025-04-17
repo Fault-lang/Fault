@@ -142,6 +142,10 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 
 	id = fmt.Sprintf("%s_%s", i.Ident, i.SSA)
 
+	if i.Global {
+		i.Log.UpdateVariable(id)
+	}
+
 	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
 
 	if i.Value != nil && i.Global {

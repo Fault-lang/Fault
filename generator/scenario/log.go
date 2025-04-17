@@ -183,7 +183,13 @@ func (l *Logger) Trace() {
 				functions = functions[:len(functions)-1]
 			}
 		case *VariableUpdate:
-			scope := functions[len(functions)-1]
+			var scope string
+			if len(functions) == 0 {
+				scope = "__global"
+			} else {
+				scope = functions[len(functions)-1]
+			}
+
 			l.BranchIndexes[scope] = append(l.BranchIndexes[scope], i)
 			l.BranchVars[scope] = append(l.BranchVars[scope], event.Variable)
 		case *Solvable:
@@ -242,6 +248,18 @@ func getBase(s string) string {
 	return strings.Join(parts[:len(parts)-1], "_")
 }
 
+func (l *Logger) IsNegated(s string) (string, bool) {
+	// Check if the string contains "not"
+	if strings.Contains(s, "_neg") {
+		parts := strings.Split(s, "_neg")
+		if len(parts) > 1 {
+			return parts[0], true
+		}
+		panic(fmt.Sprintf("malformed '%s' negated string", s))
+	}
+	return s, false
+}
+
 func (l *Logger) Print() {
 	fmt.Print("\n===================================\n")
 	fmt.Printf("Fault found the following scenario\n")
@@ -269,7 +287,18 @@ func (l *Logger) Print() {
 				identLevel = identLevel[:len(identLevel)-3]
 			}
 		case *VariableUpdate:
-			fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
+			v := getBase(event.Variable)
+			s, negated := l.IsNegated(v)
+			if l.IsStringRule[s] == true {
+				s = l.StringRules[s]
+				if negated {
+					fmt.Printf("%s not %s is %s\n", identLevel, s, l.Results[event.Variable])
+				} else {
+					fmt.Printf("%s %s is %s\n", identLevel, s, l.Results[event.Variable])
+				}
+			} else {
+				fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
+			}
 
 		case *Solvable:
 			if event.Type == "Uncertain" {

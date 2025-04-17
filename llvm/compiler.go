@@ -24,12 +24,12 @@ var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
 
 type RawInputs struct {
-	RawAsserts     []*ast.AssertionStatement
-	RawAssumes     []*ast.AssertionStatement
-	Asserts        []*ast.AssertionStatement
-	Assumes        []*ast.AssertionStatement
-	Uncertains     map[string][]float64
-	Unknowns       []string
+	RawAsserts []*ast.AssertionStatement
+	RawAssumes []*ast.AssertionStatement
+	Asserts    []*ast.AssertionStatement
+	Assumes    []*ast.AssertionStatement
+	Uncertains map[string][]float64
+	Unknowns   []string
 }
 
 func NewRawInputs() *RawInputs {
@@ -42,7 +42,6 @@ func NewRawInputs() *RawInputs {
 		Unknowns:   []string{},
 	}
 }
-
 
 type Compiler struct {
 	module  *ir.Module
@@ -60,7 +59,7 @@ type Compiler struct {
 	instances        map[string][]string
 	instanceChildren map[string]string
 	structPropOrder  map[string][]string
-	RawInputs		*RawInputs
+	RawInputs        *RawInputs
 
 	block0          *ir.Block
 	contextBlock    *ir.Block
@@ -99,7 +98,7 @@ func NewCompiler() *Compiler {
 		instances:        make(map[string][]string),
 		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
-		RawInputs: 	  NewRawInputs(),
+		RawInputs:        NewRawInputs(),
 
 		hasRunBlock:   false,
 		IsValid:       false,
@@ -216,6 +215,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					case *ast.InfixExpression:
 						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
 							name := n.Name.IdString()
+							c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), d.Operator, c.compoundString(d.Right))
 							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
 							c.storeGlobal(name, r)
 						}
@@ -318,7 +318,7 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ConstantStatement:
 		c.compileConstant(v)
 	case *ast.DefStatement:
-		switch v.Value.(type) {
+		switch d := v.Value.(type) {
 		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral, *ast.StructInstance:
 			c.compileStruct(v)
 		case *ast.StringLiteral:
@@ -332,6 +332,7 @@ func (c *Compiler) compile(node ast.Node) {
 		case *ast.InfixExpression:
 			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
 				name := v.Name.IdString()
+				c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), d.Operator, c.compoundString(d.Right))
 				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
 				c.storeGlobal(name, r)
 			}
@@ -407,6 +408,27 @@ func (c *Compiler) compile(node ast.Node) {
 	default:
 		pos := node.Position()
 		panic(fmt.Sprintf("node type %T unimplemented line: %d col: %d", v, pos[0], pos[1]))
+	}
+}
+
+func (c *Compiler) compoundString(n ast.Expression) string {
+	switch v := n.(type) {
+	case *ast.InfixExpression:
+		return fmt.Sprintf("%s %s %s", c.compoundString(v.Left), v.Operator, c.compoundString(v.Right))
+	case *ast.StringLiteral:
+		return c.StringRules[v.Value]
+	case *ast.Identifier:
+		return c.StringRules[v.IdString()]
+	case *ast.PrefixExpression:
+		var op string
+		if v.Operator == "!" || v.Operator == "-" {
+			op = "not"
+		} else {
+			op = v.Operator
+		}
+		return fmt.Sprintf("%s %s", op, c.compoundString(v.Right))
+	default:
+		panic(fmt.Sprintf("unknown compound string type %T", v))
 	}
 }
 
