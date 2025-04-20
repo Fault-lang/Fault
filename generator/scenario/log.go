@@ -19,6 +19,7 @@ type Logger struct {
 	Results       map[string]string   // var_name : solution value
 	StringRules   map[string]string   // var_name : string rule
 	IsStringRule  map[string]bool
+	IsCompound    map[string]bool // Filter display of compound rules
 }
 
 func NewLogger() *Logger {

@@ -22,6 +22,34 @@ var OP_NEGATE = map[string]string{
 	//"=": "!=",
 }
 
+func PlainLangOp(op string) string {
+	//Use plain language instead of logic operators
+	switch op {
+	case "&&":
+		return "and"
+	case "||":
+		return "or"
+	case ">":
+		return "is greater than"
+	case "<":
+		return "is less than"
+	case ">=":
+		return "is greater than or equal to"
+	case "<=":
+		return "is less than or equal to"
+	case "==":
+		return "is equal to"
+	case "!=":
+		return "is not equal to"
+	case "!":
+		return "not"
+	case "-":
+		return "not"
+	default:
+		return op
+	}
+}
+
 type StringSet struct {
 	base map[string]bool
 	vals []string

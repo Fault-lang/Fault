@@ -196,7 +196,8 @@ func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 	return r
 }
 
-func (u *Unpacker) LoadStringRules(StringRules map[string]string) {
+func (u *Unpacker) LoadStringRules(StringRules map[string]string, IsCompound map[string]bool) {
+	u.Log.IsCompound = IsCompound
 	u.Log.StringRules = StringRules
 	for k := range StringRules {
 		u.Log.IsStringRule[k] = true

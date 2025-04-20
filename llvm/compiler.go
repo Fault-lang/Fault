@@ -84,6 +84,7 @@ type Compiler struct {
 	States         map[string]bool
 	Alias          map[string]string
 	StringRules    map[string]string
+	IsCompound     map[string]bool
 }
 
 func NewCompiler() *Compiler {
@@ -110,6 +111,7 @@ func NewCompiler() *Compiler {
 		Components:    make(map[string]*StateFunc),
 		States:        make(map[string]bool),
 		StringRules:   make(map[string]string),
+		IsCompound:    make(map[string]bool),
 	}
 	c.setup()
 	return c
@@ -215,7 +217,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					case *ast.InfixExpression:
 						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
 							name := n.Name.IdString()
-							c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), d.Operator, c.compoundString(d.Right))
+							c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), util.PlainLangOp(d.Operator), c.compoundString(d.Right))
 							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
 							c.storeGlobal(name, r)
 						}
@@ -332,7 +334,7 @@ func (c *Compiler) compile(node ast.Node) {
 		case *ast.InfixExpression:
 			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
 				name := v.Name.IdString()
-				c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), d.Operator, c.compoundString(d.Right))
+				c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), util.PlainLangOp(d.Operator), c.compoundString(d.Right))
 				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
 				c.storeGlobal(name, r)
 			}
@@ -414,19 +416,13 @@ func (c *Compiler) compile(node ast.Node) {
 func (c *Compiler) compoundString(n ast.Expression) string {
 	switch v := n.(type) {
 	case *ast.InfixExpression:
-		return fmt.Sprintf("%s %s %s", c.compoundString(v.Left), v.Operator, c.compoundString(v.Right))
+		return fmt.Sprintf("(%s %s %s)", c.compoundString(v.Left), util.PlainLangOp(v.Operator), c.compoundString(v.Right))
 	case *ast.StringLiteral:
 		return c.StringRules[v.Value]
 	case *ast.Identifier:
 		return c.StringRules[v.IdString()]
 	case *ast.PrefixExpression:
-		var op string
-		if v.Operator == "!" || v.Operator == "-" {
-			op = "not"
-		} else {
-			op = v.Operator
-		}
-		return fmt.Sprintf("%s %s", op, c.compoundString(v.Right))
+		return fmt.Sprintf("%s %s", util.PlainLangOp(v.Operator), c.compoundString(v.Right))
 	default:
 		panic(fmt.Sprintf("unknown compound string type %T", v))
 	}
@@ -869,8 +865,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		}
 
 		if node.TokenLiteral() == "COMPOUND_STRING" {
+			name := node.Left.(ast.Nameable).IdString()
 			r := c.compileCompoundGlobal(node.Left.(ast.Nameable).IdString(), node.Right.(*ast.InfixExpression))
-			c.storeGlobal(node.Left.(ast.Nameable).IdString(), r)
+			c.storeGlobal(name, r)
 			return nil
 		}
 
@@ -1208,6 +1205,7 @@ func (c *Compiler) compileCompoundNode(n ast.Node) *ir.Global {
 		rname := r.Ident()
 		lname := l.Ident()
 		name := fmt.Sprintf("%s_%s", util.FormatIdent(lname), util.FormatIdent(rname))
+		c.IsCompound[name] = true
 		if _, ok := c.GetGlobal(name); ok { //avoiding conflicts when compound rules overlap
 			name = fmt.Sprintf("%s_%s%d", name, "p", rand.Int())
 		}

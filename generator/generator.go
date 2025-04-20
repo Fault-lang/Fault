@@ -32,21 +32,21 @@ type Generator struct {
 	smt         []string
 	ResultLog   *scenario.Logger
 	StringRules map[string]string
+	IsCompound  map[string]bool
 }
 
-func NewGenerator(ri *llvm.RawInputs, sr map[string]string) *Generator {
+func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool) *Generator {
 	return &Generator{
 		functions:   make(map[string]*ir.Func),
 		Env:         unroll.NewEnv(ri),
 		smt:         []string{"(set-logic QF_NRA)"},
 		RawInputs:   ri,
 		StringRules: sr,
+		IsCompound:  is,
 	}
 }
 func Execute(compiler *llvm.Compiler) *Generator {
-	generator := NewGenerator(compiler.RawInputs, compiler.StringRules)
-	//generator.LoadMeta(compiler)
-	//generator.States = compiler.States
+	generator := NewGenerator(compiler.RawInputs, compiler.StringRules, compiler.IsCompound)
 	generator.Run(compiler.GetIR())
 	return generator
 }
@@ -72,7 +72,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.RunBlock.Unroll()
 
 	p := unpack.NewUnpacker(g.RunBlock.Ident)
-	p.LoadStringRules(g.StringRules)
+	p.LoadStringRules(g.StringRules, g.IsCompound)
 	p.Log.Uncertains = g.RawInputs.Uncertains
 
 	p.VarTypes = g.Env.VarTypes
