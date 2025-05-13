@@ -885,6 +885,19 @@ func NewWrap(v string, t string, vr bool, file string, line int, init bool, inde
 func (w *Wrap) String() string {
 	return w.Value
 }
+
+func (w *Wrap) Clone(phiLevel int) *Wrap {
+	return &Wrap{
+		Value:    w.Value,
+		Variable: w.Variable,
+		Type:     w.Type,
+		Init:     false,
+		Indexed:  false,
+		PhiLevel: phiLevel,
+		Debugger: make(map[string]string),
+	}
+}
+
 func DefaultValue(t string) string {
 	switch t {
 	case "Int":

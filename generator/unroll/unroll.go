@@ -204,7 +204,7 @@ func (b *LLBlock) Unroll() {
 	// For each non-branching instruction of the basic block.
 	for _, inst := range b.rawIR.Insts {
 		r := b.parseInstruct(inst)
-		if len(r) > 0 {
+		if len(r) > 0 && r[0] != nil {
 			b.AddRules(r)
 		}
 	}

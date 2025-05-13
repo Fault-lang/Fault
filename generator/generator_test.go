@@ -522,18 +522,18 @@ func TestTestData(t *testing.T) {
 
 func TestMultiCond(t *testing.T) {
 	specs := []string{
-		"testdata/conditionals/multicond.fspec",
-		/*"testdata/conditionals/multicond2.fspec",
+		/*"testdata/conditionals/multicond.fspec",
+		"testdata/conditionals/multicond2.fspec",*/
 		"testdata/conditionals/multicond3.fspec",
-		"testdata/conditionals/multicond4.fspec",
+		/*"testdata/conditionals/multicond4.fspec",
 		"testdata/conditionals/multicond5.fspec",
 		"testdata/conditionals/condwelse.fspec",*/
 	}
 	smt2s := []string{
-		"testdata/conditionals/multicond.smt2",
-		/*"testdata/conditionals/multicond2.smt2",
+		/*"testdata/conditionals/multicond.smt2",
+		"testdata/conditionals/multicond2.smt2",*/
 		"testdata/conditionals/multicond3.smt2",
-		"testdata/conditionals/multicond4.smt2",
+		/*"testdata/conditionals/multicond4.smt2",
 		"testdata/conditionals/multicond5.smt2",
 		"testdata/conditionals/condwelse.smt2",*/
 	}

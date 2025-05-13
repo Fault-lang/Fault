@@ -356,6 +356,18 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 	return t, f, a, block_names
 }
 
+func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
+	n := node.Ident()
+	nRule := b.LookupCondPart(b.Env.CurrentFunction, n)
+	if nRule == nil {
+		n = b.ConvertIdent(b.Env.CurrentFunction, n)
+		nIs := IsIndexed(n)
+		_, file, line, _ := runtime.Caller(1)
+		nRule = rules.NewWrap(n, "Bool", true, file, line, false, nIs)
+	}
+	return nRule
+}
+
 func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	var cond rules.Rule
 	b.Env.returnVoid.In()
@@ -375,10 +387,7 @@ func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	b.Env.returnVoid.Out()
 
 	t, f, a, block_names := b.parseTerms(term.Succs())
-	// if len(t) == 0 && len(f) == 0 { // This happens in a construction like func{stay();}
-	// 	g.variables.PopPhis() // in state charts since we convert them to if state{ stay(); }
-	// 	g.variables.AppendState(phis)
-
+	
 	ite := rules.NewIte(cond, t, f, a, block_names)
 	return []rules.Rule{ite}
 }
@@ -393,44 +402,46 @@ func (b *LLBlock) parseGetElementPtr(inst *ir.InstGetElementPtr) []rules.Rule {
 
 func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 	id := inst.Ident()
-	x := inst.X.Ident()
-	xRule := b.LookupCondPart(b.Env.CurrentFunction, x)
-	if xRule == nil {
-		x = b.ConvertIdent(b.Env.CurrentFunction, x)
-		xIs := IsIndexed(x)
-		_, file, line, _ := runtime.Caller(1)
-		xRule = rules.NewWrap(x, "Bool", true, file, line, false, xIs)
-	}
+	xRule := b.parseCondNode(inst.X)
 	_, file, line, _ := runtime.Caller(1)
 	return []rules.Rule{b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false, false), "not")}
 }
 
 func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
-	if op == "not" {
-		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
-		b.irRefs[refname] = &rules.Prefix{X: x, Ty: "Bool", Op: op}
-		return b.irRefs[refname]
+	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+	if r, ok := b.irRefs[refname]; ok {
+		return r
 	}
 
-	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+	if op == "not" {
+		b.irRefs[refname] = &rules.Prefix{X: x, Ty: "Bool", Op: op}
+		return nil
+	}
+
 	b.irRefs[refname] = &rules.Infix{X: x, Ty: "Bool", Y: y, Op: op}
-	return b.irRefs[refname]
+	return nil
 }
 
 func (b *LLBlock) parseAnd(inst *ir.InstAnd) []rules.Rule {
-	return []rules.Rule{}
+	id := inst.Ident()
+	xRule := b.parseCondNode(inst.X)
+	yRule := b.parseCondNode(inst.Y)
+	return []rules.Rule{b.createMultiCondRule(id, xRule, yRule, "and")}
 }
 
 func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
-	return []rules.Rule{}
+	id := inst.Ident()
+	xRule := b.parseCondNode(inst.X)
+	yRule := b.parseCondNode(inst.Y)
+	return []rules.Rule{b.createMultiCondRule(id, xRule, yRule, "and")}
 }
 
 func (b *LLBlock) parseBitCast(inst *ir.InstBitCast) []rules.Rule {
-	return []rules.Rule{}
+	panic(fmt.Sprint("unimplemented bitcast"))
 }
 
 func (b *LLBlock) parseFNeg(inst *ir.InstFNeg) []rules.Rule {
-	return []rules.Rule{}
+	panic(fmt.Sprint("unimplemented FNeg"))
 }
 
 func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {

@@ -383,6 +383,23 @@ func GetVarBase(id string) (string, int) {
 	return strings.Join(v[0:len(v)-1], "_"), num
 }
 
+func Difference(s1 map[string]bool, s2 map[string]bool) []string {
+	vars := []string{}
+	if len(s2) == 0 {
+		for k := range s1 {
+			vars = append(vars, k)
+		}
+		return vars
+	}
+
+	for k := range s2 {
+		if _, ok := s1[k]; !ok {
+			vars = append(vars, k)
+		}
+	}
+	return vars
+}
+
 func Intersection(s1 []string, s2 []string, init bool) []string {
 	var s3 []string
 	for _, s := range s1 {
