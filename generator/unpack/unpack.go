@@ -65,21 +65,16 @@ func (u *Unpacker) SetRound(round int) {
 
 func (u *Unpacker) SetEntries(start *rules.SSA) {
 	for var_name := range start.Iter() {
-		if _, ok := u.OnEntry[var_name]; ok {
+		if _, ok := u.OnEntry[var_name]; !ok {
 			u.OnEntry[var_name] = []int16{}
 		}
+
 		if len(u.OnEntry[var_name]) < u.PhiLevel {
-			n := u.PhiLevel - len(u.OnEntry[var_name])
-			filler := make([]int16, n)
+			n := u.PhiLevel - len(u.OnEntry[var_name]) //Calculate how many entries we need to add
+			filler := make([]int16, n)                 //Generate a slice of n 0s
 			u.OnEntry[var_name] = append(u.OnEntry[var_name], filler...)
 		}
 		u.OnEntry[var_name] = append(u.OnEntry[var_name], start.Get(var_name))
-	}
-}
-
-func (u *Unpacker) UpdateEntries() {
-	for var_name := range u.OnEntry {
-		u.OnEntry[var_name] = append(u.OnEntry[var_name], u.SSA.Get(var_name))
 	}
 }
 
@@ -322,7 +317,6 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 			fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
 		}
 	}
-	u.UpdateEntries() //Update entries to reflect Phi values
 	inits := append(tInit, fInit...)
 	return inits, tRules, fRules
 }
@@ -434,11 +428,12 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 		f = fmt.Sprintf("(and %s)", strings.Join(fEnds, " "))
 	}
 
+	u.PopEntries()
+
 	if len(ite.After) > 0 {
 		aRules, _ = u.unpackIteBlock(ite.BlockNames["after"], ite.After)
 	}
 
-	u.PopEntries()
 	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
 	return u.Inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
 }
