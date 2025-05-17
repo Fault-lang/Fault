@@ -23,7 +23,7 @@ type Unpacker struct {
 	CurrentBlock string
 	Registry     map[string][][]string // current_round_current_block -> [(var_instance, ssa), (var_instance, ssa)]
 	SSA          *rules.SSA
-	Phis         map[string][]int16
+	Phis         map[string][]int16 // A tuple of [entry ssa, last updated ssa]
 	PhiLevel     int
 	HaveSeen     map[string]bool    // Have we seen this variable so far in this fork?
 	OnEntry      map[string][]int16 // SSA of variables on entry to a fork
@@ -74,6 +74,12 @@ func (u *Unpacker) SetEntries(start *rules.SSA) {
 			u.OnEntry[var_name] = append(u.OnEntry[var_name], filler...)
 		}
 		u.OnEntry[var_name] = append(u.OnEntry[var_name], start.Get(var_name))
+	}
+}
+
+func (u *Unpacker) UpdateEntries() {
+	for var_name := range u.OnEntry {
+		u.OnEntry[var_name] = append(u.OnEntry[var_name], u.SSA.Get(var_name))
 	}
 }
 
@@ -280,6 +286,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 
 			ends := fmt.Sprintf("%s_%d", var_name, vals[1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
+
 			i := &rules.Init{
 				Ident: var_name,
 				SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
@@ -308,13 +315,14 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 	tInit, tRules, hasPhi = u.buildPhis(tPhis, nil)
 
 	if len(fPhis) > 0 {
-		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
+		fInit, fRules, hasPhi = u.buildPhis(fPhis, hasPhi)
 	} else {
 		// If there are no rules in the false branch we still need the phis
 		for k := range u.Phis {
 			fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
 		}
 	}
+	u.UpdateEntries() //Update entries to reflect Phi values
 	inits := append(tInit, fInit...)
 	return inits, tRules, fRules
 }
@@ -362,6 +370,34 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	return u.Inits, fmt.Sprintf("%s", strings.Join(rule_set, "\n"))
 }
 
+func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]string, []map[string][]int16) {
+	var bPhis []map[string][]int16
+	var bRules []string
+	u2 := NewUnpacker(blockName)
+	u2.Inherits(u)
+	for _, ru := range block {
+		if _, ok := ru.(*rules.FuncCall); ok {
+			continue
+		}
+
+		line := u.FormatRule(ru, u2.unpackRule(ru))
+		bRules = append(bRules, line)
+	}
+
+	u.SetPhis(u.SSA, u2.SSA)
+	u.SSA = u2.SSA.Clone()
+	PhiClone, err := deepcopy.Anything(u.Phis)
+
+	if err != nil {
+		panic(err)
+	}
+
+	bPhis = append(bPhis, PhiClone.(map[string][]int16))
+	u.AddInit(u2.Inits)
+	u.UpdateRegistry(u2.Registry)
+	return bRules, bPhis
+}
+
 func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	u.NewLevel()
 	u.SetEntries(u.SSA)
@@ -373,47 +409,13 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	var tRules, fRules, aRules []string
 	var tEnds, fEnds []string
 	var inits []*rules.Init
-	var phis []map[string][]int16
 
 	if len(ite.T) > 0 {
-		u2 := NewUnpacker(ite.BlockNames["true"])
-		u2.Inherits(u)
-		for _, ru := range ite.T {
-			line := u.FormatRule(ru, u2.unpackRule(ru))
-			tRules = append(tRules, line)
-		}
-
-		u.SetPhis(u.SSA, u2.SSA)
-		u.SSA = u2.SSA.Clone()
-		PhiClone, err := deepcopy.Anything(u.Phis)
-
-		if err != nil {
-			panic(err)
-		}
-
-		tPhis = append(tPhis, PhiClone.(map[string][]int16))
-		u.AddInit(u2.Inits)
-		u.UpdateRegistry(u2.Registry)
+		tRules, tPhis = u.unpackIteBlock(ite.BlockNames["true"], ite.T)
 	}
 
 	if len(ite.F) > 0 {
-		u2 := NewUnpacker(ite.BlockNames["false"])
-		u2.Inherits(u)
-		for _, ru := range ite.F {
-			line := u.FormatRule(ru, u2.unpackRule(ru))
-			fRules = append(fRules, line)
-		}
-		u.SetPhis(u.SSA, u2.SSA)
-		u.SSA = u2.SSA.Clone()
-		PhiClone, err := deepcopy.Anything(u.Phis)
-
-		if err != nil {
-			panic(err)
-		}
-
-		fPhis = append(phis, PhiClone.(map[string][]int16))
-		u.AddInit(u2.Inits)
-		u.UpdateRegistry(u2.Registry)
+		fRules, fPhis = u.unpackIteBlock(ite.BlockNames["false"], ite.F)
 	}
 
 	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis)
@@ -433,15 +435,9 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	}
 
 	if len(ite.After) > 0 {
-		u2 := NewUnpacker(ite.BlockNames["after"])
-		u2.Inherits(u)
-		for _, ru := range ite.After {
-			line := u.FormatRule(ru, u2.unpackRule(ru))
-			aRules = append(aRules, line)
-		}
-		u.AddInit(u2.Inits)
-		u.UpdateRegistry(u2.Registry)
+		aRules, _ = u.unpackIteBlock(ite.BlockNames["after"], ite.After)
 	}
+
 	u.PopEntries()
 	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
 	return u.Inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))

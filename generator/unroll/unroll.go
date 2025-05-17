@@ -70,6 +70,7 @@ type LLUnit interface {
 	AddRules([]rules.Rule)
 	AddBlock(LLUnit)
 	ExecuteCallstack() []rules.Rule
+	GenerateCallstack([]string) []rules.Rule
 	String() string
 }
 
@@ -170,8 +171,36 @@ func (f *LLFunc) AddBlock(b LLUnit) {
 func (f *LLFunc) ExecuteCallstack() []rules.Rule {
 	stack := util.Copy(f.localCallstack)
 	f.localCallstack = []string{}
-	r := GenerateCallstack(f, stack)
+	r := f.GenerateCallstack(stack)
 	return r
+}
+func (f *LLFunc) GenerateCallstack(callstack []string) []rules.Rule {
+	if len(callstack) == 0 {
+		return nil
+	}
+
+	p := rules.NewParallels(parallelPermutations(callstack))
+
+	for _, fname := range callstack {
+		var enter, exit *rules.FuncCall
+		var v *LLFunc
+		var ok bool
+
+		enter = rules.NewFuncCall(fname, "Enter", f.Env.CurrentRound)
+		exit = rules.NewFuncCall(fname, "Exit", f.Env.CurrentRound)
+		p.Round = f.Env.CurrentRound
+		v, ok = f.functions[fname]
+		if !ok {
+			v = NewLLFunc(f.Env, f.rawFunctions, f.rawFunctions[fname])
+			v.Unroll()
+		}
+
+		if len(callstack) == 1 {
+			return v.GetAllRules(enter, exit)
+		}
+		p.Calls[fname] = v.GetAllRules(enter, exit)
+	}
+	return []rules.Rule{p}
 }
 
 type LLBlock struct {
@@ -273,14 +302,14 @@ func (b *LLBlock) AddBlock(after LLUnit) {
 	}
 }
 
-func (f *LLBlock) ExecuteCallstack() []rules.Rule {
-	stack := util.Copy(f.localCallstack)
-	f.localCallstack = []string{}
-	r := GenerateCallstack(f, stack)
+func (b *LLBlock) ExecuteCallstack() []rules.Rule {
+	stack := util.Copy(b.localCallstack)
+	b.localCallstack = []string{}
+	r := b.GenerateCallstack(stack)
 	return r
 }
 
-func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
+func (b *LLBlock) GenerateCallstack(callstack []string) []rules.Rule {
 	if len(callstack) == 0 {
 		return nil
 	}
@@ -292,26 +321,14 @@ func GenerateCallstack(llu LLUnit, callstack []string) []rules.Rule {
 		var v *LLFunc
 		var ok bool
 
-		switch u := llu.(type) {
-		case *LLFunc:
-			enter = rules.NewFuncCall(fname, "Enter", u.Env.CurrentRound)
-			exit = rules.NewFuncCall(fname, "Exit", u.Env.CurrentRound)
-			p.Round = u.Env.CurrentRound
-			v, ok = u.functions[fname]
-			if !ok {
-				v = NewLLFunc(u.Env, u.rawFunctions, u.rawFunctions[fname])
-				v.Unroll()
-			}
-		case *LLBlock:
-			enter = rules.NewFuncCall(fname, "Enter", u.Env.CurrentRound)
-			exit = rules.NewFuncCall(fname, "Exit", u.Env.CurrentRound)
-			p.Round = u.Env.CurrentRound
-			v, ok = u.functions[fname]
-			if !ok {
-				v = NewLLFunc(u.Env, u.rawFunctions, u.rawFunctions[fname])
-				v.Unroll()
+		enter = rules.NewFuncCall(fname, "Enter", b.Env.CurrentRound)
+		exit = rules.NewFuncCall(fname, "Exit", b.Env.CurrentRound)
+		p.Round = b.Env.CurrentRound
+		v, ok = b.functions[fname]
+		if !ok {
+			v = NewLLFunc(b.Env, b.rawFunctions, b.rawFunctions[fname])
+			v.Unroll()
 
-			}
 		}
 		if len(callstack) == 1 {
 			return v.GetAllRules(enter, exit)

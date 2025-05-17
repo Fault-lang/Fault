@@ -268,7 +268,7 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 		r0 := b.ExecuteCallstack()
 		r = append(r, r0...)
 
-		r1 := GenerateCallstack(b, []string{callee})
+		r1 := b.GenerateCallstack([]string{callee})
 		r = append(r, r1...)
 	} else {
 		r0 := b.ExecuteCallstack()
