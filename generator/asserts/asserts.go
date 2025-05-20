@@ -97,14 +97,22 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 
 			if !constant && var_ssa[0] == v {
 				//Otherwise return every round+scope with the base name of the variable or any Instances
-				subset[k] = []string{full_ssa}
+				if _, ok := subset[k]; !ok {
+					subset[k] = []string{full_ssa}
+					continue
+				}
+				subset[k] = append(subset[k], full_ssa)
 			}
 
 		}
 
 		if constant {
 			//If var is constant, populate every round+scope with the correct SSA value
-			subset[k] = []string{constant_value}
+			if _, ok := subset[k]; !ok {
+				subset[k] = []string{constant_value}
+				continue
+			}
+			subset[k] = append(subset[k], constant_value)
 		}
 	}
 	return subset
@@ -126,14 +134,19 @@ func (c *Constraint) FilterRegistryByIndex(v string, idx string) map[string][]st
 func (c *Constraint) Parse() []string {
 	c.Left = c.parseNode(c.Raw.Left)
 	c.Right = c.parseNode(c.Raw.Right)
-	merged := c.merge(c.Left, c.Right, c.Op)
-	l := merged.List() //FOR NOW
 
-	var smt []string
-	for _, s := range l {
-		smt = append(smt, fmt.Sprintf("(assert %s)", s))
-	}
-	return smt
+	// Then
+	// If left is true, right is true
+	// If left is false, right doesn't matter
+
+	// Temporals
+	// If left and right are instances of the same variable
+	l := c.applyTemporal()
+
+	// Expand based on temporal filter
+
+	// If assume, the different asserts need to be joined by
+	// an "and" instead of and "or"
 
 	// if c.Then {
 	// 	sg := c.mergeInvariantInfix(left, right, "or")
@@ -174,6 +187,9 @@ func (c *Constraint) Parse() []string {
 	// // }
 	// sg := c.merge(left, right)
 	// return c.join(sg, operator)
+	var smt []string
+	smt = append(smt, fmt.Sprintf("(assert %s)", l))
+	return smt
 }
 
 func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
@@ -240,6 +256,7 @@ func (c *Constraint) Prefix(x []string, op string) []string {
 	}
 	return product
 }
+
 func captureState(id string) (string, bool, bool) {
 	//Returns base name, where it is a constant (c), and
 	// whether to apply assert to all SSA versions of
@@ -321,51 +338,42 @@ func (c *Constraint) Package(x [][]string, op string) []string {
 // 	return asserts, chains
 // }
 
-// func (c *Constraint) applyTemporal(ir *rules.AssertChain) string {
-// 	//c.applyTemporal(c.Temporal.Type, c.NewMultiVAssertChain(ir, chain, ""), c.Temporal.Filter, c.On, c.Off)
-// 	full := ir.Values
-// 	first := ir.Values[0]
-// 	clause := strings.Join(full, " ")
+func (c *Constraint) applyTemporal() string {
+	// full := ir.Values
+	// first := ir.Values[0]
+	// clause := strings.Join(full, " ")
 
-// 	switch c.Temporal.Type {
-// 	case "eventually":
-// 		if len(full) > 1 {
-// 			//g.Log.NewMultiClauseAssert(full, on)
-// 			or := fmt.Sprintf("(%s %s)", c.On, clause)
-// 			return or
-// 		}
-// 		return first
-// 	case "always":
-// 		if len(full) > 1 {
-// 			//g.Log.NewMultiClauseAssert(full, off)
-// 			or := fmt.Sprintf("(%s %s)", c.Off, clause)
-// 			return or
-// 		}
-// 		return first
-// 	case "eventually-always":
-// 		if len(full) > 1 {
-// 			or := c.eventuallyAlways(ir)
-// 			return or
-// 		}
-// 		return first
-// 	default:
-// 		if len(full) > 1 {
-// 			var op string
-// 			switch c.Temporal.Filter {
-// 			case "nft":
-// 				op = "or"
-// 			case "nmt":
-// 				op = "or"
-// 			default:
-// 				op = c.Off
-// 			}
-// 			//g.Log.NewMultiClauseAssert(full, op)
-// 			or := fmt.Sprintf("(%s %s)", op, clause)
-// 			return or
-// 		}
-// 		return first
-// 	}
-// }
+	switch c.Temporal.Type {
+	case "eventually": // At least one state is true
+		m := c.merge(c.Left, c.Right, c.Op)
+		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
+	case "always": // Every state is true
+		m := c.merge(c.Left, c.Right, c.Op)
+		return fmt.Sprintf("(%s %s)", c.Off, strings.Join(m.List(), " "))
+	case "eventually-always": // Once the statement is true, it stays true
+		m := c.merge(c.Left, c.Right, c.Op)
+		or := c.eventuallyAlways(m.List())
+		return or
+		// if len(full) > 1 {
+		// 	or := c.eventuallyAlways(ir)
+		// 	return or
+		// }
+		// return first
+	default:
+		var op string
+		switch c.Temporal.Filter {
+		case "nft": // True no fewer than X times
+			op = "or"
+		case "nmt": // True no more than X times
+			op = "or"
+		default:
+			op = c.Off
+		}
+		clause := c.merge(c.Left, c.Right, op)
+		or := fmt.Sprintf("(%s %s)", op, strings.Join(clause.List(), " "))
+		return or
+	}
+}
 
 // func (c *Constraint) expand() *rules.AssertChain {
 // 	var x [][]string
@@ -464,26 +472,18 @@ func (c *Constraint) Package(x [][]string, op string) []string {
 // 	}
 // }
 
-// func (c *Constraint) eventuallyAlways(ir *rules.AssertChain) string {
-// 	var progression []string
-// 	//var chain []int
-// 	for i := range ir.Values {
-// 		clause := strings.Join(ir.Values[i:], " ")
+func (c *Constraint) eventuallyAlways(values []string) string {
+	var clause string
+	var progression []string
+	for i := 1; i <= len(values); i++ {
+		clause = strings.Join(values[len(values)-i:], " ")
+		s := fmt.Sprintf("(and %s)", clause)
+		progression = append(progression, s)
+	}
 
-// 		s := fmt.Sprintf("(and %s)", clause)
-// 		progression = append(progression, s)
-
-// 		// idx := g.Log.NewMultiClauseAssert(ir.Values[i:], "and")
-// 		// chain = append(chain, idx)
-
-// 		// g.Log.AddChain(clause, g.NewMultiVAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
-// 		// g.Log.AddChain(s, g.NewMultiVAssertChain(ir.Values[i:], ir.Chain[i:], "and"))
-// 	}
-
-// 	parentClause := strings.Join(progression, " ")
-// 	//g.Log.AddChain(parentClause, g.NewMultiVAssertChain(progression, chain, "or"))
-// 	return fmt.Sprintf("(or %s)", parentClause)
-// }
+	parentClause := strings.Join(progression, " ")
+	return fmt.Sprintf("(or %s)", parentClause)
+}
 
 // func (c *Constraint) mergeByRound(left_base *rules.VarSets, right *rules.VarSets, operator string) *rules.VarSets {
 // 	ret := &rules.VarSets{}
