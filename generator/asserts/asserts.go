@@ -369,7 +369,12 @@ func (c *Constraint) applyTemporal() string {
 		default:
 			op = c.Off
 		}
-		clause := c.merge(c.Left, c.Right, op)
+		clause := c.merge(c.Left, c.Right, c.Op)
+
+		if len(clause.List()) == 1 {
+			return clause.List()[0]
+		}
+
 		or := fmt.Sprintf("(%s %s)", op, strings.Join(clause.List(), " "))
 		return or
 	}
