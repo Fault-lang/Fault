@@ -56,7 +56,7 @@ func TestEventually(t *testing.T) {
 	err := compareResults("Eventually", g.SMT(), expecting)
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -108,7 +108,7 @@ func TestEventuallyAlways(t *testing.T) {
 	err := compareResults("EventuallyAlways", g.SMT(), expecting)
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -160,7 +160,7 @@ func TestEventuallyAlways2(t *testing.T) {
 	err := compareResults("EventuallyAlways2", g.SMT(), expecting)
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -204,7 +204,7 @@ func TestEventuallyAlways2(t *testing.T) {
 // 	err := compareResults("Temporal", g.SMT(), expecting)
 
 // 	if err != nil {
-// 		t.Fatalf(err.Error())
+// 		t.Fatal(err.Error())
 // 	}
 // }
 
@@ -255,7 +255,7 @@ func TestEventuallyAlways2(t *testing.T) {
 // 	err := compareResults("Temporal2", g.SMT(), string(expecting))
 
 // 	if err != nil {
-// 		t.Fatalf(err.Error())
+// 		t.Fatal(err.Error())
 // 	}
 // }
 
@@ -328,7 +328,7 @@ func TestEventuallyAlways2(t *testing.T) {
 // 	err := compareResults("TemporalSys", g.SMT(), string(expecting))
 
 // 	if err != nil {
-// 		t.Fatalf(err.Error())
+// 		t.Fatal(err.Error())
 // 	}
 // }
 
@@ -424,7 +424,7 @@ func TestEventuallyAlways2(t *testing.T) {
 // 	err := compareResults("TemporalSys", g.SMT(), string(expecting))
 
 // 	if err != nil {
-// 		t.Fatalf(err.Error())
+// 		t.Fatal(err.Error())
 // 	}
 // }
 
@@ -466,14 +466,10 @@ func TestTestData(t *testing.T) {
 		}
 		g := prepTest(s, string(data), true, false)
 
-		if err != nil {
-			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
-		}
-
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}
 }
@@ -515,7 +511,7 @@ func TestTestData(t *testing.T) {
 // 		err = compareResults(s[0], g.SMT(), string(expecting))
 
 // 		if err != nil {
-// 			t.Fatalf(err.Error())
+// 			t.Fatal(err.Error())
 // 		}
 // 	}
 // }
@@ -549,14 +545,10 @@ func TestMultiCond(t *testing.T) {
 		}
 		g := prepTest(s, string(data), true, true)
 
-		if err != nil {
-			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
-		}
-
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}
 
