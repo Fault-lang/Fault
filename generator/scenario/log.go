@@ -36,18 +36,20 @@ func NewLogger() *Logger {
 	}
 }
 
-func (l *Logger) EnterFunction(fname string, round string) {
+func (l *Logger) EnterFunction(fname string, round int) {
+	roundStr := fmt.Sprintf("%d", round)
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
-		Round:        round,
+		Round:        roundStr,
 		Type:         "Entry",
 	})
 }
 
-func (l *Logger) ExitFunction(fname string, round string) {
+func (l *Logger) ExitFunction(fname string, round int) {
+	roundStr := fmt.Sprintf("%d", round)
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
-		Round:        round,
+		Round:        roundStr,
 		Type:         "Exit",
 	})
 }

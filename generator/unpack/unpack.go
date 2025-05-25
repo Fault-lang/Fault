@@ -117,7 +117,10 @@ func (u *Unpacker) Register(inits []*rules.Init) {
 	// rule becomes every possible value of A is greater than
 	// every possible value of B, which probably isn't what people
 	// expect.
-	key := fmt.Sprintf("%s-%d_%s", "round", u.Round, u.CurrentBlock)
+	if len(inits) == 0 {
+		return
+	}
+	key := fmt.Sprintf("%s-%d_%s", "round", inits[0].GetRound(), u.CurrentBlock)
 	if u.Registry[key] == nil {
 		u.Registry[key] = [][]string{}
 	}
@@ -160,12 +163,9 @@ func (u *Unpacker) InitVars() []string {
 }
 
 func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
-	round := fmt.Sprintf("%d", f.Env.CurrentRound)
-
 	//Unpack the constants
 	r := u.unpackConstants(con)
-
-	u.Log.EnterFunction(f.Ident, round)
+	u.Log.EnterFunction(f.Ident, u.Round)
 
 	// Unpack the rules
 	r0 := u.unpackBlock(f.Start)
@@ -206,7 +206,7 @@ func (u *Unpacker) LoadStringRules(StringRules map[string]string, IsCompound map
 }
 
 func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
-	u.SetRound(b.Env.CurrentRound)
+	u.SetRound(b.Round)
 
 	smt := []string{}
 	for _, r := range b.Rules {
@@ -289,6 +289,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 				//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
 				Value: nil,
 			}
+			i.SetRound(u.Round)
 			inits = append(inits, i)
 			u.Log.AddPhiOption(phi, ends)
 
@@ -332,8 +333,7 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		u2.Inherits(u)
 
 		for _, call := range perm {
-			round := fmt.Sprintf("%d", p.Round)
-			u.Log.EnterFunction(call, round)
+			u.Log.EnterFunction(call, p.Round)
 			function_rules := []string{}
 			for _, ru := range p.Calls[call] {
 				line := u.FormatRule(ru, u2.unpackRule(ru))

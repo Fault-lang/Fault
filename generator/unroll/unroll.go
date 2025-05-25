@@ -207,6 +207,7 @@ type LLBlock struct {
 	Ident          string
 	Env            *Env
 	ParentFunction string
+	Round          int
 	Rules          []rules.Rule
 	After          *LLBlock
 	localCallstack []string
@@ -217,14 +218,25 @@ type LLBlock struct {
 }
 
 func NewLLBlock(e *Env, rawFunc map[string]*ir.Func, irb *ir.Block) *LLBlock {
+	round := e.CurrentRound
 	return &LLBlock{
 		Ident:        irb.Ident(),
 		Env:          e,
 		Rules:        []rules.Rule{},
+		Round:        round,
 		functions:    make(map[string]*LLFunc),
 		rawFunctions: rawFunc,
 		rawIR:        irb,
 		irRefs:       make(map[string]rules.Rule),
+	}
+}
+
+func (b *LLBlock) setRuleRounds(ru []rules.Rule) {
+	for _, r := range ru {
+		if r == nil {
+			continue
+		}
+		r.SetRound(b.Env.CurrentRound)
 	}
 }
 
@@ -233,17 +245,20 @@ func (b *LLBlock) Unroll() {
 	// For each non-branching instruction of the basic block.
 	for _, inst := range b.rawIR.Insts {
 		r := b.parseInstruct(inst)
+		b.setRuleRounds(r)
 		if len(r) > 0 && r[0] != nil {
 			b.AddRules(r)
 		}
 	}
 	//Make sure call stack is clear
 	r1 := b.ExecuteCallstack()
+	b.setRuleRounds(r1)
 	b.AddRules(r1)
 
 	switch term := b.rawIR.Term.(type) {
 	case *ir.TermCondBr:
 		r := b.parseTermCon(term)
+		b.setRuleRounds(r)
 		b.AddRules(r)
 	case *ir.TermRet:
 		b.Env.returnVoid.In()

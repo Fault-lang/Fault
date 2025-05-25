@@ -481,8 +481,13 @@ func (c *Constraint) eventuallyAlways(values []string) string {
 	var clause string
 	var progression []string
 	for i := 1; i <= len(values); i++ {
-		clause = strings.Join(values[len(values)-i:], " ")
-		s := fmt.Sprintf("(and %s)", clause)
+		var s string
+		if len(values[len(values)-i:]) > 1 { // Don't need and for single values
+			clause = strings.Join(values[len(values)-i:], " ")
+			s = fmt.Sprintf("(and %s)", clause)
+		} else {
+			s = values[len(values)-i]
+		}
 		progression = append(progression, s)
 	}
 

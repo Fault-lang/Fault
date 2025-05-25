@@ -99,7 +99,7 @@ func TestEventuallyAlways(t *testing.T) {
 		(and (> test1_t_foo_value_2 0)(> test1_t_foo_value_3 0)(> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0))
 		(and (> test1_t_foo_value_3 0)(> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0))
 		(and (> test1_t_foo_value_4 0)(> test1_t_foo_value_5 0))
-		(and (> test1_t_foo_value_5 0))
+		(> test1_t_foo_value_5 0)
 		))
 `
 
@@ -151,7 +151,7 @@ func TestEventuallyAlways2(t *testing.T) {
 		(and (<= test1_t_foo_value_2 0)(<= test1_t_foo_value_3 0)(<= test1_t_foo_value_4 0)(<= test1_t_foo_value_5 0))
 		(and (<= test1_t_foo_value_3 0)(<= test1_t_foo_value_4 0)(<= test1_t_foo_value_5 0))
 		(and (<= test1_t_foo_value_4 0)(<= test1_t_foo_value_5 0))
-		(and (<= test1_t_foo_value_5 0))
+		(<= test1_t_foo_value_5 0)
 		))
 `
 
@@ -164,49 +164,49 @@ func TestEventuallyAlways2(t *testing.T) {
 	}
 }
 
-// func TestTemporal(t *testing.T) {
-// 	test := `spec test1;
+func TestTemporal(t *testing.T) {
+	test := `spec test1;
 
-// 	def amount = stock{
-// 		value: 4,
-// 	};
+	def amount = stock{
+		value: 4,
+	};
 
-// 	def test = flow{
-// 		foo: new amount,
-// 		bar: func{
-// 			foo.value -> 2;
-// 		},
-// 	};
+	def test = flow{
+		foo: new amount,
+		bar: func{
+			foo.value -> 2;
+		},
+	};
 
-// 	assert amount.value <= 0 nmt 1;
+	assert amount.value <= 0 nmt 1;
 
-// 	for 5 init{t = new test;} run {
-// 		t.bar;
-// 	};
-// 	`
-// 	expecting := `(set-logic QF_NRA)
-// 	(declare-fun test1_t_foo_value_0 () Real)
-// 	(declare-fun test1_t_foo_value_1 () Real)
-// 	(declare-fun test1_t_foo_value_2 () Real)
-// 	(declare-fun test1_t_foo_value_3 () Real)
-// 	(declare-fun test1_t_foo_value_4 () Real)
-// 	(declare-fun test1_t_foo_value_5 () Real)(assert (= test1_t_foo_value_0 4.0))
-// 	(assert (= test1_t_foo_value_1 (- test1_t_foo_value_0 2.0)))
-// 	(assert (= test1_t_foo_value_2 (- test1_t_foo_value_1 2.0)))
-// 	(assert (= test1_t_foo_value_3 (- test1_t_foo_value_2 2.0)))
-// 	(assert (= test1_t_foo_value_4 (- test1_t_foo_value_3 2.0)))
-// 	(assert (= test1_t_foo_value_5 (- test1_t_foo_value_4 2.0)))
-// 	(assert (or (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_1 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_4 0) (<= test1_t_foo_value_5 0))))
-// 	`
+	for 5 init{t = new test;} run {
+		t.bar;
+	};
+	`
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_t_foo_value_0 () Real)
+	(declare-fun test1_t_foo_value_1 () Real)
+	(declare-fun test1_t_foo_value_2 () Real)
+	(declare-fun test1_t_foo_value_3 () Real)
+	(declare-fun test1_t_foo_value_4 () Real)
+	(declare-fun test1_t_foo_value_5 () Real)(assert (= test1_t_foo_value_0 4.0))
+	(assert (= test1_t_foo_value_1 (- test1_t_foo_value_0 2.0)))
+	(assert (= test1_t_foo_value_2 (- test1_t_foo_value_1 2.0)))
+	(assert (= test1_t_foo_value_3 (- test1_t_foo_value_2 2.0)))
+	(assert (= test1_t_foo_value_4 (- test1_t_foo_value_3 2.0)))
+	(assert (= test1_t_foo_value_5 (- test1_t_foo_value_4 2.0)))
+	(assert (or (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_1 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_0 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_2 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_1 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_3 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_2 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_4 0)) (and (<= test1_t_foo_value_3 0) (<= test1_t_foo_value_5 0)) (and (<= test1_t_foo_value_4 0) (<= test1_t_foo_value_5 0))))
+	`
 
-// 	g := prepTest("", test, true, false)
+	g := prepTest("", test, true, false)
 
-// 	err := compareResults("Temporal", g.SMT(), expecting)
+	err := compareResults("Temporal", g.SMT(), expecting)
 
-// 	if err != nil {
-// 		t.Fatal(err.Error())
-// 	}
-// }
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
 
 // func TestTemporal2(t *testing.T) {
 

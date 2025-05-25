@@ -5,6 +5,7 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -66,9 +67,13 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	if vname == "@__rounds" {
 		//Clear the callstack first
 		r := b.ExecuteCallstack()
+		round, err := strconv.Atoi(inst.Src.Ident())
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse round value '%s': %v", inst.Src.Ident(), err))
+		}
+		b.Env.CurrentRound = round
+		b.setRuleRounds(r)
 		b.AddRules(r)
-		//Initate new round
-		b.Env.CurrentRound = b.Env.CurrentRound + 1
 		return ru
 	}
 
@@ -387,7 +392,7 @@ func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	b.Env.returnVoid.Out()
 
 	t, f, a, block_names := b.parseTerms(term.Succs())
-	
+
 	ite := rules.NewIte(cond, t, f, a, block_names)
 	return []rules.Rule{ite}
 }

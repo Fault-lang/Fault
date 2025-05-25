@@ -51,6 +51,8 @@ func NewSSA() *SSA {
 type Rule interface {
 	ruleNode()
 	LoadContext(int, map[string]bool, map[string][]int16, *scenario.Logger)
+	SetRound(int)
+	GetRound() int
 	String() string
 	Assertless() string
 	IsTagged() bool
@@ -63,6 +65,7 @@ type Basic struct {
 	Rule
 	X        Rule
 	Y        Rule
+	Round    int
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
@@ -77,6 +80,14 @@ func (b *Basic) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[
 	b.HaveSeen = HaveSeen
 	b.OnEntry = OnEntry
 	b.Log = Log
+}
+
+func (b *Basic) SetRound(r int) {
+	b.Round = r
+}
+
+func (b *Basic) GetRound() int {
+	return b.Round
 }
 
 func (b *Basic) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
@@ -120,6 +131,7 @@ type Init struct {
 	Rule
 	Ident   string //base variable name
 	SSA     string
+	Round   int //Round of the rule, used for SSA
 	Global  bool
 	Type    string
 	Value   Rule
@@ -132,6 +144,17 @@ func (i *Init) ruleNode() {}
 
 func (i *Init) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	i.Log = Log
+}
+
+func (i *Init) SetRound(r int) {
+	i.Round = r
+	if i.Value != nil {
+		i.Value.SetRound(r)
+	}
+}
+
+func (i *Init) GetRound() int {
+	return i.Round
 }
 
 func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
@@ -201,7 +224,7 @@ type FuncCall struct { //A marker rule, generates no SMT but used by the Scenari
 	Rule
 	FunctionName string
 	Type         string //Enter or Exit
-	Round        string
+	Round        int
 	tag          *branch
 }
 
@@ -209,13 +232,19 @@ func NewFuncCall(name string, typ string, round int) *FuncCall {
 	return &FuncCall{
 		FunctionName: name,
 		Type:         typ,
-		Round:        fmt.Sprintf("%d", round),
+		Round:        round,
 	}
 }
 
 func (e *FuncCall) ruleNode() {}
 func (e *FuncCall) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	// Implement LoadContext if needed
+}
+func (e *FuncCall) SetRound(r int) {
+	e.Round = r
+}
+func (e *FuncCall) GetRound() int {
+	return e.Round
 }
 func (e *FuncCall) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	// Implement WriteRule if needed
@@ -247,6 +276,7 @@ type Ands struct {
 	Rule
 	X        []Rule
 	PhiLevel int
+	Round    int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
 	Log      *scenario.Logger
@@ -260,6 +290,15 @@ func (a *Ands) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[s
 	a.HaveSeen = HaveSeen
 	a.OnEntry = OnEntry
 	a.Log = Log
+}
+func (a *Ands) SetRound(r int) {
+	a.Round = r
+	for _, ru := range a.X {
+		ru.SetRound(r)
+	}
+}
+func (a *Ands) GetRound() int {
+	return a.Round
 }
 
 func (a *Ands) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
@@ -387,6 +426,12 @@ func (s *PossibleVars) GetChains() []int {
 func (s *PossibleVars) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	// Implement LoadContext if needed
 }
+func (s *PossibleVars) SetRound(r int) {
+	// Implement SetRound if needed
+}
+func (s *PossibleVars) GetRound() int {
+	return 0 // No round concept for PossibleVars
+}
 
 func (s *PossibleVars) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	// Implement WriteRule if needed
@@ -448,6 +493,18 @@ func NewParallels(permutations [][]string) *Parallels {
 func (p *Parallels) ruleNode() {}
 
 func (p *Parallels) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+}
+
+func (p *Parallels) SetRound(r int) {
+	p.Round = r
+	for _, rules := range p.Calls {
+		for _, rule := range rules {
+			rule.SetRound(r)
+		}
+	}
+}
+func (p *Parallels) GetRound() int {
+	return p.Round
 }
 
 func (p *Parallels) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
@@ -531,12 +588,13 @@ func (p *Parallels) Branch() string {
 
 type Infix struct {
 	Rule
-	X   Rule
-	Y   Rule
-	Ty  string
-	Op  string
-	tag *branch
-	Phi bool //Tag if this rule is a phi value capping a branch
+	X     Rule
+	Y     Rule
+	Ty    string
+	Op    string
+	Round int //Round of the rule, used for SSA
+	tag   *branch
+	Phi   bool //Tag if this rule is a phi value capping a branch
 	// If so we don't want to track it as a state change
 	PhiLevel int
 	HaveSeen map[string]bool
@@ -550,6 +608,14 @@ func (i *Infix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[
 	i.HaveSeen = HaveSeen
 	i.OnEntry = OnEntry
 	i.Log = Log
+}
+func (i *Infix) SetRound(r int) {
+	i.Round = r
+	i.X.SetRound(r)
+	i.Y.SetRound(r)
+}
+func (i *Infix) GetRound() int {
+	return i.Round
 }
 func (i *Infix) String() string {
 	return fmt.Sprintf("%s %s %s", i.X.String(), i.Op, i.Y.String())
@@ -602,6 +668,7 @@ type Prefix struct {
 	X        Rule
 	Ty       string
 	Op       string
+	Round    int
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
@@ -615,6 +682,13 @@ func (pr *Prefix) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry ma
 	pr.HaveSeen = HaveSeen
 	pr.OnEntry = OnEntry
 	pr.Log = Log
+}
+func (pr *Prefix) SetRound(r int) {
+	pr.Round = r
+	pr.X.SetRound(r)
+}
+func (pr *Prefix) GetRound() int {
+	return pr.Round
 }
 func (pr *Prefix) String() string {
 	return fmt.Sprintf("(%s %s)", pr.Op, pr.X.String())
@@ -654,6 +728,7 @@ type Ite struct {
 	T          []Rule
 	F          []Rule
 	After      []Rule
+	Round      int
 	BlockNames map[string]string
 	Log        *scenario.Logger
 	tag        *branch
@@ -674,6 +749,22 @@ func NewIte(cond Rule, t []Rule, f []Rule, a []Rule, block_names []string) *Ite 
 	}
 }
 func (it *Ite) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+}
+func (it *Ite) SetRound(r int) {
+	it.Round = r
+	for _, tr := range it.T {
+		tr.SetRound(r)
+	}
+	for _, fa := range it.F {
+		fa.SetRound(r)
+	}
+	for _, a := range it.After {
+		a.SetRound(r)
+	}
+	it.Cond.SetRound(r)
+}
+func (it *Ite) GetRound() int {
+	return it.Round
 }
 func (it *Ite) String() string {
 	return fmt.Sprintf("if %s then %s else %s", it.Cond.String(), it.T, it.F)
@@ -854,6 +945,7 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	Init     bool //Are we referencing a existing value or initializating a new one?
 	Indexed  bool
 	Debugger map[string]string //For debugging, the location in the code where this rule was created
+	Round    int
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
@@ -862,12 +954,7 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 }
 
 func (w *Wrap) ruleNode() {}
-func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
-	w.PhiLevel = PhiLevel
-	w.HaveSeen = HaveSeen
-	w.OnEntry = OnEntry
-	w.Log = Log
-}
+
 func NewWrap(v string, t string, vr bool, file string, line int, init bool, indexed bool) *Wrap {
 	return &Wrap{
 		Value:    v,
@@ -881,7 +968,18 @@ func NewWrap(v string, t string, vr bool, file string, line int, init bool, inde
 		},
 	}
 }
-
+func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	w.PhiLevel = PhiLevel
+	w.HaveSeen = HaveSeen
+	w.OnEntry = OnEntry
+	w.Log = Log
+}
+func (w *Wrap) SetRound(r int) {
+	w.Round = r
+}
+func (w *Wrap) GetRound() int {
+	return w.Round
+}
 func (w *Wrap) String() string {
 	return w.Value
 }
@@ -934,6 +1032,7 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 				//Value: &Wrap{Value: default_value},
 				Value: nil,
 			}
+			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}
 
@@ -995,10 +1094,22 @@ func (sg *VarSets) String() string {
 	return out.String()
 }
 
+func (sg *VarSets) GetByRunRound(round int) []string {
+	var ret []string
+	for k, v := range sg.Vars {
+		key := fmt.Sprintf("round-%d_@__run", round)
+		if k == key {
+			return v
+		}
+	}
+	return ret
+}
+
 func (sg *VarSets) List() []string {
 	var ret []string
-	for _, v := range sg.Vars {
-		ret = append(ret, v...)
+	// Get by run rounds to keep vars in order
+	for i := 0; len(sg.Vars) > i; i++ {
+		ret = append(ret, sg.GetByRunRound(i)...)
 	}
 	return ret
 }
@@ -1029,6 +1140,12 @@ func (sg *VarSets) Branch() string {
 func (sg *VarSets) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	// Implement LoadContext if needed
 }
+func (sg *VarSets) SetRound(r int) {
+	// Implement SetRound if needed
+}
+func (sg *VarSets) GetRound() int {
+	return 0 // No round concept for VarSets
+}
 
 func (sg *VarSets) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	// Implement WriteRule if needed
@@ -1041,6 +1158,7 @@ type WrapGroup struct {
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Round    int
 	Log      *scenario.Logger
 	tag      *branch
 }
@@ -1052,6 +1170,16 @@ func (wg *WrapGroup) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry
 	wg.HaveSeen = HaveSeen
 	wg.OnEntry = OnEntry
 	wg.Log = Log
+}
+
+func (wg *WrapGroup) SetRound(r int) {
+	wg.Round = r
+	for _, w := range wg.Wraps {
+		w.SetRound(r)
+	}
+}
+func (wg *WrapGroup) GetRound() int {
+	return wg.Round
 }
 
 func (wg *WrapGroup) String() string {
@@ -1092,11 +1220,18 @@ func (wg *WrapGroup) Branch() string {
 type Vwrap struct {
 	Rule
 	Value value.Value
+	Round int
 	tag   *branch
 }
 
 func (vw *Vwrap) ruleNode() {}
 func (vw *Vwrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+}
+func (vw *Vwrap) SetRound(r int) {
+	vw.Round = r
+}
+func (vw *Vwrap) GetRound() int {
+	return vw.Round
 }
 func (vw *Vwrap) String() string {
 	return vw.Value.String()
