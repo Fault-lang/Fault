@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"gonum.org/v1/gonum/stat/combin"
 )
 
 type Time struct {
@@ -361,15 +363,31 @@ func (c *Constraint) applyTemporal() string {
 		// return first
 	default:
 		var op string
+		clause := c.merge(c.Left, c.Right, c.Op)
 		switch c.Temporal.Filter {
 		case "nft": // True no fewer than X times
 			op = "or"
+			m := c.NoMoreNoFew(clause.List(), c.Temporal.N)
+			if m[0] == "" {
+				return ""
+			}
+			if len(m) == 1 {
+				return m[0]
+			}
+			return fmt.Sprintf("(%s %s)", op, strings.Join(m, " "))
 		case "nmt": // True no more than X times
 			op = "or"
+			m := c.NoMoreNoFew(clause.List(), c.Temporal.N)
+			if m[0] == "" {
+				return ""
+			}
+			if len(m) == 1 {
+				return m[0]
+			}
+			return fmt.Sprintf("(%s %s)", op, strings.Join(m, " "))
 		default:
 			op = c.Off
 		}
-		clause := c.merge(c.Left, c.Right, c.Op)
 
 		if len(clause.List()) == 1 {
 			return clause.List()[0]
@@ -378,6 +396,40 @@ func (c *Constraint) applyTemporal() string {
 		or := fmt.Sprintf("(%s %s)", op, strings.Join(clause.List(), " "))
 		return or
 	}
+}
+
+func (c *Constraint) NoMoreNoFew(merged []string, n int) []string {
+	// No more than n times
+	// No fewer than n times
+	// If n is 1, then it is just a single assert
+	if len(merged) < n {
+		return []string{strings.Join(merged, " ")}
+	}
+
+	if n == 1 {
+		return merged
+	}
+
+	if n == 0 {
+		return []string{}
+	}
+
+	combos := combin.Combinations(len(merged), n)
+
+	//Assembling combinations
+	var ret []string
+	for _, combo := range combos {
+		var clause []string
+		for _, i := range combo {
+			clause = append(clause, merged[i])
+		}
+		if len(clause) == 1 {
+			ret = append(ret, clause[0])
+		} else {
+			ret = append(ret, fmt.Sprintf("(and %s)", strings.Join(clause, " ")))
+		}
+	}
+	return ret
 }
 
 // func (c *Constraint) expand() *rules.AssertChain {
