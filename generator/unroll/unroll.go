@@ -353,17 +353,18 @@ func (b *LLBlock) GenerateCallstack(callstack []string) []rules.Rule {
 	return []rules.Rule{p}
 }
 
-func declareVar(id string, ty string, val rules.Rule) *rules.Init {
+func declareVar(id string, ty string, val rules.Rule, solvable bool) *rules.Init {
 	var indexed bool
 	if IsIndexed(id) {
 		indexed = true
 	}
 
 	return &rules.Init{
-		Ident:   id,
-		Type:    ty,
-		Value:   val,
-		Indexed: indexed,
+		Ident:    id,
+		Type:     ty,
+		Value:    val,
+		Solvable: solvable,
+		Indexed:  indexed,
 	}
 }
 
@@ -443,24 +444,24 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	switch val := c.(type) {
 	case *constant.Int:
 		ty := LookupType(id, val)
-		return declareVar(id, ty, &rules.Wrap{Value: val.X.String()})
+		return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, false)
 	case *constant.ExprAnd, *constant.ExprOr, *constant.ExprFNeg:
 		ty := LookupType(id, val)
 		x := b.constExpr(val)
-		return declareVar(id, ty, x)
+		return declareVar(id, ty, x, false)
 	default:
 		ty := LookupType(id, val)
-		return declareVar(id, ty, &rules.Wrap{Value: val.String()})
+		return declareVar(id, ty, &rules.Wrap{Value: val.String()}, false)
 	case *constant.Float:
 		ty := LookupType(id, val)
 		if isASolvable(id, RawInputs) {
-			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()})
+			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, true)
 		} else {
 			v := val.X.String()
 			if strings.Contains(v, ".") {
-				return declareVar(id, ty, &rules.Wrap{Value: v})
+				return declareVar(id, ty, &rules.Wrap{Value: v}, false)
 			}
-			return declareVar(id, ty, &rules.Wrap{Value: v + ".0"})
+			return declareVar(id, ty, &rules.Wrap{Value: v + ".0"}, false)
 		}
 	}
 }

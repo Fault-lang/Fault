@@ -364,10 +364,11 @@ func (c *Constraint) applyTemporal() string {
 	default:
 		var op string
 		clause := c.merge(c.Left, c.Right, c.Op)
+
 		switch c.Temporal.Filter {
 		case "nft": // True no fewer than X times
 			op = "or"
-			m := c.NoMoreNoFew(clause.List(), c.Temporal.N)
+			m := c.NoFew(clause.List(), c.Temporal.N)
 			if m[0] == "" {
 				return ""
 			}
@@ -377,7 +378,7 @@ func (c *Constraint) applyTemporal() string {
 			return fmt.Sprintf("(%s %s)", op, strings.Join(m, " "))
 		case "nmt": // True no more than X times
 			op = "or"
-			m := c.NoMoreNoFew(clause.List(), c.Temporal.N)
+			m := c.NoMore(clause.List(), c.Temporal.N)
 			if m[0] == "" {
 				return ""
 			}
@@ -398,7 +399,7 @@ func (c *Constraint) applyTemporal() string {
 	}
 }
 
-func (c *Constraint) NoMoreNoFew(merged []string, n int) []string {
+func (c *Constraint) NoFew(merged []string, n int) []string {
 	// No more than n times
 	// No fewer than n times
 	// If n is 1, then it is just a single assert
@@ -414,6 +415,10 @@ func (c *Constraint) NoMoreNoFew(merged []string, n int) []string {
 		return []string{}
 	}
 
+	if merged[0][0:4] == "(and" {
+		return merged
+	}
+
 	combos := combin.Combinations(len(merged), n)
 
 	//Assembling combinations
@@ -425,8 +430,67 @@ func (c *Constraint) NoMoreNoFew(merged []string, n int) []string {
 		}
 		if len(clause) == 1 {
 			ret = append(ret, clause[0])
+		} else if clause[0][0:4] == "(and" {
+			ret = append(ret, clause...)
 		} else {
 			ret = append(ret, fmt.Sprintf("(and %s)", strings.Join(clause, " ")))
+		}
+	}
+	return ret
+}
+
+func (c *Constraint) NoMore(merged []string, n int) []string {
+	// No more than n times
+	// No fewer than n times
+	// If n is 1, then it is just a single assert
+	if len(merged) < n {
+		return []string{strings.Join(merged, " ")}
+	}
+
+	if n == 1 {
+		return merged
+	}
+
+	if n == 0 {
+		return []string{}
+	}
+
+	if merged[0][0:4] == "(and" {
+		return merged
+	}
+
+	combos := combin.Combinations(len(merged), n)
+
+	//Assembling combinations
+	var ret []string
+	for _, combo := range combos {
+		// Create inverse of the combination
+		inverse := util.SliceOfIndex(len(merged))
+
+		var clause []string
+		var nots []string
+		for _, i := range combo {
+			// Remove the index from the inverse
+			inverse[i] = -1
+
+			clause = append(clause, merged[i])
+		}
+
+		for _, i := range inverse {
+			if i > -1 {
+				nots = append(nots, fmt.Sprintf("(not %s)", merged[i]))
+			}
+		}
+
+		if len(clause) == 1 {
+			ret = append(ret, clause[0])
+		} else if clause[0][0:4] == "(and" {
+			ret = append(ret, clause...)
+		} else {
+			on := fmt.Sprintf("(or %s)", strings.Join(clause, " "))
+			off := fmt.Sprintf("(and %s)", strings.Join(nots, " "))
+
+			ret = append(ret, fmt.Sprintf("(and %s %s)", on, off))
 		}
 	}
 	return ret

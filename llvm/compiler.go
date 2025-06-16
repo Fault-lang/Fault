@@ -370,6 +370,9 @@ func (c *Compiler) compile(node ast.Node) {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			if i == 0 {
 				c.compileBlock(v.Inits)
+				// Separate the initialization from the run body
+				c.RunRound = c.RunRound + 1
+				c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			}
 			c.compileBlock(v.Body)
 			c.stateCheck()
@@ -1392,7 +1395,7 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		fname = fname + "__state"
 	}
 
-	if c.RunRound == 0 { //initialize
+	if c.RunRound == 1 { //initialize
 		params := c.generateParameters(rawId, branch, component)
 		if component {
 			params = c.includeGlobalParams(params)

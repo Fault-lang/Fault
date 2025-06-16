@@ -42,9 +42,9 @@ func TestNewConstants(t *testing.T) {
 	rawInputs := &llvm.RawInputs{}
 
 	expected := []rules.Rule{
-		declareVar("test_global1", "Real", &rules.Wrap{Value: "10.0"}),
-		declareVar("test_global2", "Bool", &rules.Wrap{Value: "0"}),
-		declareVar("test_global3", "Real", &rules.Wrap{Value: "30.0"}),
+		declareVar("test_global1", "Real", &rules.Wrap{Value: "10.0"}, false),
+		declareVar("test_global2", "Bool", &rules.Wrap{Value: "0"}, false),
+		declareVar("test_global3", "Real", &rules.Wrap{Value: "30.0"}, false),
 	}
 
 	result := NewConstants(e, globals, rawInputs)

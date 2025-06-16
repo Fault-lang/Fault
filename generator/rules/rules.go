@@ -129,15 +129,16 @@ func (b *Basic) Tag(k1 string, k2 string) {
 
 type Init struct {
 	Rule
-	Ident   string //base variable name
-	SSA     string
-	Round   int //Round of the rule, used for SSA
-	Global  bool
-	Type    string
-	Value   Rule
-	Indexed bool
-	Log     *scenario.Logger
-	tag     *branch
+	Ident    string //base variable name
+	SSA      string
+	Round    int //Round of the rule, used for SSA
+	Global   bool
+	Type     string
+	Value    Rule
+	Solvable bool //If this rule is solvable, meaning it can be used to solve the scenario
+	Indexed  bool
+	Log      *scenario.Logger
+	tag      *branch
 }
 
 func (i *Init) ruleNode() {}
@@ -171,7 +172,7 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 
 	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
 
-	if i.Value != nil && i.Global {
+	if i.Value != nil && i.Global && !i.Solvable {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)

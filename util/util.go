@@ -245,6 +245,17 @@ func MergeStringSliceMaps(m1 map[string][]string, m2 map[string][]string) map[st
 	return m1
 }
 
+func SliceOfIndex(l int) []int {
+	if l < 0 {
+		panic("length cannot be negative")
+	}
+	inverse := make([]int, l)
+	for i := 0; i < l; i++ {
+		inverse[i] = i
+	}
+	return inverse
+}
+
 func InStringSlice(sl []string, sub string) bool {
 	for _, s := range sl {
 		if s == sub {

@@ -67,13 +67,13 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	if vname == "@__rounds" {
 		//Clear the callstack first
 		r := b.ExecuteCallstack()
+		b.setRuleRounds(r)
+		b.AddRules(r)
 		round, err := strconv.Atoi(inst.Src.Ident())
 		if err != nil {
 			panic(fmt.Sprintf("failed to parse round value '%s': %v", inst.Src.Ident(), err))
 		}
 		b.Env.CurrentRound = round
-		b.setRuleRounds(r)
-		b.AddRules(r)
 		return ru
 	}
 
