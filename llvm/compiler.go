@@ -1653,10 +1653,7 @@ func (c *Compiler) isVarSet(rawid []string) bool {
 
 	ty, _ := s.GetStructType(rawid)
 	_, err = s.Fetch(rawid[1], ty)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {

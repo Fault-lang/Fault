@@ -57,7 +57,7 @@ func TestSimpleConst(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -90,72 +90,7 @@ func TestRunBlock(t *testing.T) {
 			};
 	`
 
-	expecting := `@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
-	@test1_a = global double 0x4002666666666666
-	@test1_b = global double 2.0
-	
-	define void @__run() {
-	block-1:
-		store i16 0, i16* @__rounds
-		%test1_test_buzz_a = alloca double
-		store double 10.0, double* %test1_test_buzz_a
-		%test1_test_buzz_b = alloca double
-		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\344b9b452817d4d3ea103f1449105264c !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\3227b3938f885317dea9c644434cb82dd !DIBasicType(tag: DW_TAG_string_type)
-		store i16 1, i16* @__rounds
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\39a2b113b63e8232c2945f1018bf785f0 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\387c9dfef940c096cf145af18149d3600 !DIBasicType(tag: DW_TAG_string_type)
-		store i16 2, i16* @__rounds
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !cb7fdc02d16d31723661579b54e31084 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\370ad8bfb0509411d97738ac929bc3d01 !DIBasicType(tag: DW_TAG_string_type)
-		store i16 3, i16* @__rounds
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37e3f85f9630519ec31a508b611b1d4bb !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !e57d2299cbd9024a113885402ef4e089 !DIBasicType(tag: DW_TAG_string_type)
-		store i16 4, i16* @__rounds
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\37fbb0459ad7da0f1a336cf5de1cf9068 !DIBasicType(tag: DW_TAG_string_type)
-		call void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !\340b3487db7f69f408810fb4cb8b544eb !DIBasicType(tag: DW_TAG_string_type)
-		ret void
-	}
-	
-	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
-	block-2:
-		%0 = load double, double* %test1_test_buzz_b
-		%1 = load double, double* @test1_a
-		%2 = load double, double* %test1_test_buzz_a
-		%3 = fadd double %1, %2
-		%4 = fadd double %0, %3
-		store double %4, double* %test1_test_buzz_b
-		ret void
-	}
-	
-	define void @test1_test_fizz2(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
-	block-3:
-		%0 = load double, double* %test1_test_buzz_b
-		%1 = load double, double* %test1_test_buzz_a
-		%2 = load double, double* @test1_b
-		%3 = fsub double %1, %2
-		%4 = fadd double %0, %3
-		store double %4, double* %test1_test_buzz_b
-		ret void
-	}
-	
-	define void @test1_test_fizz3(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
-	block-4:
-		%0 = load double, double* %test1_test_buzz_a
-		%1 = load double, double* %test1_test_buzz_b
-		%2 = load double, double* @test1_b
-		%3 = fadd double %1, %2
-		%4 = fadd double %0, %3
-		store double %4, double* %test1_test_buzz_a
-		ret void
-	}		
+	expecting := `@__rounds=globali160@__parallelGroup=global[5xi8]c"start"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-1:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\344b9b452817d4d3ea103f1449105264c!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\344b9b452817d4d3ea103f1449105264c!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\3227b3938f885317dea9c644434cb82dd!DIBasicType(tag:DW_TAG_string_type)storei162,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\39a2b113b63e8232c2945f1018bf785f0!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\39a2b113b63e8232c2945f1018bf785f0!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\387c9dfef940c096cf145af18149d3600!DIBasicType(tag:DW_TAG_string_type)storei163,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!cb7fdc02d16d31723661579b54e31084!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!cb7fdc02d16d31723661579b54e31084!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\370ad8bfb0509411d97738ac929bc3d01!DIBasicType(tag:DW_TAG_string_type)storei164,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37e3f85f9630519ec31a508b611b1d4bb!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37e3f85f9630519ec31a508b611b1d4bb!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!e57d2299cbd9024a113885402ef4e089!DIBasicType(tag:DW_TAG_string_type)storei165,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37fbb0459ad7da0f1a336cf5de1cf9068!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37fbb0459ad7da0f1a336cf5de1cf9068!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\340b3487db7f69f408810fb4cb8b544eb!DIBasicType(tag:DW_TAG_string_type)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-2:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-3:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-4:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}		
 `
 	//Should fadd have variable names or the values in those variables?
 
@@ -173,7 +108,7 @@ func TestRunBlock(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -204,45 +139,7 @@ func TestIfCond(t *testing.T) {
 			};
 	`
 
-	expecting := `@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
-	@test1_a = global double 0x4002666666666666
-	@test1_b = global double 2.0
-	
-	define void @__run() {
-	block-5:
-		store i16 0, i16* @__rounds
-		%test1_test_buzz_a = alloca double
-		store double 10.0, double* %test1_test_buzz_a
-		%test1_test_buzz_b = alloca double
-		store double 20.0, double* %test1_test_buzz_b
-		call void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b), !d44e0a3fc2944aa552d9118f291d3106 !DIBasicType(tag: DW_TAG_string_type)
-		ret void
-	}
-	
-	define void @test1_test_fizz(double* %test1_test_buzz_a, double* %test1_test_buzz_b) {
-	block-6:
-		%0 = load double, double* %test1_test_buzz_a
-		%1 = fcmp ogt double %0, 2.0
-		br i1 %1, label %block-8-true, label %block-9-false
-	
-	block-7-after:
-		%2 = load double, double* %test1_test_buzz_b
-		%3 = fsub double %2, 1.0
-		store double %3, double* %test1_test_buzz_b
-		ret void
-	
-	block-8-true:
-		%4 = load double, double* %test1_test_buzz_a
-		%5 = load double, double* @test1_b
-		%6 = fsub double %4, %5
-		store double %6, double* %test1_test_buzz_a
-		br label %block-7-after
-	
-	block-9-false:
-		store double 10.0, double* %test1_test_buzz_a
-		br label %block-7-after
-	}		
+	expecting := `@__rounds=globali160@__parallelGroup=global[5xi8]c"start"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-5:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!d44e0a3fc2944aa552d9118f291d3106!DIBasicType(tag:DW_TAG_string_type)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-6:%0=loaddouble,double*%test1_test_buzz_a%1=fcmpogtdouble%0,2.0bri1%1,label%block-8-true,label%block-9-falseblock-7-after:%2=loaddouble,double*%test1_test_buzz_b%3=fsubdouble%2,1.0storedouble%3,double*%test1_test_buzz_bretvoidblock-8-true:%4=loaddouble,double*%test1_test_buzz_a%5=loaddouble,double*@test1_b%6=fsubdouble%4,%5storedouble%6,double*%test1_test_buzz_abrlabel%block-7-afterblock-9-false:storedouble10.0,double*%test1_test_buzz_abrlabel%block-7-after}		
 	`
 
 	llvm, err := prepTest(test, true)
@@ -260,7 +157,7 @@ func TestIfCond(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -285,7 +182,8 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-	expecting := `@__rounds = global i16 0
+		expecting := `
+	@__rounds = global i16 0
 	@__parallelGroup = global [5 x i8] c"start"
 	@test1_a = global double 0x3DA3CA8CB153A753
 	@test1_b = global double 0x3DA3CA8CB153A753
@@ -295,15 +193,16 @@ func TestUnknowns(t *testing.T) {
 		store i16 0, i16* @__rounds
 		%test1_t_u_x = alloca double
 		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
-		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag: DW_TAG_string_type)
 		store i16 1, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag:DW_TAG_string_type)
 		store i16 2, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag:DW_TAG_string_type)
 		store i16 3, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag:DW_TAG_string_type)
 		store i16 4, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag: DW_TAG_string_type)
+		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag:DW_TAG_string_type)
+		store i16 5, i16* @__rounds
+		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag:DW_TAG_string_type)
 		ret void
 	}
 	
@@ -316,7 +215,8 @@ func TestUnknowns(t *testing.T) {
 		%4 = fadd double %0, %3
 		store double %4, double* %test1_t_u_x
 		ret void
-	}`
+	}
+	`
 
 	llvm, err := prepTest(test, true)
 
@@ -333,7 +233,7 @@ func TestUnknowns(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -617,7 +517,7 @@ func TestComponentIR(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 }
@@ -641,7 +541,8 @@ func TestIndexExp(t *testing.T) {
 			};
 	`
 
-	expecting := `@__rounds = global i16 0
+		expecting := `
+	@__rounds = global i16 0
 	@__parallelGroup = global [5 x i8] c"start"
 	@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753
 	
@@ -650,7 +551,8 @@ func TestIndexExp(t *testing.T) {
 		store i16 0, i16* @__rounds
 		%test1_test_buzz_a = alloca double
 		store double 10.0, double* %test1_test_buzz_a
-		call void @test1_test_fizz(double* %test1_test_buzz_a), !\37f977975ebdfc28b778ed4618a0af327 !DIBasicType(tag: DW_TAG_string_type)
+		store i16 1, i16* @__rounds
+		call void @test1_test_fizz(double* %test1_test_buzz_a), !\37f977975ebdfc28b778ed4618a0af327 !DIBasicType(tag:DW_TAG_string_type)
 		ret void
 	}
 	
@@ -660,7 +562,8 @@ func TestIndexExp(t *testing.T) {
 		%1 = fsub double %0, 2.0
 		store double %1, double* %test1_test_buzz_a
 		ret void
-	}`
+	}
+	`
 
 	llvm, err := prepTest(test, true)
 
@@ -677,7 +580,7 @@ func TestIndexExp(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -718,7 +621,7 @@ func TestStringExp(t *testing.T) {
 	err = compareResults(llvm, expecting, string(ir))
 
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
