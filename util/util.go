@@ -185,6 +185,9 @@ func FormatIdent(id string) string {
 		return id[1:]
 	} else if string(id[0]) == "%" {
 		return id[1:]
+	} else if string(id[0:2]) == "c\"" {
+		//Trim the c" "
+		id = id[2 : len(id)-1]
 	}
 	return id
 }

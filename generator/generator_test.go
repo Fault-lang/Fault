@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	gopath "path"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -475,47 +476,44 @@ func TestTestData(t *testing.T) {
 	}
 }
 
-// func TestSys(t *testing.T) {
-// 	specs := [][]string{
-// 		{"testdata/statecharts/statechart.fsystem", "0"},
-// 		{"testdata/statecharts/advanceor.fsystem", "0"},
-// 		{"testdata/statecharts/multioradvance.fsystem", "0"},
-// 		{"testdata/statecharts/advanceand.fsystem", "0"},
-// 		{"testdata/statecharts/mixedcalls.fsystem", "0"},
-// 		//{"testdata/statecharts/triggerfunc.fsystem", "0"},
-// 	}
-// 	smt2s := []string{
-// 		"testdata/statecharts/statechart.smt2",
-// 		"testdata/statecharts/advanceor.smt2",
-// 		"testdata/statecharts/multioradvance.smt2",
-// 		"testdata/statecharts/advanceand.smt2",
-// 		"testdata/statecharts/mixedcalls.smt2",
-// 		//"testdata/statecharts/triggerfunc.smt2",
-// 	}
-// 	for i, s := range specs {
-// 		data, err := os.ReadFile(s[0])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("spec %s is not valid", s[0]))
-// 		}
-// 		imports, _ := strconv.ParseBool(s[1])
+func TestSys(t *testing.T) {
+	specs := [][]string{
+		{"testdata/statecharts/statechart.fsystem", "0"},
+		//{"testdata/statecharts/advanceor.fsystem", "0"},
+		//{"testdata/statecharts/multioradvance.fsystem", "0"},
+		//{"testdata/statecharts/advanceand.fsystem", "0"},
+		//{"testdata/statecharts/mixedcalls.fsystem", "0"},
+		//{"testdata/statecharts/triggerfunc.fsystem", "0"},
+	}
+	smt2s := []string{
+		"testdata/statecharts/statechart.smt2",
+		//"testdata/statecharts/advanceor.smt2",
+		//"testdata/statecharts/multioradvance.smt2",
+		//"testdata/statecharts/advanceand.smt2",
+		//"testdata/statecharts/mixedcalls.smt2",
+		//"testdata/statecharts/triggerfunc.smt2",
+	}
+	for i, s := range specs {
+		data, err := os.ReadFile(s[0])
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s[0]))
+		}
+		imports, _ := strconv.ParseBool(s[1])
 
-// 		expecting, err := os.ReadFile(smt2s[i])
-// 		if err != nil {
-// 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
-// 		}
-// 		g := prepTest(s[0], string(data), false, imports)
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		g := prepTest(s[0], string(data), false, imports)
 
-// 		if err != nil {
-// 			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
-// 		}
+		err = compareResults(s[0], g.SMT(), string(expecting))
 
-// 		err = compareResults(s[0], g.SMT(), string(expecting))
+		if err != nil {
+			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
+		}
 
-// 		if err != nil {
-// 			t.Fatal(err.Error())
-// 		}
-// 	}
-// }
+	}
+}
 
 func TestMultiCond(t *testing.T) {
 	specs := []string{

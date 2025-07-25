@@ -300,7 +300,7 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	id := bc.From.Ident()
 	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 	state := b.Env.VarLoads[refname]
-	newState := state.Ident()
+	newState := util.FormatIdent(state.Ident())
 	// Not sure I remember/understand this. Commenting
 	// it out for now.
 
@@ -315,7 +315,8 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 		panic("calling advance from outside the state chart")
 	}
 
-	base2 := currentFunction[1 : len(currentFunction)-7]
+	//base2 := currentFunction[1:len(currentFunction)-7]
+	base2 := currentFunction[:len(currentFunction)-7]
 
 	// if complex {
 	// 	declareVar(base2, "Bool", "false")
