@@ -6,8 +6,6 @@ import (
 	"fault/generator/unroll"
 	"fmt"
 	"strings"
-
-	"github.com/barkimedes/go-deepcopy"
 )
 
 // Step 2 in the Generation Process: Unpack
@@ -89,13 +87,23 @@ func (u *Unpacker) GetEntry(var_name string) int16 {
 	return u.OnEntry[var_name][len(u.OnEntry[var_name])-1]
 }
 
-func (u *Unpacker) SetPhis(start *rules.SSA, end *rules.SSA) {
+func (u *Unpacker) GetPhis(start *rules.SSA, end *rules.SSA) map[string][]int16 {
+	phis := make(map[string][]int16)
 	for var_name := range end.Iter() {
 		if end.Get(var_name) != start.Get(var_name) {
-			u.UpsertPhi(var_name, end.Get(var_name))
+			phis[var_name] = []int16{start.Get(var_name), end.Get(var_name)}
 		}
 	}
+	return phis
 }
+
+// func (u *Unpacker) SetPhis(start *rules.SSA, end *rules.SSA) {
+// 	for var_name := range end.Iter() {
+// 		if end.Get(var_name) != start.Get(var_name) {
+// 			u.UpsertPhi(var_name, end.Get(var_name))
+// 		}
+// 	}
+// }
 
 func (u *Unpacker) UpsertPhi(var_name string, val int16) {
 	if _, ok := u.Phis[var_name]; !ok {
@@ -311,11 +319,13 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 	tInit, tRules, hasPhi = u.buildPhis(tPhis, nil)
 
 	if len(fPhis) > 0 {
-		fInit, fRules, hasPhi = u.buildPhis(fPhis, hasPhi)
+		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
 	} else {
 		// If there are no rules in the false branch we still need the phis
-		for k := range u.Phis {
-			fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
+		for l := range tPhis {
+			for k, _ := range tPhis[l] {
+				fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
+			}
 		}
 	}
 	inits := append(tInit, fInit...)
@@ -343,14 +353,10 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 			rule_set = append(rule_set, capRule)
 		}
 
-		u.SetPhis(u.SSA, u2.SSA)
+		PhiClone := u.GetPhis(u.SSA, u2.SSA)
 		u.SSA = u2.SSA.Clone()
-		PhiClone, err := deepcopy.Anything(u.Phis)
 
-		if err != nil {
-			panic(err)
-		}
-		phis = append(phis, PhiClone.(map[string][]int16))
+		phis = append(phis, PhiClone)
 		u.AddInit(u2.Inits)
 		u.UpdateRegistry(u2.Registry)
 	}
@@ -361,7 +367,7 @@ func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 
 	u.PopEntries()
 
-	return u.Inits, fmt.Sprintf("%s", strings.Join(rule_set, "\n"))
+	return u.Inits, fmt.Sprint(strings.Join(rule_set, "\n"))
 }
 
 func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]string, []map[string][]int16) {
@@ -378,15 +384,10 @@ func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]strin
 		bRules = append(bRules, line)
 	}
 
-	u.SetPhis(u.SSA, u2.SSA)
+	PhiClone := u.GetPhis(u.SSA, u2.SSA)
 	u.SSA = u2.SSA.Clone()
-	PhiClone, err := deepcopy.Anything(u.Phis)
 
-	if err != nil {
-		panic(err)
-	}
-
-	bPhis = append(bPhis, PhiClone.(map[string][]int16))
+	bPhis = append(bPhis, PhiClone)
 	u.AddInit(u2.Inits)
 	u.UpdateRegistry(u2.Registry)
 	return bRules, bPhis
@@ -413,6 +414,10 @@ func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	}
 
 	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis)
+
+	if len(fEnds) == 0 || len(tEnds) == 0 {
+		panic(fmt.Sprintf("Ite rule %s is missing a required branch", ite.Cond.String()))
+	}
 
 	u.AddInit(inits)
 	u.Register(inits)
