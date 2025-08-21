@@ -97,14 +97,6 @@ func (u *Unpacker) GetPhis(start *rules.SSA, end *rules.SSA) map[string][]int16 
 	return phis
 }
 
-// func (u *Unpacker) SetPhis(start *rules.SSA, end *rules.SSA) {
-// 	for var_name := range end.Iter() {
-// 		if end.Get(var_name) != start.Get(var_name) {
-// 			u.UpsertPhi(var_name, end.Get(var_name))
-// 		}
-// 	}
-// }
-
 func (u *Unpacker) UpsertPhi(var_name string, val int16) {
 	if _, ok := u.Phis[var_name]; !ok {
 		u.Phis[var_name] = []int16{u.SSA.Get(var_name), val} //start value before function, end value after function
@@ -248,15 +240,17 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Ite:
-		inits, rule = u.unPackIte(ru)
+		inits, rule = u.unpackIte(ru)
 	case *rules.Prefix:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Infix:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Parallels:
-		inits, rule = u.unPackParallel(ru)
+		inits, rule = u.unpackParallel(ru)
 	case *rules.Ands:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
+	case *rules.Ors:
+		inits, rule = u.unpackOrs(ru)
 	case *rules.Wrap:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Vwrap:
@@ -269,6 +263,97 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	u.AddInit(inits)
 	u.Register(inits)
 	return rule
+}
+
+func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]bool) ([]*rules.Init, [][]string, map[string]bool) {
+	var inits []*rules.Init
+	var caps [][]string
+	sync := make(map[string][]int) // Phis in one branch but not the other
+
+	if hasPhi == nil {
+		hasPhi = make(map[string]bool)
+	}
+
+	var last map[string][]int16
+
+	for i, p := range phis {
+		var rule_set []string
+		for var_name, vals := range p {
+			//If the vals are the same as the last known value, we don't need to create a phi
+			if last != nil {
+				if last_vals, ok := last[var_name]; ok {
+					if vals[len(vals)-1] == last_vals[len(last_vals)-1] {
+						continue // No need to create a phi, the value is the same as the last known value
+					}
+				}
+			}
+
+			sync[var_name] = append(sync[var_name], i) // Store the branch the phi was found in
+
+			if !hasPhi[var_name] {
+				u.SSA.Update(var_name)
+				hasPhi[var_name] = true
+			}
+
+			var idx int
+			if vals[len(vals)-1] == u.SSA.Get(var_name) { // I actually don't know what's wrong here
+				idx = len(vals) - 2 // Bug in phis for ORs. The Phi cannot be the same as the last known value
+			} else {
+				idx = len(vals) - 1 // The last value is the current value
+			}
+
+			ends := fmt.Sprintf("%s_%d", var_name, vals[idx])
+			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
+
+			i := &rules.Init{
+				Ident: var_name,
+				SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
+				Type:  u.VarTypes[var_name],
+				//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
+				Value: nil,
+			}
+			i.SetRound(u.Round)
+			inits = append(inits, i)
+			u.Log.AddPhiOption(phi, ends)
+
+			rule_set = append(rule_set, fmt.Sprintf("(= %s %s)", phi, ends))
+		}
+
+		caps = append(caps, rule_set)
+		last = p
+	}
+
+	for j, _ := range caps {
+		if len(caps[j]) != len(sync) { // This branch is missing some phis
+			for var_name, branches := range sync {
+				found := false
+				for _, branch := range branches {
+					if branch == j { // This branch is missing the phi
+						found = true
+					}
+				}
+				if !found {
+					ends := fmt.Sprintf("%s_%d", var_name, u.OnEntry[var_name][len(u.OnEntry[var_name])-1])
+					phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
+
+					i := &rules.Init{
+						Ident: var_name,
+						SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
+						Type:  u.VarTypes[var_name],
+						//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
+						Value: nil,
+					}
+					i.SetRound(u.Round)
+					inits = append(inits, i)
+					u.Log.AddPhiOption(phi, ends)
+
+					caps[j] = append(caps[j], fmt.Sprintf("(= %s %s)", phi, ends))
+				}
+			}
+		}
+	}
+
+	return inits, caps, hasPhi
 }
 
 func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) ([]*rules.Init, []string, map[string]bool) {
@@ -287,7 +372,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 				hasPhi[var_name] = true
 			}
 
-			ends := fmt.Sprintf("%s_%d", var_name, vals[1])
+			ends := fmt.Sprintf("%s_%d", var_name, vals[len(vals)-1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 
 			i := &rules.Init{
@@ -308,6 +393,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 		} else {
 			caps = append(caps, fmt.Sprintf("(and %s)", strings.Join(rule_set, " ")))
 		}
+
 	}
 	return inits, caps, hasPhi
 }
@@ -332,7 +418,48 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 	return inits, tRules, fRules
 }
 
-func (u *Unpacker) unPackParallel(p *rules.Parallels) ([]*rules.Init, string) {
+func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
+	var rule_set [][]string
+	var ret []string
+	var hasPhi map[string]bool
+	var inits []*rules.Init
+	var caps [][]string
+	var branches []map[string][]int16
+	u.NewLevel()
+	u.SetEntries(u.SSA)
+
+	u2 := NewUnpacker(fmt.Sprintf("%s-%s", u.CurrentBlock, o.BranchName)) //Creating a unique block name for each or scenario
+	u2.Inherits(u)
+	u.Log.EnterFunction(o.BranchName, o.Round)
+
+	for _, ru := range o.X {
+		var lines []string
+		for _, l := range ru {
+			line := u2.unpackRule(l)
+			lines = append(lines, line)
+		}
+		rule_set = append(rule_set, lines)
+		PhiClone := u.GetPhis(u.SSA, u2.SSA)
+		branches = append(branches, PhiClone)
+		u.SSA = u2.SSA.Clone()
+
+		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
+	}
+
+	inits, caps, hasPhi = u.buildPhisOrs(branches, hasPhi)
+
+	for i, _ := range rule_set {
+		ret = append(ret, fmt.Sprintf("(and %s\n%s)", strings.Join(rule_set[i], "\n"), strings.Join(caps[i], "\n")))
+	}
+
+	u.AddInit(inits)
+	u.PopEntries()
+
+	return u.Inits, fmt.Sprintf("(or %s)", strings.Join(ret, "\n"))
+}
+
+func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	var rule_set []string
 	var phis []map[string][]int16
 	u.NewLevel()
@@ -393,7 +520,7 @@ func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]strin
 	return bRules, bPhis
 }
 
-func (u *Unpacker) unPackIte(ite *rules.Ite) ([]*rules.Init, string) {
+func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	u.NewLevel()
 	u.SetEntries(u.SSA)
 

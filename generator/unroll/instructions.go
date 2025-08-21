@@ -57,10 +57,6 @@ func (b *LLBlock) parseInstruct(inst ir.Instruction) []rules.Rule {
 	return []rules.Rule{}
 }
 
-func (b *LLBlock) parseAlloca(inst *ir.InstAlloca) []rules.Rule {
-	return []rules.Rule{}
-}
-
 func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	var ru []rules.Rule
 	vname := inst.Dst.Ident()
@@ -363,15 +359,31 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 }
 
 func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
-	n := node.Ident()
-	nRule := b.LookupCondPart(b.Env.CurrentFunction, n)
-	if nRule == nil {
-		n = b.ConvertIdent(b.Env.CurrentFunction, n)
-		nIs := IsIndexed(n)
-		_, file, line, _ := runtime.Caller(1)
-		nRule = rules.NewWrap(n, "Bool", true, file, line, false, nIs)
+	switch cnode := node.(type) {
+	case *ir.InstCall:
+		if isBuiltIn(cnode.Callee.Ident()) {
+			if cnode.Callee.Ident() == "@advance" {
+				r := b.parseBuiltIn(cnode, true)
+				if len(r) == 1 {
+					return r[0]
+				}
+				return &rules.Ands{
+					X: r,
+				}
+			}
+		}
+	default:
+		n := node.Ident()
+		nRule := b.LookupCondPart(b.Env.CurrentFunction, n)
+		if nRule == nil {
+			n = b.ConvertIdent(b.Env.CurrentFunction, n)
+			nIs := IsIndexed(n)
+			_, file, line, _ := runtime.Caller(1)
+			nRule = rules.NewWrap(n, "Bool", true, file, line, false, nIs)
+		}
+		return nRule
 	}
-	return nRule
+	return nil
 }
 
 func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
@@ -410,7 +422,15 @@ func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 	id := inst.Ident()
 	xRule := b.parseCondNode(inst.X)
 	_, file, line, _ := runtime.Caller(1)
-	return []rules.Rule{b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false, false), "not")}
+	b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false, false), "not")
+
+	if x, ok := inst.X.(*ir.InstCall); ok && isBuiltIn(x.Callee.Ident()) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			return []rules.Rule{v}
+		}
+	}
+	return nil
 }
 
 func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
@@ -424,6 +444,30 @@ func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op 
 		return nil
 	}
 
+	if op == "or" {
+		// A little convoluted because we need to add phis to or clauses
+		var right, left []rules.Rule
+		if x_ands, ok := x.(*rules.Ands); ok {
+			right = x_ands.X
+		} else {
+			right = []rules.Rule{x}
+		}
+
+		if _, ok := y.(*rules.Ands); ok {
+			left = y.(*rules.Ands).X
+		} else {
+			left = []rules.Rule{y}
+
+		}
+		b.irRefs[refname] = &rules.Ors{X: [][]rules.Rule{right, left}, BranchName: refname}
+		return nil
+	}
+
+	if op == "and" {
+		b.irRefs[refname] = &rules.Ands{X: []rules.Rule{x, y}}
+		return nil
+	}
+
 	b.irRefs[refname] = &rules.Infix{X: x, Ty: "Bool", Y: y, Op: op}
 	return nil
 }
@@ -432,14 +476,32 @@ func (b *LLBlock) parseAnd(inst *ir.InstAnd) []rules.Rule {
 	id := inst.Ident()
 	xRule := b.parseCondNode(inst.X)
 	yRule := b.parseCondNode(inst.Y)
-	return []rules.Rule{b.createMultiCondRule(id, xRule, yRule, "and")}
+
+	b.createMultiCondRule(id, xRule, yRule, "and")
+
+	if x, ok := inst.X.(*ir.InstCall); ok && isBuiltIn(x.Callee.Ident()) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			return []rules.Rule{v}
+		}
+	}
+	return []rules.Rule{}
 }
 
 func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	id := inst.Ident()
 	xRule := b.parseCondNode(inst.X)
 	yRule := b.parseCondNode(inst.Y)
-	return []rules.Rule{b.createMultiCondRule(id, xRule, yRule, "and")}
+	b.createMultiCondRule(id, xRule, yRule, "or")
+
+	if x, ok := inst.X.(*ir.InstCall); ok && isBuiltIn(x.Callee.Ident()) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			return []rules.Rule{v}
+		}
+	}
+
+	return []rules.Rule{}
 }
 
 func (b *LLBlock) parseBitCast(inst *ir.InstBitCast) []rules.Rule {

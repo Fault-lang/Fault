@@ -248,6 +248,19 @@ func MergeStringSliceMaps(m1 map[string][]string, m2 map[string][]string) map[st
 	return m1
 }
 
+func MergeIntSliceMaps(m1 map[string][]int16, m2 map[string][]int16) map[string][]int16 {
+	// For Phis in unpacker
+	for k, v := range m2 {
+		if _, ok := m1[k]; ok {
+			// If key exists, append the value
+			m1[k] = append(m1[k], v...)
+		} else {
+			m1[k] = v
+		}
+	}
+	return m1
+}
+
 func SliceOfIndex(l int) []int {
 	if l < 0 {
 		panic("length cannot be negative")
@@ -297,9 +310,7 @@ func CaptureState(id string) (string, bool, bool) {
 
 func Copy(callstack []string) []string {
 	var ret []string
-	for _, v := range callstack {
-		ret = append(ret, v)
-	}
+	ret = append(ret, callstack...)
 	return ret
 }
 

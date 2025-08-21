@@ -348,6 +348,88 @@ func (a *Ands) Branch() string {
 	return a.tag.branch
 }
 
+type Ors struct {
+	Rule
+	X          [][]Rule
+	PhiLevel   int
+	Round      int
+	HaveSeen   map[string]bool
+	OnEntry    map[string][]int16
+	BranchName string
+	Log        *scenario.Logger
+	tag        *branch
+}
+
+func (o *Ors) ruleNode() {}
+
+func (o *Ors) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	o.PhiLevel = PhiLevel
+	o.HaveSeen = HaveSeen
+	o.OnEntry = OnEntry
+	o.Log = Log
+}
+
+func (o *Ors) SetRound(r int) {
+	o.Round = r
+	for _, ru := range o.X {
+		for _, ri := range ru {
+			ri.SetRound(r)
+		}
+	}
+}
+
+func (o *Ors) GetRound() int {
+	return o.Round
+}
+
+func (o *Ors) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	var rules []string
+	var ru string
+	var init, i []*Init
+	for _, r := range o.X {
+		for _, ri := range r {
+			ri.LoadContext(o.PhiLevel, o.HaveSeen, o.OnEntry, o.Log)
+			init, ru, ssa = ri.WriteRule(ssa)
+			rules = append(rules, ru)
+			i = append(i, init...)
+		}
+	}
+	return i, fmt.Sprintf("(or %s)", strings.Join(rules, " ")), ssa
+}
+
+func (o *Ors) String() string {
+	return o.BranchName
+}
+
+func (o *Ors) Assertless() string {
+	var ors string
+	for _, asrt := range o.X {
+		for _, a := range asrt {
+			ors = fmt.Sprintf("%s %s", ors, a.Assertless())
+		}
+	}
+	return fmt.Sprintf("(or %s)", ors)
+}
+
+func (o *Ors) Tag(k1 string, k2 string) {
+	o.tag = &branch{
+		branch: k1,
+		block:  k2,
+	}
+}
+
+func (o *Ors) IsTagged() bool {
+	return o.tag != nil
+}
+
+func (o *Ors) Choice() string {
+	return o.tag.block
+}
+
+func (o *Ors) Branch() string {
+	return o.tag.branch
+}
+
 type AssertChain struct {
 	Op     string
 	Values []string
