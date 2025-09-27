@@ -215,6 +215,7 @@ type LLBlock struct {
 	rawFunctions   map[string]*ir.Func
 	rawIR          *ir.Block
 	irRefs         map[string]rules.Rule //Happens in conditionals, LLVM reference to a value
+	irTemps        map[string]int        //Number of times a temp variable is referenced in the block. Used to identify when the generate a rule from a multi-clause conditional (Ors primarily)
 }
 
 func NewLLBlock(e *Env, rawFunc map[string]*ir.Func, irb *ir.Block) *LLBlock {
@@ -228,6 +229,7 @@ func NewLLBlock(e *Env, rawFunc map[string]*ir.Func, irb *ir.Block) *LLBlock {
 		rawFunctions: rawFunc,
 		rawIR:        irb,
 		irRefs:       make(map[string]rules.Rule),
+		irTemps:      make(map[string]int),
 	}
 }
 
@@ -240,7 +242,56 @@ func (b *LLBlock) setRuleRounds(ru []rules.Rule) {
 	}
 }
 
+func (b *LLBlock) scanTemps() {
+	for _, inst := range b.rawIR.Insts {
+		switch v := inst.(type) {
+		case *ir.InstOr:
+			b.irTemps[v.Ident()] = b.irTemps[v.Ident()] + 1
+			if IsTemp(v.X.Ident()) {
+				b.irTemps[v.X.Ident()] = b.irTemps[v.X.Ident()] + 1
+			}
+			if IsTemp(v.Y.Ident()) {
+				b.irTemps[v.Y.Ident()] = b.irTemps[v.Y.Ident()] + 1
+			}
+		case *ir.InstAnd:
+			b.irTemps[v.Ident()] = b.irTemps[v.Ident()] + 1
+			if IsTemp(v.X.Ident()) {
+				b.irTemps[v.X.Ident()] = b.irTemps[v.X.Ident()] + 1
+			}
+			if IsTemp(v.Y.Ident()) {
+				b.irTemps[v.Y.Ident()] = b.irTemps[v.Y.Ident()] + 1
+			}
+		case *ir.InstICmp:
+			b.irTemps[v.Ident()] = b.irTemps[v.Ident()] + 1
+			if IsTemp(v.X.Ident()) {
+				b.irTemps[v.X.Ident()] = b.irTemps[v.X.Ident()] + 1
+			}
+			if IsTemp(v.Y.Ident()) {
+				b.irTemps[v.Y.Ident()] = b.irTemps[v.Y.Ident()] + 1
+			}
+		case *ir.InstFCmp:
+			b.irTemps[v.Ident()] = b.irTemps[v.Ident()] + 1
+			if IsTemp(v.X.Ident()) {
+				b.irTemps[v.X.Ident()] = b.irTemps[v.X.Ident()] + 1
+			}
+			if IsTemp(v.Y.Ident()) {
+				b.irTemps[v.Y.Ident()] = b.irTemps[v.Y.Ident()] + 1
+			}
+		case *ir.InstXor:
+			b.irTemps[v.Ident()] = b.irTemps[v.Ident()] + 1
+			if IsTemp(v.X.Ident()) {
+				b.irTemps[v.X.Ident()] = b.irTemps[v.X.Ident()] + 1
+			}
+			if IsTemp(v.Y.Ident()) {
+				b.irTemps[v.Y.Ident()] = b.irTemps[v.Y.Ident()] + 1
+			}
+		}
+	}
+}
+
 func (b *LLBlock) Unroll() {
+	//Scan the block for temp references before parsing
+	b.scanTemps()
 
 	// For each non-branching instruction of the basic block.
 	for _, inst := range b.rawIR.Insts {

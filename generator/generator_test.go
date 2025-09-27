@@ -478,18 +478,18 @@ func TestTestData(t *testing.T) {
 
 func TestSys(t *testing.T) {
 	specs := [][]string{
-		//{"testdata/statecharts/statechart.fsystem", "0"},
+		{"testdata/statecharts/statechart.fsystem", "0"},
 		{"testdata/statecharts/advanceor.fsystem", "0"},
-		//{"testdata/statecharts/multioradvance.fsystem", "0"},
-		//{"testdata/statecharts/advanceand.fsystem", "0"},
+		{"testdata/statecharts/multioradvance.fsystem", "0"},
+		{"testdata/statecharts/advanceand.fsystem", "0"},
 		//{"testdata/statecharts/mixedcalls.fsystem", "0"},
 		//{"testdata/statecharts/triggerfunc.fsystem", "0"},
 	}
 	smt2s := []string{
-		//"testdata/statecharts/statechart.smt2",
+		"testdata/statecharts/statechart.smt2",
 		"testdata/statecharts/advanceor.smt2",
-		//"testdata/statecharts/multioradvance.smt2",
-		//"testdata/statecharts/advanceand.smt2",
+		"testdata/statecharts/multioradvance.smt2",
+		"testdata/statecharts/advanceand.smt2",
 		//"testdata/statecharts/mixedcalls.smt2",
 		//"testdata/statecharts/triggerfunc.smt2",
 	}

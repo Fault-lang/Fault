@@ -372,6 +372,41 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 				}
 			}
 		}
+	case *ir.InstOr:
+		id := cnode.Ident()
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			return v
+		}
+		r := b.parseOr(cnode)
+		// Or always returns a single rule or a nil
+		if len(r) == 0 {
+			panic(fmt.Sprintf("Or clause %s not found", refname))
+		}
+		return r[0]
+	case *ir.InstAnd:
+		id := cnode.Ident()
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			return v
+		}
+		r := b.parseAnd(cnode)
+		// And always returns a single rule or a nil
+		if len(r) == 0 {
+			panic(fmt.Sprintf("And clause %s not found", refname))
+		}
+		return r[0]
+	case *ir.InstXor:
+		id := cnode.Ident()
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
+		if v, ok := b.irRefs[refname]; ok {
+			return v
+		}
+		r := b.parseXor(cnode)
+		if len(r) == 0 {
+			panic(fmt.Sprintf("Xor clause %s not found", refname))
+		}
+		return r[0]
 	default:
 		n := node.Ident()
 		nRule := b.LookupCondPart(b.Env.CurrentFunction, n)
@@ -418,13 +453,36 @@ func (b *LLBlock) parseGetElementPtr(inst *ir.InstGetElementPtr) []rules.Rule {
 	return []rules.Rule{}
 }
 
+func (b *LLBlock) deferRule(id string, x value.Value) bool {
+	if b.irTemps[id] > 1 {
+		//b.irTemps[id] = b.irTemps[id] - 1
+		return false
+	}
+
+	switch node := x.(type) {
+	case *ir.InstCall:
+		if isBuiltIn(node.Callee.Ident()) {
+			return true
+		}
+	case *ir.InstOr:
+		return true
+	case *ir.InstAnd:
+		return true
+	//We don't do XORs because we only use XOR for "not x"
+
+	default:
+		return false
+	}
+	return false
+}
+
 func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 	id := inst.Ident()
 	xRule := b.parseCondNode(inst.X)
 	_, file, line, _ := runtime.Caller(1)
 	b.createMultiCondRule(id, xRule, rules.NewWrap("", "", false, file, line, false, false), "not")
 
-	if x, ok := inst.X.(*ir.InstCall); ok && isBuiltIn(x.Callee.Ident()) {
+	if b.deferRule(id, inst.X) || b.deferRule(id, inst.Y) {
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 		if v, ok := b.irRefs[refname]; ok {
 			return []rules.Rule{v}
@@ -435,8 +493,8 @@ func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 
 func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
 	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
-	if r, ok := b.irRefs[refname]; ok {
-		return r
+	if _, ok := b.irRefs[refname]; ok {
+		return nil
 	}
 
 	if op == "not" {
@@ -447,6 +505,7 @@ func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op 
 	if op == "or" {
 		// A little convoluted because we need to add phis to or clauses
 		var right, left []rules.Rule
+
 		if x_ands, ok := x.(*rules.Ands); ok {
 			right = x_ands.X
 		} else {
@@ -459,11 +518,40 @@ func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op 
 			left = []rules.Rule{y}
 
 		}
+
+		//Consolidate Ors instead of nesting them
+		if r, ok := x.(*rules.Ors); ok {
+			ors := append(r.X, left)
+			b.irRefs[refname] = &rules.Ors{X: ors, BranchName: refname}
+			return nil
+		}
+
+		if r, ok := y.(*rules.Ors); ok {
+			ors := append([][]rules.Rule{right}, r.X...)
+			b.irRefs[refname] = &rules.Ors{X: ors, BranchName: refname}
+			return nil
+		}
+
 		b.irRefs[refname] = &rules.Ors{X: [][]rules.Rule{right, left}, BranchName: refname}
 		return nil
 	}
 
 	if op == "and" {
+		if r1, ok := x.(*rules.Ands); ok {
+			if r2, ok := y.(*rules.Ands); ok {
+				b.irRefs[refname] = &rules.Ands{X: append(r1.X, r2.X...)}
+				return nil
+			}
+
+			b.irRefs[refname] = &rules.Ands{X: append(r1.X, y)}
+			return nil
+		}
+
+		if r1, ok := y.(*rules.Ands); ok {
+			b.irRefs[refname] = &rules.Ands{X: append([]rules.Rule{x}, r1.X...)}
+			return nil
+		}
+
 		b.irRefs[refname] = &rules.Ands{X: []rules.Rule{x, y}}
 		return nil
 	}
@@ -479,7 +567,7 @@ func (b *LLBlock) parseAnd(inst *ir.InstAnd) []rules.Rule {
 
 	b.createMultiCondRule(id, xRule, yRule, "and")
 
-	if x, ok := inst.X.(*ir.InstCall); ok && isBuiltIn(x.Callee.Ident()) {
+	if b.deferRule(id, inst.X) || b.deferRule(id, inst.Y) {
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 		if v, ok := b.irRefs[refname]; ok {
 			return []rules.Rule{v}
@@ -494,7 +582,7 @@ func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	yRule := b.parseCondNode(inst.Y)
 	b.createMultiCondRule(id, xRule, yRule, "or")
 
-	if x, ok := inst.X.(*ir.InstCall); ok && isBuiltIn(x.Callee.Ident()) {
+	if b.deferRule(id, inst) { // Ors are different because we collapse them
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 		if v, ok := b.irRefs[refname]; ok {
 			return []rules.Rule{v}
