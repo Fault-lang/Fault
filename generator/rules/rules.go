@@ -3,6 +3,7 @@ package rules
 import (
 	"bytes"
 	"fault/generator/scenario"
+	"fault/util"
 	"fmt"
 	"strings"
 
@@ -1032,6 +1033,7 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	PhiLevel int
 	HaveSeen map[string]bool
 	OnEntry  map[string][]int16
+	Whens    map[string][]string //map of when asserts this variable is involved in
 	Log      *scenario.Logger
 	tag      *branch
 }
@@ -1045,18 +1047,27 @@ func NewWrap(v string, t string, vr bool, file string, line int, init bool, inde
 		Type:     t,
 		Init:     init,
 		Indexed:  indexed,
+		Whens:    make(map[string][]string),
 		Debugger: map[string]string{
 			"file": file,
 			"line": fmt.Sprintf("%d", line),
 		},
 	}
 }
+
 func (w *Wrap) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
 	w.PhiLevel = PhiLevel
 	w.HaveSeen = HaveSeen
 	w.OnEntry = OnEntry
 	w.Log = Log
 }
+
+func (w *Wrap) SetWhensThens(whens map[string]map[string][]string) {
+	if whens[w.Value] != nil {
+		w.Whens = whens[w.Value]
+	}
+}
+
 func (w *Wrap) SetRound(r int) {
 	w.Round = r
 }
@@ -1156,11 +1167,11 @@ func (w *Wrap) Branch() string {
 
 type VarSets struct {
 	Rule
-	Vars map[string][]string // [round_0_scope_name] => {this_variable_0, this_variable_1}
+	Vars map[string]*util.StringSet // [round_0_scope_name] => {this_variable_0, this_variable_1}
 	tag  *branch
 }
 
-func NewVarSets(vars map[string][]string) *VarSets {
+func NewVarSets(vars map[string]*util.StringSet) *VarSets {
 	varset := &VarSets{
 		Vars: vars,
 	}
@@ -1172,7 +1183,7 @@ func (sg *VarSets) ruleNode() {}
 func (sg *VarSets) String() string {
 	var out bytes.Buffer
 	for _, v := range sg.Vars {
-		out.WriteString(strings.Join(v, "\n"))
+		out.WriteString(strings.Join(v.Values(), "\n"))
 	}
 	return out.String()
 }
@@ -1182,7 +1193,7 @@ func (sg *VarSets) GetByRunRound(round int) []string {
 	for k, v := range sg.Vars {
 		key := fmt.Sprintf("round-%d_@__run", round)
 		if k == key {
-			return v
+			return v.Values()
 		}
 	}
 	return ret

@@ -217,6 +217,13 @@ func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]stri
 	return m1
 }
 
+func MergeStringSliceMaps(m1 map[string][][]string, m2 map[string][][]string) map[string][][]string {
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
+}
+
 func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	var results []string
 	skip := false
@@ -237,10 +244,12 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	return results
 }
 
-func MergeStringSliceMaps(m1 map[string][]string, m2 map[string][]string) map[string][]string {
+func MergeStringSets(m1 map[string]*StringSet, m2 map[string]*StringSet) map[string]*StringSet {
 	for k, v := range m2 {
 		if _, ok := m1[k]; ok {
-			m1[k] = append(m1[k], v...)
+			for _, val := range v.Values() {
+				m1[k].Add(val)
+			}
 		} else {
 			m1[k] = v
 		}
@@ -270,6 +279,16 @@ func SliceOfIndex(l int) []int {
 		inverse[i] = i
 	}
 	return inverse
+}
+
+func RemoveFromStringSlice(sl []string, sub string) []string {
+	var new []string
+	for _, s := range sl {
+		if s != sub {
+			new = append(new, s)
+		}
+	}
+	return new
 }
 
 func InStringSlice(sl []string, sub string) bool {

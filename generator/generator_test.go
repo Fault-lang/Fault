@@ -261,78 +261,78 @@ func TestTemporal2(t *testing.T) {
 	}
 }
 
-// func TestTemporalSys(t *testing.T) {
+func TestTemporalSys(t *testing.T) {
 
-// 	test := `system test1;
-// 		component a = states{
-// 			foo: func{
-// 				advance(b.bar);
-// 			},
-// 			zoo: func{
-// 				advance(this.foo);
-// 			},
-// 		};
+	test := `system test1;
+		component a = states{
+			foo: func{
+				advance(b.bar);
+			},
+			zoo: func{
+				advance(this.foo);
+			},
+		};
 
-// 		component b = states{
-// 			buzz: func{
-// 				advance(a.foo);
-// 			},
-// 			bar: func{
-// 				stay();
-// 			},
-// 		};
+		component b = states{
+			buzz: func{
+				advance(a.foo);
+			},
+			bar: func{
+				stay();
+			},
+		};
 
-// 		assert when a.zoo then !b.bar;
+		assert when a.zoo then !b.bar;
 
-// 		start{
-// 			b: buzz,
-// 			a: zoo,
-// 		};
-// 		`
-// 	expecting := `(set-logic QF_NRA)
-// 	(declare-fun test1_b_bar_2 () Bool)
-// 	(declare-fun test1_a_foo_2 () Bool)
-// 	(declare-fun test1_a_foo_4 () Bool)
-// 	(declare-fun test1_a_zoo_3 () Bool)
-// 	(declare-fun test1_a_foo_6 () Bool)
-// 	(declare-fun test1_b_buzz_3 () Bool)
-// 	(declare-fun test1_a_foo_0 () Bool)
-// 	(declare-fun test1_a_zoo_0 () Bool)
-// 	(declare-fun test1_b_buzz_0 () Bool)
-// 	(declare-fun test1_b_bar_0 () Bool)
-// 	(declare-fun test1_a_zoo_1 () Bool)
-// 	(declare-fun test1_b_buzz_1 () Bool)
-// 	(declare-fun test1_b_bar_1 () Bool)
-// 	(declare-fun test1_a_foo_1 () Bool)
-// 	(declare-fun test1_a_foo_3 () Bool)
-// 	(declare-fun test1_a_zoo_2 () Bool)
-// 	(declare-fun test1_a_foo_5 () Bool)
-// 	(declare-fun test1_b_buzz_2 () Bool)
-// 	(assert (= test1_a_foo_0 false))
-// 	(assert (= test1_a_zoo_0 false))
-// 	(assert (= test1_b_buzz_0 false))
-// 	(assert (= test1_b_bar_0 false))
-// 	(assert (= test1_a_zoo_1 true))
-// 	(assert (= test1_b_buzz_1 true))
-// 	(assert (= test1_b_bar_1 true))
-// 	(assert (= test1_a_foo_1 false))
-// 	(assert (ite (= test1_a_foo_0 true) (and (= test1_b_bar_2 test1_b_bar_1) (= test1_a_foo_2 test1_a_foo_1)) (and (= test1_b_bar_2 test1_b_bar_0) (= test1_a_foo_2 test1_a_foo_0))))
-// 	(assert (= test1_a_foo_3 true))
-// 	(assert (= test1_a_zoo_2 false))
-// 	(assert (ite (= test1_a_zoo_1 true) (and (= test1_a_foo_4 test1_a_foo_3) (= test1_a_zoo_3 test1_a_zoo_2)) (and (= test1_a_foo_4 test1_a_foo_2) (= test1_a_zoo_3 test1_a_zoo_1))))
-// 	(assert (= test1_a_foo_5 true))
-// 	(assert (= test1_b_buzz_2 false))
-// 	(assert (ite (= test1_b_buzz_1 true) (and (= test1_a_foo_6 test1_a_foo_5) (= test1_b_buzz_3 test1_b_buzz_2)) (and (= test1_a_foo_6 test1_a_foo_4) (= test1_b_buzz_3 test1_b_buzz_1))))(assert (and (or test1_a_zoo_0 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_1) (or test1_a_zoo_1 test1_b_bar_2) (or test1_a_zoo_2 test1_b_bar_2) (or test1_a_zoo_3 test1_b_bar_2)))
-// 	`
+		start{
+			b: buzz,
+			a: zoo,
+		};
+		`
+	expecting := `(set-logic QF_NRA)
+	(declare-fun test1_b_bar_2 () Bool)
+	(declare-fun test1_a_foo_2 () Bool)
+	(declare-fun test1_a_foo_4 () Bool)
+	(declare-fun test1_a_zoo_3 () Bool)
+	(declare-fun test1_a_foo_6 () Bool)
+	(declare-fun test1_b_buzz_3 () Bool)
+	(declare-fun test1_a_foo_0 () Bool)
+	(declare-fun test1_a_zoo_0 () Bool)
+	(declare-fun test1_b_buzz_0 () Bool)
+	(declare-fun test1_b_bar_0 () Bool)
+	(declare-fun test1_a_zoo_1 () Bool)
+	(declare-fun test1_b_buzz_1 () Bool)
+	(declare-fun test1_b_bar_1 () Bool)
+	(declare-fun test1_a_foo_1 () Bool)
+	(declare-fun test1_a_foo_3 () Bool)
+	(declare-fun test1_a_zoo_2 () Bool)
+	(declare-fun test1_a_foo_5 () Bool)
+	(declare-fun test1_b_buzz_2 () Bool)
+	(assert (= test1_a_foo_0 false))
+	(assert (= test1_a_zoo_0 false))
+	(assert (= test1_b_buzz_0 false))
+	(assert (= test1_b_bar_0 false))
+	(assert (= test1_a_zoo_1 true))
+	(assert (= test1_b_buzz_1 true))
+	(assert (= test1_b_bar_1 true))
+	(assert (= test1_a_foo_1 false))
+	(assert (ite (= test1_a_foo_0 true) (and (= test1_b_bar_2 test1_b_bar_1) (= test1_a_foo_2 test1_a_foo_1)) (and (= test1_b_bar_2 test1_b_bar_0) (= test1_a_foo_2 test1_a_foo_0))))
+	(assert (= test1_a_foo_3 true))
+	(assert (= test1_a_zoo_2 false))
+	(assert (ite (= test1_a_zoo_1 true) (and (= test1_a_foo_4 test1_a_foo_3) (= test1_a_zoo_3 test1_a_zoo_2)) (and (= test1_a_foo_4 test1_a_foo_2) (= test1_a_zoo_3 test1_a_zoo_1))))
+	(assert (= test1_a_foo_5 true))
+	(assert (= test1_b_buzz_2 false))
+	(assert (ite (= test1_b_buzz_1 true) (and (= test1_a_foo_6 test1_a_foo_5) (= test1_b_buzz_3 test1_b_buzz_2)) (and (= test1_a_foo_6 test1_a_foo_4) (= test1_b_buzz_3 test1_b_buzz_1))))(assert (and (or test1_a_zoo_0 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_1) (or test1_a_zoo_1 test1_b_bar_2) (or test1_a_zoo_2 test1_b_bar_2) (or test1_a_zoo_3 test1_b_bar_2)))
+	`
 
-// 	g := prepTest("", test, false, false)
+	g := prepTest("", test, false, false)
 
-// 	err := compareResults("TemporalSys", g.SMT(), string(expecting))
+	err := compareResults("TemporalSys", g.SMT(), string(expecting))
 
-// 	if err != nil {
-// 		t.Fatal(err.Error())
-// 	}
-// }
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
 
 // func TestTemporalSys2(t *testing.T) {
 

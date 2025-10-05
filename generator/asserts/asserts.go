@@ -29,9 +29,10 @@ type Constraint struct {
 	Assume   bool
 	Rounds   int
 	Registry map[string][][]string
+	Whens    []map[string]string
 }
 
-func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string) *Constraint {
+func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) *Constraint {
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
 	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
@@ -67,24 +68,33 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 		Assume:   a.Assume,
 		Rounds:   rounds,
 		Registry: registry,
+		Whens:    whens[a.String()],
 	}
 }
 
-func (c *Constraint) RegistryConstant(cons string) map[string][]string {
-	subset := make(map[string][]string)
+func (c *Constraint) RegistryConstant(cons string) map[string]*util.StringSet {
+	subset := make(map[string]*util.StringSet)
 	for k := range c.Registry {
-		subset[k] = []string{cons}
+		if _, ok := subset[k]; !ok {
+			subset[k] = util.NewStrSet()
+		}
+
+		subset[k].Add(cons)
 	}
 	return subset
 }
 
-func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[string][]string {
+func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[string]*util.StringSet {
 	// Filter the registry to only include rounds+scopes where the
 	// variable is relevant
 
-	subset := make(map[string][]string)
+	subset := make(map[string]*util.StringSet)
 	constant_value := ""
 	for k, vars := range c.Registry {
+		if _, ok := subset[k]; !ok {
+			subset[k] = util.NewStrSet()
+		}
+
 		for _, var_ssa := range vars {
 			full_ssa := strings.Join(var_ssa, "_")
 
@@ -94,39 +104,35 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 
 			if !all && full_ssa == v {
 				//If not all values of variable, return only the round+scope with the exact SSA value
-				subset[k] = []string{full_ssa}
+				subset[k].Add(full_ssa)
 			}
 
 			if !constant && var_ssa[0] == v {
 				//Otherwise return every round+scope with the base name of the variable or any Instances
-				if _, ok := subset[k]; !ok {
-					subset[k] = []string{full_ssa}
-					continue
-				}
-				subset[k] = append(subset[k], full_ssa)
+				subset[k].Add(full_ssa)
 			}
 
 		}
 
 		if constant {
 			//If var is constant, populate every round+scope with the correct SSA value
-			if _, ok := subset[k]; !ok {
-				subset[k] = []string{constant_value}
-				continue
-			}
-			subset[k] = append(subset[k], constant_value)
+			subset[k].Add(constant_value)
 		}
 	}
 	return subset
 }
 
-func (c *Constraint) FilterRegistryByIndex(v string, idx string) map[string][]string {
-	subset := make(map[string][]string)
+func (c *Constraint) FilterRegistryByIndex(v string, idx string) map[string]*util.StringSet {
+	subset := make(map[string]*util.StringSet)
 	for k, vars := range c.Registry {
+		if _, ok := subset[k]; !ok {
+			subset[k] = util.NewStrSet()
+		}
+
 		for _, var_ssa := range vars {
 			if var_ssa[0] == v && var_ssa[1] == idx {
 				full_ssa := strings.Join(var_ssa, "_")
-				subset[k] = []string{full_ssa}
+				subset[k].Add(full_ssa)
 			}
 		}
 	}
@@ -134,8 +140,6 @@ func (c *Constraint) FilterRegistryByIndex(v string, idx string) map[string][]st
 }
 
 func (c *Constraint) Parse() []string {
-	c.Left = c.parseNode(c.Raw.Left)
-	c.Right = c.parseNode(c.Raw.Right)
 
 	// Then
 	// If left is true, right is true
@@ -143,17 +147,18 @@ func (c *Constraint) Parse() []string {
 
 	// Temporals
 	// If left and right are instances of the same variable
-	l := c.applyTemporal()
-
+	var l string
+	if c.Then {
+		l = c.applyWhen()
+	} else {
+		c.Left = c.parseNode(c.Raw.Left)
+		c.Right = c.parseNode(c.Raw.Right)
+		l = c.applyTemporal()
+	}
 	// Expand based on temporal filter
 
 	// If assume, the different asserts need to be joined by
 	// an "and" instead of and "or"
-
-	// if c.Then {
-	// 	sg := c.mergeInvariantInfix(left, right, "or")
-	// 	return c.joinStates(sg, c.Op)
-	// }
 
 	//If left and right are asserts on the same variable
 	// dset := util.DiffStrSets(c.Left.Bases, c.Right.Bases)
@@ -204,12 +209,12 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 		return c.merge(left, right, operator)
 
 	case *ast.AssertVar:
-		var registery_subset = make(map[string][]string)
+		var registery_subset = make(map[string]*util.StringSet)
 		for _, v := range e.Instances {
-			var subset2 map[string][]string
+			var subset2 map[string]*util.StringSet
 			_, a, cons := captureState(v)
 			subset2 = c.FilterRegistry(v, cons, a)
-			registery_subset = util.MergeStringSliceMaps(registery_subset, subset2) //If the variable is not in the registry, add it
+			registery_subset = util.MergeStringSets(registery_subset, subset2) //If the variable is not in the registry, add it
 		}
 		return rules.NewVarSets(registery_subset)
 
@@ -234,7 +239,7 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 			operator = smtlibOperators(e.Operator)
 		}
 
-		prefix := make(map[string][]string)
+		prefix := make(map[string]*util.StringSet)
 		for k, v := range right.Vars {
 			prefix[k] = c.Prefix(v, operator)
 		}
@@ -251,10 +256,62 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 	return nil
 }
 
-func (c *Constraint) Prefix(x []string, op string) []string {
-	var product []string
-	for _, a := range x {
-		product = append(product, fmt.Sprintf("(%s %s)", op, a))
+func (c *Constraint) applyWhen() string {
+	var ru []string
+	for _, w := range c.Whens {
+		l := c.parseWhenThen(c.Raw.Left, w)
+		r := c.parseWhenThen(c.Raw.Right, w)
+		rule := fmt.Sprintf("(=> %s %s)", l, r)
+
+		if len(ru) > 0 && rule == ru[len(ru)-1] {
+			continue
+		}
+
+		ru = append(ru, rule)
+	}
+	return strings.Join(ru, " ")
+}
+
+func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) string {
+	switch e := node.(type) {
+	case *ast.InfixExpression:
+		left := c.parseWhenThen(e.Left, w)
+		right := c.parseWhenThen(e.Right, w)
+		op := smtlibOperators(e.Operator)
+
+		if op == "not" {
+			return fmt.Sprintf("(distinct %s %s)", left, right)
+		}
+		return fmt.Sprintf("(%s %s %s)", op, left, right)
+
+	case *ast.PrefixExpression:
+		right := c.parseWhenThen(e.Right, w)
+		if e.Operator == "!" { //Not valid in SMTLib
+			return fmt.Sprintf("(not %s)", right)
+		}
+		return fmt.Sprintf("(%s %s)", smtlibOperators(e.Operator), right)
+
+	case *ast.IntegerLiteral:
+		return fmt.Sprintf("%d", e.Value)
+	case *ast.FloatLiteral:
+		return fmt.Sprintf("%v", e.Value)
+	case *ast.Boolean:
+		return fmt.Sprintf("%v", e.Value)
+	case *ast.StringLiteral:
+		return e.Value
+	case *ast.AssertVar:
+		return w[e.Instances[0]]
+	default:
+		pos := e.Position()
+		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+	}
+
+}
+
+func (c *Constraint) Prefix(x *util.StringSet, op string) *util.StringSet {
+	product := util.NewStrSet()
+	for _, a := range x.Values() {
+		product.Add(fmt.Sprintf("(%s %s)", op, a))
 	}
 	return product
 }
@@ -283,13 +340,13 @@ func captureState(id string) (string, bool, bool) {
 }
 
 func (c *Constraint) merge(left *rules.VarSets, right *rules.VarSets, operator string) *rules.VarSets {
-	merged := rules.NewVarSets(make(map[string][]string))
+	merged := rules.NewVarSets(make(map[string]*util.StringSet))
 
 	if len(left.Vars) > 0 {
 		for k, l := range left.Vars {
 			for k2, l2 := range right.Vars {
 				if k == k2 { //For now
-					combos := util.PairCombinations(l, l2)
+					combos := util.PairCombinations(l.Values(), l2.Values())
 					merged.Vars[k] = c.Package(combos, operator)
 				}
 			}
@@ -298,11 +355,11 @@ func (c *Constraint) merge(left *rules.VarSets, right *rules.VarSets, operator s
 	return merged
 }
 
-func (c *Constraint) Package(x [][]string, op string) []string {
-	var product []string
+func (c *Constraint) Package(x [][]string, op string) *util.StringSet {
+	product := util.NewStrSet()
 	for _, a := range x {
 		if len(a) == 1 {
-			product = append(product, a[0])
+			product.Add(a[0])
 		} else {
 			var s string
 			if op == "not" && a[0] == "false" {
@@ -319,7 +376,7 @@ func (c *Constraint) Package(x [][]string, op string) []string {
 
 				s = fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
 			}
-			product = append(product, s)
+			product.Add(s)
 		}
 	}
 

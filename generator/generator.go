@@ -68,6 +68,8 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
 	g.sortFuncs(m.Funcs)
 
+	g.Env.WhensThens = unroll.WhenThen(g.Env.RawInputs.Asserts)
+
 	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()
 
@@ -82,17 +84,17 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.ResultLog = p.Log
 
-	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry)
+	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry, p.Whens)
 	g.AppendSMT(assertSMT)
-	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry)
+	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens)
 	g.AppendSMT(assumeSMT)
 }
 
-func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string) []string {
+func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) []string {
 	var rules []string
 
 	for _, as := range assertList {
-		c := asserts.NewConstraint(as, rounds, registry)
+		c := asserts.NewConstraint(as, rounds, registry, whens)
 		rules = append(rules, c.Parse()...)
 	}
 	return rules

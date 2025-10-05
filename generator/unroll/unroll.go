@@ -1,6 +1,7 @@
 package unroll
 
 import (
+	"fault/ast"
 	"fault/generator/rules"
 	"fault/llvm"
 	"fault/util"
@@ -25,6 +26,7 @@ type Env struct {
 	CurrentRound     int
 	returnVoid       *PhiState
 	ParallelGrouping string
+	WhensThens       map[string]map[string][]string // map[variable_name][assert_id][]string{other_variables in the assert...}
 }
 
 func NewEnv(ri *llvm.RawInputs) *Env {
@@ -34,6 +36,7 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		VarTypes:     make(map[string]string),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
+		WhensThens:   make(map[string]map[string][]string),
 	}
 }
 
@@ -487,6 +490,75 @@ func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rul
 	return r
 }
 
+func WhenThen(aw []*ast.AssertionStatement) map[string]map[string][]string {
+	//Look for "when/then" asserts and build a map defining which
+	//variables are on the right side (then) for every variable on the left side (when)
+	//this allows us to build out asserts later and capture overlapping SSA transitions
+	//Example: a1 is true, b1 must be true. b1 becomes b2 before a1 becomes a2 so b2 must still be true
+	var whenThens = make(map[string]map[string][]string)
+	for _, a := range aw {
+		if a.Constraint.Operator == "then" {
+			when := extractVariables(a.Constraint.Left)
+			then := extractVariables(a.Constraint.Right)
+			for _, w := range when {
+				left := util.RemoveFromStringSlice(when, w)
+				if whenThens[w] == nil {
+					whenThens[w] = make(map[string][]string)
+				}
+				whenThens[w][a.String()] = append(left, then...)
+			}
+
+			for _, t := range then {
+				right := util.RemoveFromStringSlice(then, t)
+				if whenThens[t] == nil {
+					whenThens[t] = make(map[string][]string)
+				}
+				whenThens[t][a.String()] = append(when, right...)
+			}
+		}
+	}
+	return whenThens
+}
+
+func extractVariables(e ast.Node) []string {
+	var vars []string
+	switch v := e.(type) {
+	case *ast.Identifier:
+		vars = append(vars, v.IdString())
+	case *ast.PrefixExpression:
+		vars = append(vars, extractVariables(v.Right)...)
+	case *ast.InfixExpression:
+		vars = append(vars, extractVariables(v.Left)...)
+		vars = append(vars, extractVariables(v.Right)...)
+	case *ast.IfExpression:
+		vars = append(vars, extractVariables(v.Consequence)...)
+		vars = append(vars, extractVariables(v.Alternative)...)
+	case *ast.IntegerLiteral:
+		return vars
+	case *ast.FloatLiteral:
+		return vars
+	case *ast.StringLiteral:
+		return vars
+	case *ast.Boolean:
+		return vars
+	case *ast.Natural:
+		return vars
+	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
+		return vars
+	case *ast.Unknown:
+		vars = append(vars, v.Name.IdString())
+	case *ast.Nil:
+		return vars
+	case *ast.IndexExpression:
+		vars = append(vars, extractVariables(v.Index)...)
+	case *ast.AssertVar:
+		vars = append(vars, v.Instances...)
+	default:
+		panic(fmt.Sprintf("unrecognized expression: %T", v))
+	}
+	return vars
+}
+
 func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.RawInputs) rules.Rule {
 	if id == "__rounds" || id == "__parallelGroup" {
 		return nil
@@ -586,9 +658,14 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 	yIs := IsIndexed(y)
 	_, file, line, _ := runtime.Caller(1)
 
+	xr := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
+	xr.SetWhensThens(b.Env.WhensThens)
+	yr := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
+	yr.SetWhensThens(b.Env.WhensThens)
+
 	return &rules.Infix{
-		X:  rules.NewWrap(x, tyX, vrX, file, line, false, xIs),
-		Y:  rules.NewWrap(y, tyY, vrY, file, line, false, yIs),
+		X:  xr,
+		Y:  yr,
 		Op: op,
 	}
 }
@@ -600,8 +677,11 @@ func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 	}
 	xIs := IsIndexed(x)
 	_, file, line, _ := runtime.Caller(1)
+
+	xr := rules.NewWrap(x, "Bool", vr, file, line, false, xIs)
+	xr.SetWhensThens(b.Env.WhensThens)
 	return &rules.Prefix{
-		X:  rules.NewWrap(x, "Bool", vr, file, line, false, xIs),
+		X:  xr,
 		Op: op,
 	}
 }

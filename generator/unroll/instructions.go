@@ -102,6 +102,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					xIs := IsIndexed(base)
 					_, file, line, _ := runtime.Caller(1)
 					wid := rules.NewWrap(base, "", true, file, line, true, xIs)
+					wid.SetWhensThens(b.Env.WhensThens)
 
 					if IsStaticValue(r.X.String()) {
 						wid.Variable = false
@@ -127,6 +128,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					xIs := IsIndexed(base)
 					_, file, line, _ := runtime.Caller(1)
 					wid := rules.NewWrap(base, ty, true, file, line, true, xIs)
+					wid.SetWhensThens(b.Env.WhensThens)
 					ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
 				}
 			} else {
@@ -147,17 +149,21 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 	xIs := IsIndexed(id)
 	_, file, line, _ := runtime.Caller(1)
 	wid := rules.NewWrap(id, ty, true, file, line, true, xIs)
+	wid.SetWhensThens(b.Env.WhensThens)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {
 		_, file, line, _ := runtime.Caller(1)
 		wval = rules.NewWrap(val, "Bool", false, file, line, false, false)
+		wval.SetWhensThens(b.Env.WhensThens)
 	} else if IsNumeric(val) {
 		_, file, line, _ := runtime.Caller(1)
 		wval = rules.NewWrap(val, ty, false, file, line, false, false)
+		wval.SetWhensThens(b.Env.WhensThens)
 	} else {
 		_, file, line, _ := runtime.Caller(1)
 		wval = rules.NewWrap(val, ty, true, file, line, false, false)
+		wval.SetWhensThens(b.Env.WhensThens)
 	}
 	return &rules.Infix{X: wid, Ty: ty, Y: wval, Op: op}
 }

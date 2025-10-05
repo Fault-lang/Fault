@@ -26,6 +26,7 @@ type Unpacker struct {
 	HaveSeen     map[string]bool    // Have we seen this variable so far in this fork?
 	OnEntry      map[string][]int16 // SSA of variables on entry to a fork
 	VarTypes     map[string]string
+	Whens        map[string][]map[string]string // list of variable combinations for when/then asserts
 	Log          *scenario.Logger
 	Round        int // Current round
 }
@@ -39,6 +40,7 @@ func NewUnpacker(block_id string) *Unpacker {
 		HaveSeen:     make(map[string]bool),
 		OnEntry:      make(map[string][]int16),
 		VarTypes:     make(map[string]string),
+		Whens:        make(map[string][]map[string]string),
 		Log:          scenario.NewLogger(),
 		Round:        0,
 	}
@@ -51,6 +53,10 @@ func (u *Unpacker) Inherits(u1 *Unpacker) {
 	u.VarTypes = u1.VarTypes
 	u.Log = u1.Log
 	u.Round = u1.Round
+
+	for k, v := range u1.Whens {
+		u.Whens[k] = v
+	}
 }
 
 func (u *Unpacker) NewLevel() {
@@ -260,9 +266,72 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
+	u.Whens = u.unpackWhenThen(r, u.Whens)
 	u.AddInit(inits)
 	u.Register(inits)
 	return rule
+}
+
+func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]string) map[string][]map[string]string {
+	switch ru := r.(type) {
+	case *rules.Basic:
+		whens = u.unpackWhenThen(ru.X, whens)
+		whens = u.unpackWhenThen(ru.Y, whens)
+	case *rules.Init:
+		// Nothing to do
+	case *rules.Ite:
+		for _, t := range ru.T {
+			whens = u.unpackWhenThen(t, whens)
+		}
+		for _, f := range ru.F {
+			whens = u.unpackWhenThen(f, whens)
+		}
+	case *rules.Prefix:
+		whens = u.unpackWhenThen(ru.X, whens)
+	case *rules.Infix:
+		whens = u.unpackWhenThen(ru.X, whens)
+		whens = u.unpackWhenThen(ru.Y, whens)
+	case *rules.Parallels:
+		// Nothing to do
+	case *rules.Ands:
+		for _, ru := range ru.X {
+			whens = u.unpackWhenThen(ru, whens)
+		}
+	case *rules.Ors:
+		for _, branch := range ru.X {
+			for _, ru := range branch {
+				whens = u.unpackWhenThen(ru, whens)
+			}
+		}
+	case *rules.Wrap:
+		// Unlike other asserts, we do this every time we see a new init of a variable
+		// so that we capture overlapping states correctly
+		if len(ru.Whens) == 0 {
+			return whens
+		}
+
+		if !ru.Init {
+			return whens
+		}
+
+		for a, when := range ru.Whens {
+			assert_combo := make(map[string]string) // base => ssa instance
+			kssa := u.SSA.Get(ru.Value)
+			assert_combo[ru.Value] = fmt.Sprintf("%s_%d", ru.Value, kssa)
+			for _, v := range when {
+				current := u.SSA.Get(v)
+				assert_combo[v] = fmt.Sprintf("%s_%d", v, current)
+			}
+			whens[a] = append(whens[a], assert_combo)
+		}
+	case *rules.Vwrap:
+		// Nothing to do
+	case *rules.FuncCall:
+		// Nothing to do
+	default:
+		panic(fmt.Sprintf("Unknown rule type %T", ru))
+	}
+	return whens
 }
 
 func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]bool) ([]*rules.Init, [][]string, map[string]bool) {
