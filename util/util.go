@@ -210,6 +210,18 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 	return start
 }
 
+func CompareStringMaps(m1 map[string]string, m2 map[string]string) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+	for k, v := range m1 {
+		if val, ok := m2[k]; !ok || val != v {
+			return false
+		}
+	}
+	return true
+}
+
 func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 	for k, v := range m2 {
 		m1[k] = v

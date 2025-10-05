@@ -258,18 +258,22 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 
 func (c *Constraint) applyWhen() string {
 	var ru []string
+	var op string
 	for _, w := range c.Whens {
 		l := c.parseWhenThen(c.Raw.Left, w)
 		r := c.parseWhenThen(c.Raw.Right, w)
-		rule := fmt.Sprintf("(=> %s %s)", l, r)
-
-		if len(ru) > 0 && rule == ru[len(ru)-1] {
-			continue
+		var rule string
+		if c.Assume {
+			op = "and"
+			rule = fmt.Sprintf("(=> %s %s)", l, r)
+		} else {
+			op = "or"
+			rule = fmt.Sprintf("(and %s (not %s))", l, r)
 		}
 
 		ru = append(ru, rule)
 	}
-	return strings.Join(ru, " ")
+	return fmt.Sprintf("(%s %s)", op, strings.Join(ru, " "))
 }
 
 func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) string {

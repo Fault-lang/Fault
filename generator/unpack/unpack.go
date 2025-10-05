@@ -4,6 +4,7 @@ import (
 	"fault/generator/rules"
 	"fault/generator/scenario"
 	"fault/generator/unroll"
+	"fault/util"
 	"fmt"
 	"strings"
 )
@@ -322,8 +323,13 @@ func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]st
 				current := u.SSA.Get(v)
 				assert_combo[v] = fmt.Sprintf("%s_%d", v, current)
 			}
+			// Only add the assert combo if it's not already present
+			if len(whens[a]) > 0 && util.CompareStringMaps(whens[a][len(whens[a])-1], assert_combo) {
+				continue
+			}
 			whens[a] = append(whens[a], assert_combo)
 		}
+
 	case *rules.Vwrap:
 		// Nothing to do
 	case *rules.FuncCall:
