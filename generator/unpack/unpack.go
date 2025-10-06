@@ -264,6 +264,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.FuncCall:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
+	case *rules.Stay:
+		u.Log.AddMessage("Stay in current state", u.Round)
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
@@ -333,6 +335,8 @@ func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]st
 	case *rules.Vwrap:
 		// Nothing to do
 	case *rules.FuncCall:
+		// Nothing to do
+	case *rules.Stay:
 		// Nothing to do
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))

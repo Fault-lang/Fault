@@ -74,9 +74,33 @@ func (l *Logger) AddPhiOption(phi string, end string) {
 	l.Forks[phi] = append(l.Forks[phi], end)
 }
 
+func (l *Logger) AddMessage(text string, round int) {
+	roundStr := fmt.Sprintf("%d", round)
+	l.Events = append(l.Events, &Message{
+		Text:  text,
+		Round: roundStr,
+	})
+}
+
 type Event interface {
 	MarkDead()
 	IsDead() bool
+}
+
+type Message struct {
+	// For example: hitting a stay() in the statechart
+	Event
+	Text  string
+	Round string
+	Dead  bool
+}
+
+func (m *Message) MarkDead() {
+	m.Dead = true
+}
+
+func (m *Message) IsDead() bool {
+	return m.Dead
 }
 
 type FunctionCall struct {
@@ -309,6 +333,8 @@ func (l *Logger) Print() {
 			} else {
 				fmt.Printf("%sResolving variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
 			}
+		case *Message:
+			fmt.Printf("%s%s\n", identLevel, event.Text)
 		}
 	}
 	fmt.Print("\n")

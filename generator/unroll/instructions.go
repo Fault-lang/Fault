@@ -260,7 +260,7 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 			refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, inst.Ident())
 			b.Env.VarLoads[refname] = inst
 		} else {
-			r := b.parseBuiltIn(inst, false)
+			r := b.parseBuiltIn(inst)
 			return r
 		}
 		return []rules.Rule{}
@@ -288,8 +288,13 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 	return r
 }
 
-func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
+func (b *LLBlock) parseBuiltIn(call *ir.InstCall) []rules.Rule {
 	p := call.Args
+
+	if call.Callee.Ident() == "@stay" {
+		return []rules.Rule{&rules.Stay{}}
+	}
+
 	if len(p) == 0 {
 		return []rules.Rule{}
 	}
@@ -303,12 +308,7 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 	state := b.Env.VarLoads[refname]
 	newState := util.FormatIdent(state.Ident())
-	// Not sure I remember/understand this. Commenting
-	// it out for now.
 
-	// if complex {
-	// 	declareVar(newState, "Bool", "true")
-	// }
 	r1 := b.createRule(newState, "true", "Bool", "=")
 
 	currentFunction := b.Env.CurrentFunction
@@ -317,12 +317,8 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall, complex bool) []rules.Rule {
 		panic("calling advance from outside the state chart")
 	}
 
-	//base2 := currentFunction[1:len(currentFunction)-7]
 	base2 := currentFunction[:len(currentFunction)-7]
 
-	// if complex {
-	// 	declareVar(base2, "Bool", "false")
-	// }
 	r2 := b.createRule(base2, "false", "Bool", "=")
 	return []rules.Rule{r1, r2}
 }
@@ -369,7 +365,7 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 	case *ir.InstCall:
 		if isBuiltIn(cnode.Callee.Ident()) {
 			if cnode.Callee.Ident() == "@advance" {
-				r := b.parseBuiltIn(cnode, true)
+				r := b.parseBuiltIn(cnode)
 				if len(r) == 1 {
 					return r[0]
 				}
@@ -449,14 +445,6 @@ func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 
 	ite := rules.NewIte(cond, t, f, a, block_names)
 	return []rules.Rule{ite}
-}
-
-func (b *LLBlock) parsePhi(inst *ir.InstPhi) []rules.Rule {
-	return []rules.Rule{}
-}
-
-func (b *LLBlock) parseGetElementPtr(inst *ir.InstGetElementPtr) []rules.Rule {
-	return []rules.Rule{}
 }
 
 func (b *LLBlock) deferRule(id string, x value.Value) bool {

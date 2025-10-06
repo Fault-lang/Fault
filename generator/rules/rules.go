@@ -1021,6 +1021,42 @@ func (ite *Ite) Tag(k1 string, k2 string) {
 // 	return true
 // }
 
+type Stay struct {
+	Rule
+	Round int
+	Log   *scenario.Logger
+}
+
+func (s *Stay) ruleNode() {}
+func (s *Stay) LoadContext(PhiLevel int, HaveSeen map[string]bool, OnEntry map[string][]int16, Log *scenario.Logger) {
+	// Implement LoadContext if needed
+}
+func (s *Stay) SetRound(r int) {
+	s.Round = r
+}
+func (s *Stay) GetRound() int {
+	return s.Round
+}
+func (s *Stay) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	// Implement WriteRule if needed
+	return nil, "", ssa
+}
+func (s *Stay) String() string {
+	return "stay"
+}
+func (s *Stay) Assertless() string {
+	return "stay"
+}
+func (s *Stay) IsTagged() bool {
+	return false
+}
+func (s *Stay) Choice() string {
+	return ""
+}
+func (s *Stay) Branch() string {
+	return ""
+}
+
 type Wrap struct { //wrapper for constant values to be used in infix as rules
 	Rule
 	Value    string
