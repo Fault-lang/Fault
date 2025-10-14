@@ -1326,7 +1326,15 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", vname, pos[0], pos[1]))
 		}
 
-		instas := c.fetchInstances(id)
+		var instas []string
+		if instances, ok := c.instances[fmt.Sprintf("%s_%s", id[0], id[1])]; ok {
+			for _, in := range instances {
+				instas = append(instas, fmt.Sprintf("%s_%s", in, strings.Join(id[2:], "_")))
+			}
+		} else {
+			instas = c.fetchInstances(id)
+		}
+
 		if len(instas) == 0 {
 			instas = []string{vname}
 		}
