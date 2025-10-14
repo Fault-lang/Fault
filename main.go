@@ -11,7 +11,6 @@ import (
 	"fault/swaps"
 	"fault/types"
 	"fault/util"
-	"fault/visualize"
 	"flag"
 	"fmt"
 	"log"
@@ -22,7 +21,7 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string, map[string]string) {
+func parse(data string, path string, file string, filetype string, reach bool) (*ast.Spec, *listener.FaultListener, *types.Checker, map[string]string) {
 
 	//Confirm that the filetype and file declaration match
 	if !validate_filetype(data, filetype) {
@@ -41,18 +40,11 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 
-	var visual string
-	if visu {
-		vis := visualize.NewVisual(ty.Checked)
-		vis.Build()
-		visual = vis.Render()
-	}
-
 	if reach {
 		r := reachability.NewTracer()
 		r.Scan(ty.Checked)
 	}
-	return tree, lstnr, ty, visual, sw.Alias
+	return tree, lstnr, ty, sw.Alias
 }
 
 func validate_filetype(data string, filetype string) bool {
@@ -125,7 +117,7 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 
 	switch input {
 	case "fspec":
-		tree, lstnr, ty, visual, alias := parse(d, path, filepath, filetype, reach, output == "visualize")
+		tree, lstnr, ty, alias := parse(d, path, filepath, filetype, reach)
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -144,13 +136,6 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 			fmt.Println(compiler.GetIR())
 			return
 		}
-
-		if !compiler.IsValid && visual != "" {
-			fmt.Println(visual)
-			fmt.Printf("\n\n")
-			return
-		}
-
 		if !compiler.IsValid {
 			fmt.Println("Fault found nothing to run. Missing run block or start block.")
 			return

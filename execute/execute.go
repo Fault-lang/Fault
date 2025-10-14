@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fault/execute/parser"
 	"fault/generator/scenario"
-	"fault/smt/forks"
-	"fault/smt/variables"
 	"fault/util"
 	"fmt"
 	"os"
@@ -30,11 +28,10 @@ type ModelChecker struct {
 	SMT          string
 	Uncertains   map[string][]float64
 	Unknowns     []string
-	Results      map[string][]*variables.VarChange
+	Results      map[string][]*VarChange
 	ResultValues map[string]string
 	Log          *scenario.Logger
 	solver       map[string]*Solver
-	Forks        *forks.Fork
 }
 
 func NewModelChecker() *ModelChecker {
@@ -75,10 +72,6 @@ func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, u
 	//mc.Log = log
 }
 
-func (mc *ModelChecker) LoadMeta(frks *forks.Fork) {
-	// Load metadata that helps the results display nicely
-	mc.Forks = frks
-}
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 	cmd := exec.Command(mc.solver[command].Command,
@@ -137,6 +130,11 @@ func (mc *ModelChecker) Solve() error {
 
 func (mc *ModelChecker) PlainSolve() (string, error) {
 	return mc.run("basic_run", []string{"(check-sat)", "(get-model)"})
+}
+
+type VarChange struct {
+	Id     string // SSA name of var
+	Parent string // SSA name of proceeding var
 }
 
 // func (mc *ModelChecker) Filter(results map[string]Scenario) map[string]Scenario {

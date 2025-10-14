@@ -5,7 +5,6 @@ import (
 	"fault/listener"
 	"fault/llvm"
 	"fault/preprocess"
-	"fault/smt/variables"
 	"fault/swaps"
 	"fault/types"
 	"fmt"
@@ -23,7 +22,7 @@ func TestSMTOk(t *testing.T) {
 	(assert (= imports_fl3_vault_value_1 (+ imports_fl3_vault_value_0 10.0)))
 	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))
 	`
-	model := prepTest(test, make(map[string][]float64), []string{}, map[string][]*variables.VarChange{})
+	model := prepTest(test, make(map[string][]float64), []string{}, map[string][]*VarChange{})
 
 	response, err := model.Check()
 
@@ -67,7 +66,7 @@ func TestProbability(t *testing.T) {
 	uncertains := make(map[string][]float64)
 	uncertains["imports_fl3_vault_value"] = []float64{30.0, 5}
 
-	model := prepTest(test, uncertains, []string{}, map[string][]*variables.VarChange{})
+	model := prepTest(test, uncertains, []string{}, map[string][]*VarChange{})
 
 	model.Check()
 	err := model.Solve()
@@ -77,7 +76,7 @@ func TestProbability(t *testing.T) {
 
 }
 
-func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*variables.VarChange) *ModelChecker {
+func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*VarChange) *ModelChecker {
 	ex := NewModelChecker()
 	ex.LoadModel(smt, uncertains, unknowns)
 	return ex
