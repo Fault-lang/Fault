@@ -289,41 +289,7 @@ func TestTemporalSys(t *testing.T) {
 			a: zoo,
 		};
 		`
-	expecting := `(set-logic QF_NRA)
-	(declare-fun test1_b_bar_2 () Bool)
-	(declare-fun test1_a_foo_2 () Bool)
-	(declare-fun test1_a_foo_4 () Bool)
-	(declare-fun test1_a_zoo_3 () Bool)
-	(declare-fun test1_a_foo_6 () Bool)
-	(declare-fun test1_b_buzz_3 () Bool)
-	(declare-fun test1_a_foo_0 () Bool)
-	(declare-fun test1_a_zoo_0 () Bool)
-	(declare-fun test1_b_buzz_0 () Bool)
-	(declare-fun test1_b_bar_0 () Bool)
-	(declare-fun test1_a_zoo_1 () Bool)
-	(declare-fun test1_b_buzz_1 () Bool)
-	(declare-fun test1_b_bar_1 () Bool)
-	(declare-fun test1_a_foo_1 () Bool)
-	(declare-fun test1_a_foo_3 () Bool)
-	(declare-fun test1_a_zoo_2 () Bool)
-	(declare-fun test1_a_foo_5 () Bool)
-	(declare-fun test1_b_buzz_2 () Bool)
-	(assert (= test1_a_foo_0 false))
-	(assert (= test1_a_zoo_0 false))
-	(assert (= test1_b_buzz_0 false))
-	(assert (= test1_b_bar_0 false))
-	(assert (= test1_a_zoo_1 true))
-	(assert (= test1_b_buzz_1 true))
-	(assert (= test1_b_bar_1 true))
-	(assert (= test1_a_foo_1 false))
-	(assert (ite (= test1_a_foo_0 true) (and (= test1_b_bar_2 test1_b_bar_1) (= test1_a_foo_2 test1_a_foo_1)) (and (= test1_b_bar_2 test1_b_bar_0) (= test1_a_foo_2 test1_a_foo_0))))
-	(assert (= test1_a_foo_3 true))
-	(assert (= test1_a_zoo_2 false))
-	(assert (ite (= test1_a_zoo_1 true) (and (= test1_a_foo_4 test1_a_foo_3) (= test1_a_zoo_3 test1_a_zoo_2)) (and (= test1_a_foo_4 test1_a_foo_2) (= test1_a_zoo_3 test1_a_zoo_1))))
-	(assert (= test1_a_foo_5 true))
-	(assert (= test1_b_buzz_2 false))
-	(assert (ite (= test1_b_buzz_1 true) (and (= test1_a_foo_6 test1_a_foo_5) (= test1_b_buzz_3 test1_b_buzz_2)) (and (= test1_a_foo_6 test1_a_foo_4) (= test1_b_buzz_3 test1_b_buzz_1))))(assert (and (or test1_a_zoo_0 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_0) (or test1_a_zoo_1 test1_b_bar_1) (or test1_a_zoo_1 test1_b_bar_2) (or test1_a_zoo_2 test1_b_bar_2) (or test1_a_zoo_3 test1_b_bar_2)))
-	`
+	expecting := `(set-logicQF_NRA)(declare-funtest1_a_foo_0()Bool)(declare-funtest1_a_zoo_0()Bool)(declare-funtest1_b_buzz_0()Bool)(declare-funtest1_b_bar_0()Bool)(declare-funtest1_a_zoo_1()Bool)(declare-funtest1_b_buzz_1()Bool)(declare-funtest1_b_bar_1()Bool)(declare-funtest1_a_foo_1()Bool)(declare-funtest1_b_bar_2()Bool)(declare-funtest1_a_foo_2()Bool)(declare-funtest1_a_foo_3()Bool)(declare-funtest1_a_zoo_2()Bool)(declare-funtest1_a_foo_4()Bool)(declare-funtest1_a_zoo_3()Bool)(declare-funtest1_a_foo_5()Bool)(declare-funtest1_b_buzz_2()Bool)(declare-funtest1_b_buzz_3()Bool)(declare-funtest1_a_foo_6()Bool)(assert(=test1_a_foo_0false))(assert(=test1_a_zoo_0false))(assert(=test1_b_buzz_0false))(assert(=test1_b_bar_0false))(assert(=test1_a_zoo_1true))(assert(=test1_b_buzz_1true))(assert(=test1_b_bar_1true))(assert(=test1_a_foo_1false))(assert(ite(=test1_a_foo_0true)(and(=test1_b_bar_2test1_b_bar_1)(=test1_a_foo_2test1_a_foo_1))(and(=test1_a_foo_2test1_a_foo_0)(=test1_b_bar_2test1_b_bar_0))))(assert(=test1_a_foo_3true))(assert(=test1_a_zoo_2false))(assert(ite(=test1_a_zoo_1true)(and(=test1_a_foo_4test1_a_foo_3)(=test1_a_zoo_3test1_a_zoo_2))(and(=test1_a_foo_4test1_a_foo_2)(=test1_a_zoo_3test1_a_zoo_1))))(assert(=test1_a_foo_5true))(assert(=test1_b_buzz_2false))(assert(ite(=test1_b_buzz_1true)(and(=test1_b_buzz_3test1_b_buzz_2)(=test1_a_foo_6test1_a_foo_5))(and(=test1_b_buzz_3test1_b_buzz_1)(=test1_a_foo_6test1_a_foo_4))))(assert(or(andtest1_a_zoo_0(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_2))(andtest1_a_zoo_3(nottest1_b_bar_2))))`
 
 	g := prepTest("", test, false, false)
 

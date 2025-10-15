@@ -249,14 +249,14 @@ func TestWrap_WriteRule(t *testing.T) {
 	if len(init) != 1 {
 		t.Errorf("Wrap.WriteRule() init length = %v, want %v", len(init), 1)
 	}
-	if init[0].Ident != "x_0" {
-		t.Errorf("Wrap.WriteRule() init Ident = %v, want %v", init[0].Ident, "x_0")
+	if init[0].Ident != "x" {
+		t.Errorf("Wrap.WriteRule() init Ident = %v, want %v", init[0].Ident, "x")
+	}
+	if init[0].SSA != "0" {
+		t.Errorf("Wrap.WriteRule() init SSA = %v, want %v", init[0].SSA, "0")
 	}
 	if init[0].Type != "Int" {
 		t.Errorf("Wrap.WriteRule() init Type = %v, want %v", init[0].Type, "Int")
-	}
-	if init[0].Value.String() != "0" {
-		t.Errorf("Wrap.WriteRule() init Value = %v, want %v", init[0].Value, "0")
 	}
 }
 

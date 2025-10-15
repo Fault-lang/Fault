@@ -74,11 +74,11 @@ func TestLogger_UpdateVariable(t *testing.T) {
 func TestLogger_AddPhiOption(t *testing.T) {
 	logger := NewLogger()
 	logger.AddPhiOption("foo", "bar")
-	if len(logger.Forks["foo"]) != 2 {
-		t.Errorf("Logger.AddPhiOption() = %v, want %v", len(logger.Forks["foo"]), 2)
+	if len(logger.Forks["foo"]) != 1 {
+		t.Errorf("Logger.AddPhiOption() = %v, want %v", len(logger.Forks["foo"]), 1)
 	}
-	if logger.Forks["foo"][1] != "bar" {
-		t.Errorf("Logger.AddPhiOption() = %v, want %v", logger.Forks["foo"][1], "bar")
+	if logger.Forks["foo"][0] != "bar" {
+		t.Errorf("Logger.AddPhiOption() = %v, want %v", logger.Forks["foo"][0], "bar")
 	}
 }
 
