@@ -373,6 +373,7 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 					X: r,
 				}
 			}
+			return &rules.Stay{}
 		}
 	case *ir.InstOr:
 		id := cnode.Ident()
