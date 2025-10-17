@@ -247,8 +247,7 @@ func TestTemporal2(t *testing.T) {
 (assert (= test1_t_u_x_2 (+ test1_t_u_x_1 (+ test1_a_0 test1_b_0))))
 (assert (= test1_t_u_x_3 (+ test1_t_u_x_2 (+ test1_a_0 test1_b_0))))
 (assert (= test1_t_u_x_4 (+ test1_t_u_x_3 (+ test1_a_0 test1_b_0))))
-(assert (= test1_t_u_x_5 (+ test1_t_u_x_4 (+ test1_a_0 test1_b_0))))
-(assert (and (not (= test1_t_u_x_0 11)) (not (= test1_t_u_x_1 11)) (not (= test1_t_u_x_2 11)) (not (= test1_t_u_x_3 11)) (not (= test1_t_u_x_4 11)) (not (= test1_t_u_x_5 11))))
+(assert (= test1_t_u_x_5 (+ test1_t_u_x_4 (+ test1_a_0 test1_b_0))))(assert (and (not (= test1_t_u_x_0 11)) (not (= test1_t_u_x_1 11)) (not (= test1_t_u_x_2 11)) (not (= test1_t_u_x_3 11)) (not (= test1_t_u_x_4 11)) (not (= test1_t_u_x_5 11))))
 (assert (or (and (>= test1_t_u_x_0 2) (< test1_t_u_x_0 10)) (and (>= test1_t_u_x_1 2) (< test1_t_u_x_1 10)) (and (>= test1_t_u_x_2 2) (< test1_t_u_x_2 10)) (and (>= test1_t_u_x_3 2) (< test1_t_u_x_3 10)) (and (>= test1_t_u_x_4 2) (< test1_t_u_x_4 10)) (and (>= test1_t_u_x_5 2) (< test1_t_u_x_5 10))))
 (assert (or (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_1 2)) (and (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_2 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_3 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_0 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_2 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_3 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_1 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_2 2) (= test1_t_u_x_3 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_4 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_2 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_2 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_3 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_3 2) (= test1_t_u_x_4 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_5 2)))) (and (or (= test1_t_u_x_3 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_4 2)))) (and (or (= test1_t_u_x_4 2) (= test1_t_u_x_5 2)) (and (not (= test1_t_u_x_0 2)) (not (= test1_t_u_x_1 2)) (not (= test1_t_u_x_2 2)) (not (= test1_t_u_x_3 2))))))`
 
@@ -300,8 +299,7 @@ func TestTemporalSys(t *testing.T) {
 	}
 }
 
-// func TestTemporalSys2(t *testing.T) {
-
+//func TestTemporalSys2(t *testing.T) {
 // 	test := `system test1;
 
 // 		component a = states{
@@ -441,6 +439,41 @@ func TestTestData(t *testing.T) {
 		}
 	}
 }
+
+// func TestImports(t *testing.T) {
+// 	specs := []string{
+// 		"testdata/imports/circle_import1.fspec",
+// 		"testdata/imports/single_import.fspec",
+// 		"testdata/imports/renamed_import.fspec",
+// 	}
+// 	smt2s := []string{
+// 		"testdata/imports/circle_import.smt2",
+// 		"testdata/imports/single_import.smt2",
+// 		"testdata/imports/renamed_import.smt2",
+// 	}
+
+// 	for i, s := range specs {
+// 		data, err := os.ReadFile(s)
+// 		if err != nil {
+// 			panic(fmt.Sprintf("spec %s is not valid", s))
+// 		}
+// 		expecting, err := os.ReadFile(smt2s[i])
+// 		if err != nil {
+// 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+// 		}
+// 		g := prepTest(s, string(data), true, false)
+
+// 		if err != nil {
+// 			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
+// 		}
+
+// 		err = compareResults(s, g.SMT(), string(expecting))
+
+// 		if err != nil {
+// 			t.Fatal(err.Error())
+// 		}
+// 	}
+// }
 
 func TestSys(t *testing.T) {
 	specs := [][]string{

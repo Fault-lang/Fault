@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/antlr4-go/antlr/v4"
 	//"gonum.org/v1/gonum/stat/distuv"
 )
 
@@ -72,7 +72,6 @@ func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, u
 	//mc.Log = log
 }
 
-
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 	cmd := exec.Command(mc.solver[command].Command,
 		mc.solver[command].Arguments...)
@@ -121,7 +120,7 @@ func (mc *ModelChecker) Solve() error {
 
 	p := parser.NewSMTLIBv2Parser(stream)
 	l := NewSMTListener()
-	antlr.ParseTreeWalkerDefault.Walk(l, p.Start())
+	antlr.ParseTreeWalkerDefault.Walk(l, p.Start_())
 
 	mc.ResultValues = l.Values
 

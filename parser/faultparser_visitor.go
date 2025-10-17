@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
+import "github.com/antlr4-go/antlr/v4"
 
 // A complete Visitor for a parse tree produced by FaultParser.
 type FaultParserVisitor interface {
@@ -146,6 +146,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#temporal.
 	VisitTemporal(ctx *TemporalContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#defInvariant.
+	VisitDefInvariant(ctx *DefInvariantContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#invar.
 	VisitInvar(ctx *InvarContext) interface{}
 
@@ -211,6 +214,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#solvable.
 	VisitSolvable(ctx *SolvableContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#postfix.
+	VisitPostfix(ctx *PostfixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#Typed.
 	VisitTyped(ctx *TypedContext) interface{}

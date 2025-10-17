@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
+import "github.com/antlr4-go/antlr/v4"
 
 // FaultParserListener is a complete listener for a parse tree produced by FaultParser.
 type FaultParserListener interface {
@@ -146,6 +146,9 @@ type FaultParserListener interface {
 	// EnterTemporal is called when entering the temporal production.
 	EnterTemporal(c *TemporalContext)
 
+	// EnterDefInvariant is called when entering the defInvariant production.
+	EnterDefInvariant(c *DefInvariantContext)
+
 	// EnterInvar is called when entering the invar production.
 	EnterInvar(c *InvarContext)
 
@@ -211,6 +214,9 @@ type FaultParserListener interface {
 
 	// EnterSolvable is called when entering the solvable production.
 	EnterSolvable(c *SolvableContext)
+
+	// EnterPostfix is called when entering the postfix production.
+	EnterPostfix(c *PostfixContext)
 
 	// EnterTyped is called when entering the Typed production.
 	EnterTyped(c *TypedContext)
@@ -410,6 +416,9 @@ type FaultParserListener interface {
 	// ExitTemporal is called when exiting the temporal production.
 	ExitTemporal(c *TemporalContext)
 
+	// ExitDefInvariant is called when exiting the defInvariant production.
+	ExitDefInvariant(c *DefInvariantContext)
+
 	// ExitInvar is called when exiting the invar production.
 	ExitInvar(c *InvarContext)
 
@@ -475,6 +484,9 @@ type FaultParserListener interface {
 
 	// ExitSolvable is called when exiting the solvable production.
 	ExitSolvable(c *SolvableContext)
+
+	// ExitPostfix is called when exiting the postfix production.
+	ExitPostfix(c *PostfixContext)
 
 	// ExitTyped is called when exiting the Typed production.
 	ExitTyped(c *TypedContext)

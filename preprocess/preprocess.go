@@ -494,6 +494,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Expression = pro.(ast.Expression)
 		return node, err
 	case *ast.ForStatement:
+		p.inGlobal = true
 		for i, v := range node.Inits.Statements {
 			pro, err = p.walk(v)
 			if err != nil {
@@ -508,6 +509,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			}
 			node.Body.Statements[i] = pro.(ast.Statement)
 		}
+		p.inGlobal = false
 		return node, err
 	case *ast.StartStatement:
 		return node, err
@@ -519,7 +521,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		p.inFunc = true
 		pro, err = p.walk(node.Body)
 		if err != nil {
-			return pro, err
+			node.Body = pro.(*ast.BlockStatement)
+			return node, err
 		}
 		node.Body = pro.(*ast.BlockStatement)
 		p.inFunc = false

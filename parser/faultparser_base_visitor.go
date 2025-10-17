@@ -1,8 +1,8 @@
-// Code generated from FaultParser.g4 by ANTLR 4.12.0. DO NOT EDIT.
+// Code generated from FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // FaultParser
 
-import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
+import "github.com/antlr4-go/antlr/v4"
 
 type BaseFaultParserVisitor struct {
 	*antlr.BaseParseTreeVisitor
@@ -192,6 +192,10 @@ func (v *BaseFaultParserVisitor) VisitTemporal(ctx *TemporalContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitDefInvariant(ctx *DefInvariantContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitInvar(ctx *InvarContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -277,6 +281,10 @@ func (v *BaseFaultParserVisitor) VisitFaultType(ctx *FaultTypeContext) interface
 }
 
 func (v *BaseFaultParserVisitor) VisitSolvable(ctx *SolvableContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitPostfix(ctx *PostfixContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
