@@ -630,46 +630,6 @@ func (p *Parallels) Branch() string {
 	return p.tag.branch
 }
 
-// type Choices struct {
-// 	Rule
-// 	X   []*Ands
-// 	Op  string
-// 	tag *branch
-// }
-
-// func (c *Choices) ruleNode() {}
-// func (c *Choices) String() string {
-// 	var out bytes.Buffer
-// 	for i, ru := range c.X {
-// 		out.WriteString(fmt.Sprintf("branch-%d: ", i))
-// 		for _, r := range ru.X {
-// 			out.WriteString(r.String())
-// 		}
-// 	}
-// 	return out.String()
-// }
-// func (c *Choices) Assertless() string {
-// 	return ""
-// }
-// func (c *Choices) Tag(k1 string, k2 string) {
-// 	c.tag = &branch{
-// 		branch: k1,
-// 		block:  k2,
-// 	}
-// }
-
-// func (c *Choices) IsTagged() bool {
-// 	return c.tag != nil
-// }
-
-// func (c *Choices) Choice() string {
-// 	return c.tag.block
-// }
-
-// func (c *Choices) Branch() string {
-// 	return c.tag.branch
-// }
-
 type Infix struct {
 	Rule
 	X     Rule
@@ -889,137 +849,6 @@ func (ite *Ite) Tag(k1 string, k2 string) {
 		block:  k2,
 	}
 }
-
-// type Invariant struct {
-// 	Rule
-// 	Left     Rule
-// 	Operator string
-// 	Right    Rule
-// 	tag      *branch
-// }
-
-// func (i *Invariant) ruleNode() {}
-// func (i *Invariant) String() string {
-// 	if i.Left == nil { //Prefixes like !a
-// 		return fmt.Sprint(i.Operator, i.Right.String())
-// 	}
-// 	return fmt.Sprint(i.Left.String(), i.Operator, i.Right.String())
-// }
-// func (i *Invariant) Assertless() string {
-// 	return fmt.Sprintf("(%s %s %s)", i.Operator, i.Left.Assertless(), i.Right.Assertless())
-// }
-// func (i *Invariant) Tag(k1 string, k2 string) {
-// 	i.tag = &branch{
-// 		branch: k1,
-// 		block:  k2,
-// 	}
-// }
-
-// func (i *Invariant) IsTagged() bool {
-// 	return i.tag != nil
-// }
-
-// func (i *Invariant) Choice() string {
-// 	return i.tag.block
-// }
-
-// func (i *Invariant) Branch() string {
-// 	return i.tag.branch
-// }
-
-// type Phi struct {
-// 	Rule
-// 	BaseVar  string
-// 	Nums     []int16
-// 	EndState string
-// 	tag      *branch
-// }
-
-// func (p *Phi) ruleNode() {}
-// func (p *Phi) String() string {
-// 	var out bytes.Buffer
-// 	for _, n := range p.Nums {
-// 		r := fmt.Sprintf("%s = %s_%d || ", p.EndState, p.BaseVar, n)
-// 		out.WriteString(r)
-// 	}
-// 	return out.String()
-// }
-// func (p *Phi) Assertless() string {
-// 	return ""
-// }
-// func (p *Phi) Tag(k1 string, k2 string) {
-// 	p.tag = &branch{
-// 		branch: k1,
-// 		block:  k2,
-// 	}
-// }
-
-// func (p *Phi) IsTagged() bool {
-// 	return p.tag != nil
-// }
-
-// func (p *Phi) Choice() string {
-// 	return p.tag.block
-// }
-
-// func (p *Phi) Branch() string {
-// 	return p.tag.branch
-// }
-
-// type StateChange struct {
-// 	Rule
-// 	Ands  []value.Value
-// 	Ors   []value.Value
-// 	Rules Rule
-// 	tag   *branch
-// }
-
-// func (sc *StateChange) ruleNode() {}
-// func (sc *StateChange) String() string {
-// 	var out bytes.Buffer
-// 	for _, n := range sc.Ands {
-// 		r := fmt.Sprintf("and %s ", n)
-// 		out.WriteString(r)
-// 	}
-// 	for _, n := range sc.Ors {
-// 		r := fmt.Sprintf("or %s ", n)
-// 		out.WriteString(r)
-// 	}
-// 	return out.String()
-// }
-// func (sc *StateChange) Assertless() string {
-// 	return ""
-// }
-// func (sc *StateChange) Tag(k1 string, k2 string) {
-// 	sc.tag = &branch{
-// 		branch: k1,
-// 		block:  k2,
-// 	}
-// }
-
-// func (sc *StateChange) IsTagged() bool {
-// 	return sc.tag != nil
-// }
-
-// func (sc *StateChange) Choice() string {
-// 	return sc.tag.block
-// }
-
-// func (sc *StateChange) Branch() string {
-// 	return sc.tag.branch
-// }
-// func (sc *StateChange) Empty() bool {
-// 	if len(sc.Ands) > 0 {
-// 		return false
-// 	}
-// 	if len(sc.Ors) > 0 {
-// 		return false
-// 	}
-// 	if sc.Rules != nil {
-// 		return false
-// 	}
-// 	return true
-// }
 
 type Stay struct {
 	Rule
@@ -1436,22 +1265,10 @@ func TagRule(ru Rule, branch string, block string) Rule {
 	case *Vwrap:
 		r.Tag(branch, block)
 		return r
-	// case *Phi:
-	// 	r.Tag(branch, block)
-	// 	return r
 	case *Ands:
 		r.X = TagRules(r.X, branch, block)
 		r.Tag(branch, block)
 		return r
-	// case *Choices:
-	// 	var tagged []*Ands
-	// 	for _, v := range r.X {
-	// 		r2 := TagRule(v, branch, block)
-	// 		tagged = append(tagged, r2.(*Ands))
-	// 	}
-	// 	r.X = tagged
-	// 	r.Tag(branch, block)
-	// 	return r
 	default:
 		panic(fmt.Sprintf("%T is not a valid rule type", ru))
 	}
