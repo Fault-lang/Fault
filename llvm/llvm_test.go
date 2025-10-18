@@ -182,7 +182,7 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-		expecting := `
+	expecting := `
 	@__rounds = global i16 0
 	@__parallelGroup = global [5 x i8] c"start"
 	@test1_a = global double 0x3DA3CA8CB153A753
@@ -276,23 +276,15 @@ func TestNegate(t *testing.T) {
 		Operator: "==",
 	}
 
-	n := negate(test)
+	n := negate(test, false)
 
 	if n.(*ast.InfixExpression).Operator != "!=" {
 		t.Fatalf("operator has not been negated got=%s", n.(*ast.InfixExpression).Operator)
 	}
 
-	if n.(*ast.InfixExpression).Left.(*ast.Boolean).Value != false {
-		t.Fatalf("left value of infix not negated got=%s.", n.(*ast.InfixExpression).Left)
-	}
-
-	if n.(*ast.InfixExpression).Right.(*ast.Boolean).Value != true {
-		t.Fatalf("right value of infix not negated. got=%s", n.(*ast.InfixExpression).Right)
-	}
-
 	test2 := &ast.Boolean{Value: true}
 
-	n2 := negate(test2)
+	n2 := negate(test2, true)
 
 	if n2.(*ast.Boolean).Value != false {
 		t.Fatalf("boolean has not been negated got=%s", n2.(*ast.Boolean).String())
@@ -300,7 +292,7 @@ func TestNegate(t *testing.T) {
 
 	test3 := &ast.Boolean{Value: false}
 
-	n3 := negate(test3)
+	n3 := negate(test3, true)
 
 	if n3.(*ast.Boolean).Value != true {
 		t.Fatalf("boolean has not been negated got=%s", n3.(*ast.Boolean).String())
@@ -311,7 +303,7 @@ func TestNegate(t *testing.T) {
 		Right:    &ast.Boolean{Value: false},
 	}
 
-	n4 := negate(test4)
+	n4 := negate(test4, true)
 
 	if n4.(*ast.Boolean).Value != false {
 		t.Fatalf("boolean has not been negated got=%v", n4.(*ast.Boolean).Value)
@@ -541,7 +533,7 @@ func TestIndexExp(t *testing.T) {
 			};
 	`
 
-		expecting := `
+	expecting := `
 	@__rounds = global i16 0
 	@__parallelGroup = global [5 x i8] c"start"
 	@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753

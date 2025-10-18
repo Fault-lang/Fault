@@ -1,0 +1,7 @@
+spec renamed;
+
+import (foo "../simple.fspec");
+
+for 1 init{l = new foo.fl;} run {
+    l.fn;
+}

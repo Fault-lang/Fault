@@ -85,7 +85,6 @@ func prepTest(smt string, uncertains map[string][]float64, unknowns []string, re
 func TestFullSuite(t *testing.T) {
 	// Run through all the tests in generator/testdata to check for errors
 	var run = func(path string, fileInfo os.FileInfo, inpErr error) (err error) {
-		fmt.Println(path)
 
 		uncertains := make(map[string][]float64)
 		unknowns := []string{}
@@ -127,14 +126,14 @@ func TestFullSuite(t *testing.T) {
 		ex.LoadModel(g.SMT(), uncertains, unknowns)
 		ok, err := ex.Check()
 		if err != nil {
-			return fmt.Errorf("model checker has failed: %s", err)
+			return fmt.Errorf("model checker has failed: %s %s", path, err)
 		}
 		if !ok {
 			return fmt.Errorf("Fault could not find a failure case.")
 		}
 		err = ex.Solve()
 		if err != nil {
-			return fmt.Errorf("error found fetching solution from solver: %s", err)
+			return fmt.Errorf("error found fetching solution from solver: %s %s", path, err)
 		}
 		g.ResultLog.Results = ex.ResultValues
 		g.ResultLog.Trace()

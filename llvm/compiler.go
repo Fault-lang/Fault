@@ -1271,8 +1271,9 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	}
 
 	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
-		l = negate(a.Constraint.Left)
-		r = negate(a.Constraint.Right)
+		booleanVar := a.Constraint.Operator == "&&" || a.Constraint.Operator == "||"
+		l = negate(a.Constraint.Left, booleanVar)
+		r = negate(a.Constraint.Right, booleanVar)
 		a.Constraint.Operator = util.OP_NEGATE[a.Constraint.Operator]
 	} else {
 		l = a.Constraint.Left
@@ -1766,7 +1767,7 @@ func (c *Compiler) GetGlobal(name string) (*ir.Global, bool) {
 // 	return t
 // }
 
-func negate(e ast.Expression) ast.Expression {
+func negate(e ast.Expression, booleanVar bool) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it
 	switch n := e.(type) {
 	case *ast.InfixExpression:
@@ -1774,12 +1775,26 @@ func negate(e ast.Expression) ast.Expression {
 		if ok {
 			n.Operator = op
 		}
-		n.Left = negate(n.Left)
-		n.Right = negate(n.Right)
+
+		// When a variable is alone we need to wrap it in a not
+		// but when it's part of a larger expression
+		// we can just negate the operators 
+		if n.Operator == "&&" || n.Operator == "||" {
+			booleanVar = true
+		}else{
+			booleanVar = false
+		}
+
+		n.Left = negate(n.Left, booleanVar)
+		n.Right = negate(n.Right, booleanVar)
 
 		node := ast.Evaluate(n) // If Int/Float, evaluate and return the value
 		return node
 	case *ast.Boolean:
+		if !booleanVar {
+			return n
+		}
+
 		if n.Value {
 			n.Value = false
 		} else {
@@ -1790,8 +1805,33 @@ func negate(e ast.Expression) ast.Expression {
 		if n.Operator == "!" {
 			return n.Right
 		}
-		n.Right = negate(n.Right)
+		n.Right = negate(n.Right, false)
 		return n
+	case *ast.Identifier:
+		if !booleanVar {
+			return n
+		}
+
+		n2 := &ast.PrefixExpression{
+			Token:        n.GetToken(),
+			InferredType: n.InferredType,
+			Operator:     "!",
+			Right:        n,
+		}
+		return n2
+
+	case *ast.ParameterCall:
+		if !booleanVar {
+			return n
+		}
+
+		n2 := &ast.PrefixExpression{
+			Token:        n.GetToken(),
+			InferredType: n.InferredType,
+			Operator:     "!",
+			Right:        n,
+		}
+		return n2
 	}
 	return e
 }

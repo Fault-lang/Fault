@@ -1,0 +1,7 @@
+spec circle2;
+
+import circle1 "circle_import1.fspec";
+
+b = "world";
+
+assert circle1.a && b;
