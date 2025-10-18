@@ -128,11 +128,11 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#incDecStmt.
 	VisitIncDecStmt(ctx *IncDecStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#boolCompound.
+	VisitBoolCompound(ctx *BoolCompoundContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#builtins.
 	VisitBuiltins(ctx *BuiltinsContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#builtinInfix.
-	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#accessHistory.
 	VisitAccessHistory(ctx *AccessHistoryContext) interface{}
@@ -190,6 +190,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#stateChain.
 	VisitStateChain(ctx *StateChainContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#builtinInfix.
+	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#stateExpr.
 	VisitStateExpr(ctx *StateExprContext) interface{}

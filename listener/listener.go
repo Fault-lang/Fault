@@ -787,6 +787,8 @@ func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
 			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
 		case *ast.InfixExpression:
 			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
+		case *ast.PrefixExpression:
+			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
 
 		default:
 			panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
@@ -1886,7 +1888,7 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 	l.push(f)
 }
 
-func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
+func (l *FaultListener) ExitBoolCompound(c *parser.BoolCompoundContext) {
 	token := ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
 
 	rght := l.pop()
@@ -1899,6 +1901,24 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 		Right:    rght.(ast.Expression),
 	}
 	l.push(e)
+}
+
+func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
+	infix := l.pop().(*ast.InfixExpression)
+	switch c.GetChild(0).(type) {
+	case *antlr.TerminalNodeImpl:
+		e := &ast.PrefixExpression{
+			Token:    infix.Token,
+			Operator: "choose",
+			Right:    infix,
+		}
+		l.push(e)
+	case *parser.BoolCompoundContext:
+		l.push(infix)
+	default:
+		panic("unknown child type in builtin infix")
+	}
+
 }
 
 func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {

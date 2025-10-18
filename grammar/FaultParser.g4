@@ -179,11 +179,14 @@ incDecStmt
     : expression (PLUS_PLUS | MINUS_MINUS)
     ;
 
+boolCompound
+    : stateChange '&&' stateChange
+    | stateChange '||' stateChange
+    ;
+
 stateChange
     : 'advance' '(' paramCall ')' #builtins
     | 'stay' '(' ')'              #builtins
-    | stateChange '&&' stateChange #builtinInfix
-    | stateChange '||' stateChange #builtinInfix
     ;
 
 accessHistory
@@ -249,6 +252,7 @@ stateBlock
 stateStep
     : paramCall ('|' paramCall)? eos              #stateStepExpr
     | stateChange eos                                #stateChain
+    | 'choose'? boolCompound eos                   #builtinInfix
     | ifStmtState                                 #stateExpr
     ;
 

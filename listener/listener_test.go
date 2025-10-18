@@ -1930,6 +1930,107 @@ func TestSysStart(t *testing.T) {
 
 }
 
+func TestBoolCompound(t *testing.T) {
+	test := `system test1;
+	component test = states{
+				idle: func{
+					stay() || advance(this.active);
+				},
+				active: func{
+					stay();
+				},
+			};
+			`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
+	component, ok := sys.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	if !ok {
+		t.Fatalf("sys.Statements[1] is not a ComponentLiteral. got=%T", sys.Statements[1])
+	}
+
+	var chooseFunc *ast.FunctionLiteral
+	for k, v := range component.Pairs {
+		if k.Value != "idle" && k.Value != "active" {
+			t.Fatalf("unexpected state in component. got=%s", k.Value)
+		}
+		if fn, ok := v.(*ast.FunctionLiteral); ok {
+			if k.Value == "idle" {
+				chooseFunc = fn
+			}
+		} else {
+			t.Fatalf("state %s is not a FunctionLiteral. got=%T", k.Value, v)
+		}
+	}
+
+	expr, ok := chooseFunc.Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Function body statement is not an ExpressionStatement. got=%T", chooseFunc.Body.Statements[0])
+	}
+	ifexpr, ok := expr.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("Expression is not a IfExpression. got=%T", expr.Expression)
+	}
+	_, ok = ifexpr.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Expression is not a InfixExpression. got=%T", ifexpr.Consequence.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+}
+
+func TestChoose(t *testing.T) {
+	test := `system test1;
+	component test = states{
+				idle: func{
+					choose stay() || advance(this.active);
+				},
+				active: func{
+					stay();
+				},
+			};
+			`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
+	component, ok := sys.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	if !ok {
+		t.Fatalf("sys.Statements[1] is not a ComponentLiteral. got=%T", sys.Statements[1])
+	}
+
+	var chooseFunc *ast.FunctionLiteral
+	for k, v := range component.Pairs {
+		if k.Value != "idle" && k.Value != "active" {
+			t.Fatalf("unexpected state in component. got=%s", k.Value)
+		}
+		if fn, ok := v.(*ast.FunctionLiteral); ok {
+			if k.Value == "idle" {
+				chooseFunc = fn
+			}
+		} else {
+			t.Fatalf("state %s is not a FunctionLiteral. got=%T", k.Value, v)
+		}
+	}
+
+	expr, ok := chooseFunc.Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Function body statement is not an ExpressionStatement. got=%T", chooseFunc.Body.Statements[0])
+	}
+	ifexpr, ok := expr.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("Expression is not a IfExpression. got=%T", expr.Expression)
+	}
+	choose, ok := ifexpr.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.PrefixExpression)
+	if !ok {
+		t.Fatalf("Expression is not a PrefixExpression. got=%T", ifexpr.Consequence.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+	if choose.Operator != "choose" {
+		t.Fatalf("Expression is not a choose expression. got=%s", choose.Operator)
+	}
+
+}
+
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
 	listener := Execute(test, "", flags)
