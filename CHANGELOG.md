@@ -1,4 +1,9 @@
-### Current Status (6/8/2023)
+### Current Status (10/17/2025)
+WOW! I had a lot of false starts in trying to refactor one of the messiest, most confusing sections of the compiler (translating llvm ir into SMT with SSA). But it's done now and `/smt` has been replaced with `/generator`
+
+Some other updates to the SMT logic itself.
+
+#### (6/8/2023)
 Changing how imports work to allow for more complex specs. Also fixing some unrelated grammar ambiguities and parsing prioritization issues.
 
 #### (9/19/2023)
