@@ -23,6 +23,26 @@ import (
 var DoubleP = &irtypes.PointerType{ElemType: irtypes.Double}
 var I1P = &irtypes.PointerType{ElemType: irtypes.I1}
 
+type RawInputs struct {
+	RawAsserts []*ast.AssertionStatement
+	RawAssumes []*ast.AssertionStatement
+	Asserts    []*ast.AssertionStatement
+	Assumes    []*ast.AssertionStatement
+	Uncertains map[string][]float64
+	Unknowns   []string
+}
+
+func NewRawInputs() *RawInputs {
+	return &RawInputs{
+		RawAsserts: []*ast.AssertionStatement{},
+		RawAssumes: []*ast.AssertionStatement{},
+		Asserts:    []*ast.AssertionStatement{},
+		Assumes:    []*ast.AssertionStatement{},
+		Uncertains: make(map[string][]float64),
+		Unknowns:   []string{},
+	}
+}
+
 type Compiler struct {
 	module  *ir.Module
 	markers []*ir.Global // 0-index -> Round
@@ -39,6 +59,7 @@ type Compiler struct {
 	instances        map[string][]string
 	instanceChildren map[string]string
 	structPropOrder  map[string][]string
+	RawInputs        *RawInputs
 
 	block0          *ir.Block
 	contextBlock    *ir.Block
@@ -58,17 +79,12 @@ type Compiler struct {
 	specFunctions  map[string]value.Value
 	specGlobals    map[string]*ir.Global
 	sysGlobals     []*ir.Param
-	RawAsserts     []*ast.AssertionStatement
-	RawAssumes     []*ast.AssertionStatement
-	Asserts        []*ast.AssertionStatement
-	Assumes        []*ast.AssertionStatement
-	Uncertains     map[string][]float64
-	Unknowns       []string
 	Components     map[string]*StateFunc
 	ComponentOrder []string
 	States         map[string]bool
 	Alias          map[string]string
 	StringRules    map[string]string
+	IsCompound     map[string]bool
 }
 
 func NewCompiler() *Compiler {
@@ -83,6 +99,7 @@ func NewCompiler() *Compiler {
 		instances:        make(map[string][]string),
 		instanceChildren: make(map[string]string),
 		structPropOrder:  make(map[string][]string),
+		RawInputs:        NewRawInputs(),
 
 		hasRunBlock:   false,
 		IsValid:       false,
@@ -91,10 +108,10 @@ func NewCompiler() *Compiler {
 		specStructs:   make(map[string]*preprocess.SpecRecord),
 		specFunctions: make(map[string]value.Value),
 		specGlobals:   make(map[string]*ir.Global),
-		Uncertains:    make(map[string][]float64),
 		Components:    make(map[string]*StateFunc),
 		States:        make(map[string]bool),
 		StringRules:   make(map[string]string),
+		IsCompound:    make(map[string]bool),
 	}
 	c.setup()
 	return c
@@ -114,8 +131,8 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, test bool) {
 
 	c.specStructs = structs
-	c.Unknowns = unknowns
-	c.Uncertains = uncertains
+	c.RawInputs.Unknowns = unknowns
+	c.RawInputs.Uncertains = uncertains
 	c.isTesting = test
 	c.Alias = aliases
 }
@@ -200,6 +217,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					case *ast.InfixExpression:
 						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
 							name := n.Name.IdString()
+							c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), util.PlainLangOp(d.Operator), c.compoundString(d.Right))
 							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
 							c.storeGlobal(name, r)
 						}
@@ -265,14 +283,14 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 	}
 
 	if !c.isImport {
-		for _, assert := range c.RawAsserts {
+		for _, assert := range c.RawInputs.RawAsserts {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
 				panic(err)
 			}
 			c.compileAssert(a.(*ast.AssertionStatement))
 		}
-		for _, assert := range c.RawAssumes {
+		for _, assert := range c.RawInputs.RawAssumes {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
 				panic(err)
@@ -281,7 +299,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 		}
 	}
 
-	return c.Asserts, c.Assumes
+	return c.RawInputs.Asserts, c.RawInputs.Assumes
 }
 
 func (c *Compiler) compile(node ast.Node) {
@@ -299,7 +317,7 @@ func (c *Compiler) compile(node ast.Node) {
 	case *ast.ConstantStatement:
 		c.compileConstant(v)
 	case *ast.DefStatement:
-		switch v.Value.(type) {
+		switch d := v.Value.(type) {
 		case *ast.FlowLiteral, *ast.StockLiteral, *ast.ComponentLiteral, *ast.StructInstance:
 			c.compileStruct(v)
 		case *ast.StringLiteral:
@@ -313,6 +331,7 @@ func (c *Compiler) compile(node ast.Node) {
 		case *ast.InfixExpression:
 			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
 				name := v.Name.IdString()
+				c.StringRules[name] = fmt.Sprintf("%s %s %s", c.compoundString(d.Left), util.PlainLangOp(d.Operator), c.compoundString(d.Right))
 				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
 				c.storeGlobal(name, r)
 			}
@@ -336,9 +355,9 @@ func (c *Compiler) compile(node ast.Node) {
 
 	case *ast.AssertionStatement:
 		if v.Assume {
-			c.RawAssumes = append(c.RawAssumes, v)
+			c.RawInputs.RawAssumes = append(c.RawInputs.RawAssumes, v)
 		} else {
-			c.RawAsserts = append(c.RawAsserts, v)
+			c.RawInputs.RawAsserts = append(c.RawInputs.RawAsserts, v)
 		}
 
 	case *ast.ForStatement:
@@ -348,6 +367,9 @@ func (c *Compiler) compile(node ast.Node) {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			if i == 0 {
 				c.compileBlock(v.Inits)
+				// Separate the initialization from the run body
+				c.RunRound = c.RunRound + 1
+				c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			}
 			c.compileBlock(v.Body)
 			c.stateCheck()
@@ -388,6 +410,21 @@ func (c *Compiler) compile(node ast.Node) {
 	default:
 		pos := node.Position()
 		panic(fmt.Sprintf("node type %T unimplemented line: %d col: %d", v, pos[0], pos[1]))
+	}
+}
+
+func (c *Compiler) compoundString(n ast.Expression) string {
+	switch v := n.(type) {
+	case *ast.InfixExpression:
+		return fmt.Sprintf("(%s %s %s)", c.compoundString(v.Left), util.PlainLangOp(v.Operator), c.compoundString(v.Right))
+	case *ast.StringLiteral:
+		return c.StringRules[v.Value]
+	case *ast.Identifier:
+		return c.StringRules[v.IdString()]
+	case *ast.PrefixExpression:
+		return fmt.Sprintf("%s %s", util.PlainLangOp(v.Operator), c.compoundString(v.Right))
+	default:
+		panic(fmt.Sprintf("unknown compound string type %T", v))
 	}
 }
 
@@ -828,8 +865,9 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		}
 
 		if node.TokenLiteral() == "COMPOUND_STRING" {
+			name := node.Left.(ast.Nameable).IdString()
 			r := c.compileCompoundGlobal(node.Left.(ast.Nameable).IdString(), node.Right.(*ast.InfixExpression))
-			c.storeGlobal(node.Left.(ast.Nameable).IdString(), r)
+			c.storeGlobal(name, r)
 			return nil
 		}
 
@@ -1167,6 +1205,7 @@ func (c *Compiler) compileCompoundNode(n ast.Node) *ir.Global {
 		rname := r.Ident()
 		lname := l.Ident()
 		name := fmt.Sprintf("%s_%s", util.FormatIdent(lname), util.FormatIdent(rname))
+		c.IsCompound[name] = true
 		if _, ok := c.GetGlobal(name); ok { //avoiding conflicts when compound rules overlap
 			name = fmt.Sprintf("%s_%s%d", name, "p", rand.Int())
 		}
@@ -1227,13 +1266,14 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	if a.Assume {
 		a.Constraint.Left = c.convertAssertVariables(a.Constraint.Left)
 		a.Constraint.Right = c.convertAssertVariables(a.Constraint.Right)
-		c.Assumes = append(c.Assumes, a)
+		c.RawInputs.Assumes = append(c.RawInputs.Assumes, a)
 		return
 	}
 
 	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
-		l = negate(a.Constraint.Left)
-		r = negate(a.Constraint.Right)
+		booleanVar := a.Constraint.Operator == "&&" || a.Constraint.Operator == "||"
+		l = negate(a.Constraint.Left, booleanVar)
+		r = negate(a.Constraint.Right, booleanVar)
 		a.Constraint.Operator = util.OP_NEGATE[a.Constraint.Operator]
 	} else {
 		l = a.Constraint.Left
@@ -1246,7 +1286,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	}
 	a.Constraint.Left = c.convertAssertVariables(l)
 	a.Constraint.Right = c.convertAssertVariables(r)
-	c.Asserts = append(c.Asserts, a)
+	c.RawInputs.Asserts = append(c.RawInputs.Asserts, a)
 
 }
 
@@ -1284,7 +1324,15 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", vname, pos[0], pos[1]))
 		}
 
-		instas := c.fetchInstances(id)
+		var instas []string
+		if instances, ok := c.instances[fmt.Sprintf("%s_%s", id[0], id[1])]; ok {
+			for _, in := range instances {
+				instas = append(instas, fmt.Sprintf("%s_%s", in, strings.Join(id[2:], "_")))
+			}
+		} else {
+			instas = c.fetchInstances(id)
+		}
+
 		if len(instas) == 0 {
 			instas = []string{vname}
 		}
@@ -1353,7 +1401,7 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		fname = fname + "__state"
 	}
 
-	if c.RunRound == 0 { //initialize
+	if c.RunRound == 1 { //initialize
 		params := c.generateParameters(rawId, branch, component)
 		if component {
 			params = c.includeGlobalParams(params)
@@ -1440,10 +1488,10 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		// asserts on the struct and honor them for all instances
 		vname := strings.Join(id, "_")
 		if isUnknown {
-			c.Unknowns = append(c.Unknowns, vname)
+			c.RawInputs.Unknowns = append(c.RawInputs.Unknowns, vname)
 		}
 		if isUncertain != nil {
-			c.Uncertains[vname] = isUncertain
+			c.RawInputs.Uncertains[vname] = isUncertain
 		}
 		children[vname] = node.Parent[1]
 	}
@@ -1611,10 +1659,7 @@ func (c *Compiler) isVarSet(rawid []string) bool {
 
 	ty, _ := s.GetStructType(rawid)
 	_, err = s.Fetch(rawid[1], ty)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 func (c *Compiler) isStrVarSet(rawid []string) bool {
@@ -1722,7 +1767,7 @@ func (c *Compiler) GetGlobal(name string) (*ir.Global, bool) {
 // 	return t
 // }
 
-func negate(e ast.Expression) ast.Expression {
+func negate(e ast.Expression, booleanVar bool) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it
 	switch n := e.(type) {
 	case *ast.InfixExpression:
@@ -1730,12 +1775,26 @@ func negate(e ast.Expression) ast.Expression {
 		if ok {
 			n.Operator = op
 		}
-		n.Left = negate(n.Left)
-		n.Right = negate(n.Right)
+
+		// When a variable is alone we need to wrap it in a not
+		// but when it's part of a larger expression
+		// we can just negate the operators 
+		if n.Operator == "&&" || n.Operator == "||" {
+			booleanVar = true
+		}else{
+			booleanVar = false
+		}
+
+		n.Left = negate(n.Left, booleanVar)
+		n.Right = negate(n.Right, booleanVar)
 
 		node := ast.Evaluate(n) // If Int/Float, evaluate and return the value
 		return node
 	case *ast.Boolean:
+		if !booleanVar {
+			return n
+		}
+
 		if n.Value {
 			n.Value = false
 		} else {
@@ -1746,8 +1805,33 @@ func negate(e ast.Expression) ast.Expression {
 		if n.Operator == "!" {
 			return n.Right
 		}
-		n.Right = negate(n.Right)
+		n.Right = negate(n.Right, false)
 		return n
+	case *ast.Identifier:
+		if !booleanVar {
+			return n
+		}
+
+		n2 := &ast.PrefixExpression{
+			Token:        n.GetToken(),
+			InferredType: n.InferredType,
+			Operator:     "!",
+			Right:        n,
+		}
+		return n2
+
+	case *ast.ParameterCall:
+		if !booleanVar {
+			return n
+		}
+
+		n2 := &ast.PrefixExpression{
+			Token:        n.GetToken(),
+			InferredType: n.InferredType,
+			Operator:     "!",
+			Right:        n,
+		}
+		return n2
 	}
 	return e
 }

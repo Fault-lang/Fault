@@ -1,8 +1,17 @@
 package execute
 
 import (
-	resultlog "fault/smt/log"
-	"fault/smt/variables"
+	"fault/generator"
+	"fault/listener"
+	"fault/llvm"
+	"fault/preprocess"
+	"fault/swaps"
+	"fault/types"
+	"fmt"
+	"log"
+	"os"
+	gopath "path"
+	"path/filepath"
 	"testing"
 )
 
@@ -13,7 +22,7 @@ func TestSMTOk(t *testing.T) {
 	(assert (= imports_fl3_vault_value_1 (+ imports_fl3_vault_value_0 10.0)))
 	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))
 	`
-	model := prepTest(test, make(map[string][]float64), []string{}, map[string][]*variables.VarChange{})
+	model := prepTest(test, make(map[string][]float64), []string{}, map[string][]*VarChange{})
 
 	response, err := model.Check()
 
@@ -25,21 +34,26 @@ func TestSMTOk(t *testing.T) {
 		t.Fatalf("SMT Solver failed on valid expression.")
 	}
 
-	solution, err := model.Solve()
+	err = model.Solve()
 
 	if err != nil {
 		t.Fatalf("SMT Solver failed to provide solution. got=%s", err)
 	}
 
-	if solution["imports_fl3_vault_value"] == nil {
+	if model.ResultValues["imports_fl3_vault_value_0"] == "" {
 		t.Fatal("SMT Solver failed to provide solution.")
 	}
 
-	got := solution["imports_fl3_vault_value"].(*FloatTrace).Get()
-	expected := map[int64]float64{0: 30.0, 1: 40.0, 2: 50.0}
-	if got[0] != expected[0] {
-		t.Fatalf("SMT Solver solution not expected. want=%f got=%f", expected[0], got[0])
+	if model.ResultValues["imports_fl3_vault_value_0"] != "30.0" {
+		t.Fatalf("Value of imports_fl3_vault_value_0 is incorrect. got=%s", model.ResultValues["imports_fl3_vault_value_0"])
 	}
+	if model.ResultValues["imports_fl3_vault_value_1"] != "40.0" {
+		t.Fatalf("Value of imports_fl3_vault_value_1 is incorrect. got=%s", model.ResultValues["imports_fl3_vault_value_1"])
+	}
+	if model.ResultValues["imports_fl3_vault_value_2"] != "50.0" {
+		t.Fatalf("Value of imports_fl3_vault_value_2 is incorrect. got=%s", model.ResultValues["imports_fl3_vault_value_2"])
+	}
+
 }
 
 func TestProbability(t *testing.T) {
@@ -52,165 +66,84 @@ func TestProbability(t *testing.T) {
 	uncertains := make(map[string][]float64)
 	uncertains["imports_fl3_vault_value"] = []float64{30.0, 5}
 
-	model := prepTest(test, uncertains, []string{}, map[string][]*variables.VarChange{})
+	model := prepTest(test, uncertains, []string{}, map[string][]*VarChange{})
 
 	model.Check()
-	solution, _ := model.Solve()
-	filter := model.Filter(solution)
-	got := filter["imports_fl3_vault_value"].(*FloatTrace).GetWeights()
-	expected := map[int64]float64{0: 0.07978845608028654, 1: 0.010798193302637605, 2: 2.6766045152977058e-05}
-	if got[0] != expected[0] {
-		t.Fatalf("Probability distribution not weighting correctly. want=%f got=%f", expected[0], got[0])
-	}
-
-}
-
-func TestEventLog(t *testing.T) {
-	test := `(declare-fun imports_fl3_vault_value_0 () Real)
-	(declare-fun imports_fl3_vault_value_1 () Real)
-	(declare-fun imports_fl3_vault_value_2 () Real)(assert (= imports_fl3_vault_value_0 30.0))
-	(assert (= imports_fl3_vault_value_1 (+ imports_fl3_vault_value_0 10.0)))
-	(assert (= imports_fl3_vault_value_2 (+ imports_fl3_vault_value_1 10.0)))
-	`
-	model := prepTest(test, make(map[string][]float64), []string{}, map[string][]*variables.VarChange{})
-
-	model.Log = resultlog.NewLog()
-	model.Log.Add(resultlog.NewInit(0, "", "imports_fl3_vault_value_0"))
-	model.Log.Add(resultlog.NewInit(0, "", "imports_fl3_vault_value_1"))
-	model.Log.Add(resultlog.NewInit(0, "", "imports_fl3_vault_value_2"))
-	model.Log.Add(resultlog.NewChange(0, "", "imports_fl3_vault_value_1"))
-	model.Log.Add(resultlog.NewChange(0, "", "imports_fl3_vault_value_2"))
-
-	response, err := model.Check()
-
-	if err != nil {
-		t.Fatalf("SMT Solver failed on valid expression. got=%s", err)
-	}
-
-	if !response {
-		t.Fatalf("SMT Solver failed on valid expression.")
-	}
-
-	solution, err := model.Solve()
-
+	err := model.Solve()
 	if err != nil {
 		t.Fatalf("SMT Solver failed to provide solution. got=%s", err)
 	}
 
-	if solution["imports_fl3_vault_value"] == nil {
-		t.Fatal("SMT Solver failed to provide solution.")
-	}
-
-	model.mapToLog("imports_fl3_vault_value", solution["imports_fl3_vault_value"])
-
-	if model.Log.Events[0].String() != "0,INIT,,imports_fl3_vault_value_0,,30,\n" {
-		t.Fatalf("Incorrect event log format at index 0 got=%s", model.Log.Events[0].String())
-	}
-
-	if model.Log.Events[1].String() != "0,INIT,,imports_fl3_vault_value_1,,,\n" {
-		t.Fatalf("Incorrect event log format at index 1 got=%s", model.Log.Events[1].String())
-	}
-
-	if model.Log.Events[3].String() != "0,CHANGE,,imports_fl3_vault_value_1,,40,\n" {
-		t.Fatalf("Incorrect event log format at index 3 got=%s", model.Log.Events[3].String())
-	}
 }
 
-func TestEval(t *testing.T) {
-	mc := NewModelChecker()
-	mc.Log = resultlog.NewLog()
-
-	a := &resultlog.Assert{
-		Left:  &resultlog.BoolClause{Value: true},
-		Right: &resultlog.BoolClause{Value: true},
-		Op:    "and",
-	}
-	if !mc.Eval(a) {
-		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a))
-	}
-
-	a1 := &resultlog.Assert{
-		Left:  &resultlog.BoolClause{Value: true},
-		Right: &resultlog.BoolClause{Value: false},
-		Op:    "=",
-	}
-	if mc.Eval(a1) {
-		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a1))
-	}
-
-	a2 := &resultlog.Assert{
-		Left:  &resultlog.FlClause{Value: 2.0},
-		Right: &resultlog.FlClause{Value: 5.0},
-		Op:    ">",
-	}
-	if mc.Eval(a2) {
-		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a2))
-	}
-}
-
-func TestEvalAmbiguous(t *testing.T) {
-	mc := NewModelChecker()
-	mc.Log = resultlog.NewLog()
-
-	a := &resultlog.Assert{
-		Left:  &resultlog.BoolClause{Value: true},
-		Right: &resultlog.BoolClause{Value: true},
-		Op:    "=",
-	}
-	if !mc.EvalAmbiguous(a) {
-		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a))
-	}
-
-	a1 := &resultlog.Assert{
-		Left:  &resultlog.FlClause{Value: 2.0},
-		Right: &resultlog.FlClause{Value: 2.0},
-		Op:    "=",
-	}
-	if !mc.EvalAmbiguous(a) {
-		t.Fatalf("Incorrect evaluation got=%v", mc.Eval(a1))
-	}
-
-}
-
-func TestEvalClause(t *testing.T) {
-	mc := NewModelChecker()
-	mc.Log = resultlog.NewLog()
-
-	mc.ResultValues["test_var_foo"] = "false"
-
-	cf := &resultlog.FlClause{
-		Value: 5.0,
-	}
-
-	a, err := mc.EvalClause(cf)
-
-	if err == nil {
-		t.Fatalf("Incorrect evaluation got=%v", a)
-	}
-
-	cb := &resultlog.BoolClause{
-		Value: true,
-	}
-
-	a1, err := mc.EvalClause(cb)
-
-	if !a1 {
-		t.Fatalf("Incorrect evaluation got=%v", a1)
-	}
-
-	cs := &resultlog.StringClause{
-		Value: "test_var_foo",
-	}
-
-	a2, err := mc.EvalClause(cs)
-
-	if a2 {
-		t.Fatalf("Incorrect evaluation got=%v", a2)
-	}
-}
-
-func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*variables.VarChange) *ModelChecker {
+func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*VarChange) *ModelChecker {
 	ex := NewModelChecker()
-	ex.LoadModel(smt, uncertains, unknowns, results, &resultlog.ResultLog{})
+	ex.LoadModel(smt, uncertains, unknowns)
 	return ex
+}
+
+func TestFullSuite(t *testing.T) {
+	// Run through all the tests in generator/testdata to check for errors
+	var run = func(path string, fileInfo os.FileInfo, inpErr error) (err error) {
+
+		uncertains := make(map[string][]float64)
+		unknowns := []string{}
+		//extract the extension from the path
+		filetype := filepath.Ext(path)
+		if filetype != ".fspec" && filetype != ".fsystem" {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		d := string(data)
+		fpath := gopath.Dir(path)
+		flags := make(map[string]bool)
+		flags["specType"] = (filetype == ".fspec")
+		flags["testing"] = false
+		flags["skipRun"] = false
+		lstnr := listener.Execute(d, fpath, flags)
+		if lstnr == nil {
+			log.Fatal("Fault parser returned nil")
+		}
+
+		pre := preprocess.Execute(lstnr)
+
+		ty := types.Execute(pre.Processed, pre)
+
+		sw := swaps.NewPrecompiler(ty)
+		tree := sw.Swap(ty.Checked)
+		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
+		uncertains = compiler.RawInputs.Uncertains
+		unknowns = compiler.RawInputs.Unknowns
+		if !compiler.IsValid {
+			return fmt.Errorf("Fault found nothing to run. Missing run block or start block.")
+		}
+
+		g := generator.Execute(compiler)
+		ex := NewModelChecker()
+		ex.LoadModel(g.SMT(), uncertains, unknowns)
+		ok, err := ex.Check()
+		if err != nil {
+			return fmt.Errorf("model checker has failed: %s %s", path, err)
+		}
+		if !ok {
+			return fmt.Errorf("Fault could not find a failure case.")
+		}
+		err = ex.Solve()
+		if err != nil {
+			return fmt.Errorf("error found fetching solution from solver: %s %s", path, err)
+		}
+		g.ResultLog.Results = ex.ResultValues
+		g.ResultLog.Trace()
+		g.ResultLog.Kill()
+		g.ResultLog.Print()
+		return nil
+	}
+
+	err := filepath.Walk("../generator/testdata", run)
+	if err != nil {
+		t.Fatalf("Error in full test suite: %s", err)
+	}
 }

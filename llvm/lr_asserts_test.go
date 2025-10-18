@@ -24,11 +24,11 @@ func TestSimpleAssert(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	if len(llvm.Asserts) != 1 {
+	if len(llvm.RawInputs.Asserts) != 1 {
 		t.Fatal("asserts failed to compile")
 	}
 
-	for _, v := range llvm.Asserts {
+	for _, v := range llvm.RawInputs.Asserts {
 
 		c := v.Constraint
 		av := c.Left.(*ast.AssertVar)
@@ -59,11 +59,11 @@ func TestSimpleAssume(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	if len(llvm.Assumes) != 1 {
+	if len(llvm.RawInputs.Assumes) != 1 {
 		t.Fatal("asserts failed to compile")
 	}
 
-	for _, v := range llvm.Asserts {
+	for _, v := range llvm.RawInputs.Asserts {
 
 		c := v.Constraint
 		av := c.Left.(*ast.AssertVar)
@@ -94,7 +94,7 @@ func TestAssertWConjunc(t *testing.T) {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	for _, v := range llvm.Asserts {
+	for _, v := range llvm.RawInputs.Asserts {
 
 		c := v.Constraint
 		av := c.Left.(*ast.InfixExpression).Left.(*ast.AssertVar)

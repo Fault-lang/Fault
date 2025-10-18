@@ -22,6 +22,34 @@ var OP_NEGATE = map[string]string{
 	//"=": "!=",
 }
 
+func PlainLangOp(op string) string {
+	//Use plain language instead of logic operators
+	switch op {
+	case "&&":
+		return "and"
+	case "||":
+		return "or"
+	case ">":
+		return "is greater than"
+	case "<":
+		return "is less than"
+	case ">=":
+		return "is greater than or equal to"
+	case "<=":
+		return "is less than or equal to"
+	case "==":
+		return "is equal to"
+	case "!=":
+		return "is not equal to"
+	case "!":
+		return "not"
+	case "-":
+		return "not"
+	default:
+		return op
+	}
+}
+
 type StringSet struct {
 	base map[string]bool
 	vals []string
@@ -157,6 +185,9 @@ func FormatIdent(id string) string {
 		return id[1:]
 	} else if string(id[0]) == "%" {
 		return id[1:]
+	} else if string(id[0:2]) == "c\"" {
+		//Trim the c" "
+		id = id[2 : len(id)-1]
 	}
 	return id
 }
@@ -179,7 +210,26 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 	return start
 }
 
+func CompareStringMaps(m1 map[string]string, m2 map[string]string) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+	for k, v := range m1 {
+		if val, ok := m2[k]; !ok || val != v {
+			return false
+		}
+	}
+	return true
+}
+
 func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
+}
+
+func MergeStringSliceMaps(m1 map[string][][]string, m2 map[string][][]string) map[string][][]string {
 	for k, v := range m2 {
 		m1[k] = v
 	}
@@ -204,6 +254,53 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 		}
 	}
 	return results
+}
+
+func MergeStringSets(m1 map[string]*StringSet, m2 map[string]*StringSet) map[string]*StringSet {
+	for k, v := range m2 {
+		if _, ok := m1[k]; ok {
+			for _, val := range v.Values() {
+				m1[k].Add(val)
+			}
+		} else {
+			m1[k] = v
+		}
+	}
+	return m1
+}
+
+func MergeIntSliceMaps(m1 map[string][]int16, m2 map[string][]int16) map[string][]int16 {
+	// For Phis in unpacker
+	for k, v := range m2 {
+		if _, ok := m1[k]; ok {
+			// If key exists, append the value
+			m1[k] = append(m1[k], v...)
+		} else {
+			m1[k] = v
+		}
+	}
+	return m1
+}
+
+func SliceOfIndex(l int) []int {
+	if l < 0 {
+		panic("length cannot be negative")
+	}
+	inverse := make([]int, l)
+	for i := 0; i < l; i++ {
+		inverse[i] = i
+	}
+	return inverse
+}
+
+func RemoveFromStringSlice(sl []string, sub string) []string {
+	var new []string
+	for _, s := range sl {
+		if s != sub {
+			new = append(new, s)
+		}
+	}
+	return new
 }
 
 func InStringSlice(sl []string, sub string) bool {
@@ -244,9 +341,7 @@ func CaptureState(id string) (string, bool, bool) {
 
 func Copy(callstack []string) []string {
 	var ret []string
-	for _, v := range callstack {
-		ret = append(ret, v)
-	}
+	ret = append(ret, callstack...)
 	return ret
 }
 
@@ -342,6 +437,23 @@ func GetVarBase(id string) (string, int) {
 		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
 	}
 	return strings.Join(v[0:len(v)-1], "_"), num
+}
+
+func Difference(s1 map[string]bool, s2 map[string]bool) []string {
+	vars := []string{}
+	if len(s2) == 0 {
+		for k := range s1 {
+			vars = append(vars, k)
+		}
+		return vars
+	}
+
+	for k := range s2 {
+		if _, ok := s1[k]; !ok {
+			vars = append(vars, k)
+		}
+	}
+	return vars
 }
 
 func Intersection(s1 []string, s2 []string, init bool) []string {

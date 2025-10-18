@@ -12,9 +12,8 @@ def ssample = stock{
 };
 
 assert ssample.value == 40;
-assume fsample.target > 2;
+assume fsample.target.value > 2;
 
 for 4 init{test = new fsample;} run {
     test.fn;
-    assert test.target == 10;
 }

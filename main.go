@@ -3,17 +3,14 @@ package main
 import (
 	"fault/ast"
 	"fault/execute"
+	"fault/generator"
 	"fault/listener"
 	"fault/llvm"
 	"fault/preprocess"
 	"fault/reachability"
-	"fault/smt"
-	resultlog "fault/smt/log"
-	smtvar "fault/smt/variables"
 	"fault/swaps"
 	"fault/types"
 	"fault/util"
-	"fault/visualize"
 	"flag"
 	"fmt"
 	"log"
@@ -24,7 +21,7 @@ import (
 	_ "github.com/olekukonko/tablewriter"
 )
 
-func parse(data string, path string, file string, filetype string, reach bool, visu bool) (*ast.Spec, *listener.FaultListener, *types.Checker, string, map[string]string) {
+func parse(data string, path string, file string, filetype string, reach bool) (*ast.Spec, *listener.FaultListener, *types.Checker, map[string]string) {
 
 	//Confirm that the filetype and file declaration match
 	if !validate_filetype(data, filetype) {
@@ -43,18 +40,11 @@ func parse(data string, path string, file string, filetype string, reach bool, v
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 
-	var visual string
-	if visu {
-		vis := visualize.NewVisual(ty.Checked)
-		vis.Build()
-		visual = vis.Render()
-	}
-
 	if reach {
 		r := reachability.NewTracer()
 		r.Scan(ty.Checked)
 	}
-	return tree, lstnr, ty, visual, sw.Alias
+	return tree, lstnr, ty, sw.Alias
 }
 
 func validate_filetype(data string, filetype string) bool {
@@ -67,16 +57,14 @@ func validate_filetype(data string, filetype string) bool {
 	return false
 }
 
-func smt2(ir string, compiler *llvm.Compiler) *smt.Generator {
-	generator := smt.NewGenerator()
-	generator.LoadMeta(compiler)
-	generator.Run(ir)
-	return generator
+func smt2(ir string, compiler *llvm.Compiler) *generator.Generator {
+	g := generator.Execute(compiler)
+	return g
 }
 
 func plainSolve(smt string) {
 	ex := execute.NewModelChecker()
-	ex.LoadModel(smt, nil, nil, nil, nil)
+	ex.LoadModel(smt, nil, nil /*, nil, nil*/)
 	ok, err := ex.Check()
 	if err != nil {
 		log.Fatalf("model checker has failed: %s", err)
@@ -92,23 +80,22 @@ func plainSolve(smt string) {
 	fmt.Println(scenario)
 }
 
-func probability(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*smtvar.VarChange, rlog *resultlog.ResultLog) (*execute.ModelChecker, map[string]execute.Scenario) {
+func probability(smt string, uncertains map[string][]float64, unknowns []string) *execute.ModelChecker {
 	ex := execute.NewModelChecker()
-	ex.LoadModel(smt, uncertains, unknowns, results, rlog)
+	ex.LoadModel(smt, uncertains, unknowns /*, results, rlog*/)
 	ok, err := ex.Check()
 	if err != nil {
 		log.Fatalf("model checker has failed: %s", err)
 	}
 	if !ok {
 		fmt.Println("Fault could not find a failure case.")
-		return ex, nil
+		return ex
 	}
-	scenario, err := ex.Solve()
+	err = ex.Solve()
 	if err != nil {
 		log.Fatalf("error found fetching solution from solver: %s", err)
 	}
-	data := ex.Filter(scenario)
-	return ex, data
+	return ex
 }
 
 func run(filepath string, mode string, input string, output string, reach bool) {
@@ -130,7 +117,7 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 
 	switch input {
 	case "fspec":
-		tree, lstnr, ty, visual, alias := parse(d, path, filepath, filetype, reach, output == "visualize")
+		tree, lstnr, ty, alias := parse(d, path, filepath, filetype, reach)
 		if lstnr == nil {
 			log.Fatal("Fault parser returned nil")
 		}
@@ -142,122 +129,121 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 
 		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
 
-		uncertains = compiler.Uncertains
-		unknowns = compiler.Unknowns
+		uncertains = compiler.RawInputs.Uncertains
+		unknowns = compiler.RawInputs.Unknowns
 
 		if mode == "ir" {
 			fmt.Println(compiler.GetIR())
 			return
 		}
-
-		if !compiler.IsValid && visual != "" {
-			fmt.Println(visual)
-			fmt.Printf("\n\n")
-			return
-		}
-
 		if !compiler.IsValid {
 			fmt.Println("Fault found nothing to run. Missing run block or start block.")
 			return
 		}
 
-		generator := smt.Execute(compiler)
+		g := generator.Execute(compiler)
 		if mode == "smt" {
-			fmt.Println(generator.SMT())
+			fmt.Println(g.SMT())
 			return
 		}
 
 		if output == "smt" {
-			plainSolve(generator.SMT())
+			plainSolve(g.SMT())
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results, generator.Log)
-		if output == "visualize" {
-			fmt.Println(visual)
-			fmt.Printf("\n\n")
-			mc.Mermaid()
-			return
-		}
+		mc := probability(g.SMT(), uncertains, unknowns /*generator.Results, generator.Log*/)
 
-		if data != nil && output == "legacy" {
-			mc.LoadMeta(generator.Forks)
-			mc.Format(data)
-			return
-		}
+		g.ResultLog.Results = mc.ResultValues
+		g.ResultLog.Trace()
+		g.ResultLog.Kill()
+		g.ResultLog.Print()
 
-		if data != nil && output == "static" {
-			mc.LoadMeta(generator.Forks)
-			mc.Static(data)
-			return
-		}
+		// if output == "visualize" {
+		// 	fmt.Println(visual)
+		// 	fmt.Printf("\n\n")
+		// 	mc.Mermaid()
+		// 	return
+		// }
 
-		if data != nil {
-			mc.LoadMeta(generator.Forks)
-			mc.EventLog(data)
-		}
+		// if data != nil && output == "legacy" {
+		// 	mc.LoadMeta(generator.Forks)
+		// 	mc.Format(data)
+		// 	return
+		// }
+
+		// if data != nil && output == "static" {
+		// 	mc.LoadMeta(generator.Forks)
+		// 	mc.Static(data)
+		// 	return
+		// }
+
+		// if data != nil {
+		// 	mc.LoadMeta(generator.Forks)
+		// 	mc.EventLog(data)
+		// }
 	case "ll":
 		compiler := llvm.NewCompiler()
-		compiler.Uncertains = uncertains
-		compiler.Unknowns = unknowns
-		generator := smt2(d, compiler)
+		compiler.RawInputs.Uncertains = uncertains
+		compiler.RawInputs.Unknowns = unknowns
+		g := smt2(d, compiler)
 		if mode == "smt" {
-			fmt.Println(generator.SMT())
+			fmt.Println(g.SMT())
 			return
 		}
 
 		if output == "smt" {
-			plainSolve(generator.SMT())
+			plainSolve(g.SMT())
 			return
 		}
 
-		mc, data := probability(generator.SMT(), uncertains, unknowns, generator.Results, generator.Log)
-		if mode == "visualize" {
-			mc.Mermaid()
-			return
-		}
-		if data != nil && output == "legacy" {
-			mc.LoadMeta(generator.Forks)
-			mc.Format(data)
-			return
-		}
+		// mc, data := probability(g.SMT(), uncertains, unknowns, generator.Results, generator.Log)
+		// if mode == "visualize" {
+		// 	mc.Mermaid()
+		// 	return
+		// }
+		// if data != nil && output == "legacy" {
+		// 	mc.LoadMeta(g.Forks)
+		// 	mc.Format(data)
+		// 	return
+		// }
 
-		if data != nil && output == "static" {
-			mc.LoadMeta(generator.Forks)
-			mc.Static(data)
-			return
-		}
+		// if data != nil && output == "static" {
+		// 	mc.LoadMeta(generator.Forks)
+		// 	mc.Static(data)
+		// 	return
+		// }
 
-		if data != nil {
-			mc.LoadMeta(generator.Forks)
-			mc.EventLog(data)
-		}
+		// if data != nil {
+		// 	mc.LoadMeta(generator.Forks)
+		// 	mc.EventLog(data)
+		// }
 	case "smt2":
 		if output == "smt" {
 			plainSolve(d)
 			return
 		}
 
-		mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange), &resultlog.ResultLog{})
+		// mc, data := probability(d, uncertains, unknowns, make(map[string][]*smtvar.VarChange), &resultlog.ResultLog{})
 
-		if mode == "visualize" {
-			mc.Mermaid()
-			return
-		}
-		if data != nil && output == "legacy" {
-			mc.Format(data)
-			return
-		}
+		// if mode == "visualize" {
+		// 	mc.Mermaid()
+		// 	return
+		// }
+		// if data != nil && output == "legacy" {
+		// 	mc.Format(data)
+		// 	return
+		// }
 
-		if data != nil && output == "static" {
-			mc.Static(data)
-			return
-		}
+		// if data != nil && output == "static" {
+		// 	mc.Static(data)
+		// 	return
+		// }
 
-		if data != nil {
-			fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
-			mc.EventLog(data)
-		}
+		// if data != nil {
+		// 	fmt.Println("~~~~~~~~~~\n  Fault found the following scenario\n~~~~~~~~~~")
+		// 	mc.EventLog(data)
+		// }
 	}
 }
 
