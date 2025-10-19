@@ -47,6 +47,7 @@ type Compiler struct {
 	module  *ir.Module
 	markers []*ir.Global // 0-index -> Round
 	// 1-index -> Parallel Group
+	// 2-index -> Choice Group
 
 	hasRunBlock bool
 	IsValid     bool
@@ -725,36 +726,19 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 	gname := name.ParallelGroup(node.String())
+	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
 	for i := 0; i < len(node.Expressions); i++ {
 		l := c.compileValue(node.Expressions[i])
-		md := &metadata.Attachment{
-			Name: gname,
-			Node: &metadata.DIBasicType{
-				MetadataID: -1,
-				Tag:        enum.DwarfTagStringType,
-			}}
 		switch exp := l.(type) {
 		case *ir.Func:
 			id := node.Expressions[i].(*ast.ParameterCall).Id()
 			s := c.specs[id[0]]
 			params := s.GetParams(id)
-			l_func := c.contextBlock.NewCall(exp, params...)
-			l_func.Metadata = append(l_func.Metadata, md)
-		case *ir.InstFAdd:
-			exp.Metadata = append(exp.Metadata, md)
-		case *ir.InstFSub:
-			exp.Metadata = append(exp.Metadata, md)
-		case *ir.InstFMul:
-			exp.Metadata = append(exp.Metadata, md)
-		case *ir.InstFDiv:
-			exp.Metadata = append(exp.Metadata, md)
-		case *ir.InstFRem:
-			exp.Metadata = append(exp.Metadata, md)
-		case *ir.InstFCmp:
-			exp.Metadata = append(exp.Metadata, md)
+			c.contextBlock.NewCall(exp, params...)
 		}
 	}
-	c.contextMetadata = nil
+	//"Close" instead of "end" because we need the value to be 38 bytes.
+	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", gname)), c.markers[1])
 }
 
 func (c *Compiler) compileFunction(node ast.Node) value.Value {
@@ -844,6 +828,8 @@ func (c *Compiler) compilePrefix(node *ast.PrefixExpression) value.Value {
 		return c.contextBlock.NewXor(val, constant.NewInt(irtypes.I1, 1))
 	case "-":
 		return c.contextBlock.NewFNeg(val)
+	case "choose":
+		return val
 	default:
 		panic(fmt.Sprintf("unrecognized prefix operator %s", node.Operator))
 	}
@@ -1740,33 +1726,6 @@ func (c *Compiler) GetGlobal(name string) (*ir.Global, bool) {
 	return nil, false
 }
 
-// func (c *Compiler) mergeGlobals(parent []*ir.Global, im []*ir.Global) []*ir.Global {
-// 	if len(im) == 2 { //__rounds and __parallel will always be there
-// 		return parent
-// 	}
-
-// 	if len(parent) == 2 { //no conflicts possible
-// 		t := append(parent, im[2:]...)
-// 		return t
-// 	}
-
-// 	cp, err := deepcopy.Anything(parent)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	t := cp.([]*ir.Global)
-// 	for _, p := range parent {
-// 		for _, c := range im {
-// 			if p.Ident() == c.Ident() {
-// 				panic(fmt.Sprintf("global variable %s already defined", c.Ident()))
-// 			}
-// 			t = append(t, c)
-// 		}
-// 	}
-// 	return t
-// }
-
 func negate(e ast.Expression, booleanVar bool) ast.Expression {
 	//Negate the expression so that the solver attempts to disprove it
 	switch n := e.(type) {
@@ -1778,10 +1737,10 @@ func negate(e ast.Expression, booleanVar bool) ast.Expression {
 
 		// When a variable is alone we need to wrap it in a not
 		// but when it's part of a larger expression
-		// we can just negate the operators 
+		// we can just negate the operators
 		if n.Operator == "&&" || n.Operator == "||" {
 			booleanVar = true
-		}else{
+		} else {
 			booleanVar = false
 		}
 
@@ -1858,7 +1817,8 @@ func (c *Compiler) setup() {
 	//Initialize Markers
 	c.markers = []*ir.Global{
 		c.module.NewGlobalDef("__rounds", constant.NewInt(irtypes.I16, 0)),
-		c.module.NewGlobalDef("__parallelGroup", constant.NewCharArrayFromString("start")),
+		c.module.NewGlobalDef("__parallelGroup", constant.NewCharArray(make([]byte, 38))), // pipe construction funcA | funcB, we don't know which runs/completes first
+		c.module.NewGlobalDef("__choiceGroup", constant.NewCharArray(make([]byte, 38))),   // strict XOR only one value is true from A, B, C
 	}
 	// run block
 	c.contextFunc = c.module.NewFunc("__run", irtypes.Void)
