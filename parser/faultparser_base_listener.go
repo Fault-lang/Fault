@@ -381,17 +381,17 @@ func (s *BaseFaultParserListener) EnterStateStepExpr(ctx *StateStepExprContext) 
 // ExitStateStepExpr is called when production stateStepExpr is exited.
 func (s *BaseFaultParserListener) ExitStateStepExpr(ctx *StateStepExprContext) {}
 
-// EnterStateChain is called when production stateChain is entered.
-func (s *BaseFaultParserListener) EnterStateChain(ctx *StateChainContext) {}
-
-// ExitStateChain is called when production stateChain is exited.
-func (s *BaseFaultParserListener) ExitStateChain(ctx *StateChainContext) {}
-
 // EnterBuiltinInfix is called when production builtinInfix is entered.
 func (s *BaseFaultParserListener) EnterBuiltinInfix(ctx *BuiltinInfixContext) {}
 
 // ExitBuiltinInfix is called when production builtinInfix is exited.
 func (s *BaseFaultParserListener) ExitBuiltinInfix(ctx *BuiltinInfixContext) {}
+
+// EnterStateChain is called when production stateChain is entered.
+func (s *BaseFaultParserListener) EnterStateChain(ctx *StateChainContext) {}
+
+// ExitStateChain is called when production stateChain is exited.
+func (s *BaseFaultParserListener) ExitStateChain(ctx *StateChainContext) {}
 
 // EnterStateExpr is called when production stateExpr is entered.
 func (s *BaseFaultParserListener) EnterStateExpr(ctx *StateExprContext) {}

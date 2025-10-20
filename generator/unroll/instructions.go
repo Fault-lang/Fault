@@ -74,6 +74,19 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	}
 
 	if vname == "@__parallelGroup" {
+		group := strings.Split(inst.Src.Ident(), "_")
+		if group[1] == "start\"" {
+			b.updateParallelGroup(group[0])
+		} else {
+			r0 := b.ExecuteCallstack()
+			ru = append(ru, r0...)
+			b.updateParallelGroup("")
+		}
+		b.Env.returnVoid.Out()
+		return ru
+	}
+
+	if vname == "@__choiceGroup" {
 		return ru
 	}
 
@@ -266,24 +279,16 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 		return []rules.Rule{}
 	}
 
-	meta := inst.Metadata
 	callee = util.FormatIdent(callee)
 
-	if b.isSameParallelGroup(meta) {
+	if b.isParallelGroup() {
 		b.localCallstack = append(b.localCallstack, callee)
-	} else if b.singleParallelStep(callee) {
-		r0 := b.ExecuteCallstack()
-		r = append(r, r0...)
-
-		r1 := b.GenerateCallstack([]string{callee})
-		r = append(r, r1...)
 	} else {
 		r0 := b.ExecuteCallstack()
 		r = append(r, r0...)
 		b.localCallstack = append(b.localCallstack, callee)
+		b.Env.returnVoid.Out()
 	}
-	b.updateParallelGroup(meta)
-	b.Env.returnVoid.Out()
 
 	return r
 }

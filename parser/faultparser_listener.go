@@ -188,11 +188,11 @@ type FaultParserListener interface {
 	// EnterStateStepExpr is called when entering the stateStepExpr production.
 	EnterStateStepExpr(c *StateStepExprContext)
 
-	// EnterStateChain is called when entering the stateChain production.
-	EnterStateChain(c *StateChainContext)
-
 	// EnterBuiltinInfix is called when entering the builtinInfix production.
 	EnterBuiltinInfix(c *BuiltinInfixContext)
+
+	// EnterStateChain is called when entering the stateChain production.
+	EnterStateChain(c *StateChainContext)
 
 	// EnterStateExpr is called when entering the stateExpr production.
 	EnterStateExpr(c *StateExprContext)
@@ -461,11 +461,11 @@ type FaultParserListener interface {
 	// ExitStateStepExpr is called when exiting the stateStepExpr production.
 	ExitStateStepExpr(c *StateStepExprContext)
 
-	// ExitStateChain is called when exiting the stateChain production.
-	ExitStateChain(c *StateChainContext)
-
 	// ExitBuiltinInfix is called when exiting the builtinInfix production.
 	ExitBuiltinInfix(c *BuiltinInfixContext)
+
+	// ExitStateChain is called when exiting the stateChain production.
+	ExitStateChain(c *StateChainContext)
 
 	// ExitStateExpr is called when exiting the stateExpr production.
 	ExitStateExpr(c *StateExprContext)

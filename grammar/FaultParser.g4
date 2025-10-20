@@ -180,8 +180,12 @@ incDecStmt
     ;
 
 boolCompound
-    : stateChange '&&' stateChange
+    : '(' boolCompound ')'
+    | boolCompound '&&' boolCompound
+    | boolCompound '||' boolCompound
+    | stateChange '&&' stateChange
     | stateChange '||' stateChange
+    | stateChange
     ;
 
 stateChange
@@ -251,8 +255,8 @@ stateBlock
 
 stateStep
     : paramCall ('|' paramCall)? eos              #stateStepExpr
-    | stateChange eos                                #stateChain
     | 'choose'? boolCompound eos                   #builtinInfix
+    | stateChange eos                                #stateChain
     | ifStmtState                                 #stateExpr
     ;
 

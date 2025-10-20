@@ -188,11 +188,11 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#stateStepExpr.
 	VisitStateStepExpr(ctx *StateStepExprContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#stateChain.
-	VisitStateChain(ctx *StateChainContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#builtinInfix.
 	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#stateChain.
+	VisitStateChain(ctx *StateChainContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#stateExpr.
 	VisitStateExpr(ctx *StateExprContext) interface{}

@@ -1889,8 +1889,12 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 }
 
 func (l *FaultListener) ExitBoolCompound(c *parser.BoolCompoundContext) {
-	token := ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
-
+	var token ast.Token
+	if c.GetChildCount() == 1 { //Single option
+		return
+	} else {
+		token = ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
+	}
 	rght := l.pop()
 	lft := l.pop()
 
@@ -1904,21 +1908,27 @@ func (l *FaultListener) ExitBoolCompound(c *parser.BoolCompoundContext) {
 }
 
 func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
-	infix := l.pop().(*ast.InfixExpression)
-	switch c.GetChild(0).(type) {
-	case *antlr.TerminalNodeImpl:
-		e := &ast.PrefixExpression{
-			Token:    infix.Token,
-			Operator: "choose",
-			Right:    infix,
+	node := l.pop()
+	switch n := node.(type) {
+	case *ast.InfixExpression:
+		switch c.GetChild(0).(type) {
+		case *antlr.TerminalNodeImpl:
+			e := &ast.PrefixExpression{
+				Token:    n.Token,
+				Operator: "choose",
+				Right:    n,
+			}
+			l.push(e)
+		case *parser.BoolCompoundContext:
+			l.push(n)
+		default:
+			panic("unknown child type in builtin infix")
 		}
-		l.push(e)
-	case *parser.BoolCompoundContext:
-		l.push(infix)
+	case *ast.BuiltIn:
+		l.push(n)
 	default:
-		panic("unknown child type in builtin infix")
+		panic(fmt.Sprintf("top of stack not an valid expression got=%T", node))
 	}
-
 }
 
 func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {

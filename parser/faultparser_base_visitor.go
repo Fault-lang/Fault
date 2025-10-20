@@ -248,11 +248,11 @@ func (v *BaseFaultParserVisitor) VisitStateStepExpr(ctx *StateStepExprContext) i
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitStateChain(ctx *StateChainContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitStateChain(ctx *StateChainContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

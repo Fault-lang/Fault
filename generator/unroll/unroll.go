@@ -560,7 +560,7 @@ func extractVariables(e ast.Node) []string {
 }
 
 func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.RawInputs) rules.Rule {
-	if id == "__rounds" || id == "__parallelGroup" {
+	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" {
 		return nil
 	}
 
@@ -704,37 +704,10 @@ func parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
-func (b *LLBlock) isSameParallelGroup(meta ir.Metadata) bool {
-	for _, v := range meta {
-
-		if v.Name == b.Env.ParallelGrouping {
-			return true
-		}
-
-		if b.Env.ParallelGrouping == "" {
-			return true
-		}
-	}
-
-	return false
+func (b *LLBlock) isParallelGroup() bool {
+	return b.Env.ParallelGrouping != ""
 }
 
-func (b *LLBlock) singleParallelStep(callee string) bool {
-	if len(b.localCallstack) == 0 {
-		return false
-	}
-
-	if callee == b.localCallstack[len(b.localCallstack)-1] {
-		return true
-	}
-
-	return false
-}
-
-func (b *LLBlock) updateParallelGroup(meta ir.Metadata) {
-	for _, v := range meta {
-		if v.Name[0:5] != "round-" {
-			b.Env.ParallelGrouping = v.Name
-		}
-	}
+func (b *LLBlock) updateParallelGroup(name string) {
+	b.Env.ParallelGrouping = name
 }
