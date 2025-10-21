@@ -168,7 +168,19 @@ func (v *BaseFaultParserVisitor) VisitIncDecStmt(ctx *IncDecStmtContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitBoolExpression(ctx *BoolExpressionContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitBoolCompound(ctx *BoolCompoundContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBoolAnd(ctx *BoolAndContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBoolPrimary(ctx *BoolPrimaryContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

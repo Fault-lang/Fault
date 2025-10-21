@@ -128,8 +128,17 @@ type FaultParserListener interface {
 	// EnterIncDecStmt is called when entering the incDecStmt production.
 	EnterIncDecStmt(c *IncDecStmtContext)
 
+	// EnterBoolExpression is called when entering the boolExpression production.
+	EnterBoolExpression(c *BoolExpressionContext)
+
 	// EnterBoolCompound is called when entering the boolCompound production.
 	EnterBoolCompound(c *BoolCompoundContext)
+
+	// EnterBoolAnd is called when entering the boolAnd production.
+	EnterBoolAnd(c *BoolAndContext)
+
+	// EnterBoolPrimary is called when entering the boolPrimary production.
+	EnterBoolPrimary(c *BoolPrimaryContext)
 
 	// EnterBuiltins is called when entering the builtins production.
 	EnterBuiltins(c *BuiltinsContext)
@@ -401,8 +410,17 @@ type FaultParserListener interface {
 	// ExitIncDecStmt is called when exiting the incDecStmt production.
 	ExitIncDecStmt(c *IncDecStmtContext)
 
+	// ExitBoolExpression is called when exiting the boolExpression production.
+	ExitBoolExpression(c *BoolExpressionContext)
+
 	// ExitBoolCompound is called when exiting the boolCompound production.
 	ExitBoolCompound(c *BoolCompoundContext)
+
+	// ExitBoolAnd is called when exiting the boolAnd production.
+	ExitBoolAnd(c *BoolAndContext)
+
+	// ExitBoolPrimary is called when exiting the boolPrimary production.
+	ExitBoolPrimary(c *BoolPrimaryContext)
 
 	// ExitBuiltins is called when exiting the builtins production.
 	ExitBuiltins(c *BuiltinsContext)

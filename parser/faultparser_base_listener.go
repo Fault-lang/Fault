@@ -261,11 +261,29 @@ func (s *BaseFaultParserListener) EnterIncDecStmt(ctx *IncDecStmtContext) {}
 // ExitIncDecStmt is called when production incDecStmt is exited.
 func (s *BaseFaultParserListener) ExitIncDecStmt(ctx *IncDecStmtContext) {}
 
+// EnterBoolExpression is called when production boolExpression is entered.
+func (s *BaseFaultParserListener) EnterBoolExpression(ctx *BoolExpressionContext) {}
+
+// ExitBoolExpression is called when production boolExpression is exited.
+func (s *BaseFaultParserListener) ExitBoolExpression(ctx *BoolExpressionContext) {}
+
 // EnterBoolCompound is called when production boolCompound is entered.
 func (s *BaseFaultParserListener) EnterBoolCompound(ctx *BoolCompoundContext) {}
 
 // ExitBoolCompound is called when production boolCompound is exited.
 func (s *BaseFaultParserListener) ExitBoolCompound(ctx *BoolCompoundContext) {}
+
+// EnterBoolAnd is called when production boolAnd is entered.
+func (s *BaseFaultParserListener) EnterBoolAnd(ctx *BoolAndContext) {}
+
+// ExitBoolAnd is called when production boolAnd is exited.
+func (s *BaseFaultParserListener) ExitBoolAnd(ctx *BoolAndContext) {}
+
+// EnterBoolPrimary is called when production boolPrimary is entered.
+func (s *BaseFaultParserListener) EnterBoolPrimary(ctx *BoolPrimaryContext) {}
+
+// ExitBoolPrimary is called when production boolPrimary is exited.
+func (s *BaseFaultParserListener) ExitBoolPrimary(ctx *BoolPrimaryContext) {}
 
 // EnterBuiltins is called when production builtins is entered.
 func (s *BaseFaultParserListener) EnterBuiltins(ctx *BuiltinsContext) {}

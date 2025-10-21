@@ -1888,6 +1888,27 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 	l.push(f)
 }
 
+func (l *FaultListener) ExitBoolAnd(c *parser.BoolAndContext) {
+	var token ast.Token
+	if c.GetChildCount() == 1 { //Single option
+		return
+	} else if _, ok := c.GetChild(1).(*parser.BoolCompoundContext); ok {
+		return
+	} else {
+		token = ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
+	}
+	rght := l.pop()
+	lft := l.pop()
+
+	e := &ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Right:    rght.(ast.Expression),
+	}
+	l.push(e)
+}
+
 func (l *FaultListener) ExitBoolCompound(c *parser.BoolCompoundContext) {
 	var token ast.Token
 	if c.GetChildCount() == 1 { //Single option
@@ -1914,6 +1935,8 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 	switch n := node.(type) {
 	case *ast.InfixExpression:
 		switch c.GetChild(0).(type) {
+		case *parser.BoolExpressionContext:
+			l.push(n)
 		case *antlr.TerminalNodeImpl:
 			e := &ast.PrefixExpression{
 				Token:    n.Token,
