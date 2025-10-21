@@ -268,8 +268,7 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 
 	callee := inst.Callee.Ident()
 	if isBuiltIn(callee) {
-		meta := inst.Metadata // Is this in a "b || b" construction?
-		if len(meta) > 0 {
+		if _, ok := b.irTemps[inst.Ident()]; ok {
 			refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, inst.Ident())
 			b.Env.VarLoads[refname] = inst
 		} else {

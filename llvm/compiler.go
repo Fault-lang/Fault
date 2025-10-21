@@ -1034,11 +1034,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		gname := name.ParallelGroup(node.String())
 		l := c.compileInfixNode(node.Left)
-		l = c.tagBuiltIns(l, gname)
 		r := c.compileInfixNode(node.Right)
-		r = c.tagBuiltIns(r, gname)
 
 		return c.contextBlock.NewAnd(l, r)
 
@@ -1047,11 +1044,8 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			panic(fmt.Sprintf("operator %s cannot be used on variables of type %s and %s", node.Operator, node.Left.Type(), node.Right.Type()))
 		}
 
-		gname := name.ParallelGroup(node.String())
 		l := c.compileInfixNode(node.Left)
-		l = c.tagBuiltIns(l, gname)
 		r := c.compileInfixNode(node.Right)
-		r = c.tagBuiltIns(r, gname)
 
 		return c.contextBlock.NewOr(l, r)
 
@@ -1081,23 +1075,6 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	default:
 		return c.compileValue(node)
 	}
-}
-
-func (c *Compiler) tagBuiltIns(v1 value.Value, gname string) value.Value {
-	// BuiltIns in a "b || b" or "b && b" construction need metadata
-	// so we can find parse them correctly
-	switch v2 := v1.(type) {
-	case *ir.InstCall:
-		md := &metadata.Attachment{
-			Name: gname,
-			Node: &metadata.DIBasicType{
-				MetadataID: -1,
-				Tag:        enum.DwarfTagStringType,
-			}}
-		v2.Metadata = append(v2.Metadata, md)
-		v1 = v2
-	}
-	return v1
 }
 
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
