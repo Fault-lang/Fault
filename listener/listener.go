@@ -1892,6 +1892,8 @@ func (l *FaultListener) ExitBoolCompound(c *parser.BoolCompoundContext) {
 	var token ast.Token
 	if c.GetChildCount() == 1 { //Single option
 		return
+	} else if _, ok := c.GetChild(1).(*parser.BoolCompoundContext); ok {
+		return
 	} else {
 		token = ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
 	}

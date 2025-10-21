@@ -179,13 +179,23 @@ incDecStmt
     : expression (PLUS_PLUS | MINUS_MINUS)
     ;
 
+boolExpression
+    : boolCompound
+    ;
+
 boolCompound
-    : '(' boolCompound ')'
-    | boolCompound '&&' boolCompound
-    | boolCompound '||' boolCompound
-    | stateChange '&&' stateChange
-    | stateChange '||' stateChange
-    | stateChange
+    : boolCompound '||' boolAnd
+    | boolAnd
+    ;
+
+boolAnd
+    : boolAnd '&&' boolPrimary
+    | boolPrimary
+    ;
+
+boolPrimary
+    : stateChange
+    | '(' boolCompound ')'
     ;
 
 stateChange
@@ -255,7 +265,7 @@ stateBlock
 
 stateStep
     : paramCall ('|' paramCall)? eos              #stateStepExpr
-    | 'choose'? boolCompound eos                   #builtinInfix
+    | 'choose'? boolExpression eos                   #builtinInfix
     | stateChange eos                                #stateChain
     | ifStmtState                                 #stateExpr
     ;
