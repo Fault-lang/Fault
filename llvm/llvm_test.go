@@ -412,6 +412,50 @@ func TestComponentIR(t *testing.T) {
 
 }
 
+func TestChoose(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		initial: func{
+			choose stay() || advance(this.alarm);
+		},
+		alarm: func{
+			advance(this.close);
+		},
+		close: func{
+			stay();
+		},
+	};
+
+	start {
+		foo: initial,
+	};
+	`
+
+	expecting := ``
+
+	llvm, err := prepTest(test, false)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	fmt.Println(llvm)
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+}
+
 func TestIndexExp(t *testing.T) {
 	test := `spec test1;
 			
