@@ -603,6 +603,12 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	u.NewLevel()
 	u.SetEntries(u.SSA)
 
+	//If this is just a stay(); Then we don't need to do anything
+	_, isStay := ite.T[0].(*rules.Stay)
+	if len(ite.T) == 1 && isStay && len(ite.F) == 0 && len(ite.After) == 0 {
+		return []*rules.Init{}, ""
+	}
+
 	cond := u.unpackRule(ite.Cond)
 
 	var t, f string
