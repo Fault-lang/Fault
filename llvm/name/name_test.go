@@ -111,20 +111,20 @@ func TestVar(t *testing.T) {
 	}
 }
 
-func TestParallelGroup(t *testing.T) {
+func TestRuleGroup(t *testing.T) {
 	data := []byte(fmt.Sprint("test", 0))
 	expecting := fmt.Sprintf("%x", md5.Sum(data))
-	results := ParallelGroup("test")
+	results := RuleGroup("test")
 
 	if expecting != results {
-		t.Fatalf("ParallelGroup does not return correct hash got=%s want=%s", results, expecting)
+		t.Fatalf("RuleGroup does not return correct hash got=%s want=%s", results, expecting)
 	}
 
 	data2 := []byte(fmt.Sprint("test", 1))
 	expecting2 := fmt.Sprintf("%x", md5.Sum(data2))
-	results2 := ParallelGroup("test")
+	results2 := RuleGroup("test")
 
 	if expecting2 != results2 {
-		t.Fatal("ParallelGroup does not iterate correctly")
+		t.Fatal("RuleGroup does not iterate correctly")
 	}
 }

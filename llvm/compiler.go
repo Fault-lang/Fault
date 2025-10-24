@@ -725,7 +725,7 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 }
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
-	gname := name.ParallelGroup(node.String())
+	gname := name.RuleGroup(node.String())
 	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
 	for i := 0; i < len(node.Expressions); i++ {
 		l := c.compileValue(node.Expressions[i])
@@ -822,13 +822,18 @@ func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
 }
 
 func (c *Compiler) compilePrefix(node *ast.PrefixExpression) value.Value {
-	val := c.compileInfixNode(node.Right)
 	switch node.Operator {
 	case "!":
+		val := c.compileInfixNode(node.Right)
 		return c.contextBlock.NewXor(val, constant.NewInt(irtypes.I1, 1))
 	case "-":
+		val := c.compileInfixNode(node.Right)
 		return c.contextBlock.NewFNeg(val)
 	case "choose":
+		gname := name.RuleGroup(node.String())
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[2])
+		val := c.compileInfixNode(node.Right)
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", gname)), c.markers[2])
 		return val
 	default:
 		panic(fmt.Sprintf("unrecognized prefix operator %s", node.Operator))

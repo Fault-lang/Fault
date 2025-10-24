@@ -505,7 +505,87 @@ func TestChoose(t *testing.T) {
 	};
 	`
 
-	expecting := ``
+	expecting := `@__rounds = global i16 0
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+
+define void @__run() {
+block-30:
+	%test_foo_initial = alloca i1
+	store i1 false, i1* %test_foo_initial
+	%test_foo_alarm = alloca i1
+	store i1 false, i1* %test_foo_alarm
+	%test_foo_close = alloca i1
+	store i1 false, i1* %test_foo_close
+	store i1 true, i1* %test_foo_initial
+	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
+	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
+	call void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
+	ret void
+}
+
+define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-31:
+	%0 = load i1, i1* %test_foo_initial
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-33-true, label %block-32-after
+
+block-32-after:
+	ret void
+
+block-33-true:
+	store [38 x i8] c"f900badb09810cef197cb35202d7c094_start", [38 x i8]* @__choiceGroup
+	%2 = call i1 @stay()
+	%3 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %3
+	%4 = bitcast [14 x i8]* %3 to i8*
+	%5 = call i1 @advance(i8* %4)
+	%6 = or i1 %2, %5
+	store [38 x i8] c"f900badb09810cef197cb35202d7c094_close", [38 x i8]* @__choiceGroup
+	br label %block-32-after
+}
+
+define i1 @stay() {
+block-34:
+	ret i1 true
+}
+
+define i1 @advance(i8* %toState) {
+block-35:
+	ret i1 true
+}
+
+define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-36:
+	%0 = load i1, i1* %test_foo_alarm
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-38-true, label %block-37-after
+
+block-37-after:
+	ret void
+
+block-38-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_close", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @advance(i8* %3)
+	br label %block-37-after
+}
+
+define void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-39:
+	%0 = load i1, i1* %test_foo_close
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-41-true, label %block-40-after
+
+block-40-after:
+	ret void
+
+block-41-true:
+	%2 = call i1 @stay()
+	br label %block-40-after
+}
+`
 
 	llvm, err := prepTest(test, false)
 
