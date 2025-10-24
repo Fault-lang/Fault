@@ -26,6 +26,7 @@ type Env struct {
 	CurrentRound     int
 	returnVoid       *PhiState
 	ParallelGrouping string
+	ChooseGrouping   string
 	WhensThens       map[string]map[string][]string // map[variable_name][assert_id][]string{other_variables in the assert...}
 }
 
@@ -708,6 +709,14 @@ func (b *LLBlock) isParallelGroup() bool {
 	return b.Env.ParallelGrouping != ""
 }
 
+func (b *LLBlock) isChooseGroup() bool {
+	return b.Env.ChooseGrouping != ""
+}
+
 func (b *LLBlock) updateParallelGroup(name string) {
 	b.Env.ParallelGrouping = name
+}
+
+func (b *LLBlock) updateChooseGroup(name string) {
+	b.Env.ChooseGrouping = name
 }

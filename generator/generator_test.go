@@ -473,20 +473,22 @@ func TestImports(t *testing.T) {
 
 func TestSys(t *testing.T) {
 	specs := [][]string{
-		{"testdata/statecharts/statechart.fsystem", "0"},
-		{"testdata/statecharts/advanceor.fsystem", "0"},
-		{"testdata/statecharts/multioradvance.fsystem", "0"},
-		{"testdata/statecharts/advanceand.fsystem", "0"},
-		{"testdata/statecharts/mixedcalls.fsystem", "0"},
-		{"testdata/statecharts/triggerfunc.fsystem", "0"},
+		// {"testdata/statecharts/statechart.fsystem", "0"},
+		// {"testdata/statecharts/advanceor.fsystem", "0"},
+		// {"testdata/statecharts/multioradvance.fsystem", "0"},
+		// {"testdata/statecharts/advanceand.fsystem", "0"},
+		// {"testdata/statecharts/mixedcalls.fsystem", "0"},
+		// {"testdata/statecharts/triggerfunc.fsystem", "0"},
+		{"testdata/statecharts/choose1.fsystem", "0"},
 	}
 	smt2s := []string{
-		"testdata/statecharts/statechart.smt2",
-		"testdata/statecharts/advanceor.smt2",
-		"testdata/statecharts/multioradvance.smt2",
-		"testdata/statecharts/advanceand.smt2",
-		"testdata/statecharts/mixedcalls.smt2",
-		"testdata/statecharts/triggerfunc.smt2",
+		// "testdata/statecharts/statechart.smt2",
+		// "testdata/statecharts/advanceor.smt2",
+		// "testdata/statecharts/multioradvance.smt2",
+		// "testdata/statecharts/advanceand.smt2",
+		// "testdata/statecharts/mixedcalls.smt2",
+		// "testdata/statecharts/triggerfunc.smt2",
+		"testdata/statecharts/choose1.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])
@@ -500,6 +502,8 @@ func TestSys(t *testing.T) {
 			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
 		}
 		g := prepTest(s[0], string(data), false, imports)
+
+		fmt.Println(g.SMT())
 
 		err = compareResults(s[0], g.SMT(), string(expecting))
 

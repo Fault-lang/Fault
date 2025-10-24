@@ -87,6 +87,12 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	}
 
 	if vname == "@__choiceGroup" {
+		group := strings.Split(inst.Src.Ident(), "_")
+		if group[1] == "start\"" {
+			b.updateChooseGroup(group[0])
+		} else {
+			b.updateChooseGroup("")
+		}
 		return ru
 	}
 
@@ -584,6 +590,9 @@ func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	if b.deferRule(id, inst) { // Ors are different because we collapse them
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 		if v, ok := b.irRefs[refname]; ok {
+			if b.isChooseGroup() {
+				return b.parseChoose(v)
+			}
 			return []rules.Rule{v}
 		}
 	}
@@ -591,12 +600,44 @@ func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	return []rules.Rule{}
 }
 
+func (b *LLBlock) parseChoose(v rules.Rule) []rules.Rule {
+	//When choose the Ors need to be expanded to
+	// A && !B && !C || !A && B && !C || !A && !B && C
+	switch ors := v.(type) {
+	case *rules.Ors:
+		chooseOr := &rules.Ors{}
+		for i, _ := range ors.X {
+			a := []rules.Rule{}
+			for j := 0; j < len(ors.X); j++ {
+				clauses := &rules.Ands{}
+				for _, c := range ors.X[j] {
+					if i != j {
+						not := &rules.Prefix{
+							X:  c,
+							Ty: "Bool",
+							Op: "not",
+						}
+						clauses.X = append(clauses.X, not)
+					} else {
+						clauses.X = append(clauses.X, c)
+					}
+				}
+				a = append(a, clauses)
+			}
+			chooseOr.X = append(chooseOr.X, a)
+		}
+		return []rules.Rule{chooseOr}
+	default:
+		return []rules.Rule{v}
+	}
+}
+
 func (b *LLBlock) parseBitCast(inst *ir.InstBitCast) []rules.Rule {
-	panic(fmt.Sprint("unimplemented bitcast"))
+	panic("unimplemented bitcast")
 }
 
 func (b *LLBlock) parseFNeg(inst *ir.InstFNeg) []rules.Rule {
-	panic(fmt.Sprint("unimplemented FNeg"))
+	panic("unimplemented FNeg")
 }
 
 func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {

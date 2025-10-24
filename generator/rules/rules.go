@@ -739,6 +739,7 @@ func (pr *Prefix) String() string {
 }
 
 func (pr *Prefix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	pr.X.LoadContext(pr.PhiLevel, pr.HaveSeen, pr.OnEntry, pr.Log)
 	init, x, ssa := pr.X.WriteRule(ssa)
 	r := fmt.Sprintf("(%s %s)", pr.Op, x)
 	return init, r, ssa
