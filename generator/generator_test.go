@@ -463,10 +463,6 @@ func TestImports(t *testing.T) {
 		}
 		g := prepTest(s, string(data), true, false)
 
-		if err != nil {
-			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
-		}
-
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
