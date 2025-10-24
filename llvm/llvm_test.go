@@ -593,7 +593,6 @@ block-41-true:
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
 
-	fmt.Println(llvm)
 	ir, err := validateIR(llvm)
 
 	if err != nil {
