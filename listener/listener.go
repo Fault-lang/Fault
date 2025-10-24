@@ -1660,17 +1660,6 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 	for k, v := range pairs {
 		switch f := v.(type) {
 		case *ast.FunctionLiteral:
-			// If the only thing inside is a stay();
-			// move on.
-			var bi *ast.BuiltIn
-			if es, ok := f.Body.Statements[0].(*ast.ExpressionStatement); ok {
-				bi, _ = es.Expression.(*ast.BuiltIn)
-			}
-			if len(f.Body.Statements) == 1 && bi != nil && l.builtInType(bi) == "stay" {
-				p[k] = v
-				continue
-			}
-
 			//Wrap inner function in conditional so that only
 			// executes if the state is active
 			this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}

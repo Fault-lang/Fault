@@ -484,49 +484,49 @@ func TestStringExp(t *testing.T) {
 	}
 }
 
-//func TestChoose(t *testing.T) {
-// 	test := `
-// 	system test;
+func TestChoose(t *testing.T) {
+	test := `
+	system test;
 
-// 	component foo = states{
-// 		initial: func{
-// 			choose stay() || advance(this.alarm);
-// 		},
-// 		alarm: func{
-// 			advance(this.close);
-// 		},
-// 		close: func{
-// 			stay();
-// 		},
-// 	};
+	component foo = states{
+		initial: func{
+			choose stay() || advance(this.alarm);
+		},
+		alarm: func{
+			advance(this.close);
+		},
+		close: func{
+			stay();
+		},
+	};
 
-// 	start {
-// 		foo: initial,
-// 	};
-// 	`
+	start {
+		foo: initial,
+	};
+	`
 
-// 	expecting := ``
+	expecting := ``
 
-// 	llvm, err := prepTest(test, false)
+	llvm, err := prepTest(test, false)
 
-// 	if err != nil {
-// 		t.Fatalf("compilation failed on valid spec. got=%s", err)
-// 	}
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
 
-// 	fmt.Println(llvm)
-// 	ir, err := validateIR(llvm)
+	fmt.Println(llvm)
+	ir, err := validateIR(llvm)
 
-// 	if err != nil {
-// 		t.Fatalf("generated IR is not valid. got=%s", err)
-// 	}
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
 
-// 	err = compareResults(llvm, expecting, string(ir))
+	err = compareResults(llvm, expecting, string(ir))
 
-// 	if err != nil {
-// 		t.Fatal(err.Error())
-// 	}
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
-// }
+}
 
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {
