@@ -607,9 +607,9 @@ func (b *LLBlock) parseChoose(v rules.Rule) []rules.Rule {
 	case *rules.Ors:
 		chooseOr := &rules.Ors{}
 		for i, _ := range ors.X {
-			a := []rules.Rule{}
+			a := &rules.Ands{}
 			for j := 0; j < len(ors.X); j++ {
-				clauses := &rules.Ands{}
+				clauses := []rules.Rule{}
 				for _, c := range ors.X[j] {
 					if i != j {
 						not := &rules.Prefix{
@@ -617,14 +617,14 @@ func (b *LLBlock) parseChoose(v rules.Rule) []rules.Rule {
 							Ty: "Bool",
 							Op: "not",
 						}
-						clauses.X = append(clauses.X, not)
+						clauses = append(clauses, not)
 					} else {
-						clauses.X = append(clauses.X, c)
+						clauses = append(clauses, c)
 					}
 				}
-				a = append(a, clauses)
+				a.X = append(a.X, clauses...)
 			}
-			chooseOr.X = append(chooseOr.X, a)
+			chooseOr.X = append(chooseOr.X, []rules.Rule{a})
 		}
 		return []rules.Rule{chooseOr}
 	default:
