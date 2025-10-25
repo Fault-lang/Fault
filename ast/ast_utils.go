@@ -8,6 +8,18 @@ import (
 )
 
 func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) Token {
+	if start == nil || stop == nil {
+		return Token{
+			Type:    TokenType(token),
+			Literal: literal,
+			Position: []int{0,
+				0,
+				0,
+				0,
+			},
+		}
+	}
+
 	return Token{
 		Type:    TokenType(token),
 		Literal: literal,
