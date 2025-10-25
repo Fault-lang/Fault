@@ -8,7 +8,7 @@ import (
 )
 
 func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) Token {
-	if start == nil || stop == nil {
+	if start == nil || stop == nil { // The leave BuiltIn is artificially inserted and has no antlr tokens
 		return Token{
 			Type:    TokenType(token),
 			Literal: literal,
