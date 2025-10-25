@@ -199,8 +199,8 @@ boolPrimary
     ;
 
 stateChange
-    : 'advance' '(' paramCall ')' #builtins
-    | 'stay' '(' ')'              #builtins
+    : ('advance' | 'leave') '(' paramCall ')' #builtins
+    | ('stay' | 'leave') '(' ')'              #builtins
     ;
 
 accessHistory

@@ -1660,17 +1660,6 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 	for k, v := range pairs {
 		switch f := v.(type) {
 		case *ast.FunctionLiteral:
-			if l.stateHasTransitions(f.Body.Statements) {
-				// Insert a BuiltIn to leave the current state unless
-				// this state has no transitions out.
-				token := ast.GenerateToken("BUILTIN", "BUILTIN", nil, nil)
-				bi := &ast.BuiltIn{
-					Token:    token,
-					Function: "leave",
-				}
-				f.Body.Statements = append(f.Body.Statements, &ast.ExpressionStatement{Expression: bi})
-			}
-
 			//Wrap inner function in conditional so that only
 			// executes if the state is active
 			this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}
@@ -1683,55 +1672,6 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 		}
 	}
 	return p
-}
-
-func (l *FaultListener) stateHasTransitions(body []ast.Statement) bool {
-	var bi *ast.BuiltIn
-	if es, ok := body[0].(*ast.ExpressionStatement); ok {
-		bi, _ = es.Expression.(*ast.BuiltIn)
-	}
-
-	if len(body) == 1 && bi != nil && l.builtInType(bi) == "stay" {
-		return false
-	}
-
-	for _, stmt := range body {
-		expression, ok := stmt.(*ast.ExpressionStatement)
-		if !ok {
-			continue
-		}
-
-		switch exp := expression.Expression.(type) {
-		case *ast.BuiltIn:
-			if l.builtInType(exp) == "advance" {
-				return true
-			}
-		case *ast.InfixExpression:
-			if l.stateHasTransitions([]ast.Statement{&ast.ExpressionStatement{Expression: exp.Left}}) {
-				return true
-			}
-			if l.stateHasTransitions([]ast.Statement{&ast.ExpressionStatement{Expression: exp.Right}}) {
-				return true
-			}
-			return false
-		case *ast.IfExpression:
-			if l.stateHasTransitions([]ast.Statement{exp.Consequence}) {
-				return true
-			}
-			if exp.Alternative != nil {
-				if l.stateHasTransitions([]ast.Statement{exp.Alternative}) {
-					return true
-				}
-			}
-			if exp.Elif != nil {
-				if l.stateHasTransitions([]ast.Statement{&ast.ExpressionStatement{Expression: exp.Elif}}) {
-					return true
-				}
-			}
-			return false
-		}
-	}
-	return false
 }
 
 func (l *FaultListener) intOrFloatOk(v ast.Node) (float64, error) {
@@ -1932,6 +1872,15 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 	if f.Function == "advance" {
 		p := l.pop()
 		f.Parameters["toState"] = p.(ast.Operand)
+	}
+
+	if f.Function == "leave" {
+		for i := 0; i < len(c.GetChildren()); i++ {
+			if _, ok := c.GetChild(i).(*parser.ParamCallContext); ok {
+				p := l.pop()
+				f.Parameters["exitState"] = p.(ast.Operand)
+			}
+		}
 	}
 
 	l.push(f)

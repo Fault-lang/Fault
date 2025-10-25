@@ -2031,6 +2031,89 @@ func TestChoose(t *testing.T) {
 
 }
 
+func TestLeave(t *testing.T) {
+	test := `system test1;
+	component test = states{
+				idle: func{
+					advance(this.active);
+					leave();
+				},
+				active: func{
+					stay() && leave(this.failure);
+				},
+				failure: func{
+					stay();
+				},
+			};
+			`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	_, sys := prepTest(test, flags)
+	component, ok := sys.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	if !ok {
+		t.Fatalf("sys.Statements[1] is not a ComponentLiteral. got=%T", sys.Statements[1])
+	}
+
+	var chooseFunc, leaveFunc *ast.FunctionLiteral
+	for k, v := range component.Pairs {
+		if k.Value != "idle" && k.Value != "active" && k.Value != "failure" {
+			t.Fatalf("unexpected state in component. got=%s", k.Value)
+		}
+		if fn, ok := v.(*ast.FunctionLiteral); ok {
+			if k.Value == "idle" {
+				chooseFunc = fn
+			} else if k.Value == "active" {
+				leaveFunc = fn
+			}
+		} else {
+			t.Fatalf("state %s is not a FunctionLiteral. got=%T", k.Value, v)
+		}
+	}
+
+	expr, ok := chooseFunc.Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Function body statement is not an ExpressionStatement. got=%T", chooseFunc.Body.Statements[0])
+	}
+	ifexpr, ok := expr.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("Expression is not a IfExpression. got=%T", expr.Expression)
+	}
+	leave, ok := ifexpr.Consequence.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
+	if !ok {
+		t.Fatalf("Expression is not a BuiltIn. got=%T", ifexpr.Consequence.Statements[1].(*ast.ExpressionStatement).Expression)
+	}
+	if leave.Function != "leave" {
+		t.Fatalf("Expression is not a leave expression. got=%s", leave.Function)
+	}
+
+	expr2, ok := leaveFunc.Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Function body statement is not an ExpressionStatement. got=%T", leaveFunc.Body.Statements[0])
+	}
+	ifexpr2, ok := expr2.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("Expression is not a IfExpression. got=%T", expr2.Expression)
+	}
+	infix2, ok := ifexpr2.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Expression is not an InfixExpression. got=%T", ifexpr2.Consequence.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+
+	leave2, ok := infix2.Right.(*ast.BuiltIn)
+	if !ok {
+		t.Fatalf("Expression is not a BuiltIn. got=%T", infix2.Right)
+	}
+
+	if leave2.Function != "leave" {
+		t.Fatalf("Expression is not a leave expression. got=%s", leave2.Function)
+	}
+
+	if leave2.Parameters["exitState"].(*ast.ParameterCall).String() != "this.failure" {
+		t.Fatalf("Expression is not a leave expression. got=%s", leave2.Parameters["exitState"].(*ast.ParameterCall).String())
+	}
+}
+
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
 	listener := Execute(test, "", flags)

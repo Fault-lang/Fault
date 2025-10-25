@@ -390,7 +390,7 @@ func TestComponentIR(t *testing.T) {
 	};
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"definevoid@__run(){block-16:%test_foo_x=allocadoublestoredouble8.0,double*%test_foo_x%test_foo_initial=allocai1storei1false,i1*%test_foo_initial%test_foo_alarm=allocai1storei1false,i1*%test_foo_alarmstorei1true,i1*%test_foo_initialcallvoid@test_foo_initial__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x)callvoid@test_foo_alarm__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x)retvoid}definevoid@test_foo_initial__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x){block-17:%0=loadi1,i1*%test_foo_initial%1=icmpeqi1%0,truebri1%1,label%block-19-true,label%block-18-afterblock-18-after:%2=loadi1,i1*%test_foo_initial%3=icmpeqi1%2,true%4=loaddouble,double*%test_foo_x%5=fcmpogtdouble%4,10.0%6=andi1%3,%5bri1%6,label%block-22-true,label%block-21-afterblock-19-true:%7=alloca[14xi8]store[14xi8]c"test_foo_alarm",[14xi8]*%7%8=bitcast[14xi8]*%7toi8*%9=calli1@advance(i8*%8)brlabel%block-18-afterblock-21-after:retvoidblock-22-true:%10=calli1@stay()brlabel%block-21-after}definei1@advance(i8*%toState){block-20:reti1true}definei1@stay(){block-23:reti1true}definevoid@test_foo_alarm__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x){block-24:%0=loadi1,i1*%test_foo_alarm%1=icmpeqi1%0,truebri1%1,label%block-26-true,label%block-25-afterblock-25-after:retvoidblock-26-true:%2=alloca[14xi8]store[14xi8]c"test_foo_close",[14xi8]*%2%3=bitcast[14xi8]*%2toi8*%4=calli1@advance(i8*%3)brlabel%block-25-after}`
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"definevoid@__run(){block-16:%test_foo_x=allocadoublestoredouble8.0,double*%test_foo_x%test_foo_initial=allocai1storei1false,i1*%test_foo_initial%test_foo_alarm=allocai1storei1false,i1*%test_foo_alarmstorei1true,i1*%test_foo_initialcallvoid@test_foo_initial__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x)callvoid@test_foo_alarm__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x)retvoid}definevoid@test_foo_initial__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x){block-17:%0=loadi1,i1*%test_foo_initial%1=icmpeqi1%0,truebri1%1,label%block-19-true,label%block-18-afterblock-18-after:%2=loadi1,i1*%test_foo_initial%3=icmpeqi1%2,true%4=loaddouble,double*%test_foo_x%5=fcmpogtdouble%4,10.0%6=andi1%3,%5bri1%6,label%block-22-true,label%block-21-afterblock-19-true:%7=alloca[14xi8]store[14xi8]c"test_foo_alarm",[14xi8]*%7%8=bitcast[14xi8]*%7toi8*%9=calli1@advance(i8*%8)brlabel%block-18-afterblock-21-after:retvoidblock-22-true:%10=calli1@stay()brlabel%block-21-after}definei1@advance(i8*%toState){block-20:reti1true}definei1@stay(){block-23:reti1true}definevoid@test_foo_alarm__state(i1*%test_foo_alarm,i1*%test_foo_initial,double*%test_foo_x){block-24:%0=loadi1,i1*%test_foo_alarm%1=icmpeqi1%0,truebri1%1,label%block-26-true,label%block-25-afterblock-25-after:retvoidblock-26-true:%2=alloca[14xi8]store[14xi8]c"test_foo_close",[14xi8]*%2%3=bitcast[14xi8]*%2toi8*%4=calli1@advance(i8*%3)%5=alloca[14xi8]store[14xi8]c"test_foo_alarm",[14xi8]*%5%6=bitcast[14xi8]*%5toi8*%7=calli1@leave(i8*%6)brlabel%block-25-after}definei1@leave(i8*%exitState){block-27:reti1true}`
 
 	llvm, err := prepTest(test, false)
 
@@ -431,7 +431,31 @@ func TestIndexExp(t *testing.T) {
 			};
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_test_buzz_a_1=globaldouble0x3DA3CA8CB153A753definevoid@__run(){block-27:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_astorei161,i16*@__roundsstore[38xi8]c"8bc400e5ecace31e7318504be78817a6_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a)store[38xi8]c"8bc400e5ecace31e7318504be78817a6_close",[38xi8]*@__parallelGroupretvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a){block-28:%0=loaddouble,double*@test1_test_buzz_a_1%1=fsubdouble%0,2.0storedouble%1,double*%test1_test_buzz_aretvoid}`
+	expecting := `@__rounds = global i16 0
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753
+
+define void @__run() {
+block-28:
+	store i16 0, i16* @__rounds
+	%test1_test_buzz_a = alloca double
+	store double 10.0, double* %test1_test_buzz_a
+	store i16 1, i16* @__rounds
+	store [38 x i8] c"8bc400e5ecace31e7318504be78817a6_start", [38 x i8]* @__parallelGroup
+	call void @test1_test_fizz(double* %test1_test_buzz_a)
+	store [38 x i8] c"8bc400e5ecace31e7318504be78817a6_close", [38 x i8]* @__parallelGroup
+	ret void
+}
+
+define void @test1_test_fizz(double* %test1_test_buzz_a) {
+block-29:
+	%0 = load double, double* @test1_test_buzz_a_1
+	%1 = fsub double %0, 2.0
+	store double %1, double* %test1_test_buzz_a
+	ret void
+}
+`
 
 	llvm, err := prepTest(test, true)
 
@@ -462,7 +486,7 @@ func TestStringExp(t *testing.T) {
 		assert str3;
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test_str1=globali1false@test_str2=globali1false@test_str3=globali1falsedefinevoid@__run(){block-29:retvoid}
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test_str1=globali1false@test_str2=globali1false@test_str3=globali1falsedefinevoid@__run(){block-30:retvoid}
 	`
 
 	llvm, err := prepTest(test, true)
@@ -510,7 +534,7 @@ func TestChoose(t *testing.T) {
 @__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
 
 define void @__run() {
-block-30:
+block-31:
 	%test_foo_initial = alloca i1
 	store i1 false, i1* %test_foo_initial
 	%test_foo_alarm = alloca i1
@@ -525,15 +549,15 @@ block-30:
 }
 
 define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-31:
+block-32:
 	%0 = load i1, i1* %test_foo_initial
 	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-33-true, label %block-32-after
+	br i1 %1, label %block-34-true, label %block-33-after
 
-block-32-after:
+block-33-after:
 	ret void
 
-block-33-true:
+block-34-true:
 	store [38 x i8] c"f900badb09810cef197cb35202d7c094_start", [38 x i8]* @__choiceGroup
 	%2 = call i1 @stay()
 	%3 = alloca [14 x i8]
@@ -542,48 +566,57 @@ block-33-true:
 	%5 = call i1 @advance(i8* %4)
 	%6 = or i1 %2, %5
 	store [38 x i8] c"f900badb09810cef197cb35202d7c094_close", [38 x i8]* @__choiceGroup
-	br label %block-32-after
+	br label %block-33-after
 }
 
 define i1 @stay() {
-block-34:
-	ret i1 true
-}
-
-define i1 @advance(i8* %toState) {
 block-35:
 	ret i1 true
 }
 
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+define i1 @advance(i8* %toState) {
 block-36:
+	ret i1 true
+}
+
+define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-37:
 	%0 = load i1, i1* %test_foo_alarm
 	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-38-true, label %block-37-after
+	br i1 %1, label %block-39-true, label %block-38-after
 
-block-37-after:
+block-38-after:
 	ret void
 
-block-38-true:
+block-39-true:
 	%2 = alloca [14 x i8]
 	store [14 x i8] c"test_foo_close", [14 x i8]* %2
 	%3 = bitcast [14 x i8]* %2 to i8*
 	%4 = call i1 @advance(i8* %3)
-	br label %block-37-after
+	%5 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %5
+	%6 = bitcast [14 x i8]* %5 to i8*
+	%7 = call i1 @leave(i8* %6)
+	br label %block-38-after
+}
+
+define i1 @leave(i8* %exitState) {
+block-40:
+	ret i1 true
 }
 
 define void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-39:
+block-41:
 	%0 = load i1, i1* %test_foo_close
 	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-41-true, label %block-40-after
+	br i1 %1, label %block-43-true, label %block-42-after
 
-block-40-after:
+block-42-after:
 	ret void
 
-block-41-true:
+block-43-true:
 	%2 = call i1 @stay()
-	br label %block-40-after
+	br label %block-42-after
 }
 `
 
@@ -592,6 +625,8 @@ block-41-true:
 	if err != nil {
 		t.Fatalf("compilation failed on valid spec. got=%s", err)
 	}
+
+	fmt.Println(llvm)
 
 	ir, err := validateIR(llvm)
 

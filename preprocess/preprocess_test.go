@@ -109,6 +109,7 @@ func TestComponent(t *testing.T) {
 				stay();
 			}else{
 				advance(this.alarm);
+				leave();
 			}
 		},
 		alarm: func{
@@ -157,6 +158,15 @@ func TestComponent(t *testing.T) {
 
 	if elseblock.Parameters["toState"].(ast.Nameable).IdString() != "test_foo_alarm" {
 		t.Fatalf("built in advance has the wrong input got=%s", elseblock.Parameters["toState"].(ast.Nameable).IdString())
+	}
+
+	elseblock2 := ifblock.Elif.Consequence.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.BuiltIn)
+	if elseblock2.IdString() != "test_foo_initial_leave" {
+		t.Fatalf("built in leave not named correctly got=%s", elseblock2.IdString())
+	}
+	elseblock2Param := elseblock2.Parameters["exitState"].(ast.Nameable).IdString()
+	if elseblock2Param != "test_foo_initial" {
+		t.Fatalf("built in leave has the wrong input got=%s", elseblock2Param)
 	}
 
 }
