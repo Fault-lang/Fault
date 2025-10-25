@@ -49,19 +49,13 @@ func IsBoolean(id string) bool {
 }
 
 func IsClocked(id string) bool {
-	if strings.Contains(id, "(") {
-		return true
-	}
-	return false
+	return strings.Contains(id, "(")
 }
 
 func IsIndexed(id string) bool {
 	rawid := strings.Split(id, "_")
 	_, err := strconv.Atoi(rawid[len(rawid)-1])
-	if err != nil {
-		return false
-	}
-	return true
+	return err != nil
 }
 
 func GetClockBase(id string) string {
