@@ -713,6 +713,114 @@ block-41-true:
 
 }
 
+func TestLeave(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		initial: func{
+			advance(this.alarm) && leave();
+		},
+		alarm: func{
+			stay();
+		},
+	};
+
+	start {
+		foo: initial,
+	};
+	`
+
+	expecting := `@__rounds = global i16 0
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+
+define void @__run() {
+block-42:
+	%test_foo_initial = alloca i1
+	store i1 false, i1* %test_foo_initial
+	%test_foo_alarm = alloca i1
+	store i1 false, i1* %test_foo_alarm
+	store i1 true, i1* %test_foo_initial
+	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial)
+	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial)
+	ret void
+}
+
+define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
+block-43:
+	%0 = load i1, i1* %test_foo_initial
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-45-true, label %block-44-after
+
+block-44-after:
+	ret void
+
+block-45-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @advance(i8* %3)
+	%5 = alloca [16 x i8]
+	store [16 x i8] c"test_foo_initial", [16 x i8]* %5
+	%6 = bitcast [16 x i8]* %5 to i8*
+	%7 = call i1 @leave(i8* %6)
+	%8 = and i1 %4, %7
+	br label %block-44-after
+}
+
+define i1 @advance(i8* %toState) {
+block-46:
+	ret i1 true
+}
+
+define i1 @leave(i8* %exitState) {
+block-47:
+	ret i1 true
+}
+
+define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
+block-48:
+	%0 = load i1, i1* %test_foo_alarm
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-50-true, label %block-49-after
+
+block-49-after:
+	ret void
+
+block-50-true:
+	%2 = call i1 @stay()
+	br label %block-49-after
+}
+
+define i1 @stay() {
+block-51:
+	ret i1 true
+}
+`
+
+	llvm, err := prepTest(test, false)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	fmt.Println(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+}
+
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {
 		return fmt.Errorf("optimized ir not valid. \ngot=%s", ir)
@@ -766,7 +874,7 @@ func prepTest(test string, specType bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(compiler.GetIR())
+	//fmt.Println(compiler.GetIR())
 	return compiler.GetIR(), err
 }
 
