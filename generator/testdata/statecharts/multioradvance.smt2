@@ -22,12 +22,16 @@
 (declare-fun ador_a_option2_5 () Bool)
 (declare-fun ador_a_option3_5 () Bool)
 (declare-fun ador_a_option4_2 () Bool)
-(declare-fun ador_a_option2_6 () Bool)
 (declare-fun ador_a_option3_6 () Bool)
 (declare-fun ador_a_option4_3 () Bool)
 (declare-fun ador_a_choice_4 () Bool)
+(declare-fun ador_a_option2_6 () Bool)
 (declare-fun ador_a_option2_7 () Bool)
 (declare-fun ador_a_option2_8 () Bool)
+(declare-fun ador_a_option2_9 () Bool)
+(declare-fun ador_a_option2_10 () Bool)
+(declare-fun ador_a_option4_4 () Bool)
+(declare-fun ador_a_option4_5 () Bool)
 (assert (= ador_a_choice_0 false))
 (assert (= ador_a_option1_0 false))
 (assert (= ador_a_option2_0 false))
@@ -37,22 +41,26 @@
 
 (assert (or (and (= ador_a_option1_1 true)
 (= ador_a_option1_2 ador_a_option1_1)
-(= ador_a_option2_2 ador_a_option2_0)
-(= ador_a_option3_2 ador_a_option3_0))
+(= ador_a_option3_2 ador_a_option3_0)
+(= ador_a_option2_2 ador_a_option2_0))
 (and (= ador_a_option2_1 true)
 (= ador_a_option2_2 ador_a_option2_1)
-(= ador_a_option1_2 ador_a_option1_0)
-(= ador_a_option3_2 ador_a_option3_0))
+(= ador_a_option3_2 ador_a_option3_0)
+(= ador_a_option1_2 ador_a_option1_0))
 (and (= ador_a_option3_1 true)
 (= ador_a_option3_2 ador_a_option3_1)
 (= ador_a_option1_2 ador_a_option1_0)
 (= ador_a_option2_2 ador_a_option2_0))))
-(assert (ite (= ador_a_choice_1 true) (and (= ador_a_option1_3 ador_a_option1_2) (= ador_a_option2_3 ador_a_option2_2) (= ador_a_option3_3 ador_a_option3_2)) (and (= ador_a_option1_3 ador_a_option1_0) (= ador_a_option2_3 ador_a_option2_0) (= ador_a_option3_3 ador_a_option3_0))))
+
+(assert (ite (= ador_a_choice_1 true) (and (= ador_a_option1_3 ador_a_option1_2) (= ador_a_option2_3 ador_a_option2_2) (= ador_a_option3_3 ador_a_option3_2)) (and (= ador_a_option3_3 ador_a_option3_0) (= ador_a_option1_3 ador_a_option1_0) (= ador_a_option2_3 ador_a_option2_0))))
+
+
+
 (assert (or (and (= ador_a_choice_2 true)
 (= ador_a_choice_3 ador_a_choice_2)
+(= ador_a_option2_5 ador_a_option2_3)
 (= ador_a_option3_5 ador_a_option3_3)
-(= ador_a_option4_2 ador_a_option4_0)
-(= ador_a_option2_5 ador_a_option2_3))
+(= ador_a_option4_2 ador_a_option4_0))
 (and (= ador_a_option2_4 true)
 (= ador_a_option2_5 ador_a_option2_4)
 (= ador_a_choice_3 ador_a_choice_1)
@@ -60,14 +68,31 @@
 (= ador_a_option4_2 ador_a_option4_0))
 (and (= ador_a_option3_4 true)
 (= ador_a_option3_5 ador_a_option3_4)
+(= ador_a_option4_2 ador_a_option4_0)
 (= ador_a_choice_3 ador_a_choice_1)
-(= ador_a_option2_5 ador_a_option2_3)
-(= ador_a_option4_2 ador_a_option4_0))
+(= ador_a_option2_5 ador_a_option2_3))
 (and (= ador_a_option4_1 true)
 (= ador_a_option4_2 ador_a_option4_1)
+(= ador_a_option3_5 ador_a_option3_3)
 (= ador_a_choice_3 ador_a_choice_1)
-(= ador_a_option2_5 ador_a_option2_3)
-(= ador_a_option3_5 ador_a_option3_3))))
-(assert (ite (= ador_a_option1_3 true) (and (= ador_a_option2_6 ador_a_option2_5) (= ador_a_option3_6 ador_a_option3_5) (= ador_a_option4_3 ador_a_option4_2) (= ador_a_choice_4 ador_a_choice_3)) (and (= ador_a_option2_6 ador_a_option2_3) (= ador_a_option3_6 ador_a_option3_3) (= ador_a_option4_3 ador_a_option4_0) (= ador_a_choice_4 ador_a_choice_1))))
+(= ador_a_option2_5 ador_a_option2_3))))
+
+(assert (ite (= ador_a_option1_3 true) (and (= ador_a_option3_6 ador_a_option3_5) (= ador_a_option4_3 ador_a_option4_2) (= ador_a_choice_4 ador_a_choice_3) (= ador_a_option2_6 ador_a_option2_5)) (and (= ador_a_option2_6 ador_a_option2_3) (= ador_a_option3_6 ador_a_option3_3) (= ador_a_option4_3 ador_a_option4_0) (= ador_a_choice_4 ador_a_choice_1))))
+
+
+
 (assert (= ador_a_option2_7 true))
-(assert (ite (= ador_a_option3_6 true) (= ador_a_option2_8 ador_a_option2_7) (= ador_a_option2_8 ador_a_option2_6)))
+
+(assert (ite (= ador_a_option2_6 true) (= ador_a_option2_8 ador_a_option2_7) (= ador_a_option2_8 ador_a_option2_6)))
+
+
+
+(assert (= ador_a_option2_9 true))
+
+(assert (ite (= ador_a_option3_6 true) (= ador_a_option2_10 ador_a_option2_9) (= ador_a_option2_10 ador_a_option2_8)))
+
+
+
+(assert (= ador_a_option4_4 true))
+
+(assert (ite (= ador_a_option4_3 true) (= ador_a_option4_5 ador_a_option4_4) (= ador_a_option4_5 ador_a_option4_3)))

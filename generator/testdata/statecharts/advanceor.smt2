@@ -1,4 +1,3 @@
-
 (set-logic QF_NRA)
 (declare-fun ador_a_choice_0 () Bool)
 (declare-fun ador_a_option1_0 () Bool)
@@ -10,14 +9,32 @@
 (declare-fun ador_a_option2_2 () Bool)
 (declare-fun ador_a_option1_3 () Bool)
 (declare-fun ador_a_option2_3 () Bool)
+(declare-fun ador_a_option1_4 () Bool)
+(declare-fun ador_a_option1_5 () Bool)
+(declare-fun ador_a_option2_4 () Bool)
+(declare-fun ador_a_option2_5 () Bool)
 (assert (= ador_a_choice_0 false))
 (assert (= ador_a_option1_0 false))
 (assert (= ador_a_option2_0 false))
 (assert (= ador_a_choice_1 true))
+
 (assert (or (and (= ador_a_option1_1 true)
 (= ador_a_option1_2 ador_a_option1_1)
 (= ador_a_option2_2 ador_a_option2_0))
 (and (= ador_a_option2_1 true)
 (= ador_a_option2_2 ador_a_option2_1)
 (= ador_a_option1_2 ador_a_option1_0))))
+
 (assert (ite (= ador_a_choice_1 true) (and (= ador_a_option1_3 ador_a_option1_2) (= ador_a_option2_3 ador_a_option2_2)) (and (= ador_a_option1_3 ador_a_option1_0) (= ador_a_option2_3 ador_a_option2_0))))
+
+
+
+(assert (= ador_a_option1_4 true))
+
+(assert (ite (= ador_a_option1_3 true) (= ador_a_option1_5 ador_a_option1_4) (= ador_a_option1_5 ador_a_option1_3)))
+
+
+
+(assert (= ador_a_option2_4 true))
+
+(assert (ite (= ador_a_option2_3 true) (= ador_a_option2_5 ador_a_option2_4) (= ador_a_option2_5 ador_a_option2_3)))
