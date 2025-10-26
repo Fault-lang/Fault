@@ -288,12 +288,11 @@ func TestTemporalSys(t *testing.T) {
 			a: zoo,
 		};
 		`
-	expecting := `(set-logicQF_NRA)(declare-funtest1_a_foo_0()Bool)(declare-funtest1_a_zoo_0()Bool)(declare-funtest1_b_buzz_0()Bool)(declare-funtest1_b_bar_0()Bool)(declare-funtest1_a_zoo_1()Bool)(declare-funtest1_b_buzz_1()Bool)(declare-funtest1_b_bar_1()Bool)(declare-funtest1_a_foo_1()Bool)(declare-funtest1_b_bar_2()Bool)(declare-funtest1_a_foo_2()Bool)(declare-funtest1_a_foo_3()Bool)(declare-funtest1_a_zoo_2()Bool)(declare-funtest1_a_foo_4()Bool)(declare-funtest1_a_zoo_3()Bool)(declare-funtest1_a_foo_5()Bool)(declare-funtest1_b_buzz_2()Bool)(declare-funtest1_b_buzz_3()Bool)(declare-funtest1_a_foo_6()Bool)(assert(=test1_a_foo_0false))(assert(=test1_a_zoo_0false))(assert(=test1_b_buzz_0false))(assert(=test1_b_bar_0false))(assert(=test1_a_zoo_1true))(assert(=test1_b_buzz_1true))(assert(=test1_b_bar_1true))(assert(=test1_a_foo_1false))(assert(ite(=test1_a_foo_0true)(and(=test1_b_bar_2test1_b_bar_1)(=test1_a_foo_2test1_a_foo_1))(and(=test1_a_foo_2test1_a_foo_0)(=test1_b_bar_2test1_b_bar_0))))(assert(=test1_a_foo_3true))(assert(=test1_a_zoo_2false))(assert(ite(=test1_a_zoo_1true)(and(=test1_a_foo_4test1_a_foo_3)(=test1_a_zoo_3test1_a_zoo_2))(and(=test1_a_foo_4test1_a_foo_2)(=test1_a_zoo_3test1_a_zoo_1))))(assert(=test1_a_foo_5true))(assert(=test1_b_buzz_2false))(assert(ite(=test1_b_buzz_1true)(and(=test1_b_buzz_3test1_b_buzz_2)(=test1_a_foo_6test1_a_foo_5))(and(=test1_b_buzz_3test1_b_buzz_1)(=test1_a_foo_6test1_a_foo_4))))(assert(or(andtest1_a_zoo_0(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_2))(andtest1_a_zoo_3(nottest1_b_bar_2))))`
+	expecting := `(set-logicQF_NRA)(declare-funtest1_a_foo_0()Bool)(declare-funtest1_a_zoo_0()Bool)(declare-funtest1_b_buzz_0()Bool)(declare-funtest1_b_bar_0()Bool)(declare-funtest1_a_zoo_1()Bool)(declare-funtest1_b_buzz_1()Bool)(declare-funtest1_b_bar_1()Bool)(declare-funtest1_b_bar_2()Bool)(declare-funtest1_a_foo_1()Bool)(declare-funtest1_a_foo_2()Bool)(declare-funtest1_a_foo_3()Bool)(declare-funtest1_a_foo_4()Bool)(declare-funtest1_b_bar_3()Bool)(declare-funtest1_b_bar_4()Bool)(assert(=test1_a_foo_0false))(assert(=test1_a_zoo_0false))(assert(=test1_b_buzz_0false))(assert(=test1_b_bar_0false))(assert(=test1_a_zoo_1true))(assert(=test1_b_buzz_1true))(assert(=test1_b_bar_1true))(assert(ite(=test1_a_foo_0true)(=test1_b_bar_2test1_b_bar_1)(=test1_b_bar_2test1_b_bar_0)))(assert(=test1_a_foo_1true))(assert(ite(=test1_a_zoo_1true)(=test1_a_foo_2test1_a_foo_1)(=test1_a_foo_2test1_a_foo_0)))(assert(=test1_a_foo_3true))(assert(ite(=test1_b_buzz_1true)(=test1_a_foo_4test1_a_foo_3)(=test1_a_foo_4test1_a_foo_2)))(assert(=test1_b_bar_3true))(assert(ite(=test1_b_bar_2true)(=test1_b_bar_4test1_b_bar_3)(=test1_b_bar_4test1_b_bar_2)))(assert(or(andtest1_a_zoo_0(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_2))(andtest1_a_zoo_1(nottest1_b_bar_4))))`
 
 	g := prepTest("", test, false, false)
 
 	err := compareResults("TemporalSys", g.SMT(), string(expecting))
-
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -479,7 +478,8 @@ func TestSys(t *testing.T) {
 		// {"testdata/statecharts/advanceand.fsystem", "0"},
 		// {"testdata/statecharts/mixedcalls.fsystem", "0"},
 		// {"testdata/statecharts/triggerfunc.fsystem", "0"},
-		{"testdata/statecharts/choose1.fsystem", "0"},
+		// {"testdata/statecharts/choose1.fsystem", "0"},
+		{"testdata/statecharts/choose2.fsystem", "0"},
 	}
 	smt2s := []string{
 		// "testdata/statecharts/statechart.smt2",
@@ -488,7 +488,8 @@ func TestSys(t *testing.T) {
 		// "testdata/statecharts/advanceand.smt2",
 		// "testdata/statecharts/mixedcalls.smt2",
 		// "testdata/statecharts/triggerfunc.smt2",
-		"testdata/statecharts/choose1.smt2",
+		// "testdata/statecharts/choose1.smt2",
+		"testdata/statecharts/choose2.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])

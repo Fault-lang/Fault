@@ -433,7 +433,10 @@ block-21-after:
 	ret void
 
 block-22-true:
-	%10 = call i1 @stay()
+	%10 = alloca [16 x i8]
+	store [16 x i8] c"test_foo_initial", [16 x i8]* %10
+	%11 = bitcast [16 x i8]* %10 to i8*
+	%12 = call i1 @stay(i8* %11)
 	br label %block-21-after
 }
 
@@ -442,7 +445,7 @@ block-20:
 	ret i1 true
 }
 
-define i1 @stay() {
+define i1 @stay(i8* %exitState) {
 block-23:
 	ret i1 true
 }
@@ -640,18 +643,21 @@ block-32-after:
 	ret void
 
 block-33-true:
-	store [38 x i8] c"f900badb09810cef197cb35202d7c094_start", [38 x i8]* @__choiceGroup
-	%2 = call i1 @stay()
-	%3 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %3
-	%4 = bitcast [14 x i8]* %3 to i8*
-	%5 = call i1 @advance(i8* %4)
-	%6 = or i1 %2, %5
-	store [38 x i8] c"f900badb09810cef197cb35202d7c094_close", [38 x i8]* @__choiceGroup
+	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_start", [38 x i8]* @__choiceGroup
+	%2 = alloca [16 x i8]
+	store [16 x i8] c"test_foo_initial", [16 x i8]* %2
+	%3 = bitcast [16 x i8]* %2 to i8*
+	%4 = call i1 @stay(i8* %3)
+	%5 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %5
+	%6 = bitcast [14 x i8]* %5 to i8*
+	%7 = call i1 @advance(i8* %6)
+	%8 = or i1 %4, %7
+	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_close", [38 x i8]* @__choiceGroup
 	br label %block-32-after
 }
 
-define i1 @stay() {
+define i1 @stay(i8* %exitState) {
 block-34:
 	ret i1 true
 }
@@ -688,7 +694,10 @@ block-40-after:
 	ret void
 
 block-41-true:
-	%2 = call i1 @stay()
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_close", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @stay(i8* %3)
 	br label %block-40-after
 }
 `
@@ -789,11 +798,14 @@ block-49-after:
 	ret void
 
 block-50-true:
-	%2 = call i1 @stay()
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @stay(i8* %3)
 	br label %block-49-after
 }
 
-define i1 @stay() {
+define i1 @stay(i8* %exitState) {
 block-51:
 	ret i1 true
 }
@@ -806,8 +818,6 @@ block-51:
 	}
 
 	ir, err := validateIR(llvm)
-
-	fmt.Println(llvm)
 
 	if err != nil {
 		t.Fatalf("generated IR is not valid. got=%s", err)

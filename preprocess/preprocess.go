@@ -1175,7 +1175,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.Parameters["toState"] = pro.(ast.Operand)
 		}
 
-		if node.Function == "leave" {
+		if node.Function == "leave" || node.Function == "stay" {
 			if _, ok := node.Parameters["exitState"]; !ok {
 				node.Parameters["exitState"] = &ast.ParameterCall{
 					Token:         node.Token,

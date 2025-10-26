@@ -301,10 +301,6 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 func (b *LLBlock) parseBuiltIn(call *ir.InstCall) []rules.Rule {
 	p := call.Args
 
-	if call.Callee.Ident() == "@stay" {
-		return []rules.Rule{&rules.Stay{}}
-	}
-
 	if len(p) == 0 {
 		return []rules.Rule{}
 	}
@@ -319,18 +315,32 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall) []rules.Rule {
 	state := b.Env.VarLoads[refname]
 	newState := util.FormatIdent(state.Ident())
 
-	r1 := b.createRule(newState, "true", "Bool", "=")
+	var r1 rules.Rule
+	if call.Callee.Ident() == "@advance" {
+		r1 = b.createRule(newState, "true", "Bool", "=")
+	}
+	if call.Callee.Ident() == "@leave" {
+		r1 = b.createRule(newState, "false", "Bool", "=")
+	}
+	if call.Callee.Ident() == "@stay" {
+		r1 = b.createRule(newState, "true", "Bool", "=")
+	}
 
 	currentFunction := b.Env.CurrentFunction
 
 	if currentFunction[len(currentFunction)-7:] != "__state" {
-		panic("calling advance from outside the state chart")
+		if call.Callee.Ident() != "@advance" {
+			panic("calling advance from outside the state chart")
+		}
+		if call.Callee.Ident() != "@leave" {
+			panic("calling leave from outside the state chart")
+		}
+		if call.Callee.Ident() != "@stay" {
+			panic("calling stay from outside the state chart")
+		}
 	}
 
-	base2 := currentFunction[:len(currentFunction)-7]
-
-	r2 := b.createRule(base2, "false", "Bool", "=")
-	return []rules.Rule{r1, r2}
+	return []rules.Rule{r1}
 }
 
 func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule, []string) {
@@ -374,17 +384,17 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 	switch cnode := node.(type) {
 	case *ir.InstCall:
 		if isBuiltIn(cnode.Callee.Ident()) {
-			if cnode.Callee.Ident() == "@advance" {
-				r := b.parseBuiltIn(cnode)
-				if len(r) == 1 {
-					return r[0]
-				}
-				return &rules.Ands{
-					X: r,
-				}
+			//if cnode.Callee.Ident() == "@advance" {
+			r := b.parseBuiltIn(cnode)
+			if len(r) == 1 {
+				return r[0]
 			}
-			return &rules.Stay{}
+			return &rules.Ands{
+				X: r,
+			}
 		}
+		//return &rules.Stay{}
+		//}
 	case *ir.InstOr:
 		id := cnode.Ident()
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)

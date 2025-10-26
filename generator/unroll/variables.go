@@ -55,7 +55,10 @@ func IsClocked(id string) bool {
 func IsIndexed(id string) bool {
 	rawid := strings.Split(id, "_")
 	_, err := strconv.Atoi(rawid[len(rawid)-1])
-	return err != nil
+	if e, ok := err.(*strconv.NumError); ok && e.Err == strconv.ErrSyntax {
+		return false
+	}
+	return err == nil
 }
 
 func GetClockBase(id string) string {
