@@ -614,7 +614,7 @@ func (b *LLBlock) constExpr(con constant.Constant) rules.Rule {
 }
 
 func isBuiltIn(c string) bool {
-	if c == "@advance" || c == "@stay" {
+	if c == "@advance" || c == "@stay" || c == "@leave" {
 		return true
 	}
 	return false
