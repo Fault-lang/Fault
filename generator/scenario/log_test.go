@@ -62,7 +62,7 @@ func TestLogger_ExitFunction(t *testing.T) {
 
 func TestLogger_UpdateVariable(t *testing.T) {
 	logger := NewLogger()
-	logger.UpdateVariable("foo")
+	logger.UpdateVariable("foo", false)
 	if len(logger.Events) != 1 {
 		t.Errorf("Logger.UpdateVariable() = %v, want %v", len(logger.Events), 1)
 	}
@@ -85,10 +85,10 @@ func TestLogger_AddPhiOption(t *testing.T) {
 func TestFunctionCall_MarkDead(t *testing.T) {
 	logger := NewLogger()
 	logger.EnterFunction("test1", 1)
-	logger.UpdateVariable("a_1")
+	logger.UpdateVariable("a_1", false)
 	logger.ExitFunction("test1", 1)
 	logger.EnterFunction("test2", 1)
-	logger.UpdateVariable("a_2")
+	logger.UpdateVariable("a_2", false)
 	logger.ExitFunction("test2", 1)
 	logger.AddPhiOption("a_3", "a_1")
 	logger.AddPhiOption("a_3", "a_2")

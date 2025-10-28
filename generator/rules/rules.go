@@ -130,16 +130,17 @@ func (b *Basic) Tag(k1 string, k2 string) {
 
 type Init struct {
 	Rule
-	Ident    string //base variable name
-	SSA      string
-	Round    int //Round of the rule, used for SSA
-	Global   bool
-	Type     string
-	Value    Rule
-	Solvable bool //If this rule is solvable, meaning it can be used to solve the scenario
-	Indexed  bool
-	Log      *scenario.Logger
-	tag      *branch
+	Ident          string //base variable name
+	SSA            string
+	Round          int //Round of the rule, used for SSA
+	Global         bool
+	Type           string
+	Value          Rule
+	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
+	Indexed        bool
+	OmitFromOutput bool
+	Log            *scenario.Logger
+	tag            *branch
 }
 
 func (i *Init) ruleNode() {}
@@ -168,7 +169,7 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	id = fmt.Sprintf("%s_%s", i.Ident, i.SSA)
 
 	if i.Global && !i.Log.IsCompound[i.Ident] { // Do not log intermediate states in compound string rules
-		i.Log.UpdateVariable(id)
+		i.Log.UpdateVariable(id, i.OmitFromOutput)
 	}
 
 	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
@@ -678,8 +679,8 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	if _, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsCompound[x] {
-		i.Log.UpdateVariable(x)
+	if wr, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsCompound[x] {
+		i.Log.UpdateVariable(x, wr.OmitFromOutput)
 	}
 
 	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
@@ -889,19 +890,20 @@ func (s *Stay) Branch() string {
 
 type Wrap struct { //wrapper for constant values to be used in infix as rules
 	Rule
-	Value    string
-	Variable bool
-	Type     string
-	Init     bool //Are we referencing a existing value or initializating a new one?
-	Indexed  bool
-	Debugger map[string]string //For debugging, the location in the code where this rule was created
-	Round    int
-	PhiLevel int
-	HaveSeen map[string]bool
-	OnEntry  map[string][]int16
-	Whens    map[string][]string //map of when asserts this variable is involved in
-	Log      *scenario.Logger
-	tag      *branch
+	Value          string
+	Variable       bool
+	Type           string
+	Init           bool //Are we referencing a existing value or initializating a new one?
+	Indexed        bool
+	Debugger       map[string]string //For debugging, the location in the code where this rule was created
+	Round          int
+	PhiLevel       int
+	OmitFromOutput bool
+	HaveSeen       map[string]bool
+	OnEntry        map[string][]int16
+	Whens          map[string][]string //map of when asserts this variable is involved in
+	Log            *scenario.Logger
+	tag            *branch
 }
 
 func (w *Wrap) ruleNode() {}
@@ -932,6 +934,10 @@ func (w *Wrap) SetWhensThens(whens map[string]map[string][]string) {
 	if whens[w.Value] != nil {
 		w.Whens = whens[w.Value]
 	}
+}
+
+func (w *Wrap) SetOmit(current_function string) {
+	w.OmitFromOutput = current_function == "__run"
 }
 
 func (w *Wrap) SetRound(r int) {

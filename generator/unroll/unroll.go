@@ -661,8 +661,11 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 
 	xr := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
 	xr.SetWhensThens(b.Env.WhensThens)
+	xr.SetOmit(b.Env.CurrentFunction)
+
 	yr := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
 	yr.SetWhensThens(b.Env.WhensThens)
+	yr.SetOmit(b.Env.CurrentFunction)
 
 	return &rules.Infix{
 		X:  xr,
@@ -681,6 +684,7 @@ func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 
 	xr := rules.NewWrap(x, "Bool", vr, file, line, false, xIs)
 	xr.SetWhensThens(b.Env.WhensThens)
+	xr.SetOmit(b.Env.CurrentFunction)
 	return &rules.Prefix{
 		X:  xr,
 		Op: op,

@@ -54,9 +54,10 @@ func (l *Logger) ExitFunction(fname string, round int) {
 	})
 }
 
-func (l *Logger) UpdateVariable(variable string) {
+func (l *Logger) UpdateVariable(variable string, omit bool) {
 	l.Events = append(l.Events, &VariableUpdate{
 		Variable: variable,
+		Dead:     omit, //omit initialized values to make model output easier to read
 	})
 }
 
