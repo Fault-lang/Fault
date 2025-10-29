@@ -15,9 +15,11 @@ type Logger struct {
 	BranchIndexes map[string][]int    // function_name : [event_index_1, event_index_2]
 	FuncIndexes   map[string][]int    // function_name : [entry_index, exit_index]
 	BranchVars    map[string][]string // function_name : [var_name_1, var_name_2]
-	Forks         map[string][]string // var_name_phi : [var_name_1, var_name_2]
-	Results       map[string]string   // var_name : solution value
-	StringRules   map[string]string   // var_name : string rule
+	ForksCaps     map[string][]string // var_name_phi : [var_fork1_cap, var_fork2_cap]
+	Forks         map[string][]string // end_var : [var_name_1, var_name_2]
+	ForkQueue     []string
+	Results       map[string]string // var_name : solution value
+	StringRules   map[string]string // var_name : string rule
 	IsStringRule  map[string]bool
 	IsCompound    map[string]bool // Filter display of compound rules
 }
@@ -27,6 +29,7 @@ func NewLogger() *Logger {
 		Events:        []Event{},
 		Uncertains:    make(map[string][]float64),
 		Forks:         make(map[string][]string),
+		ForksCaps:     make(map[string][]string),
 		Results:       make(map[string]string),
 		BranchIndexes: make(map[string][]int),
 		BranchVars:    make(map[string][]string),
@@ -67,12 +70,18 @@ func (l *Logger) UpdateSolvable(variable string) {
 	})
 }
 
+func (l *Logger) QueueFork(inits []string) {
+	l.ForkQueue = inits
+}
+
 func (l *Logger) AddPhiOption(phi string, end string) {
-	if _, ok := l.Forks[phi]; !ok {
-		l.Forks[phi] = []string{end}
+	if _, ok := l.ForksCaps[phi]; !ok {
+		l.ForksCaps[phi] = []string{end}
+		l.Forks[end] = append([]string{}, l.ForkQueue...)
 		return
 	}
-	l.Forks[phi] = append(l.Forks[phi], end)
+	l.ForksCaps[phi] = append(l.ForksCaps[phi], end)
+	l.Forks[end] = append([]string{}, l.ForkQueue...)
 }
 
 func (l *Logger) AddMessage(text string, round int) {
@@ -238,20 +247,28 @@ func (l *Logger) Trace() {
 }
 
 func (l *Logger) Kill() {
-	var dead []string
-	for phi, options := range l.Forks {
+	var deadends, dead []string
+	for phi, options := range l.ForksCaps {
 		phi_value := l.Results[phi]
 		for i, o := range options {
 			if phi_value == l.Results[o] {
-				dead = append(dead, options[0:i]...)
+				deadends = append(deadends, options[0:i]...)
 				if i+1 < len(options) {
-					dead = append(dead, options[i+1:]...)
+					deadends = append(deadends, options[i+1:]...)
 				}
+
+				for _, d := range dead {
+					dead = append(dead, l.Forks[d]...)
+				}
+				dead = append(dead, deadends...)
 				break
 			}
 		}
 	}
 
+	if len(dead) == 0 {
+		return
+	}
 	for fname, vars := range l.BranchVars {
 		for _, v := range vars {
 			if slices.Contains(dead, v) {

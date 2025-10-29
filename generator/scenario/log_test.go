@@ -18,8 +18,8 @@ func TestNewLogger(t *testing.T) {
 	if logger.BranchVars == nil {
 		t.Errorf("NewLogger().BranchVars = %v, want non-nil BranchVars", logger.BranchVars)
 	}
-	if logger.Forks == nil {
-		t.Errorf("NewLogger().Forks = %v, want non-nil Forks", logger.Forks)
+	if logger.ForksCaps == nil {
+		t.Errorf("NewLogger().ForksCaps = %v, want non-nil ForksCaps", logger.ForksCaps)
 	}
 	if logger.Results == nil {
 		t.Errorf("NewLogger().Results = %v, want non-nil Results", logger.Results)
@@ -74,11 +74,11 @@ func TestLogger_UpdateVariable(t *testing.T) {
 func TestLogger_AddPhiOption(t *testing.T) {
 	logger := NewLogger()
 	logger.AddPhiOption("foo", "bar")
-	if len(logger.Forks["foo"]) != 1 {
-		t.Errorf("Logger.AddPhiOption() = %v, want %v", len(logger.Forks["foo"]), 1)
+	if len(logger.ForksCaps["foo"]) != 1 {
+		t.Errorf("Logger.AddPhiOption() = %v, want %v", len(logger.ForksCaps["foo"]), 1)
 	}
-	if logger.Forks["foo"][0] != "bar" {
-		t.Errorf("Logger.AddPhiOption() = %v, want %v", logger.Forks["foo"][0], "bar")
+	if logger.ForksCaps["foo"][0] != "bar" {
+		t.Errorf("Logger.AddPhiOption() = %v, want %v", logger.ForksCaps["foo"][0], "bar")
 	}
 }
 

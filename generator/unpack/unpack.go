@@ -482,6 +482,7 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 	var tRules, fRules []string
 	var hasPhi map[string]bool
 	tInit, tRules, hasPhi = u.buildPhis(tPhis, nil)
+	u.Log.QueueFork(InitsToList(tInit))
 
 	if len(fPhis) > 0 {
 		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
@@ -493,6 +494,7 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 			}
 		}
 	}
+	u.Log.QueueFork(InitsToList(fInit))
 	inits := append(tInit, fInit...)
 	return inits, tRules, fRules
 }
@@ -522,6 +524,7 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 		branches = append(branches, PhiClone)
 		u.SSA = u2.SSA.Clone()
 
+		u.Log.QueueFork(InitsToList(u2.Inits))
 		u.AddInit(u2.Inits)
 		u.UpdateRegistry(u2.Registry)
 	}
@@ -669,4 +672,12 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 	}
 
 	return fmt.Sprintf("(assert %s)", rule)
+}
+
+func InitsToList(inits []*rules.Init) []string {
+	var init_list []string
+	for _, i := range inits {
+		init_list = append(init_list, i.FullVar())
+	}
+	return init_list
 }
