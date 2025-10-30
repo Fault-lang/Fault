@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"fault/util"
 	"fmt"
 	"strconv"
 	"strings"
@@ -17,7 +18,7 @@ type Logger struct {
 	BranchVars    map[string][]string // function_name : [var_name_1, var_name_2]
 	ForksCaps     map[string][]string // var_name_phi : [var_fork1_cap, var_fork2_cap]
 	Forks         map[string][]string // end_var : [var_name_1, var_name_2]
-	ForkQueue     []string
+	ForkQueue     []*util.StringSet
 	Results       map[string]string // var_name : solution value
 	StringRules   map[string]string // var_name : string rule
 	IsStringRule  map[string]bool
@@ -71,17 +72,29 @@ func (l *Logger) UpdateSolvable(variable string) {
 }
 
 func (l *Logger) QueueFork(inits []string) {
-	l.ForkQueue = inits
+	if len(inits) == 0 {
+		return
+	}
+
+	ut := util.NewStrSet()
+	for _, v := range inits {
+		ut.Add(v)
+	}
+	l.ForkQueue = append(l.ForkQueue, ut)
 }
 
 func (l *Logger) AddPhiOption(phi string, end string) {
 	if _, ok := l.ForksCaps[phi]; !ok {
 		l.ForksCaps[phi] = []string{end}
-		l.Forks[end] = append([]string{}, l.ForkQueue...)
-		return
+	} else {
+		l.ForksCaps[phi] = append(l.ForksCaps[phi], end)
 	}
-	l.ForksCaps[phi] = append(l.ForksCaps[phi], end)
-	l.Forks[end] = append([]string{}, l.ForkQueue...)
+	for i, f := range l.ForkQueue {
+		if f.In(end) {
+			l.Forks[end] = append([]string{}, l.ForkQueue[i].Values()...)
+			break
+		}
+	}
 }
 
 func (l *Logger) AddMessage(text string, round int) {
@@ -257,10 +270,9 @@ func (l *Logger) Kill() {
 					deadends = append(deadends, options[i+1:]...)
 				}
 
-				for _, d := range dead {
+				for _, d := range deadends {
 					dead = append(dead, l.Forks[d]...)
 				}
-				dead = append(dead, deadends...)
 				break
 			}
 		}

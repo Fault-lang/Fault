@@ -1,6 +1,17 @@
 package execute
 
 import (
+	"fault/generator"
+	"fault/listener"
+	"fault/llvm"
+	"fault/preprocess"
+	"fault/swaps"
+	"fault/types"
+	"fmt"
+	"log"
+	"os"
+	gopath "path"
+	"path/filepath"
 	"testing"
 )
 
@@ -71,69 +82,68 @@ func prepTest(smt string, uncertains map[string][]float64, unknowns []string, re
 	return ex
 }
 
-// func TestFullSuite(t *testing.T) {
-// 	// Run through all the tests in generator/testdata to check for errors
-// 	var run = func(path string, fileInfo os.FileInfo, inpErr error) (err error) {
+func TestFullSuite(t *testing.T) {
+	// Run through all the tests in generator/testdata to check for errors
+	var run = func(path string, fileInfo os.FileInfo, inpErr error) (err error) {
 
-// 		uncertains := make(map[string][]float64)
-// 		unknowns := []string{}
-// 		//extract the extension from the path
-// 		filetype := filepath.Ext(path)
-// 		if filetype != ".fspec" && filetype != ".fsystem" {
-// 			return nil
-// 		}
-// 		data, err := os.ReadFile(path)
-// 		fmt.Println(path)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		d := string(data)
-// 		fpath := gopath.Dir(path)
-// 		flags := make(map[string]bool)
-// 		flags["specType"] = (filetype == ".fspec")
-// 		flags["testing"] = false
-// 		flags["skipRun"] = false
-// 		lstnr := listener.Execute(d, fpath, flags)
-// 		if lstnr == nil {
-// 			log.Fatal("Fault parser returned nil")
-// 		}
+		uncertains := make(map[string][]float64)
+		unknowns := []string{}
+		//extract the extension from the path
+		filetype := filepath.Ext(path)
+		if filetype != ".fspec" && filetype != ".fsystem" {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		d := string(data)
+		fpath := gopath.Dir(path)
+		flags := make(map[string]bool)
+		flags["specType"] = (filetype == ".fspec")
+		flags["testing"] = false
+		flags["skipRun"] = false
+		lstnr := listener.Execute(d, fpath, flags)
+		if lstnr == nil {
+			log.Fatal("Fault parser returned nil")
+		}
 
-// 		pre := preprocess.Execute(lstnr)
+		pre := preprocess.Execute(lstnr)
 
-// 		ty := types.Execute(pre.Processed, pre)
+		ty := types.Execute(pre.Processed, pre)
 
-// 		sw := swaps.NewPrecompiler(ty)
-// 		tree := sw.Swap(ty.Checked)
-// 		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
-// 		uncertains = compiler.RawInputs.Uncertains
-// 		unknowns = compiler.RawInputs.Unknowns
-// 		if !compiler.IsValid {
-// 			return fmt.Errorf("Fault found nothing to run. Missing run block or start block.")
-// 		}
+		sw := swaps.NewPrecompiler(ty)
+		tree := sw.Swap(ty.Checked)
+		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
+		uncertains = compiler.RawInputs.Uncertains
+		unknowns = compiler.RawInputs.Unknowns
+		if !compiler.IsValid {
+			return fmt.Errorf("Fault found nothing to run. Missing run block or start block.")
+		}
 
-// 		g := generator.Execute(compiler)
-// 		ex := NewModelChecker()
-// 		ex.LoadModel(g.SMT(), uncertains, unknowns)
-// 		ok, err := ex.Check()
-// 		if err != nil {
-// 			return fmt.Errorf("model checker has failed: %s %s", path, err)
-// 		}
-// 		if !ok {
-// 			return fmt.Errorf("Fault could not find a failure case.")
-// 		}
-// 		err = ex.Solve()
-// 		if err != nil {
-// 			return fmt.Errorf("error found fetching solution from solver: %s %s", path, err)
-// 		}
-// 		g.ResultLog.Results = ex.ResultValues
-// 		g.ResultLog.Trace()
-// 		g.ResultLog.Kill()
-// 		g.ResultLog.Print()
-// 		return nil
-// 	}
+		g := generator.Execute(compiler)
+		ex := NewModelChecker()
+		ex.LoadModel(g.SMT(), uncertains, unknowns)
+		ok, err := ex.Check()
+		if err != nil {
+			return fmt.Errorf("model checker has failed: %s %s", path, err)
+		}
+		if !ok {
+			return fmt.Errorf("Fault could not find a failure case.")
+		}
+		err = ex.Solve()
+		if err != nil {
+			return fmt.Errorf("error found fetching solution from solver: %s %s", path, err)
+		}
+		g.ResultLog.Results = ex.ResultValues
+		g.ResultLog.Trace()
+		g.ResultLog.Kill()
+		g.ResultLog.Print()
+		return nil
+	}
 
-// 	err := filepath.Walk("../generator/testdata", run)
-// 	if err != nil {
-// 		t.Fatalf("Error in full test suite: %s", err)
-// 	}
-// }
+	err := filepath.Walk("../generator/testdata", run)
+	if err != nil {
+		t.Fatalf("Error in full test suite: %s", err)
+	}
+}
