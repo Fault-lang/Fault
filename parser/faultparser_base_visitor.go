@@ -60,10 +60,6 @@ func (v *BaseFaultParserVisitor) VisitDeclaration(ctx *DeclarationContext) inter
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitComparison(ctx *ComparisonContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseFaultParserVisitor) VisitConstDecl(ctx *ConstDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -289,6 +285,10 @@ func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) inter
 }
 
 func (v *BaseFaultParserVisitor) VisitRunExpr(ctx *RunExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunIfExpr(ctx *RunIfExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

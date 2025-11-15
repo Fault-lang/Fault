@@ -47,9 +47,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#declaration.
 	VisitDeclaration(ctx *DeclarationContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#comparison.
-	VisitComparison(ctx *ComparisonContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#constDecl.
 	VisitConstDecl(ctx *ConstDeclContext) interface{}
 
@@ -220,6 +217,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#runExpr.
 	VisitRunExpr(ctx *RunExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runIfExpr.
+	VisitRunIfExpr(ctx *RunIfExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}

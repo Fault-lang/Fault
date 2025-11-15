@@ -47,9 +47,6 @@ type FaultParserListener interface {
 	// EnterDeclaration is called when entering the declaration production.
 	EnterDeclaration(c *DeclarationContext)
 
-	// EnterComparison is called when entering the comparison production.
-	EnterComparison(c *ComparisonContext)
-
 	// EnterConstDecl is called when entering the constDecl production.
 	EnterConstDecl(c *ConstDeclContext)
 
@@ -221,6 +218,9 @@ type FaultParserListener interface {
 	// EnterRunExpr is called when entering the runExpr production.
 	EnterRunExpr(c *RunExprContext)
 
+	// EnterRunIfExpr is called when entering the runIfExpr production.
+	EnterRunIfExpr(c *RunIfExprContext)
+
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
 
@@ -328,9 +328,6 @@ type FaultParserListener interface {
 
 	// ExitDeclaration is called when exiting the declaration production.
 	ExitDeclaration(c *DeclarationContext)
-
-	// ExitComparison is called when exiting the comparison production.
-	ExitComparison(c *ComparisonContext)
 
 	// ExitConstDecl is called when exiting the constDecl production.
 	ExitConstDecl(c *ConstDeclContext)
@@ -502,6 +499,9 @@ type FaultParserListener interface {
 
 	// ExitRunExpr is called when exiting the runExpr production.
 	ExitRunExpr(c *RunExprContext)
+
+	// ExitRunIfExpr is called when exiting the runIfExpr production.
+	ExitRunIfExpr(c *RunIfExprContext)
 
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)

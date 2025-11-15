@@ -915,6 +915,22 @@ func (l *FaultListener) ExitRunExpr(c *parser.RunExprContext) {
 	l.push(e)
 }
 
+func (l *FaultListener) ExitRunIfExpr(c *parser.RunIfExprContext) {
+	token := ast.GenerateToken("CODE", c.GetText(), c.GetStart(), c.GetStop())
+
+	x := l.pop()
+	exp, ok := x.(ast.Expression)
+	if !ok {
+		panic(fmt.Sprintf("top of stack is not a expression. got=%T", x))
+	}
+
+	e := &ast.ExpressionStatement{
+		Token:      token,
+		Expression: exp,
+	}
+	l.push(e)
+}
+
 func (l *FaultListener) ExitStateExpr(c *parser.StateExprContext) {
 	token := ast.GenerateToken("CODE", c.GetText(), c.GetStart(), c.GetStop())
 

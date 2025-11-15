@@ -25,11 +25,11 @@ swap
     ;
 
 componentDecl
-    : 'component' IDENT '=' 'states' '{' (comProperties ',')* '}' eos
+    : 'component' IDENT '=' 'states' '{' ( comProperties (',' comProperties)* ','? )? '}' eos
     ;
 
 startBlock
-    : 'start' '{' (startPair ',')* '}' eos
+    : 'start' '{' ( startPair (',' startPair)* ','? )? '}' eos
     ;
 
 startPair
@@ -66,15 +66,6 @@ declaration
     | assertion
     | assumption
     | stringDecl
-    ;
-
-comparison
-    : EQUALS
-    | NOT_EQUALS
-    | LESS 
-    | LESS_OR_EQUALS
-    | GREATER
-    | GREATER_OR_EQUALS
     ;
 
 constDecl
@@ -124,8 +115,8 @@ structDecl
     ;
 
 structType
-    : 'flow' '{' (sfProperties ',')* '}'    #Flow
-    | 'stock' '{' (sfProperties ',')* '}'   #Stock
+    : 'flow' '{' ( sfProperties (',' sfProperties)* ','? )? '}'    #Flow
+    | 'stock' '{' ( sfProperties (',' sfProperties)* ','? )? '}'   #Stock
     ;
 
 sfProperties
@@ -285,7 +276,7 @@ initStep
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
     | simpleStmt eos                              #runExpr
-    | ifStmtRun                                     #runExpr
+    | ifStmtRun                                     #runIfExpr
     ;
 
 faultType
