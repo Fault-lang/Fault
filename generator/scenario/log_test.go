@@ -84,6 +84,8 @@ func TestLogger_AddPhiOption(t *testing.T) {
 
 func TestFunctionCall_MarkDead(t *testing.T) {
 	logger := NewLogger()
+	logger.QueueFork([]string{"a_1"})
+	logger.QueueFork([]string{"a_2"})
 	logger.EnterFunction("test1", 1)
 	logger.UpdateVariable("a_1", false)
 	logger.ExitFunction("test1", 1)

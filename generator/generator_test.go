@@ -477,7 +477,7 @@ func TestSys(t *testing.T) {
 		{"testdata/statecharts/multioradvance.fsystem", "0"},
 		{"testdata/statecharts/advanceand.fsystem", "0"},
 		{"testdata/statecharts/mixedcalls.fsystem", "0"},
-		{"testdata/statecharts/triggerfunc.fsystem", "0"},
+		{"testdata/statecharts/trigger.fsystem", "0"},
 		{"testdata/statecharts/choose1.fsystem", "0"},
 		{"testdata/statecharts/choose2.fsystem", "0"},
 	}
@@ -487,7 +487,7 @@ func TestSys(t *testing.T) {
 		"testdata/statecharts/multioradvance.smt2",
 		"testdata/statecharts/advanceand.smt2",
 		"testdata/statecharts/mixedcalls.smt2",
-		"testdata/statecharts/triggerfunc.smt2",
+		"testdata/statecharts/trigger.smt2",
 		"testdata/statecharts/choose1.smt2",
 		"testdata/statecharts/choose2.smt2",
 	}
