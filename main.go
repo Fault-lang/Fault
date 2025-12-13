@@ -47,7 +47,47 @@ func parse(data string, path string, file string, filetype string, reach bool) (
 	return tree, lstnr, ty, sw.Alias
 }
 
+func skip_comments_nl(data string) string {
+	i := 0
+	for i < len(data) {
+		// Skip whitespace and newlines
+		if data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r' {
+			i++
+			continue
+		}
+
+		// Handle single-line comments starting with // or #
+		if i < len(data)-1 && (data[i:i+2] == "//" || data[i] == '#') {
+			// Skip to end of line
+			for i < len(data) && data[i] != '\n' {
+				i++
+			}
+			continue
+		}
+
+		// Handle multi-line comments starting with /*
+		if i < len(data)-1 && data[i:i+2] == "/*" {
+			i += 2 // Skip the /*
+			// Skip until we find */
+			for i < len(data)-1 {
+				if data[i:i+2] == "*/" {
+					i += 2 // Skip the */
+					break
+				}
+				i++
+			}
+			continue
+		}
+
+		// If we reach here, we've found the first non-comment, non-whitespace character
+		break
+	}
+
+	return data[i:]
+}
+
 func validate_filetype(data string, filetype string) bool {
+	data = skip_comments_nl(data)
 	if filetype == "fspec" && data[0:4] == "spec" {
 		return true
 	}
