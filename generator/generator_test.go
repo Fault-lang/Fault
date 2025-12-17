@@ -434,6 +434,7 @@ func TestTestData(t *testing.T) {
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
+			//fmt.Println(g.SMT())
 			t.Fatal(err.Error())
 		}
 	}
@@ -465,6 +466,7 @@ func TestImports(t *testing.T) {
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
+			fmt.Println(g.SMT())
 			t.Fatal(err.Error())
 		}
 	}
@@ -507,6 +509,7 @@ func TestSys(t *testing.T) {
 		err = compareResults(s[0], g.SMT(), string(expecting))
 
 		if err != nil {
+			fmt.Println(g.SMT())
 			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
 		}
 
@@ -545,6 +548,7 @@ func TestMultiCond(t *testing.T) {
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
+			fmt.Println(g.SMT())
 			t.Fatal(err.Error())
 		}
 	}

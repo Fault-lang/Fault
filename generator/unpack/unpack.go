@@ -608,7 +608,7 @@ func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		phis = append(phis, PhiClone)
 		inits, caps, _ := u.buildPhis(phis, nil)
 		SelectorRule := u.Log.NewBranchSelector(u.CurrentBlock, i, caps, InitsToList((inits)))
-		rule_set = append(rule_set, fmt.Sprintf("(assert %s", SelectorRule.WriteRule()))
+		rule_set = append(rule_set, fmt.Sprintf("(assert %s)", SelectorRule.WriteRule()))
 		u.Log.AddBranchSelector(SelectorRule)
 		u2.Inits = append(u2.Inits, rules.NewInit(u.CurrentBlock, "Bool", i))
 

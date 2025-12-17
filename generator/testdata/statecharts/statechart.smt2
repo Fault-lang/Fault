@@ -7,16 +7,28 @@
 (declare-fun statechart_drain_initial_1 () Bool)
 (declare-fun statechart_fl_vault_value_1 () Real)
 (declare-fun statechart_fl_vault_value_2 () Real)
+(declare-fun block76true_0 () Bool)
+(declare-fun block76false_0 () Bool)
 (declare-fun statechart_fl_vault_value_3 () Real)
+(declare-fun block73true_0 () Bool)
+(declare-fun block73false_0 () Bool)
 (declare-fun statechart_drain_open_1 () Bool)
 (declare-fun statechart_drain_open_2 () Bool)
+(declare-fun block63true_0 () Bool)
+(declare-fun block63false_0 () Bool)
 (declare-fun statechart_drain_close_1 () Bool)
 (declare-fun statechart_drain_close_2 () Bool)
+(declare-fun block67true_0 () Bool)
+(declare-fun block67false_0 () Bool)
 (declare-fun statechart_drain_close_3 () Bool)
 (declare-fun statechart_drain_close_4 () Bool)
+(declare-fun block70true_0 () Bool)
+(declare-fun block70false_0 () Bool)
 (declare-fun statechart_fl_vault_value_4 () Real)
 (declare-fun statechart_fl_vault_value_5 () Real)
 (declare-fun statechart_fl_vault_value_6 () Real)
+(declare-fun block78true_0 () Bool)
+(declare-fun block78false_0 () Bool)
 (declare-fun statechart_drain_open_3 () Bool)
 (declare-fun statechart_drain_open_4 () Bool)
 (declare-fun statechart_drain_close_5 () Bool)
@@ -31,36 +43,69 @@
 (assert (= statechart_drain_initial_1 true))
 (assert (= statechart_fl_vault_value_1 (+ statechart_fl_vault_value_0 (- statechart_fl_vault_value_0 2.0))))
 
-(assert (ite (> statechart_fl_vault_value_0 4.0) (= statechart_fl_vault_value_2 statechart_fl_vault_value_1) (= statechart_fl_vault_value_2 statechart_fl_vault_value_0)))
+(assert (ite (> statechart_fl_vault_value_0 4.0) (= block76true_0 (= statechart_fl_vault_value_2 statechart_fl_vault_value_1)) (= block76false_0 (= statechart_fl_vault_value_2 statechart_fl_vault_value_0))))
+(assert (or (and block76true_0
+(not block76false_0))
+(and (not block76true_0)
+block76false_0)))
 
-
-(assert (ite (not statechart_drain_close_0) (= statechart_fl_vault_value_3 statechart_fl_vault_value_2) (= statechart_fl_vault_value_3 statechart_fl_vault_value_0)))
+(assert (ite (not statechart_drain_close_0) (= block73true_0 (= statechart_fl_vault_value_3 statechart_fl_vault_value_2)) (= block73false_0 (= statechart_fl_vault_value_3 statechart_fl_vault_value_0))))
 (assert (= statechart_drain_open_1 true))
 
-(assert (ite (and (= statechart_drain_initial_1 true) (not statechart_fl_active_0)) (= statechart_drain_open_2 statechart_drain_open_1) (= statechart_drain_open_2 statechart_drain_open_0)))
-
+(assert (ite (and (= statechart_drain_initial_1 true) (not statechart_fl_active_0)) (= block63true_0 (= statechart_drain_open_2 statechart_drain_open_1)) (= block63false_0 (= statechart_drain_open_2 statechart_drain_open_0))))
+(assert (or (and block63true_0
+(not block63false_0))
+(and (not block63true_0)
+block63false_0)))
 (assert (= statechart_drain_close_1 true))
 
-(assert (ite (and (= statechart_drain_open_2 true) (< statechart_fl_vault_value_3 0.0)) (= statechart_drain_close_2 statechart_drain_close_1) (= statechart_drain_close_2 statechart_drain_close_0)))
-
+(assert (ite (and (= statechart_drain_open_2 true) (< statechart_fl_vault_value_3 0.0)) (= block67true_0 (= statechart_drain_close_2 statechart_drain_close_1)) (= block67false_0 (= statechart_drain_close_2 statechart_drain_close_0))))
+(assert (or (and block67true_0
+(not block67false_0))
+(and (not block67true_0)
+block67false_0)))
 (assert (= statechart_drain_close_3 true))
 
-(assert (ite (= statechart_drain_close_2 true) (= statechart_drain_close_4 statechart_drain_close_3) (= statechart_drain_close_4 statechart_drain_close_2)))
-
+(assert (ite (= statechart_drain_close_2 true) (= block70true_0 (= statechart_drain_close_4 statechart_drain_close_3)) (= block70false_0 (= statechart_drain_close_4 statechart_drain_close_2))))
+(assert (or (and block70true_0
+(not block70false_0))
+(and (not block70true_0)
+block70false_0)))
 (assert (= statechart_fl_vault_value_4 (+ statechart_fl_vault_value_3 (- statechart_fl_vault_value_3 2.0))))
 
-(assert (ite (> statechart_fl_vault_value_3 4.0) (= statechart_fl_vault_value_5 statechart_fl_vault_value_4) (= statechart_fl_vault_value_5 statechart_fl_vault_value_3)))
+(assert (ite (> statechart_fl_vault_value_3 4.0) (= block76true_0 (= statechart_fl_vault_value_5 statechart_fl_vault_value_4)) (= block76false_0 (= statechart_fl_vault_value_5 statechart_fl_vault_value_3))))
+(assert (or (and block76true_0
+(not block76false_0))
+(and (not block76true_0)
+block76false_0)))
 
-
-(assert (ite (not statechart_drain_close_4) (= statechart_fl_vault_value_6 statechart_fl_vault_value_5) (= statechart_fl_vault_value_6 statechart_fl_vault_value_3)))
+(assert (ite (not statechart_drain_close_4) (= block78true_0 (= statechart_fl_vault_value_6 statechart_fl_vault_value_5)) (= block78false_0 (= statechart_fl_vault_value_6 statechart_fl_vault_value_3))))
 (assert (= statechart_drain_open_3 true))
 
-(assert (ite (and (= statechart_drain_initial_1 true) (not statechart_fl_active_0)) (= statechart_drain_open_4 statechart_drain_open_3) (= statechart_drain_open_4 statechart_drain_open_2)))
-
+(assert (ite (and (= statechart_drain_initial_1 true) (not statechart_fl_active_0)) (= block63true_0 (= statechart_drain_open_4 statechart_drain_open_3)) (= block63false_0 (= statechart_drain_open_4 statechart_drain_open_2))))
+(assert (or (and block63true_0
+(not block63false_0))
+(and (not block63true_0)
+block63false_0)))
 (assert (= statechart_drain_close_5 true))
 
-(assert (ite (and (= statechart_drain_open_4 true) (< statechart_fl_vault_value_6 0.0)) (= statechart_drain_close_6 statechart_drain_close_5) (= statechart_drain_close_6 statechart_drain_close_4)))
-
+(assert (ite (and (= statechart_drain_open_4 true) (< statechart_fl_vault_value_6 0.0)) (= block67true_0 (= statechart_drain_close_6 statechart_drain_close_5)) (= block67false_0 (= statechart_drain_close_6 statechart_drain_close_4))))
+(assert (or (and block67true_0
+(not block67false_0))
+(and (not block67true_0)
+block67false_0)))
 (assert (= statechart_drain_close_7 true))
 
-(assert (ite (= statechart_drain_close_6 true) (= statechart_drain_close_8 statechart_drain_close_7) (= statechart_drain_close_8 statechart_drain_close_6)))
+(assert (ite (= statechart_drain_close_6 true) (= block70true_0 (= statechart_drain_close_8 statechart_drain_close_7)) (= block70false_0 (= statechart_drain_close_8 statechart_drain_close_6))))
+(assert (or (and block70true_0
+(not block70false_0))
+(and (not block70true_0)
+block70false_0)))
+(assert (or (and block78true_0
+(not block78false_0))
+(and (not block78true_0)
+block78false_0)))
+(assert (or (and block73true_0
+(not block73false_0))
+(and (not block73true_0)
+block73false_0)))

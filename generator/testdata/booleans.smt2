@@ -1,12 +1,15 @@
 (set-logic QF_NRA)
 (declare-fun booleans_l_vault_value_0 () Bool)
-(declare-fun booleans_l_vault_value_3 () Bool)
 (declare-fun booleans_l_vault_value_1 () Bool)
 (declare-fun booleans_l_vault_value_2 () Bool)
+(declare-fun booleans_l_vault_value_3 () Bool)
+(declare-fun block38true_0 () Bool)
+(declare-fun block39false_0 () Bool)
 (assert (= booleans_l_vault_value_0 true))
+
 (assert (= booleans_l_vault_value_1 false))
 (assert (= booleans_l_vault_value_2 true))
-(assert (ite
-    (= booleans_l_vault_value_0 true)
-    (= booleans_l_vault_value_3 booleans_l_vault_value_1)
-    (= booleans_l_vault_value_3 booleans_l_vault_value_2)))
+(assert (ite (= booleans_l_vault_value_0 true) (= block38true_0 (= booleans_l_vault_value_3 booleans_l_vault_value_1)) (= block39false_0 (= booleans_l_vault_value_3 booleans_l_vault_value_2))))
+(assert (or 
+    (and block38true_0 (not block39false_0))
+    (and (not block38true_0) block39false_0)))
