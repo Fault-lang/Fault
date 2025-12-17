@@ -181,8 +181,11 @@ func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
 	function_rules := []string{}
 	for _, ru := range f.Rules {
 		u.InspectRule(ru)
-		line := u.FormatRule(ru, u.unpackRule(ru))
+		inits, finishedRules := u.unpackRule(ru)
+		line := u.FormatRule(ru, finishedRules)
 		function_rules = append(function_rules, line)
+		u.AddInit(inits)
+		u.Register(inits)
 	}
 
 	r = append(r, function_rules...)
@@ -198,8 +201,11 @@ func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 			u.Register([]*rules.Init{con})
 			c = con
 		}
-		line := u.FormatRule(c, u.unpackRule(c))
+		inits, finishedRules := u.unpackRule(c)
+		line := u.FormatRule(c, finishedRules)
 		r = append(r, line)
+		u.AddInit(inits)
+		u.Register(inits)
 	}
 	return r
 }
@@ -218,8 +224,11 @@ func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
 	smt := []string{}
 	for _, r := range b.Rules {
 		u.InspectRule(r)
-		line := u.FormatRule(r, u.unpackRule(r))
+		inits, finishedRules := u.unpackRule(r)
+		line := u.FormatRule(r, finishedRules)
 		smt = append(smt, line)
+		u.AddInit(inits)
+		u.Register(inits)
 	}
 
 	if b.After != nil {
@@ -229,7 +238,7 @@ func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
 	return smt
 }
 
-func (u *Unpacker) unpackRule(r rules.Rule) string {
+func (u *Unpacker) unpackRule(r rules.Rule) ([]*rules.Init, string) {
 	var rule string
 	var inits []*rules.Init
 	r.LoadContext(u.PhiLevel, u.HaveSeen, u.OnEntry, u.Log)
@@ -270,9 +279,9 @@ func (u *Unpacker) unpackRule(r rules.Rule) string {
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
 	u.Whens = u.unpackWhenThen(r, u.Whens)
-	u.AddInit(inits)
-	u.Register(inits)
-	return rule
+	//u.AddInit(inits)
+	//u.Register(inits)
+	return inits, rule
 }
 
 func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]string) map[string][]map[string]string {
@@ -477,26 +486,36 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 	return inits, caps, hasPhi
 }
 
-func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][]int16) ([]*rules.Init, []string, []string) {
+func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][]int16, blocknames map[string]string) ([]*rules.Init, *scenario.BranchSelector, *scenario.BranchSelector) {
 	var tInit, fInit []*rules.Init
 	var tRules, fRules []string
 	var hasPhi map[string]bool
 	tInit, tRules, hasPhi = u.buildPhis(tPhis, nil)
-	u.Log.QueueFork(InitsToList(tInit))
+	tSelectorName := util.FormatBlock(blocknames["true"])
+	tInit = append(tInit, rules.NewInit(tSelectorName, "Bool", 0))
+	tSelectorRule := u.Log.NewBranchSelector(tSelectorName, 0, tRules, InitsToList((tInit)))
+	u.Log.AddBranchSelector(tSelectorRule)
+	//u.Log.QueueFork(InitsToList(tInit))
 
 	if len(fPhis) > 0 {
 		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
 	} else {
 		// If there are no rules in the false branch we still need the phis
+		blocknames["false"] = fmt.Sprintf("%sfalse", blocknames["true"][0:len(blocknames["true"])-4])
 		for l := range tPhis {
 			for k, _ := range tPhis[l] {
 				fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
 			}
 		}
 	}
-	u.Log.QueueFork(InitsToList(fInit))
+	fSelectorName := util.FormatBlock(blocknames["false"])
+	fInit = append(fInit, rules.NewInit(fSelectorName, "Bool", 0))
+	fSelectorRule := u.Log.NewBranchSelector(fSelectorName, 0, fRules, InitsToList((fInit)))
+	u.Log.AddBranchSelector(fSelectorRule)
+
+	//u.Log.QueueFork(InitsToList(fInit))
 	inits := append(tInit, fInit...)
-	return inits, tRules, fRules
+	return inits, tSelectorRule, fSelectorRule
 }
 
 func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
@@ -504,74 +523,101 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 	var ret []string
 	var hasPhi map[string]bool
 	var inits []*rules.Init
+	var queue [][]string //All the vars that have been initialized
 	var caps [][]string
 	var branches []map[string][]int16
 	u.NewLevel()
 	u.SetEntries(u.SSA)
 
-	u2 := NewUnpacker(fmt.Sprintf("%s-%s", u.CurrentBlock, o.BranchName)) //Creating a unique block name for each or scenario
-	u2.Inherits(u)
 	u.Log.EnterFunction(o.BranchName, o.Round)
 
 	for _, ru := range o.X {
 		var lines []string
+		u2 := NewUnpacker(fmt.Sprintf("%s-%s", u.CurrentBlock, o.BranchName)) //Creating a unique block name for each or scenario
+		u2.Inherits(u)
+
+		var initQue []string
 		for _, l := range ru {
-			line := u2.unpackRule(l)
+			init, line := u2.unpackRule(l)
 			lines = append(lines, line)
+			initQue = append(initQue, InitsToList(init)...)
+			u.AddInit(init)
+			u.Register(init)
 		}
 		rule_set = append(rule_set, lines)
 		PhiClone := u.GetPhis(u.SSA, u2.SSA)
 		branches = append(branches, PhiClone)
 		u.SSA = u2.SSA.Clone()
 
-		u.Log.QueueFork(InitsToList(u2.Inits))
+		//u.Log.QueueFork(InitsToList(u2.Inits))
+		queue = append(queue, initQue)
 		u.AddInit(u2.Inits)
 		u.UpdateRegistry(u2.Registry)
 	}
 
 	inits, caps, hasPhi = u.buildPhisOrs(branches, hasPhi)
+	var selectors []string
 
 	for i, _ := range rule_set {
-		ret = append(ret, fmt.Sprintf("(and %s\n%s)", strings.Join(rule_set[i], "\n"), strings.Join(caps[i], "\n")))
+		selectorName := fmt.Sprintf("%s_%d", o.BranchName, i)
+		inits = append(inits, rules.NewInit(o.BranchName, "Bool", i))
+		selectors = append(selectors, selectorName)
+		selectorRule := u.Log.NewBranchSelector(o.BranchName, i, caps[i], queue[i])
+		u.Log.AddBranchSelector(selectorRule)
+		ret = append(ret, fmt.Sprintf("(assert %s", selectorRule.WriteRule()))
 	}
 
 	u.AddInit(inits)
 	u.PopEntries()
 
-	return u.Inits, fmt.Sprintf("(or %s)", strings.Join(ret, "\n"))
+	return u.Inits, strictOr(selectors)
 }
 
 func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	var rule_set []string
 	var phis []map[string][]int16
+	var selectors []string
+
 	u.NewLevel()
 	u.SetEntries(u.SSA)
 
 	for i, perm := range p.Permutations {
-		u2 := NewUnpacker(fmt.Sprintf("%s-v%d", u.CurrentBlock, i)) //Creating a unique block name for each parallel scenario
+		SelectorName := fmt.Sprintf("%s_%d", u.CurrentBlock, i)
+		selectors = append(selectors, SelectorName)
+
+		u2 := NewUnpacker(SelectorName) //Creating a unique block name for each parallel scenario
 		u2.Inherits(u)
 
 		for _, call := range perm {
 			u.Log.EnterFunction(call, p.Round)
 			function_rules := []string{}
 			for _, ru := range p.Calls[call] {
-				line := u.FormatRule(ru, u2.unpackRule(ru))
+				inits, finishedRules := u2.unpackRule(ru)
+				line := u.FormatRule(ru, finishedRules)
 				function_rules = append(function_rules, line)
+				u.AddInit(inits)
+				u.Register(inits)
 			}
-			capRule := strings.Join(function_rules, "\n")
-			rule_set = append(rule_set, capRule)
+			rules := strings.Join(function_rules, "\n")
+			rule_set = append(rule_set, rules)
 		}
 
 		PhiClone := u.GetPhis(u.SSA, u2.SSA)
 		u.SSA = u2.SSA.Clone()
 
 		phis = append(phis, PhiClone)
+		inits, caps, _ := u.buildPhis(phis, nil)
+		SelectorRule := u.Log.NewBranchSelector(u.CurrentBlock, i, caps, InitsToList((inits)))
+		rule_set = append(rule_set, fmt.Sprintf("(assert %s", SelectorRule.WriteRule()))
+		u.Log.AddBranchSelector(SelectorRule)
+		u2.Inits = append(u2.Inits, rules.NewInit(u.CurrentBlock, "Bool", i))
+
 		u.AddInit(u2.Inits)
 		u.UpdateRegistry(u2.Registry)
 	}
-	inits, caps, _ := u.buildPhis(phis, nil)
-	u.Inits = append(u.Inits, inits...)
-	capRulePhi := fmt.Sprintf("(assert (or %s))", strings.Join(caps, " "))
+	// inits, caps, _ := u.buildPhis(phis, nil)
+	// u.Inits = append(u.Inits, inits...)
+	capRulePhi := fmt.Sprintf("(assert %s)", strictOr(selectors))
 	rule_set = append(rule_set, capRulePhi)
 
 	u.PopEntries()
@@ -589,8 +635,11 @@ func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]strin
 			continue
 		}
 
-		line := u.FormatRule(ru, u2.unpackRule(ru))
+		inits, finishedRules := u2.unpackRule(ru)
+		line := u.FormatRule(ru, finishedRules)
 		bRules = append(bRules, line)
+		u.AddInit(inits)
+		u.Register(inits)
 	}
 
 	PhiClone := u.GetPhis(u.SSA, u2.SSA)
@@ -612,12 +661,12 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 		return []*rules.Init{}, ""
 	}
 
-	cond := u.unpackRule(ite.Cond)
+	_, cond := u.unpackRule(ite.Cond)
 
 	var t, f string
 	var tPhis, fPhis []map[string][]int16
 	var tRules, fRules, aRules []string
-	var tEnds, fEnds []string
+	var tEnds, fEnds *scenario.BranchSelector
 	var inits []*rules.Init
 
 	if len(ite.T) > 0 {
@@ -628,31 +677,21 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 		fRules, fPhis = u.unpackIteBlock(ite.BlockNames["false"], ite.F)
 	}
 
-	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis)
+	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis, ite.BlockNames)
 
-	if len(fEnds) == 0 || len(tEnds) == 0 {
-		panic(fmt.Sprintf("Ite rule %s is missing a required branch", ite.Cond.String()))
-	}
+	endRule := fmt.Sprintf("(assert %s)", strictOr([]string{tEnds.Id(), fEnds.Id()}))
 
 	u.AddInit(inits)
 	u.Register(inits)
-	if len(tEnds) == 1 {
-		t = tEnds[0]
-	} else {
-		t = fmt.Sprintf("(and %s)", strings.Join(tEnds, " "))
-	}
-
-	if len(fEnds) == 1 {
-		f = fEnds[0]
-	} else {
-		f = fmt.Sprintf("(and %s)", strings.Join(fEnds, " "))
-	}
+	t = tEnds.WriteRule()
+	f = fEnds.WriteRule()
 
 	u.PopEntries()
 
 	if len(ite.After) > 0 {
 		aRules, _ = u.unpackIteBlock(ite.BlockNames["after"], ite.After)
 	}
+	aRules = append(aRules, endRule)
 
 	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
 	return u.Inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
@@ -672,6 +711,34 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 	}
 
 	return fmt.Sprintf("(assert %s)", rule)
+}
+
+func strictOr(rules []string) string {
+	//Return rules where only ONE possible rules can be true
+	var choice []string
+	for i, _ := range rules {
+		var ands []string
+		for j := 0; j < len(rules); j++ {
+			if i != j {
+				ands = append(ands, fmt.Sprintf("(not %s)", rules[j]))
+			} else {
+				ands = append(ands, rules[j])
+			}
+		}
+		var a string
+		if len(ands) == 1 {
+			a = ands[0]
+		} else {
+			a = fmt.Sprintf("(and %s)", strings.Join(ands, "\n"))
+		}
+		choice = append(choice, a)
+	}
+
+	if len(choice) == 1 {
+		return choice[0]
+	}
+
+	return fmt.Sprintf("(or %s)", strings.Join(choice, "\n"))
 }
 
 func InitsToList(inits []*rules.Init) []string {

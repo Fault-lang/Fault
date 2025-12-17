@@ -621,7 +621,7 @@ func (b *LLBlock) parseChoose(v rules.Rule) []rules.Rule {
 	// A && !B && !C || !A && B && !C || !A && !B && C
 	switch ors := v.(type) {
 	case *rules.Ors:
-		chooseOr := &rules.Ors{}
+		chooseOr := &rules.Ors{BranchName: ors.BranchName}
 		for i, _ := range ors.X {
 			a := &rules.Ands{}
 			for j := 0; j < len(ors.X); j++ {

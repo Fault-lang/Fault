@@ -1,4 +1,4 @@
-spec bathtub;
+spec bathtub2;
 
 def faucet = flow{
     water: new tub,

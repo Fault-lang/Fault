@@ -11,18 +11,19 @@ import (
 )
 
 type Logger struct {
-	Events        []Event
-	Uncertains    map[string][]float64
-	BranchIndexes map[string][]int    // function_name : [event_index_1, event_index_2]
-	FuncIndexes   map[string][]int    // function_name : [entry_index, exit_index]
-	BranchVars    map[string][]string // function_name : [var_name_1, var_name_2]
-	ForksCaps     map[string][]string // var_name_phi : [var_fork1_cap, var_fork2_cap]
-	Forks         map[string][]string // end_var : [var_name_1, var_name_2]
-	ForkQueue     []*util.StringSet
-	Results       map[string]string // var_name : solution value
-	StringRules   map[string]string // var_name : string rule
-	IsStringRule  map[string]bool
-	IsCompound    map[string]bool // Filter display of compound rules
+	Events          []Event
+	Uncertains      map[string][]float64
+	BranchIndexes   map[string][]int    // function_name : [event_index_1, event_index_2]
+	FuncIndexes     map[string][]int    // function_name : [entry_index, exit_index]
+	BranchVars      map[string][]string // function_name : [var_name_1, var_name_2]
+	ForksCaps       map[string][]string // var_name_phi : [var_name_endstate1, var_name_endstate2]
+	Forks           map[string][]string // branch_name : [var_name_1, var_name_2]
+	ForkQueue       []*util.StringSet
+	Results         map[string]string // var_name : solution value
+	StringRules     map[string]string // var_name : string rule
+	IsStringRule    map[string]bool
+	IsCompound      map[string]bool   // Filter display of compound rules
+	BranchSelectors []*BranchSelector // rules to make the solution easier to parse
 }
 
 func NewLogger() *Logger {
@@ -259,44 +260,164 @@ func (l *Logger) Trace() {
 	}
 }
 
+// Kill returns the set of variable names that are dead because their branches
+// were not selected at some phi.
 func (l *Logger) Kill() {
-	var deadends, dead []string
-	for phi, options := range l.ForksCaps {
-		phi_value := l.Results[phi]
-		for i, o := range options {
-			if phi_value == l.Results[o] {
-				deadends = append(deadends, options[0:i]...)
-				if i+1 < len(options) {
-					deadends = append(deadends, options[i+1:]...)
-				}
+	// Use a set to avoid duplicates.
+	deadSet := make(map[string]bool)
 
-				for _, d := range deadends {
-					dead = append(dead, l.Forks[d]...)
-				}
+	for phi, options := range l.ForksCaps {
+		phiVal, ok := l.Results[phi]
+		if !ok {
+			// No value for this phi in the model; skip or log.
+			continue
+		}
+
+		// Find which endstateVar matches the phi value.
+		chosenIdx := -1
+		for i, endstate := range options {
+			if l.Results[endstate] == phiVal {
+				chosenIdx = i
 				break
 			}
 		}
+		if chosenIdx == -1 {
+			// No matching option — either model is weird or encoding changed.
+			// You might want to log/return an error instead of silently skipping.
+			continue
+		}
+
+		// All other options are dead branches.
+		for i, endstate := range options {
+			if i == chosenIdx {
+				continue
+			}
+			// Kill all vars in that branch.
+			for _, v := range l.Forks[endstate] {
+				deadSet[v] = true
+			}
+		}
+	}
+
+	// Convert set to slice.
+	dead := make([]string, 0, len(deadSet))
+	for v := range deadSet {
+		dead = append(dead, v)
 	}
 
 	if len(dead) == 0 {
 		return
 	}
-	for fname, vars := range l.BranchVars {
-		for _, v := range vars {
-			if slices.Contains(dead, v) {
-				// Kill Variable Updates
-				for _, i := range l.BranchIndexes[fname] {
-					l.Events[i].MarkDead()
-				}
-				// Kill Function Calls themselves
-				for _, i := range l.FuncIndexes[fname] {
-					l.Events[i].MarkDead()
-				}
 
-				break
+	for i, event := range l.Events {
+		switch e := event.(type) {
+		case *VariableUpdate:
+			if slices.Contains(dead, e.Variable) {
+				l.Events[i].MarkDead()
+				for _, i := range l.FuncIndexes[e.Variable] {
+					l.Events[i].MarkDead()
+				}
 			}
 		}
 	}
+
+	// for fname, vars := range l.BranchVars {
+	// 	for _, v := range vars {
+	// 		if slices.Contains(dead, v) {
+	// 			// Kill Variable Updates
+	// 			for _, i := range l.BranchIndexes[fname] {
+	// 				l.Events[i].MarkDead()
+	// 			}
+	// 			// Kill Function Calls themselves
+	// 			for _, i := range l.FuncIndexes[fname] {
+	// 				l.Events[i].MarkDead()
+	// 			}
+
+	// 			break
+	// 		}
+	// 	}
+	// }
+}
+
+// func (l *Logger) Kill() {
+// 	var deadends, dead []string
+// 	for phi, options := range l.ForksCaps {
+// 		phi_value := l.Results[phi]
+// 		for i, o := range options {
+// 			if phi_value == l.Results[o] {
+// 				deadends = append(deadends, options[0:i]...)
+// 				if i+1 < len(options) {
+// 					deadends = append(deadends, options[i+1:]...)
+// 				}
+
+// 				for _, d := range deadends {
+// 					dead = append(dead, l.Forks[d]...)
+// 				}
+// 				deadends = []string{}
+// 				break
+// 			}
+// 		}
+// 	}
+
+// 	if len(dead) == 0 {
+// 		return
+// 	}
+// 	for fname, vars := range l.BranchVars {
+// 		for _, v := range vars {
+// 			if slices.Contains(dead, v) {
+// 				// Kill Variable Updates
+// 				for _, i := range l.BranchIndexes[fname] {
+// 					l.Events[i].MarkDead()
+// 				}
+// 				// Kill Function Calls themselves
+// 				for _, i := range l.FuncIndexes[fname] {
+// 					l.Events[i].MarkDead()
+// 				}
+
+// 				break
+// 			}
+// 		}
+// 	}
+// }
+
+type BranchSelector struct {
+	Name string
+	SSA  int
+	Cond []string
+	Vars []string // all the vars in this branch
+}
+
+func (bs *BranchSelector) Id() string {
+	return fmt.Sprintf("%s_%d", bs.Name, bs.SSA)
+}
+
+func (bs *BranchSelector) WriteRule() string {
+	name := bs.Id()
+	if len(bs.Cond) == 0 {
+		panic(fmt.Sprintf("Branch Selector %s is empty", name))
+	}
+
+	if len(bs.Cond) == 1 {
+		return fmt.Sprintf("(= %s %s)", name, bs.Cond[0])
+	}
+	return fmt.Sprintf("(= %s (and %s))", name, strings.Join(bs.Cond, "\n"))
+}
+
+func (bs *BranchSelector) String() string {
+	return fmt.Sprintf("branch_selector %s_%d", bs.Name, bs.SSA)
+}
+
+func (l *Logger) NewBranchSelector(name string, ssa int, cond []string, inits []string) *BranchSelector {
+	return &BranchSelector{
+		Name: name,
+		SSA:  ssa,
+		Cond: cond,
+		Vars: inits,
+	}
+}
+
+func (l *Logger) AddBranchSelector(s *BranchSelector) {
+	l.BranchSelectors = append(l.BranchSelectors, s)
 }
 
 func getBase(s string) string {
@@ -363,6 +484,33 @@ func (l *Logger) Print() {
 			} else {
 				fmt.Printf("%sResolving variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
 			}
+		case *Message:
+			fmt.Printf("%s%s\n", identLevel, event.Text)
+		}
+	}
+	fmt.Print("\n")
+}
+
+func (l *Logger) PrintRaw() {
+	fmt.Print("\n===================================\n")
+	fmt.Printf("Fault found the following scenario\n")
+	identLevel := ""
+	for _, e := range l.Events {
+		switch event := e.(type) {
+		case *FunctionCall:
+			continue
+		case *VariableUpdate:
+			fmt.Printf("%s = %s", event.Variable, l.Results[event.Variable])
+			if event.Dead {
+				fmt.Printf(" is dead")
+			}
+			fmt.Printf("\n")
+		case *Solvable:
+			fmt.Printf("%s = %s", event.Variable, l.Results[event.Variable])
+			if event.Dead {
+				fmt.Printf(" is dead")
+			}
+			fmt.Printf("\n")
 		case *Message:
 			fmt.Printf("%s%s\n", identLevel, event.Text)
 		}

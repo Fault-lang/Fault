@@ -151,6 +151,14 @@ func home(host string, filepath string) string {
 	return ospath.Join(host, filepath)
 }
 
+func FormatBlock(blockName string) string {
+	if len(blockName) > 0 && blockName[0] == '%' {
+		blockName = blockName[1:]
+	}
+	parts := strings.Split(blockName, "-")
+	return strings.Join(parts, "")
+}
+
 func uplevel(path string, host bool) string {
 	parts := strings.Split(path, string(ospath.Separator))
 	parts = trimSlashes(parts, host)

@@ -223,6 +223,15 @@ func (i *Init) Tag(k1 string, k2 string) {
 	}
 }
 
+func NewInit(name string, t string, ssa int) *Init {
+	return &Init{
+		Ident: name,
+		SSA:   fmt.Sprintf("%d", ssa),
+		Type:  t,
+		Value: nil,
+	}
+}
+
 type FuncCall struct { //A marker rule, generates no SMT but used by the Scenario logger to interpret results
 	Rule
 	FunctionName string
@@ -962,20 +971,6 @@ func (w *Wrap) Clone(phiLevel int) *Wrap {
 	}
 }
 
-func DefaultValue(t string) string {
-	switch t {
-	case "Int":
-		return "0"
-	case "Float":
-		return "0.0"
-	case "Real":
-		return "0.0"
-	case "Bool":
-		return "false"
-	default:
-		panic(fmt.Sprintf("Type %s not supported", t))
-	}
-}
 func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	var rule string
 
@@ -1035,6 +1030,21 @@ func (w *Wrap) Choice() string {
 
 func (w *Wrap) Branch() string {
 	return w.tag.branch
+}
+
+func DefaultValue(t string) string {
+	switch t {
+	case "Int":
+		return "0"
+	case "Float":
+		return "0.0"
+	case "Real":
+		return "0.0"
+	case "Bool":
+		return "false"
+	default:
+		panic(fmt.Sprintf("Type %s not supported", t))
+	}
 }
 
 type VarSets struct {

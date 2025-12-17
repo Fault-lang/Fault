@@ -198,6 +198,7 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 		g.ResultLog.Trace()
 		g.ResultLog.Kill()
 		g.ResultLog.Print()
+		// g.ResultLog.PrintRaw()
 
 		// if output == "visualize" {
 		// 	fmt.Println(visual)
