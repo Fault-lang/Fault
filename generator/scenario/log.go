@@ -22,7 +22,8 @@ type Logger struct {
 	Results         map[string]string // var_name : solution value
 	StringRules     map[string]string // var_name : string rule
 	IsStringRule    map[string]bool
-	IsCompound      map[string]bool   // Filter display of compound rules
+	IsCompound      map[string]bool // Filter display of compound rules
+	IsPhi           map[string]bool
 	BranchSelectors []*BranchSelector // rules to make the solution easier to parse
 }
 
@@ -38,10 +39,16 @@ func NewLogger() *Logger {
 		FuncIndexes:   make(map[string][]int),
 		StringRules:   make(map[string]string),
 		IsStringRule:  make(map[string]bool),
+		IsCompound:    make(map[string]bool),
+		IsPhi:         make(map[string]bool),
 	}
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {
+	if fname == "infusion_pump_infusing__state-%24" {
+		fmt.Println("Hello")
+	}
+
 	roundStr := fmt.Sprintf("%d", round)
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
@@ -85,6 +92,8 @@ func (l *Logger) QueueFork(inits []string) {
 }
 
 func (l *Logger) AddPhiOption(phi string, end string) {
+	l.IsPhi[phi] = true
+
 	if _, ok := l.ForksCaps[phi]; !ok {
 		l.ForksCaps[phi] = []string{end}
 	} else {
@@ -258,6 +267,11 @@ func (l *Logger) Trace() {
 			}
 		}
 	}
+}
+
+func (l *Logger) IsLoggable(id string) bool {
+	//Do not log intermediate states in compound phrases or phis
+	return !l.IsCompound[id] && !l.IsPhi[id]
 }
 
 func (l *Logger) Validate() {

@@ -168,7 +168,7 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 
 	id = fmt.Sprintf("%s_%s", i.Ident, i.SSA)
 
-	if i.Global && !i.Log.IsCompound[i.Ident] { // Do not log intermediate states in compound string rules
+	if i.Global && !i.Log.IsLoggable(i.Ident) { // Do not log intermediate states in compound string rules
 		i.Log.UpdateVariable(id, i.OmitFromOutput)
 	}
 
@@ -690,7 +690,7 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	if wr, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsCompound[x] {
+	if wr, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsLoggable(x) {
 		i.Log.UpdateVariable(x, wr.OmitFromOutput)
 	}
 
