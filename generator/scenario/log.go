@@ -3,10 +3,10 @@ package scenario
 import (
 	"fault/util"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
@@ -260,49 +260,38 @@ func (l *Logger) Trace() {
 	}
 }
 
-// Kill returns the set of variable names that are dead because their branches
-// were not selected at some phi.
-func (l *Logger) Kill() {
-	// Use a set to avoid duplicates.
-	deadSet := make(map[string]bool)
-
-	for phi, options := range l.ForksCaps {
-		phiVal, ok := l.Results[phi]
-		if !ok {
-			// No value for this phi in the model; skip or log.
-			continue
-		}
-
-		// Find which endstateVar matches the phi value.
-		chosenIdx := -1
-		for i, endstate := range options {
-			if l.Results[endstate] == phiVal {
-				chosenIdx = i
-				break
+func (l *Logger) Validate() {
+	//Vars are in the event log but not in a branch
+	var missing []string
+	var found bool
+	for _, event := range l.Events {
+		switch e := event.(type) {
+		case *VariableUpdate:
+			for _, b := range l.BranchSelectors {
+				if slices.Contains(b.Vars, e.Variable) {
+					found = true
+					break
+				}
 			}
-		}
-		if chosenIdx == -1 {
-			// No matching option — either model is weird or encoding changed.
-			// You might want to log/return an error instead of silently skipping.
-			continue
-		}
-
-		// All other options are dead branches.
-		for i, endstate := range options {
-			if i == chosenIdx {
-				continue
+			if !found {
+				missing = append(missing, e.Variable)
 			}
-			// Kill all vars in that branch.
-			for _, v := range l.Forks[endstate] {
-				deadSet[v] = true
-			}
+			found = false
+		default:
+			break
 		}
 	}
+	fmt.Println(missing)
+}
 
-	// Convert set to slice.
-	dead := make([]string, 0, len(deadSet))
-	for v := range deadSet {
-		dead = append(dead, v)
+func (l *Logger) Kill() {
+	var dead []string
+	for _, branch := range l.BranchSelectors {
+		name := branch.Id()
+		if l.Results[name] == "false" {
+			// Kill all the variables in this branch
+			dead = append(dead, branch.Vars...)
+		}
 	}
 
 	if len(dead) == 0 {
@@ -314,12 +303,69 @@ func (l *Logger) Kill() {
 		case *VariableUpdate:
 			if slices.Contains(dead, e.Variable) {
 				l.Events[i].MarkDead()
-				for _, i := range l.FuncIndexes[e.Variable] {
-					l.Events[i].MarkDead()
-				}
+				// for _, i := range l.FuncIndexes[e.Variable] {
+				// 	l.Events[i].MarkDead()
+				// }
 			}
 		}
 	}
+
+	// deadSet := make(map[string]bool)
+
+	// for phi, options := range l.ForksCaps {
+	// 	phiVal, ok := l.Results[phi]
+	// 	if !ok {
+	// 		// No value for this phi in the model; skip or log.
+	// 		continue
+	// 	}
+
+	// 	// Find which endstateVar matches the phi value.
+	// 	chosenIdx := -1
+	// 	for i, endstate := range options {
+	// 		if l.Results[endstate] == phiVal {
+	// 			chosenIdx = i
+	// 			break
+	// 		}
+	// 	}
+	// 	if chosenIdx == -1 {
+	// 		// No matching option — either model is weird or encoding changed.
+	// 		// You might want to log/return an error instead of silently skipping.
+	// 		continue
+	// 	}
+
+	// 	// All other options are dead branches.
+	// 	for i, endstate := range options {
+	// 		if i == chosenIdx {
+	// 			continue
+	// 		}
+	// 		// Kill all vars in that branch.
+	// 		for _, v := range l.Forks[endstate] {
+	// 			deadSet[v] = true
+	// 		}
+	// 	}
+	// }
+
+	// // Convert set to slice.
+	// dead := make([]string, 0, len(deadSet))
+	// for v := range deadSet {
+	// 	dead = append(dead, v)
+	// }
+
+	// if len(dead) == 0 {
+	// 	return
+	// }
+
+	// for i, event := range l.Events {
+	// 	switch e := event.(type) {
+	// 	case *VariableUpdate:
+	// 		if slices.Contains(dead, e.Variable) {
+	// 			l.Events[i].MarkDead()
+	// 			for _, i := range l.FuncIndexes[e.Variable] {
+	// 				l.Events[i].MarkDead()
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	// for fname, vars := range l.BranchVars {
 	// 	for _, v := range vars {

@@ -196,6 +196,7 @@ func run(filepath string, mode string, input string, output string, reach bool) 
 
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
+		g.ResultLog.Validate()
 		g.ResultLog.Kill()
 		g.ResultLog.Print()
 		// g.ResultLog.PrintRaw()

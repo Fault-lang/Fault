@@ -155,6 +155,7 @@ func FormatBlock(blockName string) string {
 	if len(blockName) > 0 && blockName[0] == '%' {
 		blockName = blockName[1:]
 	}
+	strings.ReplaceAll(blockName, "%", "")
 	parts := strings.Split(blockName, "-")
 	return strings.Join(parts, "")
 }

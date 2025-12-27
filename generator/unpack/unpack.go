@@ -393,13 +393,7 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 			ends := fmt.Sprintf("%s_%d", var_name, vals[idx])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 
-			i := &rules.Init{
-				Ident: var_name,
-				SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
-				Type:  u.VarTypes[var_name],
-				//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
-				Value: nil,
-			}
+			i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
 			i.SetRound(u.Round)
 			inits = append(inits, i)
 			u.Log.AddPhiOption(phi, ends)
@@ -423,14 +417,7 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 				if !found {
 					ends := fmt.Sprintf("%s_%d", var_name, u.OnEntry[var_name][len(u.OnEntry[var_name])-1])
 					phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
-
-					i := &rules.Init{
-						Ident: var_name,
-						SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
-						Type:  u.VarTypes[var_name],
-						//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
-						Value: nil,
-					}
+					i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
 					i.SetRound(u.Round)
 					inits = append(inits, i)
 					u.Log.AddPhiOption(phi, ends)
@@ -462,14 +449,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 
 			ends := fmt.Sprintf("%s_%d", var_name, vals[len(vals)-1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
-
-			i := &rules.Init{
-				Ident: var_name,
-				SSA:   fmt.Sprintf("%d", u.SSA.Get(var_name)),
-				Type:  u.VarTypes[var_name],
-				//Value: &rules.Wrap{Value: rules.DefaultValue(u.VarTypes[var_name])},
-				Value: nil,
-			}
+			i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
 			i.SetRound(u.Round)
 			inits = append(inits, i)
 			u.Log.AddPhiOption(phi, ends)
@@ -486,19 +466,21 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 	return inits, caps, hasPhi
 }
 
-func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][]int16, blocknames map[string]string) ([]*rules.Init, *scenario.BranchSelector, *scenario.BranchSelector) {
-	var tInit, fInit []*rules.Init
+func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][]int16, tInit []*rules.Init, fInit []*rules.Init, blocknames map[string]string) ([]*rules.Init, *scenario.BranchSelector, *scenario.BranchSelector) {
+	var tI, fI []*rules.Init
 	var tRules, fRules []string
 	var hasPhi map[string]bool
-	tInit, tRules, hasPhi = u.buildPhis(tPhis, nil)
+	tI, tRules, hasPhi = u.buildPhis(tPhis, nil)
+	tInit = append(tInit, tI...)
 	tSelectorName := util.FormatBlock(blocknames["true"])
-	tInit = append(tInit, rules.NewInit(tSelectorName, "Bool", 0))
+	tInit = append(tInit, rules.NewInit(tSelectorName, "Bool", 0, nil, false, false))
 	tSelectorRule := u.Log.NewBranchSelector(tSelectorName, 0, tRules, InitsToList((tInit)))
 	u.Log.AddBranchSelector(tSelectorRule)
 	//u.Log.QueueFork(InitsToList(tInit))
 
 	if len(fPhis) > 0 {
-		fInit, fRules, _ = u.buildPhis(fPhis, hasPhi)
+		fI, fRules, _ = u.buildPhis(fPhis, hasPhi)
+		fInit = append(fInit, fI...)
 	} else {
 		// If there are no rules in the false branch we still need the phis
 		blocknames["false"] = fmt.Sprintf("%sfalse", blocknames["true"][0:len(blocknames["true"])-4])
@@ -509,7 +491,7 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 		}
 	}
 	fSelectorName := util.FormatBlock(blocknames["false"])
-	fInit = append(fInit, rules.NewInit(fSelectorName, "Bool", 0))
+	fInit = append(fI, rules.NewInit(fSelectorName, "Bool", 0, nil, false, false))
 	fSelectorRule := u.Log.NewBranchSelector(fSelectorName, 0, fRules, InitsToList((fInit)))
 	u.Log.AddBranchSelector(fSelectorRule)
 
@@ -560,7 +542,7 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 
 	for i, _ := range rule_set {
 		selectorName := fmt.Sprintf("%s_%d", o.BranchName, i)
-		inits = append(inits, rules.NewInit(o.BranchName, "Bool", i))
+		inits = append(inits, rules.NewInit(o.BranchName, "Bool", i, nil, false, false))
 		selectors = append(selectors, selectorName)
 		selectorRule := u.Log.NewBranchSelector(o.BranchName, i, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
@@ -610,7 +592,7 @@ func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		SelectorRule := u.Log.NewBranchSelector(u.CurrentBlock, i, caps, InitsToList((inits)))
 		rule_set = append(rule_set, fmt.Sprintf("(assert %s)", SelectorRule.WriteRule()))
 		u.Log.AddBranchSelector(SelectorRule)
-		u2.Inits = append(u2.Inits, rules.NewInit(u.CurrentBlock, "Bool", i))
+		u2.Inits = append(u2.Inits, rules.NewInit(u.CurrentBlock, "Bool", i, nil, false, false))
 
 		u.AddInit(u2.Inits)
 		u.UpdateRegistry(u2.Registry)
@@ -625,9 +607,10 @@ func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	return u.Inits, fmt.Sprint(strings.Join(rule_set, "\n"))
 }
 
-func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]string, []map[string][]int16) {
+func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]*rules.Init, []string, []map[string][]int16) {
 	var bPhis []map[string][]int16
 	var bRules []string
+	var bInits []*rules.Init
 	u2 := NewUnpacker(blockName)
 	u2.Inherits(u)
 	for _, ru := range block {
@@ -640,6 +623,7 @@ func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]strin
 		bRules = append(bRules, line)
 		u.AddInit(inits)
 		u.Register(inits)
+		bInits = append(bInits, inits...)
 	}
 
 	PhiClone := u.GetPhis(u.SSA, u2.SSA)
@@ -648,7 +632,7 @@ func (u *Unpacker) unpackIteBlock(blockName string, block []rules.Rule) ([]strin
 	bPhis = append(bPhis, PhiClone)
 	u.AddInit(u2.Inits)
 	u.UpdateRegistry(u2.Registry)
-	return bRules, bPhis
+	return bInits, bRules, bPhis
 }
 
 func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
@@ -667,17 +651,17 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	var tPhis, fPhis []map[string][]int16
 	var tRules, fRules, aRules []string
 	var tEnds, fEnds *scenario.BranchSelector
-	var inits []*rules.Init
+	var inits, tInits, fInits, aInits []*rules.Init
 
 	if len(ite.T) > 0 {
-		tRules, tPhis = u.unpackIteBlock(ite.BlockNames["true"], ite.T)
+		tInits, tRules, tPhis = u.unpackIteBlock(ite.BlockNames["true"], ite.T)
 	}
 
 	if len(ite.F) > 0 {
-		fRules, fPhis = u.unpackIteBlock(ite.BlockNames["false"], ite.F)
+		fInits, fRules, fPhis = u.unpackIteBlock(ite.BlockNames["false"], ite.F)
 	}
 
-	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis, ite.BlockNames)
+	inits, tEnds, fEnds = u.buildItePhis(tPhis, fPhis, tInits, fInits, ite.BlockNames)
 
 	endRule := fmt.Sprintf("(assert %s)", strictOr([]string{tEnds.Id(), fEnds.Id()}))
 
@@ -689,12 +673,13 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	u.PopEntries()
 
 	if len(ite.After) > 0 {
-		aRules, _ = u.unpackIteBlock(ite.BlockNames["after"], ite.After)
+		aInits, aRules, _ = u.unpackIteBlock(ite.BlockNames["after"], ite.After)
 	}
 	aRules = append(aRules, endRule)
+	inits = append(inits, aInits...)
 
 	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
-	return u.Inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
+	return inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
 }
 
 func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {

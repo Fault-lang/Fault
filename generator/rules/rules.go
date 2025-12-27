@@ -223,12 +223,14 @@ func (i *Init) Tag(k1 string, k2 string) {
 	}
 }
 
-func NewInit(name string, t string, ssa int) *Init {
+func NewInit(name string, t string, ssa int, val Rule, solvable bool, indexed bool) *Init {
 	return &Init{
-		Ident: name,
-		SSA:   fmt.Sprintf("%d", ssa),
-		Type:  t,
-		Value: nil,
+		Ident:    name,
+		SSA:      fmt.Sprintf("%d", ssa),
+		Type:     t,
+		Value:    val,
+		Solvable: solvable,
+		Indexed:  indexed,
 	}
 }
 
@@ -986,13 +988,7 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		if w.Init {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
 			//default_value := DefaultValue(w.Type)
-			i := &Init{
-				Ident: w.Value,
-				SSA:   fmt.Sprintf("%d", ssa.Get(w.Value)),
-				Type:  w.Type,
-				//Value: &Wrap{Value: default_value},
-				Value: nil,
-			}
+			i := NewInit(w.Value, w.Type, int(ssa.Get(w.Value)), nil, false, false)
 			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}

@@ -414,13 +414,7 @@ func declareVar(id string, ty string, val rules.Rule, solvable bool) *rules.Init
 		indexed = true
 	}
 
-	return &rules.Init{
-		Ident:    id,
-		Type:     ty,
-		Value:    val,
-		Solvable: solvable,
-		Indexed:  indexed,
-	}
+	return rules.NewInit(id, ty, -1, val, solvable, indexed)
 }
 
 func (b *LLBlock) tempToIdent(ru rules.Rule) rules.Rule {
