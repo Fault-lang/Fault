@@ -45,10 +45,7 @@ func NewLogger() *Logger {
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {
-	if fname == "infusion_pump_infusing__state-%24" {
-		fmt.Println("Hello")
-	}
-
+	
 	roundStr := fmt.Sprintf("%d", round)
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
@@ -295,7 +292,6 @@ func (l *Logger) Validate() {
 			break
 		}
 	}
-	fmt.Println(missing)
 }
 
 func (l *Logger) Kill() {
