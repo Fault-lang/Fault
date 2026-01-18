@@ -1,17 +1,1 @@
-(set-logic QF_NRA)
-(declare-fun renamed_l_active_0 () Bool)
-(declare-fun renamed_l_vault_value_0 () Real)
-(declare-fun renamed_l_vault_value_1 () Real)
-(declare-fun renamed_l_vault_value_2 () Real)
-(declare-fun block59true_0 () Bool)
-(declare-fun block59false_0 () Bool)
-(assert (= renamed_l_active_0 false))
-(assert (= renamed_l_vault_value_0 30.0))
-
-(assert (= renamed_l_vault_value_1 (+ renamed_l_vault_value_0 (- renamed_l_vault_value_0 2.0))))
-
-(assert (ite (> renamed_l_vault_value_0 4.0) (= block59true_0 (= renamed_l_vault_value_2 renamed_l_vault_value_1)) (= block59false_0 (= renamed_l_vault_value_2 renamed_l_vault_value_0))))
-(assert (or (and block59true_0
-(not block59false_0))
-(and (not block59true_0)
-block59false_0)))
+(set-logicQF_NRA)(declare-funrenamed_l_active_0()Bool)(declare-funrenamed_l_vault_value_0()Real)(declare-funrenamed_l_vault_value_1()Real)(declare-funrenamed_l_vault_value_2()Real)(declare-funblock59true_0()Bool)(declare-funblock59false_0()Bool)(assert(=renamed_l_active_0false))(assert(=renamed_l_vault_value_030.0))(assert(=renamed_l_vault_value_1(+renamed_l_vault_value_0(-renamed_l_vault_value_02.0))))(assert(ite(>renamed_l_vault_value_04.0)(and(=block59true_0true)(=block59false_0false)(=renamed_l_vault_value_2renamed_l_vault_value_1))(and(=block59true_0false)(=block59false_0true)(=renamed_l_vault_value_2renamed_l_vault_value_0))))(assert(or(andblock59true_0(notblock59false_0))(and(notblock59true_0)block59false_0)))

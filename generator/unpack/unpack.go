@@ -647,7 +647,6 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 
 	_, cond := u.unpackRule(ite.Cond)
 
-	var t, f string
 	var tPhis, fPhis []map[string][]int16
 	var tRules, fRules, aRules []string
 	var tEnds, fEnds *scenario.BranchSelector
@@ -667,8 +666,6 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 
 	u.AddInit(inits)
 	u.Register(inits)
-	t = tEnds.WriteRule()
-	f = fEnds.WriteRule()
 
 	u.PopEntries()
 
@@ -678,7 +675,22 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 	aRules = append(aRules, endRule)
 	inits = append(inits, aInits...)
 
-	ifAssert := fmt.Sprintf("(assert (ite %s %s %s))", cond, t, f)
+	// Build the ite assertion that sets block selectors and enforces phis
+	var tPhiRules, fPhiRules string
+	if len(tEnds.Cond) == 1 {
+		tPhiRules = tEnds.Cond[0]
+	} else {
+		tPhiRules = fmt.Sprintf("(and %s)", strings.Join(tEnds.Cond, "\n"))
+	}
+
+	if len(fEnds.Cond) == 1 {
+		fPhiRules = fEnds.Cond[0]
+	} else {
+		fPhiRules = fmt.Sprintf("(and %s)", strings.Join(fEnds.Cond, "\n"))
+	}
+
+	ifAssert := fmt.Sprintf("(assert (ite %s (and (= %s true) (= %s false) %s) (and (= %s false) (= %s true) %s)))",
+		cond, tEnds.Id(), fEnds.Id(), tPhiRules, tEnds.Id(), fEnds.Id(), fPhiRules)
 	return inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
 }
 
