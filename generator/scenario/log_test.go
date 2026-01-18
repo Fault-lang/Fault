@@ -84,8 +84,9 @@ func TestLogger_AddPhiOption(t *testing.T) {
 
 func TestFunctionCall_MarkDead(t *testing.T) {
 	logger := NewLogger()
-	logger.QueueFork([]string{"a_1"})
-	logger.QueueFork([]string{"a_2"})
+	b1 := logger.NewBranchSelector("b", int(1), []string{}, []string{"a_1"})
+	b2 := logger.NewBranchSelector("b", int(2), []string{}, []string{"a_2"})
+	logger.BranchSelectors = []*BranchSelector{b1, b2}
 	logger.EnterFunction("test1", 1)
 	logger.UpdateVariable("a_1", false)
 	logger.ExitFunction("test1", 1)
@@ -98,6 +99,8 @@ func TestFunctionCall_MarkDead(t *testing.T) {
 	logger.Results["a_1"] = "1"
 	logger.Results["a_2"] = "5"
 	logger.Results["a_3"] = "1"
+	logger.Results["b_1"] = "true"
+	logger.Results["b_2"] = "false"
 
 	logger.Trace()
 	logger.Kill()
