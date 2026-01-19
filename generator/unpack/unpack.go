@@ -539,20 +539,44 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 
 	inits, caps, hasPhi = u.buildPhisOrs(branches, hasPhi)
 	var selectors []string
+	var branchAssertions []string
 
-	for i, _ := range rule_set {
+	for i, rs := range rule_set {
 		selectorName := fmt.Sprintf("%s_%d", o.BranchName, i)
 		inits = append(inits, rules.NewInit(o.BranchName, "Bool", i, nil, false, false))
 		selectors = append(selectors, selectorName)
 		selectorRule := u.Log.NewBranchSelector(o.BranchName, i, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
-		ret = append(ret, fmt.Sprintf("(assert %s", selectorRule.WriteRule()))
+		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+
+		// Wrap branch rules in an implication from the selector
+		if len(rs) > 0 {
+			// Filter out empty rules
+			var nonEmptyRules []string
+			for _, r := range rs {
+				if r != "" {
+					nonEmptyRules = append(nonEmptyRules, r)
+				}
+			}
+
+			if len(nonEmptyRules) > 0 {
+				var branchRule string
+				if len(nonEmptyRules) == 1 {
+					branchRule = nonEmptyRules[0]
+				} else {
+					branchRule = fmt.Sprintf("(and %s)", strings.Join(nonEmptyRules, "\n"))
+				}
+				branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", selectorName, branchRule))
+			}
+		}
 	}
 
 	u.AddInit(inits)
 	u.PopEntries()
 
-	return u.Inits, strictOr(selectors)
+	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
+
+	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
 func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
