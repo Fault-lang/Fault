@@ -308,14 +308,73 @@ func (l *Logger) Kill() {
 		return
 	}
 
+	// First pass: mark dead variables
 	for i, event := range l.Events {
 		switch e := event.(type) {
 		case *VariableUpdate:
 			if slices.Contains(dead, e.Variable) {
 				l.Events[i].MarkDead()
-				// for _, i := range l.FuncIndexes[e.Variable] {
-				// 	l.Events[i].MarkDead()
-				// }
+			}
+		case *Solvable:
+			if slices.Contains(dead, e.Variable) {
+				l.Events[i].MarkDead()
+			}
+		}
+	}
+
+	// Second pass: mark functions dead if they have no live variable updates
+	for fname, indices := range l.FuncIndexes {
+		if len(indices) < 1 {
+			continue
+		}
+
+		entryIdx := indices[0]
+		var exitIdx int
+		if len(indices) >= 2 {
+			exitIdx = indices[1]
+		} else {
+			// No exit event, use end of events list
+			exitIdx = len(l.Events)
+		}
+
+		// Check if this function has any direct variable updates (not in nested functions)
+		// Use BranchIndexes which tracks events directly in this function's scope
+		hasLiveUpdates := false
+		if varIndices, ok := l.BranchIndexes[fname]; ok {
+			for _, idx := range varIndices {
+				if l.Events[idx].IsDead() {
+					continue
+				}
+				switch e := l.Events[idx].(type) {
+				case *VariableUpdate:
+					if !l.IsInternalVariable(e.Variable) {
+						hasLiveUpdates = true
+						break
+					}
+				case *Solvable:
+					if !l.IsInternalVariable(e.Variable) {
+						hasLiveUpdates = true
+						break
+					}
+				}
+			}
+		}
+
+		// Also check for messages directly in this function
+		if !hasLiveUpdates {
+			for i := entryIdx + 1; i < exitIdx; i++ {
+				if _, ok := l.Events[i].(*Message); ok && !l.Events[i].IsDead() {
+					hasLiveUpdates = true
+					break
+				}
+			}
+		}
+
+		// If no live updates (only nested functions), mark the function entry (and exit if exists) as dead
+		if !hasLiveUpdates {
+			l.Events[entryIdx].MarkDead()
+			if len(indices) >= 2 {
+				l.Events[exitIdx].MarkDead()
 			}
 		}
 	}
@@ -494,10 +553,31 @@ func (l *Logger) IsNegated(s string) (string, bool) {
 	return s, false
 }
 
+func (l *Logger) IsInternalVariable(varName string) bool {
+	// Filter out internal solver variables:
+	// - block selectors: block*true_*, block*false_*
+	// - state selectors: *__state-%*
+	base := getBase(varName)
+
+	if strings.HasPrefix(base, "block") && (strings.HasSuffix(base, "true") || strings.HasSuffix(base, "false")) {
+		return true
+	}
+
+	if strings.Contains(base, "__state-%") {
+		return true
+	}
+
+	return false
+}
+
 func (l *Logger) Print() {
 	fmt.Print("\n===================================\n")
 	fmt.Printf("Fault found the following scenario\n")
 	identLevel := ""
+
+	// Track current state to show transitions
+	currentState := make(map[string]string)
+
 	for _, e := range l.Events {
 		if e.IsDead() {
 			continue
@@ -521,25 +601,60 @@ func (l *Logger) Print() {
 				identLevel = identLevel[:len(identLevel)-3]
 			}
 		case *VariableUpdate:
+			// Skip internal solver variables
+			if l.IsInternalVariable(event.Variable) {
+				continue
+			}
+
 			v := getBase(event.Variable)
 			s, negated := l.IsNegated(v)
+			newValue := l.Results[event.Variable]
+			oldValue, hasOldValue := currentState[v]
+
+			// Update state
+			currentState[v] = newValue
+
 			if l.IsStringRule[s] == true {
 				s = l.StringRules[s]
-				if negated {
-					fmt.Printf("%s not %s is %s\n", identLevel, s, l.Results[event.Variable])
+				if hasOldValue && oldValue != newValue {
+					if negated {
+						fmt.Printf("%s not %s: %s → %s\n", identLevel, s, oldValue, newValue)
+					} else {
+						fmt.Printf("%s %s: %s → %s\n", identLevel, s, oldValue, newValue)
+					}
 				} else {
-					fmt.Printf("%s %s is %s\n", identLevel, s, l.Results[event.Variable])
+					if negated {
+						fmt.Printf("%s not %s is %s\n", identLevel, s, newValue)
+					} else {
+						fmt.Printf("%s %s is %s\n", identLevel, s, newValue)
+					}
 				}
 			} else {
-				fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
+				if hasOldValue && oldValue != newValue {
+					fmt.Printf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue)
+				} else {
+					fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, v, newValue)
+				}
 			}
 
 		case *Solvable:
-			if event.Type == "Uncertain" {
-				fmt.Printf("%sResolving variable %s to value %s (%s) \n", identLevel, getBase(event.Variable), l.Results[event.Variable], event.Probability)
-			} else {
-				fmt.Printf("%sResolving variable %s to value %s\n", identLevel, getBase(event.Variable), l.Results[event.Variable])
+			// Skip internal solver variables
+			if l.IsInternalVariable(event.Variable) {
+				continue
 			}
+
+			v := getBase(event.Variable)
+			newValue := l.Results[event.Variable]
+
+			if event.Type == "Uncertain" {
+				fmt.Printf("%sResolving variable %s to value %s (%s) \n", identLevel, v, newValue, event.Probability)
+			} else {
+				fmt.Printf("%sResolving variable %s to value %s\n", identLevel, v, newValue)
+			}
+
+			// Update state
+			currentState[v] = newValue
+
 		case *Message:
 			fmt.Printf("%s%s\n", identLevel, event.Text)
 		}
@@ -556,12 +671,20 @@ func (l *Logger) PrintRaw() {
 		case *FunctionCall:
 			continue
 		case *VariableUpdate:
+			// Skip internal solver variables even in raw output
+			if l.IsInternalVariable(event.Variable) {
+				continue
+			}
 			fmt.Printf("%s = %s", event.Variable, l.Results[event.Variable])
 			if event.Dead {
 				fmt.Printf(" is dead")
 			}
 			fmt.Printf("\n")
 		case *Solvable:
+			// Skip internal solver variables even in raw output
+			if l.IsInternalVariable(event.Variable) {
+				continue
+			}
 			fmt.Printf("%s = %s", event.Variable, l.Results[event.Variable])
 			if event.Dead {
 				fmt.Printf(" is dead")
