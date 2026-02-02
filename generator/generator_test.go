@@ -288,12 +288,11 @@ func TestTemporalSys(t *testing.T) {
 			a: zoo,
 		};
 		`
-	expecting := `(set-logicQF_NRA)(declare-funtest1_a_foo_0()Bool)(declare-funtest1_a_zoo_0()Bool)(declare-funtest1_b_buzz_0()Bool)(declare-funtest1_b_bar_0()Bool)(declare-funtest1_a_zoo_1()Bool)(declare-funtest1_b_buzz_1()Bool)(declare-funtest1_b_bar_1()Bool)(declare-funtest1_a_foo_1()Bool)(declare-funtest1_b_bar_2()Bool)(declare-funtest1_a_foo_2()Bool)(declare-funtest1_a_foo_3()Bool)(declare-funtest1_a_zoo_2()Bool)(declare-funtest1_a_foo_4()Bool)(declare-funtest1_a_zoo_3()Bool)(declare-funtest1_a_foo_5()Bool)(declare-funtest1_b_buzz_2()Bool)(declare-funtest1_b_buzz_3()Bool)(declare-funtest1_a_foo_6()Bool)(assert(=test1_a_foo_0false))(assert(=test1_a_zoo_0false))(assert(=test1_b_buzz_0false))(assert(=test1_b_bar_0false))(assert(=test1_a_zoo_1true))(assert(=test1_b_buzz_1true))(assert(=test1_b_bar_1true))(assert(=test1_a_foo_1false))(assert(ite(=test1_a_foo_0true)(and(=test1_b_bar_2test1_b_bar_1)(=test1_a_foo_2test1_a_foo_1))(and(=test1_a_foo_2test1_a_foo_0)(=test1_b_bar_2test1_b_bar_0))))(assert(=test1_a_foo_3true))(assert(=test1_a_zoo_2false))(assert(ite(=test1_a_zoo_1true)(and(=test1_a_foo_4test1_a_foo_3)(=test1_a_zoo_3test1_a_zoo_2))(and(=test1_a_foo_4test1_a_foo_2)(=test1_a_zoo_3test1_a_zoo_1))))(assert(=test1_a_foo_5true))(assert(=test1_b_buzz_2false))(assert(ite(=test1_b_buzz_1true)(and(=test1_b_buzz_3test1_b_buzz_2)(=test1_a_foo_6test1_a_foo_5))(and(=test1_b_buzz_3test1_b_buzz_1)(=test1_a_foo_6test1_a_foo_4))))(assert(or(andtest1_a_zoo_0(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_2))(andtest1_a_zoo_3(nottest1_b_bar_2))))`
+	expecting := `(set-logicQF_NRA)(declare-funtest1_a_foo_0()Bool)(declare-funtest1_a_zoo_0()Bool)(declare-funtest1_b_buzz_0()Bool)(declare-funtest1_b_bar_0()Bool)(declare-funtest1_a_zoo_1()Bool)(declare-funtest1_b_buzz_1()Bool)(declare-funtest1_b_bar_1()Bool)(declare-funtest1_b_bar_2()Bool)(declare-funblock13true_0()Bool)(declare-funblock13false_0()Bool)(declare-funtest1_a_foo_1()Bool)(declare-funtest1_a_foo_2()Bool)(declare-funblock17true_0()Bool)(declare-funblock17false_0()Bool)(declare-funtest1_a_foo_3()Bool)(declare-funtest1_a_foo_4()Bool)(declare-funblock20true_0()Bool)(declare-funblock20false_0()Bool)(declare-funtest1_b_bar_3()Bool)(declare-funtest1_b_bar_4()Bool)(declare-funblock23true_0()Bool)(declare-funblock23false_0()Bool)(assert(=test1_a_foo_0false))(assert(=test1_a_zoo_0false))(assert(=test1_b_buzz_0false))(assert(=test1_b_bar_0false))(assert(=test1_a_zoo_1true))(assert(=test1_b_buzz_1true))(assert(=test1_b_bar_1true))(assert(ite(=test1_a_foo_0true)(and(=block13true_0true)(=block13false_0false)(=test1_b_bar_2test1_b_bar_1))(and(=block13true_0false)(=block13false_0true)(=test1_b_bar_2test1_b_bar_0))))(assert(or(andblock13true_0(notblock13false_0))(and(notblock13true_0)block13false_0)))(assert(=test1_a_foo_1true))(assert(ite(=test1_a_zoo_1true)(and(=block17true_0true)(=block17false_0false)(=test1_a_foo_2test1_a_foo_1))(and(=block17true_0false)(=block17false_0true)(=test1_a_foo_2test1_a_foo_0))))(assert(or(andblock17true_0(notblock17false_0))(and(notblock17true_0)block17false_0)))(assert(=test1_a_foo_3true))(assert(ite(=test1_b_buzz_1true)(and(=block20true_0true)(=block20false_0false)(=test1_a_foo_4test1_a_foo_3))(and(=block20true_0false)(=block20false_0true)(=test1_a_foo_4test1_a_foo_2))))(assert(or(andblock20true_0(notblock20false_0))(and(notblock20true_0)block20false_0)))(assert(=test1_b_bar_3true))(assert(ite(=test1_b_bar_2true)(and(=block23true_0true)(=block23false_0false)(=test1_b_bar_4test1_b_bar_3))(and(=block23true_0false)(=block23false_0true)(=test1_b_bar_4test1_b_bar_2))))(assert(or(andblock23true_0(notblock23false_0))(and(notblock23true_0)block23false_0)))(assert(or(andtest1_a_zoo_0(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_0))(andtest1_a_zoo_1(nottest1_b_bar_2))(andtest1_a_zoo_1(nottest1_b_bar_4))))`
 
 	g := prepTest("", test, false, false)
 
 	err := compareResults("TemporalSys", g.SMT(), string(expecting))
-
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -435,6 +434,7 @@ func TestTestData(t *testing.T) {
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
+			//fmt.Println(g.SMT())
 			t.Fatal(err.Error())
 		}
 	}
@@ -463,13 +463,10 @@ func TestImports(t *testing.T) {
 		}
 		g := prepTest(s, string(data), true, false)
 
-		if err != nil {
-			t.Fatalf("compilation failed on valid spec %s. got=%s", s, err)
-		}
-
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
+			fmt.Println(g.SMT())
 			t.Fatal(err.Error())
 		}
 	}
@@ -482,7 +479,9 @@ func TestSys(t *testing.T) {
 		{"testdata/statecharts/multioradvance.fsystem", "0"},
 		{"testdata/statecharts/advanceand.fsystem", "0"},
 		{"testdata/statecharts/mixedcalls.fsystem", "0"},
-		{"testdata/statecharts/triggerfunc.fsystem", "0"},
+		{"testdata/statecharts/trigger.fsystem", "0"},
+		{"testdata/statecharts/choose1.fsystem", "0"},
+		{"testdata/statecharts/choose2.fsystem", "0"},
 	}
 	smt2s := []string{
 		"testdata/statecharts/statechart.smt2",
@@ -490,7 +489,9 @@ func TestSys(t *testing.T) {
 		"testdata/statecharts/multioradvance.smt2",
 		"testdata/statecharts/advanceand.smt2",
 		"testdata/statecharts/mixedcalls.smt2",
-		"testdata/statecharts/triggerfunc.smt2",
+		"testdata/statecharts/trigger.smt2",
+		"testdata/statecharts/choose1.smt2",
+		"testdata/statecharts/choose2.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s[0])
@@ -508,6 +509,7 @@ func TestSys(t *testing.T) {
 		err = compareResults(s[0], g.SMT(), string(expecting))
 
 		if err != nil {
+			fmt.Println(g.SMT())
 			t.Fatalf("compilation failed on valid spec %s. got=%s", s[0], err)
 		}
 
@@ -546,6 +548,7 @@ func TestMultiCond(t *testing.T) {
 		err = compareResults(s, g.SMT(), string(expecting))
 
 		if err != nil {
+			fmt.Println(g.SMT())
 			t.Fatal(err.Error())
 		}
 	}

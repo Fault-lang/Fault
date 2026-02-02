@@ -787,6 +787,8 @@ func (l *FaultListener) ExitStateBlock(c *parser.StateBlockContext) {
 			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
 		case *ast.InfixExpression:
 			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
+		case *ast.PrefixExpression:
+			sl.Statements = append([]ast.Statement{&ast.ExpressionStatement{Expression: t}}, sl.Statements...)
 
 		default:
 			panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
@@ -898,6 +900,22 @@ func (l *FaultListener) ExitStateStepExpr(c *parser.StateStepExprContext) {
 }
 
 func (l *FaultListener) ExitRunExpr(c *parser.RunExprContext) {
+	token := ast.GenerateToken("CODE", c.GetText(), c.GetStart(), c.GetStop())
+
+	x := l.pop()
+	exp, ok := x.(ast.Expression)
+	if !ok {
+		panic(fmt.Sprintf("top of stack is not a expression. got=%T", x))
+	}
+
+	e := &ast.ExpressionStatement{
+		Token:      token,
+		Expression: exp,
+	}
+	l.push(e)
+}
+
+func (l *FaultListener) ExitRunIfExpr(c *parser.RunIfExprContext) {
 	token := ast.GenerateToken("CODE", c.GetText(), c.GetStart(), c.GetStop())
 
 	x := l.pop()
@@ -1658,17 +1676,6 @@ func (l *FaultListener) componentPairs(pairs map[*ast.Identifier]ast.Expression)
 	for k, v := range pairs {
 		switch f := v.(type) {
 		case *ast.FunctionLiteral:
-			// If the only thing inside is a stay();
-			// move on.
-			var bi *ast.BuiltIn
-			if es, ok := f.Body.Statements[0].(*ast.ExpressionStatement); ok {
-				bi, _ = es.Expression.(*ast.BuiltIn)
-			}
-			if len(f.Body.Statements) == 1 && bi != nil && l.builtInType(bi) == "stay" {
-				p[k] = v
-				continue
-			}
-
 			//Wrap inner function in conditional so that only
 			// executes if the state is active
 			this := &ast.ParameterCall{Spec: k.Spec, Value: []string{"this", k.Value}}
@@ -1883,12 +1890,27 @@ func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
 		f.Parameters["toState"] = p.(ast.Operand)
 	}
 
+	if f.Function == "leave" {
+		for i := 0; i < len(c.GetChildren()); i++ {
+			if _, ok := c.GetChild(i).(*parser.ParamCallContext); ok {
+				p := l.pop()
+				f.Parameters["exitState"] = p.(ast.Operand)
+			}
+		}
+	}
+
 	l.push(f)
 }
 
-func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
-	token := ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
-
+func (l *FaultListener) ExitBoolAnd(c *parser.BoolAndContext) {
+	var token ast.Token
+	if c.GetChildCount() == 1 { //Single option
+		return
+	} else if _, ok := c.GetChild(1).(*parser.BoolCompoundContext); ok {
+		return
+	} else {
+		token = ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
+	}
 	rght := l.pop()
 	lft := l.pop()
 
@@ -1899,6 +1921,53 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 		Right:    rght.(ast.Expression),
 	}
 	l.push(e)
+}
+
+func (l *FaultListener) ExitBoolCompound(c *parser.BoolCompoundContext) {
+	var token ast.Token
+	if c.GetChildCount() == 1 { //Single option
+		return
+	} else if _, ok := c.GetChild(1).(*parser.BoolCompoundContext); ok {
+		return
+	} else {
+		token = ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), c.GetStart(), c.GetStop())
+	}
+	rght := l.pop()
+	lft := l.pop()
+
+	e := &ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Right:    rght.(ast.Expression),
+	}
+	l.push(e)
+}
+
+func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
+	node := l.pop()
+	switch n := node.(type) {
+	case *ast.InfixExpression:
+		switch c.GetChild(0).(type) {
+		case *parser.BoolExpressionContext:
+			l.push(n)
+		case *antlr.TerminalNodeImpl:
+			e := &ast.PrefixExpression{
+				Token:    n.Token,
+				Operator: "choose",
+				Right:    n,
+			}
+			l.push(e)
+		case *parser.BoolCompoundContext:
+			l.push(n)
+		default:
+			panic("unknown child type in builtin infix")
+		}
+	case *ast.BuiltIn:
+		l.push(n)
+	default:
+		panic(fmt.Sprintf("top of stack not an valid expression got=%T", node))
+	}
 }
 
 func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {

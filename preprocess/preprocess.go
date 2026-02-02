@@ -1175,6 +1175,21 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.Parameters["toState"] = pro.(ast.Operand)
 		}
 
+		if node.Function == "leave" || node.Function == "stay" {
+			if _, ok := node.Parameters["exitState"]; !ok {
+				node.Parameters["exitState"] = &ast.ParameterCall{
+					Token:         node.Token,
+					Value:         []string{"this", node.FromState},
+					ProcessedName: []string{"this", node.FromState},
+				}
+			}
+			pro, err := p.walk(node.Parameters["exitState"])
+			if err != nil {
+				return node, err
+			}
+			node.Parameters["exitState"] = pro.(ast.Operand)
+		}
+
 		return node, err
 	default:
 		return node, err

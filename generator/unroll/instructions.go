@@ -74,6 +74,25 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	}
 
 	if vname == "@__parallelGroup" {
+		group := strings.Split(inst.Src.Ident(), "_")
+		if group[1] == "start\"" {
+			b.updateParallelGroup(group[0])
+		} else {
+			r0 := b.ExecuteCallstack()
+			ru = append(ru, r0...)
+			b.updateParallelGroup("")
+		}
+		b.Env.returnVoid.Out()
+		return ru
+	}
+
+	if vname == "@__choiceGroup" {
+		group := strings.Split(inst.Src.Ident(), "_")
+		if group[1] == "start\"" {
+			b.updateChooseGroup(group[0])
+		} else {
+			b.updateChooseGroup("")
+		}
 		return ru
 	}
 
@@ -102,6 +121,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					xIs := IsIndexed(base)
 					_, file, line, _ := runtime.Caller(1)
 					wid := rules.NewWrap(base, "", true, file, line, true, xIs)
+					wid.SetOmit(b.Env.CurrentFunction)
 					wid.SetWhensThens(b.Env.WhensThens)
 
 					if IsStaticValue(r.X.String()) {
@@ -128,6 +148,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					xIs := IsIndexed(base)
 					_, file, line, _ := runtime.Caller(1)
 					wid := rules.NewWrap(base, ty, true, file, line, true, xIs)
+					wid.SetOmit(b.Env.CurrentFunction)
 					wid.SetWhensThens(b.Env.WhensThens)
 					ru = append(ru, &rules.Infix{X: wid, Ty: ty, Y: r})
 				}
@@ -149,20 +170,24 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 	xIs := IsIndexed(id)
 	_, file, line, _ := runtime.Caller(1)
 	wid := rules.NewWrap(id, ty, true, file, line, true, xIs)
+	wid.SetOmit(b.Env.CurrentFunction)
 	wid.SetWhensThens(b.Env.WhensThens)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {
 		_, file, line, _ := runtime.Caller(1)
 		wval = rules.NewWrap(val, "Bool", false, file, line, false, false)
+		wval.SetOmit(b.Env.CurrentFunction)
 		wval.SetWhensThens(b.Env.WhensThens)
 	} else if IsNumeric(val) {
 		_, file, line, _ := runtime.Caller(1)
 		wval = rules.NewWrap(val, ty, false, file, line, false, false)
+		wval.SetOmit(b.Env.CurrentFunction)
 		wval.SetWhensThens(b.Env.WhensThens)
 	} else {
 		_, file, line, _ := runtime.Caller(1)
 		wval = rules.NewWrap(val, ty, true, file, line, false, false)
+		wval.SetOmit(b.Env.CurrentFunction)
 		wval.SetWhensThens(b.Env.WhensThens)
 	}
 	return &rules.Infix{X: wid, Ty: ty, Y: wval, Op: op}
@@ -255,8 +280,7 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 
 	callee := inst.Callee.Ident()
 	if isBuiltIn(callee) {
-		meta := inst.Metadata // Is this in a "b || b" construction?
-		if len(meta) > 0 {
+		if _, ok := b.irTemps[inst.Ident()]; ok {
 			refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, inst.Ident())
 			b.Env.VarLoads[refname] = inst
 		} else {
@@ -266,34 +290,22 @@ func (b *LLBlock) parseCall(inst *ir.InstCall) []rules.Rule {
 		return []rules.Rule{}
 	}
 
-	meta := inst.Metadata
 	callee = util.FormatIdent(callee)
 
-	if b.isSameParallelGroup(meta) {
+	if b.isParallelGroup() {
 		b.localCallstack = append(b.localCallstack, callee)
-	} else if b.singleParallelStep(callee) {
-		r0 := b.ExecuteCallstack()
-		r = append(r, r0...)
-
-		r1 := b.GenerateCallstack([]string{callee})
-		r = append(r, r1...)
 	} else {
 		r0 := b.ExecuteCallstack()
 		r = append(r, r0...)
 		b.localCallstack = append(b.localCallstack, callee)
+		b.Env.returnVoid.Out()
 	}
-	b.updateParallelGroup(meta)
-	b.Env.returnVoid.Out()
 
 	return r
 }
 
 func (b *LLBlock) parseBuiltIn(call *ir.InstCall) []rules.Rule {
 	p := call.Args
-
-	if call.Callee.Ident() == "@stay" {
-		return []rules.Rule{&rules.Stay{}}
-	}
 
 	if len(p) == 0 {
 		return []rules.Rule{}
@@ -309,18 +321,32 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall) []rules.Rule {
 	state := b.Env.VarLoads[refname]
 	newState := util.FormatIdent(state.Ident())
 
-	r1 := b.createRule(newState, "true", "Bool", "=")
+	var r1 rules.Rule
+	if call.Callee.Ident() == "@advance" {
+		r1 = b.createRule(newState, "true", "Bool", "=")
+	}
+	if call.Callee.Ident() == "@leave" {
+		r1 = b.createRule(newState, "false", "Bool", "=")
+	}
+	if call.Callee.Ident() == "@stay" {
+		r1 = b.createRule(newState, "true", "Bool", "=")
+	}
 
 	currentFunction := b.Env.CurrentFunction
 
 	if currentFunction[len(currentFunction)-7:] != "__state" {
-		panic("calling advance from outside the state chart")
+		if call.Callee.Ident() != "@advance" {
+			panic("calling advance from outside the state chart")
+		}
+		if call.Callee.Ident() != "@leave" {
+			panic("calling leave from outside the state chart")
+		}
+		if call.Callee.Ident() != "@stay" {
+			panic("calling stay from outside the state chart")
+		}
 	}
 
-	base2 := currentFunction[:len(currentFunction)-7]
-
-	r2 := b.createRule(base2, "false", "Bool", "=")
-	return []rules.Rule{r1, r2}
+	return []rules.Rule{r1}
 }
 
 func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule, []string) {
@@ -364,17 +390,17 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 	switch cnode := node.(type) {
 	case *ir.InstCall:
 		if isBuiltIn(cnode.Callee.Ident()) {
-			if cnode.Callee.Ident() == "@advance" {
-				r := b.parseBuiltIn(cnode)
-				if len(r) == 1 {
-					return r[0]
-				}
-				return &rules.Ands{
-					X: r,
-				}
+			//if cnode.Callee.Ident() == "@advance" {
+			r := b.parseBuiltIn(cnode)
+			if len(r) == 1 {
+				return r[0]
 			}
-			return &rules.Stay{}
+			return &rules.Ands{
+				X: r,
+			}
 		}
+		//return &rules.Stay{}
+		//}
 	case *ir.InstOr:
 		id := cnode.Ident()
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
@@ -580,6 +606,9 @@ func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	if b.deferRule(id, inst) { // Ors are different because we collapse them
 		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 		if v, ok := b.irRefs[refname]; ok {
+			if b.isChooseGroup() {
+				return b.parseChoose(v)
+			}
 			return []rules.Rule{v}
 		}
 	}
@@ -587,12 +616,44 @@ func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	return []rules.Rule{}
 }
 
+func (b *LLBlock) parseChoose(v rules.Rule) []rules.Rule {
+	//When choose the Ors need to be expanded to
+	// A && !B && !C || !A && B && !C || !A && !B && C
+	switch ors := v.(type) {
+	case *rules.Ors:
+		chooseOr := &rules.Ors{BranchName: ors.BranchName}
+		for i, _ := range ors.X {
+			a := &rules.Ands{}
+			for j := 0; j < len(ors.X); j++ {
+				clauses := []rules.Rule{}
+				for _, c := range ors.X[j] {
+					if i != j {
+						not := &rules.Prefix{
+							X:  c,
+							Ty: "Bool",
+							Op: "not",
+						}
+						clauses = append(clauses, not)
+					} else {
+						clauses = append(clauses, c)
+					}
+				}
+				a.X = append(a.X, clauses...)
+			}
+			chooseOr.X = append(chooseOr.X, []rules.Rule{a})
+		}
+		return []rules.Rule{chooseOr}
+	default:
+		return []rules.Rule{v}
+	}
+}
+
 func (b *LLBlock) parseBitCast(inst *ir.InstBitCast) []rules.Rule {
-	panic(fmt.Sprint("unimplemented bitcast"))
+	panic("unimplemented bitcast")
 }
 
 func (b *LLBlock) parseFNeg(inst *ir.InstFNeg) []rules.Rule {
-	panic(fmt.Sprint("unimplemented FNeg"))
+	panic("unimplemented FNeg")
 }
 
 func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {

@@ -60,10 +60,6 @@ func (v *BaseFaultParserVisitor) VisitDeclaration(ctx *DeclarationContext) inter
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitComparison(ctx *ComparisonContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseFaultParserVisitor) VisitConstDecl(ctx *ConstDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -168,11 +164,23 @@ func (v *BaseFaultParserVisitor) VisitIncDecStmt(ctx *IncDecStmtContext) interfa
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitBuiltins(ctx *BuiltinsContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitBoolExpression(ctx *BoolExpressionContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitBoolCompound(ctx *BoolCompoundContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBoolAnd(ctx *BoolAndContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBoolPrimary(ctx *BoolPrimaryContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBuiltins(ctx *BuiltinsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -248,6 +256,10 @@ func (v *BaseFaultParserVisitor) VisitStateStepExpr(ctx *StateStepExprContext) i
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitStateChain(ctx *StateChainContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -273,6 +285,10 @@ func (v *BaseFaultParserVisitor) VisitRunStepExpr(ctx *RunStepExprContext) inter
 }
 
 func (v *BaseFaultParserVisitor) VisitRunExpr(ctx *RunExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunIfExpr(ctx *RunIfExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

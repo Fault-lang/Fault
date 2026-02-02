@@ -130,16 +130,17 @@ func (b *Basic) Tag(k1 string, k2 string) {
 
 type Init struct {
 	Rule
-	Ident    string //base variable name
-	SSA      string
-	Round    int //Round of the rule, used for SSA
-	Global   bool
-	Type     string
-	Value    Rule
-	Solvable bool //If this rule is solvable, meaning it can be used to solve the scenario
-	Indexed  bool
-	Log      *scenario.Logger
-	tag      *branch
+	Ident          string //base variable name
+	SSA            string
+	Round          int //Round of the rule, used for SSA
+	Global         bool
+	Type           string
+	Value          Rule
+	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
+	Indexed        bool
+	OmitFromOutput bool
+	Log            *scenario.Logger
+	tag            *branch
 }
 
 func (i *Init) ruleNode() {}
@@ -167,8 +168,8 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 
 	id = fmt.Sprintf("%s_%s", i.Ident, i.SSA)
 
-	if i.Global && !i.Log.IsCompound[i.Ident] { // Do not log intermediate states in compound string rules
-		i.Log.UpdateVariable(id)
+	if i.Global && !i.Log.IsLoggable(i.Ident) { // Do not log intermediate states in compound string rules
+		i.Log.UpdateVariable(id, i.OmitFromOutput)
 	}
 
 	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
@@ -219,6 +220,17 @@ func (i *Init) Tag(k1 string, k2 string) {
 	i.tag = &branch{
 		branch: k1,
 		block:  k2,
+	}
+}
+
+func NewInit(name string, t string, ssa int, val Rule, solvable bool, indexed bool) *Init {
+	return &Init{
+		Ident:    name,
+		SSA:      fmt.Sprintf("%d", ssa),
+		Type:     t,
+		Value:    val,
+		Solvable: solvable,
+		Indexed:  indexed,
 	}
 }
 
@@ -678,8 +690,8 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	if _, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsCompound[x] {
-		i.Log.UpdateVariable(x)
+	if wr, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsLoggable(x) {
+		i.Log.UpdateVariable(x, wr.OmitFromOutput)
 	}
 
 	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
@@ -739,6 +751,7 @@ func (pr *Prefix) String() string {
 }
 
 func (pr *Prefix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	pr.X.LoadContext(pr.PhiLevel, pr.HaveSeen, pr.OnEntry, pr.Log)
 	init, x, ssa := pr.X.WriteRule(ssa)
 	r := fmt.Sprintf("(%s %s)", pr.Op, x)
 	return init, r, ssa
@@ -888,19 +901,20 @@ func (s *Stay) Branch() string {
 
 type Wrap struct { //wrapper for constant values to be used in infix as rules
 	Rule
-	Value    string
-	Variable bool
-	Type     string
-	Init     bool //Are we referencing a existing value or initializating a new one?
-	Indexed  bool
-	Debugger map[string]string //For debugging, the location in the code where this rule was created
-	Round    int
-	PhiLevel int
-	HaveSeen map[string]bool
-	OnEntry  map[string][]int16
-	Whens    map[string][]string //map of when asserts this variable is involved in
-	Log      *scenario.Logger
-	tag      *branch
+	Value          string
+	Variable       bool
+	Type           string
+	Init           bool //Are we referencing a existing value or initializating a new one?
+	Indexed        bool
+	Debugger       map[string]string //For debugging, the location in the code where this rule was created
+	Round          int
+	PhiLevel       int
+	OmitFromOutput bool
+	HaveSeen       map[string]bool
+	OnEntry        map[string][]int16
+	Whens          map[string][]string //map of when asserts this variable is involved in
+	Log            *scenario.Logger
+	tag            *branch
 }
 
 func (w *Wrap) ruleNode() {}
@@ -933,6 +947,10 @@ func (w *Wrap) SetWhensThens(whens map[string]map[string][]string) {
 	}
 }
 
+func (w *Wrap) SetOmit(current_function string) {
+	w.OmitFromOutput = current_function == "__run"
+}
+
 func (w *Wrap) SetRound(r int) {
 	w.Round = r
 }
@@ -955,20 +973,6 @@ func (w *Wrap) Clone(phiLevel int) *Wrap {
 	}
 }
 
-func DefaultValue(t string) string {
-	switch t {
-	case "Int":
-		return "0"
-	case "Float":
-		return "0.0"
-	case "Real":
-		return "0.0"
-	case "Bool":
-		return "false"
-	default:
-		panic(fmt.Sprintf("Type %s not supported", t))
-	}
-}
 func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	var rule string
 
@@ -984,13 +988,7 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		if w.Init {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
 			//default_value := DefaultValue(w.Type)
-			i := &Init{
-				Ident: w.Value,
-				SSA:   fmt.Sprintf("%d", ssa.Get(w.Value)),
-				Type:  w.Type,
-				//Value: &Wrap{Value: default_value},
-				Value: nil,
-			}
+			i := NewInit(w.Value, w.Type, int(ssa.Get(w.Value)), nil, false, false)
 			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}
@@ -1028,6 +1026,21 @@ func (w *Wrap) Choice() string {
 
 func (w *Wrap) Branch() string {
 	return w.tag.branch
+}
+
+func DefaultValue(t string) string {
+	switch t {
+	case "Int":
+		return "0"
+	case "Float":
+		return "0.0"
+	case "Real":
+		return "0.0"
+	case "Bool":
+		return "false"
+	default:
+		panic(fmt.Sprintf("Type %s not supported", t))
+	}
 }
 
 type VarSets struct {

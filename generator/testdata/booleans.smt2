@@ -1,12 +1,1 @@
-(set-logic QF_NRA)
-(declare-fun booleans_l_vault_value_0 () Bool)
-(declare-fun booleans_l_vault_value_3 () Bool)
-(declare-fun booleans_l_vault_value_1 () Bool)
-(declare-fun booleans_l_vault_value_2 () Bool)
-(assert (= booleans_l_vault_value_0 true))
-(assert (= booleans_l_vault_value_1 false))
-(assert (= booleans_l_vault_value_2 true))
-(assert (ite
-    (= booleans_l_vault_value_0 true)
-    (= booleans_l_vault_value_3 booleans_l_vault_value_1)
-    (= booleans_l_vault_value_3 booleans_l_vault_value_2)))
+(set-logicQF_NRA)(declare-funbooleans_l_vault_value_0()Bool)(declare-funbooleans_l_vault_value_1()Bool)(declare-funbooleans_l_vault_value_2()Bool)(declare-funbooleans_l_vault_value_3()Bool)(declare-funblock38true_0()Bool)(declare-funblock39false_0()Bool)(assert(=booleans_l_vault_value_0true))(assert(=booleans_l_vault_value_1false))(assert(=booleans_l_vault_value_2true))(assert(ite(=booleans_l_vault_value_0true)(and(=block38true_0true)(=block39false_0false)(=booleans_l_vault_value_3booleans_l_vault_value_1))(and(=block38true_0false)(=block39false_0true)(=booleans_l_vault_value_3booleans_l_vault_value_2))))(assert(or(andblock38true_0(notblock39false_0))(and(notblock38true_0)block39false_0)))

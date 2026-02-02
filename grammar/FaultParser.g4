@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* globalDecl* componentDecl* (assertion | assumption | stringDecl)* startBlock? forStmt?
+    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? forStmt?
     ;
 
 sysClause
@@ -25,11 +25,11 @@ swap
     ;
 
 componentDecl
-    : 'component' IDENT '=' 'states' '{' (comProperties ',')* '}' eos
+    : 'component' IDENT '=' 'states' '{' ( comProperties (',' comProperties)* ','? )? '}' eos
     ;
 
 startBlock
-    : 'start' '{' (startPair ',')* '}' eos
+    : 'start' '{' ( startPair (',' startPair)* ','? )? '}' eos
     ;
 
 startPair
@@ -66,15 +66,6 @@ declaration
     | assertion
     | assumption
     | stringDecl
-    ;
-
-comparison
-    : EQUALS
-    | NOT_EQUALS
-    | LESS 
-    | LESS_OR_EQUALS
-    | GREATER
-    | GREATER_OR_EQUALS
     ;
 
 constDecl
@@ -124,8 +115,8 @@ structDecl
     ;
 
 structType
-    : 'flow' '{' (sfProperties ',')* '}'    #Flow
-    | 'stock' '{' (sfProperties ',')* '}'   #Stock
+    : 'flow' '{' ( sfProperties (',' sfProperties)* ','? )? '}'    #Flow
+    | 'stock' '{' ( sfProperties (',' sfProperties)* ','? )? '}'   #Stock
     ;
 
 sfProperties
@@ -179,11 +170,28 @@ incDecStmt
     : expression (PLUS_PLUS | MINUS_MINUS)
     ;
 
+boolExpression
+    : boolCompound
+    ;
+
+boolCompound
+    : boolCompound '||' boolAnd
+    | boolAnd
+    ;
+
+boolAnd
+    : boolAnd '&&' boolPrimary
+    | boolPrimary
+    ;
+
+boolPrimary
+    : stateChange
+    | '(' boolCompound ')'
+    ;
+
 stateChange
-    : 'advance' '(' paramCall ')' #builtins
-    | 'stay' '(' ')'              #builtins
-    | stateChange '&&' stateChange #builtinInfix
-    | stateChange '||' stateChange #builtinInfix
+    : ('advance' | 'leave') '(' paramCall ')' #builtins
+    | ('stay' | 'leave') '(' ')'              #builtins
     ;
 
 accessHistory
@@ -248,6 +256,7 @@ stateBlock
 
 stateStep
     : paramCall ('|' paramCall)? eos              #stateStepExpr
+    | 'choose'? boolExpression eos                   #builtinInfix
     | stateChange eos                                #stateChain
     | ifStmtState                                 #stateExpr
     ;
@@ -267,7 +276,7 @@ initStep
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
     | simpleStmt eos                              #runExpr
-    | ifStmtRun                                     #runExpr
+    | ifStmtRun                                     #runIfExpr
     ;
 
 faultType

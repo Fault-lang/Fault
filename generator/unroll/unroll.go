@@ -26,6 +26,7 @@ type Env struct {
 	CurrentRound     int
 	returnVoid       *PhiState
 	ParallelGrouping string
+	ChooseGrouping   string
 	WhensThens       map[string]map[string][]string // map[variable_name][assert_id][]string{other_variables in the assert...}
 }
 
@@ -413,13 +414,7 @@ func declareVar(id string, ty string, val rules.Rule, solvable bool) *rules.Init
 		indexed = true
 	}
 
-	return &rules.Init{
-		Ident:    id,
-		Type:     ty,
-		Value:    val,
-		Solvable: solvable,
-		Indexed:  indexed,
-	}
+	return rules.NewInit(id, ty, -1, val, solvable, indexed)
 }
 
 func (b *LLBlock) tempToIdent(ru rules.Rule) rules.Rule {
@@ -560,7 +555,7 @@ func extractVariables(e ast.Node) []string {
 }
 
 func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.RawInputs) rules.Rule {
-	if id == "__rounds" || id == "__parallelGroup" {
+	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" {
 		return nil
 	}
 
@@ -613,7 +608,7 @@ func (b *LLBlock) constExpr(con constant.Constant) rules.Rule {
 }
 
 func isBuiltIn(c string) bool {
-	if c == "@advance" || c == "@stay" {
+	if c == "@advance" || c == "@stay" || c == "@leave" {
 		return true
 	}
 	return false
@@ -660,8 +655,11 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 
 	xr := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
 	xr.SetWhensThens(b.Env.WhensThens)
+	xr.SetOmit(b.Env.CurrentFunction)
+
 	yr := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
 	yr.SetWhensThens(b.Env.WhensThens)
+	yr.SetOmit(b.Env.CurrentFunction)
 
 	return &rules.Infix{
 		X:  xr,
@@ -680,6 +678,7 @@ func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 
 	xr := rules.NewWrap(x, "Bool", vr, file, line, false, xIs)
 	xr.SetWhensThens(b.Env.WhensThens)
+	xr.SetOmit(b.Env.CurrentFunction)
 	return &rules.Prefix{
 		X:  xr,
 		Op: op,
@@ -704,37 +703,18 @@ func parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
-func (b *LLBlock) isSameParallelGroup(meta ir.Metadata) bool {
-	for _, v := range meta {
-
-		if v.Name == b.Env.ParallelGrouping {
-			return true
-		}
-
-		if b.Env.ParallelGrouping == "" {
-			return true
-		}
-	}
-
-	return false
+func (b *LLBlock) isParallelGroup() bool {
+	return b.Env.ParallelGrouping != ""
 }
 
-func (b *LLBlock) singleParallelStep(callee string) bool {
-	if len(b.localCallstack) == 0 {
-		return false
-	}
-
-	if callee == b.localCallstack[len(b.localCallstack)-1] {
-		return true
-	}
-
-	return false
+func (b *LLBlock) isChooseGroup() bool {
+	return b.Env.ChooseGrouping != ""
 }
 
-func (b *LLBlock) updateParallelGroup(meta ir.Metadata) {
-	for _, v := range meta {
-		if v.Name[0:5] != "round-" {
-			b.Env.ParallelGrouping = v.Name
-		}
-	}
+func (b *LLBlock) updateParallelGroup(name string) {
+	b.Env.ParallelGrouping = name
+}
+
+func (b *LLBlock) updateChooseGroup(name string) {
+	b.Env.ChooseGrouping = name
 }

@@ -16,7 +16,7 @@ func Block() string {
 	return name
 }
 
-func ParallelGroup(group string) string {
+func RuleGroup(group string) string {
 	data := []byte(fmt.Sprint(group, parallelIndex))
 	parallelIndex++
 	return fmt.Sprintf("%x", md5.Sum(data))

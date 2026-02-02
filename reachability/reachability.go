@@ -80,6 +80,9 @@ func (t *Tracer) walk(n ast.Node) {
 			t.walk(node.Alternative)
 		}
 	case *ast.BuiltIn:
+		if node.Function != "advance" {
+			return
+		}
 		for _, v := range node.Parameters {
 			id := v.(ast.Nameable).Id()
 			if _, ok := t.graph[id[1]]; !ok {

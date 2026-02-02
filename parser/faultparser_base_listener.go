@@ -99,12 +99,6 @@ func (s *BaseFaultParserListener) EnterDeclaration(ctx *DeclarationContext) {}
 // ExitDeclaration is called when production declaration is exited.
 func (s *BaseFaultParserListener) ExitDeclaration(ctx *DeclarationContext) {}
 
-// EnterComparison is called when production comparison is entered.
-func (s *BaseFaultParserListener) EnterComparison(ctx *ComparisonContext) {}
-
-// ExitComparison is called when production comparison is exited.
-func (s *BaseFaultParserListener) ExitComparison(ctx *ComparisonContext) {}
-
 // EnterConstDecl is called when production constDecl is entered.
 func (s *BaseFaultParserListener) EnterConstDecl(ctx *ConstDeclContext) {}
 
@@ -261,17 +255,35 @@ func (s *BaseFaultParserListener) EnterIncDecStmt(ctx *IncDecStmtContext) {}
 // ExitIncDecStmt is called when production incDecStmt is exited.
 func (s *BaseFaultParserListener) ExitIncDecStmt(ctx *IncDecStmtContext) {}
 
+// EnterBoolExpression is called when production boolExpression is entered.
+func (s *BaseFaultParserListener) EnterBoolExpression(ctx *BoolExpressionContext) {}
+
+// ExitBoolExpression is called when production boolExpression is exited.
+func (s *BaseFaultParserListener) ExitBoolExpression(ctx *BoolExpressionContext) {}
+
+// EnterBoolCompound is called when production boolCompound is entered.
+func (s *BaseFaultParserListener) EnterBoolCompound(ctx *BoolCompoundContext) {}
+
+// ExitBoolCompound is called when production boolCompound is exited.
+func (s *BaseFaultParserListener) ExitBoolCompound(ctx *BoolCompoundContext) {}
+
+// EnterBoolAnd is called when production boolAnd is entered.
+func (s *BaseFaultParserListener) EnterBoolAnd(ctx *BoolAndContext) {}
+
+// ExitBoolAnd is called when production boolAnd is exited.
+func (s *BaseFaultParserListener) ExitBoolAnd(ctx *BoolAndContext) {}
+
+// EnterBoolPrimary is called when production boolPrimary is entered.
+func (s *BaseFaultParserListener) EnterBoolPrimary(ctx *BoolPrimaryContext) {}
+
+// ExitBoolPrimary is called when production boolPrimary is exited.
+func (s *BaseFaultParserListener) ExitBoolPrimary(ctx *BoolPrimaryContext) {}
+
 // EnterBuiltins is called when production builtins is entered.
 func (s *BaseFaultParserListener) EnterBuiltins(ctx *BuiltinsContext) {}
 
 // ExitBuiltins is called when production builtins is exited.
 func (s *BaseFaultParserListener) ExitBuiltins(ctx *BuiltinsContext) {}
-
-// EnterBuiltinInfix is called when production builtinInfix is entered.
-func (s *BaseFaultParserListener) EnterBuiltinInfix(ctx *BuiltinInfixContext) {}
-
-// ExitBuiltinInfix is called when production builtinInfix is exited.
-func (s *BaseFaultParserListener) ExitBuiltinInfix(ctx *BuiltinInfixContext) {}
 
 // EnterAccessHistory is called when production accessHistory is entered.
 func (s *BaseFaultParserListener) EnterAccessHistory(ctx *AccessHistoryContext) {}
@@ -381,6 +393,12 @@ func (s *BaseFaultParserListener) EnterStateStepExpr(ctx *StateStepExprContext) 
 // ExitStateStepExpr is called when production stateStepExpr is exited.
 func (s *BaseFaultParserListener) ExitStateStepExpr(ctx *StateStepExprContext) {}
 
+// EnterBuiltinInfix is called when production builtinInfix is entered.
+func (s *BaseFaultParserListener) EnterBuiltinInfix(ctx *BuiltinInfixContext) {}
+
+// ExitBuiltinInfix is called when production builtinInfix is exited.
+func (s *BaseFaultParserListener) ExitBuiltinInfix(ctx *BuiltinInfixContext) {}
+
 // EnterStateChain is called when production stateChain is entered.
 func (s *BaseFaultParserListener) EnterStateChain(ctx *StateChainContext) {}
 
@@ -422,6 +440,12 @@ func (s *BaseFaultParserListener) EnterRunExpr(ctx *RunExprContext) {}
 
 // ExitRunExpr is called when production runExpr is exited.
 func (s *BaseFaultParserListener) ExitRunExpr(ctx *RunExprContext) {}
+
+// EnterRunIfExpr is called when production runIfExpr is entered.
+func (s *BaseFaultParserListener) EnterRunIfExpr(ctx *RunIfExprContext) {}
+
+// ExitRunIfExpr is called when production runIfExpr is exited.
+func (s *BaseFaultParserListener) ExitRunIfExpr(ctx *RunIfExprContext) {}
 
 // EnterFaultType is called when production faultType is entered.
 func (s *BaseFaultParserListener) EnterFaultType(ctx *FaultTypeContext) {}

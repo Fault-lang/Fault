@@ -18,6 +18,9 @@ import (
 	irtypes "github.com/llir/llvm/ir/types"
 )
 
+// These tests need to be run with go test, when run separately the block numbers are different
+// and the tests fail.
+
 func TestSimpleConst(t *testing.T) {
 	test := `spec test1;
 			const x = 2;
@@ -28,7 +31,8 @@ func TestSimpleConst(t *testing.T) {
 	`
 	expecting := `
 	@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
+	@__parallelGroup = global [38xi8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+	@__choiceGroup = global [38xi8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
 	@test1_x = global double 2.0
 	@test1_y = global double 0x3FF3333333333333
 	@test1_a = global i1 true
@@ -90,8 +94,7 @@ func TestRunBlock(t *testing.T) {
 			};
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[5xi8]c"start"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-1:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\344b9b452817d4d3ea103f1449105264c!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\344b9b452817d4d3ea103f1449105264c!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\3227b3938f885317dea9c644434cb82dd!DIBasicType(tag:DW_TAG_string_type)storei162,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\39a2b113b63e8232c2945f1018bf785f0!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\39a2b113b63e8232c2945f1018bf785f0!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\387c9dfef940c096cf145af18149d3600!DIBasicType(tag:DW_TAG_string_type)storei163,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!cb7fdc02d16d31723661579b54e31084!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!cb7fdc02d16d31723661579b54e31084!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\370ad8bfb0509411d97738ac929bc3d01!DIBasicType(tag:DW_TAG_string_type)storei164,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37e3f85f9630519ec31a508b611b1d4bb!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37e3f85f9630519ec31a508b611b1d4bb!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!e57d2299cbd9024a113885402ef4e089!DIBasicType(tag:DW_TAG_string_type)storei165,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37fbb0459ad7da0f1a336cf5de1cf9068!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\37fbb0459ad7da0f1a336cf5de1cf9068!DIBasicType(tag:DW_TAG_string_type)callvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!\340b3487db7f69f408810fb4cb8b544eb!DIBasicType(tag:DW_TAG_string_type)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-2:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-3:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-4:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}		
-`
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-1:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundsstore[38xi8]c"44b9b452817d4d3ea103f1449105264c_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"44b9b452817d4d3ea103f1449105264c_close",[38xi8]*@__parallelGroupstore[38xi8]c"227b3938f885317dea9c644434cb82dd_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"227b3938f885317dea9c644434cb82dd_close",[38xi8]*@__parallelGroupstorei162,i16*@__roundsstore[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_close",[38xi8]*@__parallelGroupstore[38xi8]c"87c9dfef940c096cf145af18149d3600_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"87c9dfef940c096cf145af18149d3600_close",[38xi8]*@__parallelGroupstorei163,i16*@__roundsstore[38xi8]c"cb7fdc02d16d31723661579b54e31084_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"cb7fdc02d16d31723661579b54e31084_close",[38xi8]*@__parallelGroupstore[38xi8]c"70ad8bfb0509411d97738ac929bc3d01_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"70ad8bfb0509411d97738ac929bc3d01_close",[38xi8]*@__parallelGroupstorei164,i16*@__roundsstore[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_close",[38xi8]*@__parallelGroupstore[38xi8]c"e57d2299cbd9024a113885402ef4e089_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"e57d2299cbd9024a113885402ef4e089_close",[38xi8]*@__parallelGroupstorei165,i16*@__roundsstore[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_close",[38xi8]*@__parallelGroupstore[38xi8]c"40b3487db7f69f408810fb4cb8b544eb_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"40b3487db7f69f408810fb4cb8b544eb_close",[38xi8]*@__parallelGroupretvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-2:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-3:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-4:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}`
 	//Should fadd have variable names or the values in those variables?
 
 	llvm, err := prepTest(test, true)
@@ -139,8 +142,7 @@ func TestIfCond(t *testing.T) {
 			};
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[5xi8]c"start"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-5:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundscallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b),!d44e0a3fc2944aa552d9118f291d3106!DIBasicType(tag:DW_TAG_string_type)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-6:%0=loaddouble,double*%test1_test_buzz_a%1=fcmpogtdouble%0,2.0bri1%1,label%block-8-true,label%block-9-falseblock-7-after:%2=loaddouble,double*%test1_test_buzz_b%3=fsubdouble%2,1.0storedouble%3,double*%test1_test_buzz_bretvoidblock-8-true:%4=loaddouble,double*%test1_test_buzz_a%5=loaddouble,double*@test1_b%6=fsubdouble%4,%5storedouble%6,double*%test1_test_buzz_abrlabel%block-7-afterblock-9-false:storedouble10.0,double*%test1_test_buzz_abrlabel%block-7-after}		
-	`
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-5:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundsstore[38xi8]c"d44e0a3fc2944aa552d9118f291d3106_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"d44e0a3fc2944aa552d9118f291d3106_close",[38xi8]*@__parallelGroupretvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-6:%0=loaddouble,double*%test1_test_buzz_a%1=fcmpogtdouble%0,2.0bri1%1,label%block-8-true,label%block-9-falseblock-7-after:%2=loaddouble,double*%test1_test_buzz_b%3=fsubdouble%2,1.0storedouble%3,double*%test1_test_buzz_bretvoidblock-8-true:%4=loaddouble,double*%test1_test_buzz_a%5=loaddouble,double*@test1_b%6=fsubdouble%4,%5storedouble%6,double*%test1_test_buzz_abrlabel%block-7-afterblock-9-false:storedouble10.0,double*%test1_test_buzz_abrlabel%block-7-after}`
 
 	llvm, err := prepTest(test, true)
 
@@ -182,40 +184,7 @@ func TestUnknowns(t *testing.T) {
 	};
 	`
 
-	expecting := `
-	@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
-	@test1_a = global double 0x3DA3CA8CB153A753
-	@test1_b = global double 0x3DA3CA8CB153A753
-	
-	define void @__run() {
-	block-10:
-		store i16 0, i16* @__rounds
-		%test1_t_u_x = alloca double
-		store double 0x3DA3CA8CB153A753, double* %test1_t_u_x
-		store i16 1, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !\34614d4e08724f278c8ce39e50955edbc !DIBasicType(tag:DW_TAG_string_type)
-		store i16 2, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !ba735eefbef72f20ea6a264b981e9285 !DIBasicType(tag:DW_TAG_string_type)
-		store i16 3, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !fa06e912698cf4825866672ced835870 !DIBasicType(tag:DW_TAG_string_type)
-		store i16 4, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !f3a3858248090df83b9702c4852e0e28 !DIBasicType(tag:DW_TAG_string_type)
-		store i16 5, i16* @__rounds
-		call void @test1_t_bar(double* %test1_t_u_x), !ba20b5c159a59aeb04358b812e68f2d2 !DIBasicType(tag:DW_TAG_string_type)
-		ret void
-	}
-	
-	define void @test1_t_bar(double* %test1_t_u_x) {
-	block-11:
-		%0 = load double, double* %test1_t_u_x
-		%1 = load double, double* @test1_a
-		%2 = load double, double* @test1_b
-		%3 = fadd double %1, %2
-		%4 = fadd double %0, %3
-		store double %4, double* %test1_t_u_x
-		ret void
-	}
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x3DA3CA8CB153A753@test1_b=globaldouble0x3DA3CA8CB153A753definevoid@__run(){block-10:storei160,i16*@__rounds%test1_t_u_x=allocadoublestoredouble0x3DA3CA8CB153A753,double*%test1_t_u_xstorei161,i16*@__roundsstore[38xi8]c"4614d4e08724f278c8ce39e50955edbc_start",[38xi8]*@__parallelGroupcallvoid@test1_t_bar(double*%test1_t_u_x)store[38xi8]c"4614d4e08724f278c8ce39e50955edbc_close",[38xi8]*@__parallelGroupstorei162,i16*@__roundsstore[38xi8]c"ba735eefbef72f20ea6a264b981e9285_start",[38xi8]*@__parallelGroupcallvoid@test1_t_bar(double*%test1_t_u_x)store[38xi8]c"ba735eefbef72f20ea6a264b981e9285_close",[38xi8]*@__parallelGroupstorei163,i16*@__roundsstore[38xi8]c"fa06e912698cf4825866672ced835870_start",[38xi8]*@__parallelGroupcallvoid@test1_t_bar(double*%test1_t_u_x)store[38xi8]c"fa06e912698cf4825866672ced835870_close",[38xi8]*@__parallelGroupstorei164,i16*@__roundsstore[38xi8]c"f3a3858248090df83b9702c4852e0e28_start",[38xi8]*@__parallelGroupcallvoid@test1_t_bar(double*%test1_t_u_x)store[38xi8]c"f3a3858248090df83b9702c4852e0e28_close",[38xi8]*@__parallelGroupstorei165,i16*@__roundsstore[38xi8]c"ba20b5c159a59aeb04358b812e68f2d2_start",[38xi8]*@__parallelGroupcallvoid@test1_t_bar(double*%test1_t_u_x)store[38xi8]c"ba20b5c159a59aeb04358b812e68f2d2_close",[38xi8]*@__parallelGroupretvoid}definevoid@test1_t_bar(double*%test1_t_u_x){block-11:%0=loaddouble,double*%test1_t_u_x%1=loaddouble,double*@test1_a%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_t_u_xretvoid}
 	`
 
 	llvm, err := prepTest(test, true)
@@ -422,77 +391,82 @@ func TestComponentIR(t *testing.T) {
 	`
 
 	expecting := `@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
-	
-	define void @__run() {
-	block-16:
-		%test_foo_x = alloca double
-		store double 8.0, double* %test_foo_x
-		%test_foo_initial = alloca i1
-		store i1 false, i1* %test_foo_initial
-		%test_foo_alarm = alloca i1
-		store i1 false, i1* %test_foo_alarm
-		store i1 true, i1* %test_foo_initial
-		call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-		call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-		ret void
-	}
-	
-	define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-	block-17:
-		%0 = load i1, i1* %test_foo_initial
-		%1 = icmp eq i1 %0, true
-		br i1 %1, label %block-19-true, label %block-18-after
-	
-	block-18-after:
-		%2 = load i1, i1* %test_foo_initial
-		%3 = icmp eq i1 %2, true
-		%4 = load double, double* %test_foo_x
-		%5 = fcmp ogt double %4, 10.0
-		%6 = and i1 %3, %5
-		br i1 %6, label %block-22-true, label %block-21-after
-	
-	block-19-true:
-		%7 = alloca [14 x i8]
-		store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
-		%8 = bitcast [14 x i8]* %7 to i8*
-		%9 = call i1 @advance(i8* %8)
-		br label %block-18-after
-	
-	block-21-after:
-		ret void
-	
-	block-22-true:
-		%10 = call i1 @stay()
-		br label %block-21-after
-	}
-	
-	define i1 @advance(i8* %toState) {
-	block-20:
-		ret i1 true
-	}
-	
-	define i1 @stay() {
-	block-23:
-		ret i1 true
-	}
-	
-	define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-	block-24:
-		%0 = load i1, i1* %test_foo_alarm
-		%1 = icmp eq i1 %0, true
-		br i1 %1, label %block-26-true, label %block-25-after
-	
-	block-25-after:
-		ret void
-	
-	block-26-true:
-		%2 = alloca [14 x i8]
-		store [14 x i8] c"test_foo_close", [14 x i8]* %2
-		%3 = bitcast [14 x i8]* %2 to i8*
-		%4 = call i1 @advance(i8* %3)
-		br label %block-25-after
-	}`
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+
+define void @__run() {
+block-16:
+	%test_foo_x = alloca double
+	store double 8.0, double* %test_foo_x
+	%test_foo_initial = alloca i1
+	store i1 false, i1* %test_foo_initial
+	%test_foo_alarm = alloca i1
+	store i1 false, i1* %test_foo_alarm
+	store i1 true, i1* %test_foo_initial
+	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
+	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
+	ret void
+}
+
+define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
+block-17:
+	%0 = load i1, i1* %test_foo_initial
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-19-true, label %block-18-after
+
+block-18-after:
+	%2 = load i1, i1* %test_foo_initial
+	%3 = icmp eq i1 %2, true
+	%4 = load double, double* %test_foo_x
+	%5 = fcmp ogt double %4, 10.0
+	%6 = and i1 %3, %5
+	br i1 %6, label %block-22-true, label %block-21-after
+
+block-19-true:
+	%7 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
+	%8 = bitcast [14 x i8]* %7 to i8*
+	%9 = call i1 @advance(i8* %8)
+	br label %block-18-after
+
+block-21-after:
+	ret void
+
+block-22-true:
+	%10 = alloca [16 x i8]
+	store [16 x i8] c"test_foo_initial", [16 x i8]* %10
+	%11 = bitcast [16 x i8]* %10 to i8*
+	%12 = call i1 @stay(i8* %11)
+	br label %block-21-after
+}
+
+define i1 @advance(i8* %toState) {
+block-20:
+	ret i1 true
+}
+
+define i1 @stay(i8* %exitState) {
+block-23:
+	ret i1 true
+}
+
+define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
+block-24:
+	%0 = load i1, i1* %test_foo_alarm
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-26-true, label %block-25-after
+
+block-25-after:
+	ret void
+
+block-26-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_close", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @advance(i8* %3)
+	br label %block-25-after
+}
+`
 
 	llvm, err := prepTest(test, false)
 
@@ -533,29 +507,31 @@ func TestIndexExp(t *testing.T) {
 			};
 	`
 
-	expecting := `
-	@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
-	@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753
-	
-	define void @__run() {
-	block-27:
-		store i16 0, i16* @__rounds
-		%test1_test_buzz_a = alloca double
-		store double 10.0, double* %test1_test_buzz_a
-		store i16 1, i16* @__rounds
-		call void @test1_test_fizz(double* %test1_test_buzz_a), !\37f977975ebdfc28b778ed4618a0af327 !DIBasicType(tag:DW_TAG_string_type)
-		ret void
-	}
-	
-	define void @test1_test_fizz(double* %test1_test_buzz_a) {
-	block-28:
-		%0 = load double, double* @test1_test_buzz_a_1
-		%1 = fsub double %0, 2.0
-		store double %1, double* %test1_test_buzz_a
-		ret void
-	}
-	`
+	expecting := `@__rounds = global i16 0
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@test1_test_buzz_a_1 = global double 0x3DA3CA8CB153A753
+
+define void @__run() {
+block-27:
+	store i16 0, i16* @__rounds
+	%test1_test_buzz_a = alloca double
+	store double 10.0, double* %test1_test_buzz_a
+	store i16 1, i16* @__rounds
+	store [38 x i8] c"8bc400e5ecace31e7318504be78817a6_start", [38 x i8]* @__parallelGroup
+	call void @test1_test_fizz(double* %test1_test_buzz_a)
+	store [38 x i8] c"8bc400e5ecace31e7318504be78817a6_close", [38 x i8]* @__parallelGroup
+	ret void
+}
+
+define void @test1_test_fizz(double* %test1_test_buzz_a) {
+block-28:
+	%0 = load double, double* @test1_test_buzz_a_1
+	%1 = fsub double %0, 2.0
+	store double %1, double* %test1_test_buzz_a
+	ret void
+}
+`
 
 	llvm, err := prepTest(test, true)
 
@@ -587,16 +563,16 @@ func TestStringExp(t *testing.T) {
 	`
 
 	expecting := `@__rounds = global i16 0
-	@__parallelGroup = global [5 x i8] c"start"
-	@test_str1 = global i1 false
-	@test_str2 = global i1 false
-	@test_str3 = global i1 false
-	
-	define void @__run() {
-	block-29:
-		ret void
-	}
-	`
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@test_str1 = global i1 false
+@test_str2 = global i1 false
+@test_str3 = global i1 false
+
+define void @__run() {
+block-29:
+	ret void
+}`
 
 	llvm, err := prepTest(test, true)
 
@@ -615,6 +591,244 @@ func TestStringExp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+}
+
+func TestChoose(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		initial: func{
+			choose stay() || advance(this.alarm);
+		},
+		alarm: func{
+			advance(this.close);
+		},
+		close: func{
+			stay();
+		},
+	};
+
+	start {
+		foo: initial,
+	};
+	`
+
+	expecting := `@__rounds = global i16 0
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+
+define void @__run() {
+block-30:
+	%test_foo_initial = alloca i1
+	store i1 false, i1* %test_foo_initial
+	%test_foo_alarm = alloca i1
+	store i1 false, i1* %test_foo_alarm
+	%test_foo_close = alloca i1
+	store i1 false, i1* %test_foo_close
+	store i1 true, i1* %test_foo_initial
+	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
+	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
+	call void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
+	ret void
+}
+
+define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-31:
+	%0 = load i1, i1* %test_foo_initial
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-33-true, label %block-32-after
+
+block-32-after:
+	ret void
+
+block-33-true:
+	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_start", [38 x i8]* @__choiceGroup
+	%2 = alloca [16 x i8]
+	store [16 x i8] c"test_foo_initial", [16 x i8]* %2
+	%3 = bitcast [16 x i8]* %2 to i8*
+	%4 = call i1 @stay(i8* %3)
+	%5 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %5
+	%6 = bitcast [14 x i8]* %5 to i8*
+	%7 = call i1 @advance(i8* %6)
+	%8 = or i1 %4, %7
+	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_close", [38 x i8]* @__choiceGroup
+	br label %block-32-after
+}
+
+define i1 @stay(i8* %exitState) {
+block-34:
+	ret i1 true
+}
+
+define i1 @advance(i8* %toState) {
+block-35:
+	ret i1 true
+}
+
+define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-36:
+	%0 = load i1, i1* %test_foo_alarm
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-38-true, label %block-37-after
+
+block-37-after:
+	ret void
+
+block-38-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_close", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @advance(i8* %3)
+	br label %block-37-after
+}
+
+define void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
+block-39:
+	%0 = load i1, i1* %test_foo_close
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-41-true, label %block-40-after
+
+block-40-after:
+	ret void
+
+block-41-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_close", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @stay(i8* %3)
+	br label %block-40-after
+}
+`
+
+	llvm, err := prepTest(test, false)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+}
+
+func TestLeave(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		initial: func{
+			advance(this.alarm) && leave();
+		},
+		alarm: func{
+			stay();
+		},
+	};
+
+	start {
+		foo: initial,
+	};
+	`
+
+	expecting := `@__rounds = global i16 0
+@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+
+define void @__run() {
+block-42:
+	%test_foo_initial = alloca i1
+	store i1 false, i1* %test_foo_initial
+	%test_foo_alarm = alloca i1
+	store i1 false, i1* %test_foo_alarm
+	store i1 true, i1* %test_foo_initial
+	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial)
+	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial)
+	ret void
+}
+
+define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
+block-43:
+	%0 = load i1, i1* %test_foo_initial
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-45-true, label %block-44-after
+
+block-44-after:
+	ret void
+
+block-45-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @advance(i8* %3)
+	%5 = alloca [16 x i8]
+	store [16 x i8] c"test_foo_initial", [16 x i8]* %5
+	%6 = bitcast [16 x i8]* %5 to i8*
+	%7 = call i1 @leave(i8* %6)
+	%8 = and i1 %4, %7
+	br label %block-44-after
+}
+
+define i1 @advance(i8* %toState) {
+block-46:
+	ret i1 true
+}
+
+define i1 @leave(i8* %exitState) {
+block-47:
+	ret i1 true
+}
+
+define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
+block-48:
+	%0 = load i1, i1* %test_foo_alarm
+	%1 = icmp eq i1 %0, true
+	br i1 %1, label %block-50-true, label %block-49-after
+
+block-49-after:
+	ret void
+
+block-50-true:
+	%2 = alloca [14 x i8]
+	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
+	%3 = bitcast [14 x i8]* %2 to i8*
+	%4 = call i1 @stay(i8* %3)
+	br label %block-49-after
+}
+
+define i1 @stay(i8* %exitState) {
+block-51:
+	ret i1 true
+}
+`
+
+	llvm, err := prepTest(test, false)
+
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	err = compareResults(llvm, expecting, string(ir))
+
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 }
 
 func compareResults(llvm string, expecting string, ir string) error {

@@ -255,6 +255,10 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 		if e.Operator == "!" { //Not valid in SMTLib
 			return fmt.Sprintf("(not %s)", right)
 		}
+		if e.Operator == "choose" {
+			return right
+		}
+		
 		return fmt.Sprintf("(%s %s)", smtlibOperators(e.Operator), right)
 
 	case *ast.IntegerLiteral:

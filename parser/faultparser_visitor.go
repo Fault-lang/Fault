@@ -47,9 +47,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#declaration.
 	VisitDeclaration(ctx *DeclarationContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#comparison.
-	VisitComparison(ctx *ComparisonContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#constDecl.
 	VisitConstDecl(ctx *ConstDeclContext) interface{}
 
@@ -128,11 +125,20 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#incDecStmt.
 	VisitIncDecStmt(ctx *IncDecStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#boolExpression.
+	VisitBoolExpression(ctx *BoolExpressionContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#boolCompound.
+	VisitBoolCompound(ctx *BoolCompoundContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#boolAnd.
+	VisitBoolAnd(ctx *BoolAndContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#boolPrimary.
+	VisitBoolPrimary(ctx *BoolPrimaryContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#builtins.
 	VisitBuiltins(ctx *BuiltinsContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#builtinInfix.
-	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#accessHistory.
 	VisitAccessHistory(ctx *AccessHistoryContext) interface{}
@@ -188,6 +194,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#stateStepExpr.
 	VisitStateStepExpr(ctx *StateStepExprContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#builtinInfix.
+	VisitBuiltinInfix(ctx *BuiltinInfixContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#stateChain.
 	VisitStateChain(ctx *StateChainContext) interface{}
 
@@ -208,6 +217,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#runExpr.
 	VisitRunExpr(ctx *RunExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runIfExpr.
+	VisitRunIfExpr(ctx *RunIfExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}

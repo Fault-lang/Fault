@@ -1,0 +1,17 @@
+system choose1;
+
+component a = states{
+    choice: func{
+        choose advance(this.option1) || advance(this.option2);
+    },
+    option1: func{
+        stay();
+    },
+    option2: func{
+        stay();
+    },
+};
+
+start {
+    a: choice,
+};

@@ -47,9 +47,6 @@ type FaultParserListener interface {
 	// EnterDeclaration is called when entering the declaration production.
 	EnterDeclaration(c *DeclarationContext)
 
-	// EnterComparison is called when entering the comparison production.
-	EnterComparison(c *ComparisonContext)
-
 	// EnterConstDecl is called when entering the constDecl production.
 	EnterConstDecl(c *ConstDeclContext)
 
@@ -128,11 +125,20 @@ type FaultParserListener interface {
 	// EnterIncDecStmt is called when entering the incDecStmt production.
 	EnterIncDecStmt(c *IncDecStmtContext)
 
+	// EnterBoolExpression is called when entering the boolExpression production.
+	EnterBoolExpression(c *BoolExpressionContext)
+
+	// EnterBoolCompound is called when entering the boolCompound production.
+	EnterBoolCompound(c *BoolCompoundContext)
+
+	// EnterBoolAnd is called when entering the boolAnd production.
+	EnterBoolAnd(c *BoolAndContext)
+
+	// EnterBoolPrimary is called when entering the boolPrimary production.
+	EnterBoolPrimary(c *BoolPrimaryContext)
+
 	// EnterBuiltins is called when entering the builtins production.
 	EnterBuiltins(c *BuiltinsContext)
-
-	// EnterBuiltinInfix is called when entering the builtinInfix production.
-	EnterBuiltinInfix(c *BuiltinInfixContext)
 
 	// EnterAccessHistory is called when entering the accessHistory production.
 	EnterAccessHistory(c *AccessHistoryContext)
@@ -188,6 +194,9 @@ type FaultParserListener interface {
 	// EnterStateStepExpr is called when entering the stateStepExpr production.
 	EnterStateStepExpr(c *StateStepExprContext)
 
+	// EnterBuiltinInfix is called when entering the builtinInfix production.
+	EnterBuiltinInfix(c *BuiltinInfixContext)
+
 	// EnterStateChain is called when entering the stateChain production.
 	EnterStateChain(c *StateChainContext)
 
@@ -208,6 +217,9 @@ type FaultParserListener interface {
 
 	// EnterRunExpr is called when entering the runExpr production.
 	EnterRunExpr(c *RunExprContext)
+
+	// EnterRunIfExpr is called when entering the runIfExpr production.
+	EnterRunIfExpr(c *RunIfExprContext)
 
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
@@ -317,9 +329,6 @@ type FaultParserListener interface {
 	// ExitDeclaration is called when exiting the declaration production.
 	ExitDeclaration(c *DeclarationContext)
 
-	// ExitComparison is called when exiting the comparison production.
-	ExitComparison(c *ComparisonContext)
-
 	// ExitConstDecl is called when exiting the constDecl production.
 	ExitConstDecl(c *ConstDeclContext)
 
@@ -398,11 +407,20 @@ type FaultParserListener interface {
 	// ExitIncDecStmt is called when exiting the incDecStmt production.
 	ExitIncDecStmt(c *IncDecStmtContext)
 
+	// ExitBoolExpression is called when exiting the boolExpression production.
+	ExitBoolExpression(c *BoolExpressionContext)
+
+	// ExitBoolCompound is called when exiting the boolCompound production.
+	ExitBoolCompound(c *BoolCompoundContext)
+
+	// ExitBoolAnd is called when exiting the boolAnd production.
+	ExitBoolAnd(c *BoolAndContext)
+
+	// ExitBoolPrimary is called when exiting the boolPrimary production.
+	ExitBoolPrimary(c *BoolPrimaryContext)
+
 	// ExitBuiltins is called when exiting the builtins production.
 	ExitBuiltins(c *BuiltinsContext)
-
-	// ExitBuiltinInfix is called when exiting the builtinInfix production.
-	ExitBuiltinInfix(c *BuiltinInfixContext)
 
 	// ExitAccessHistory is called when exiting the accessHistory production.
 	ExitAccessHistory(c *AccessHistoryContext)
@@ -458,6 +476,9 @@ type FaultParserListener interface {
 	// ExitStateStepExpr is called when exiting the stateStepExpr production.
 	ExitStateStepExpr(c *StateStepExprContext)
 
+	// ExitBuiltinInfix is called when exiting the builtinInfix production.
+	ExitBuiltinInfix(c *BuiltinInfixContext)
+
 	// ExitStateChain is called when exiting the stateChain production.
 	ExitStateChain(c *StateChainContext)
 
@@ -478,6 +499,9 @@ type FaultParserListener interface {
 
 	// ExitRunExpr is called when exiting the runExpr production.
 	ExitRunExpr(c *RunExprContext)
+
+	// ExitRunIfExpr is called when exiting the runIfExpr production.
+	ExitRunIfExpr(c *RunIfExprContext)
 
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)
