@@ -13,6 +13,7 @@ __debug_bin*
 fault.Dockerfile
 .vscode
 __debug_bin
+_claudespace
 
 # Test binary, built with `go test -c`
 *.test
