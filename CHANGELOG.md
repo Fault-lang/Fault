@@ -1,4 +1,7 @@
-### Current Status (10/17/2025)
+### Current Status (2/1/2026)
+Made a lot of improvements to the generated smt logic, particularly around complex ORs, XORs, etc. Also fixed some bugs with the human readable output. 
+
+#### (10/17/2025)
 WOW! I had a lot of false starts in trying to refactor one of the messiest, most confusing sections of the compiler (translating llvm ir into SMT with SSA). But it's done now and `/smt` has been replaced with `/generator`
 
 Some other updates to the SMT logic itself.
