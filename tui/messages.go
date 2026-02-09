@@ -20,4 +20,16 @@ type CompilationCompleteMsg struct {
 // CompilationErrorMsg is sent when compilation fails
 type CompilationErrorMsg struct {
 	Error error
+	Phase runner.ProgressPhase
 }
+
+// ValidationErrorMsg is sent when validation fails before compilation
+type ValidationErrorMsg struct {
+	Error error
+}
+
+// RetryCompilationMsg is sent when user wants to retry after error
+type RetryCompilationMsg struct{}
+
+// BackToSetupMsg is sent when user wants to go back to setup from error
+type BackToSetupMsg struct{}

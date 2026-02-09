@@ -46,11 +46,12 @@ type CompilationConfig struct {
 }
 
 type CompilationOutput struct {
-	ResultLog *scenario.Logger
-	SMT       string
-	AST       *ast.Spec
-	IR        string
-	Error     error
+	ResultLog  *scenario.Logger
+	SMT        string
+	AST        *ast.Spec
+	IR         string
+	Error      error
+	ErrorPhase ProgressPhase
 }
 
 type Runner struct {
@@ -219,6 +220,7 @@ func (r *Runner) Run() *CompilationOutput {
 		err := fmt.Errorf("file provided is not a .fspec or .fsystem file")
 		r.sendError(PhaseParsing, err)
 		output.Error = err
+		output.ErrorPhase = PhaseParsing
 		return output
 	}
 
@@ -230,6 +232,7 @@ func (r *Runner) Run() *CompilationOutput {
 	if err != nil {
 		r.sendError(PhaseParsing, err)
 		output.Error = err
+		output.ErrorPhase = PhaseParsing
 		return output
 	}
 	d := string(data)
@@ -241,12 +244,14 @@ func (r *Runner) Run() *CompilationOutput {
 		if err != nil {
 			r.sendError(PhaseParsing, err)
 			output.Error = err
+			output.ErrorPhase = PhaseParsing
 			return output
 		}
 		if lstnr == nil {
 			err := fmt.Errorf("Fault parser returned nil")
 			r.sendError(PhaseParsing, err)
 			output.Error = err
+			output.ErrorPhase = PhaseParsing
 			return output
 		}
 
@@ -270,6 +275,7 @@ func (r *Runner) Run() *CompilationOutput {
 			err := fmt.Errorf("Fault found nothing to run. Missing run block or start block")
 			r.sendError(PhaseLLVM, err)
 			output.Error = err
+			output.ErrorPhase = PhaseLLVM
 			return output
 		}
 
@@ -288,6 +294,7 @@ func (r *Runner) Run() *CompilationOutput {
 			if err != nil {
 				r.sendError(PhaseModelChecking, err)
 				output.Error = err
+				output.ErrorPhase = PhaseModelChecking
 				return output
 			}
 			r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
@@ -301,6 +308,7 @@ func (r *Runner) Run() *CompilationOutput {
 		if err != nil {
 			r.sendError(PhaseModelChecking, err)
 			output.Error = err
+			output.ErrorPhase = PhaseModelChecking
 			return output
 		}
 		r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
@@ -336,6 +344,7 @@ func (r *Runner) Run() *CompilationOutput {
 			if err != nil {
 				r.sendError(PhaseModelChecking, err)
 				output.Error = err
+				output.ErrorPhase = PhaseModelChecking
 				return output
 			}
 			r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)

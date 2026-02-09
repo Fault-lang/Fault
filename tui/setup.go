@@ -10,12 +10,13 @@ import (
 )
 
 type SetupModel struct {
-	step      int // 0=file, 1=mode, 2=input, 3=output
-	fileInput textinput.Model
-	cursor    int
-	config    runner.CompilationConfig
-	width     int
-	height    int
+	step           int // 0=file, 1=mode, 2=input, 3=output
+	fileInput      textinput.Model
+	cursor         int
+	config         runner.CompilationConfig
+	width          int
+	height         int
+	validationErr  string // Error message for file validation
 }
 
 var (
@@ -95,7 +96,21 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 	switch m.step {
 	case 0: // File path
 		if m.fileInput.Value() != "" {
-			m.config.Filepath = m.fileInput.Value()
+			filepath := m.fileInput.Value()
+
+			// Basic file validation
+			testConfig := runner.CompilationConfig{
+				Filepath: filepath,
+				Mode:     "check",
+			}
+			if err := ValidateSetupConfig(testConfig); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
+
+			// Clear validation error and proceed
+			m.validationErr = ""
+			m.config.Filepath = filepath
 			m.step++
 			m.cursor = 0 // Default to "check (recommended)"
 		}
@@ -170,6 +185,13 @@ func (m SetupModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(m.fileInput.View())
 		b.WriteString("\n\n")
+
+		// Show validation error if any
+		if m.validationErr != "" {
+			b.WriteString(ErrorStyle.Render("⚠ " + m.validationErr))
+			b.WriteString("\n\n")
+		}
+
 		b.WriteString(InfoStyle.Render("Press Enter to continue"))
 
 	case 1:
