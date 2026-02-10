@@ -39,9 +39,9 @@ type ProgressUpdate struct {
 
 type CompilationConfig struct {
 	Filepath string
-	Mode     string // ast, ir, smt, check
-	Input    string // fspec, ll, smt2
-	Output   string // log, smt, static, legacy, visualize
+	Mode     string // ast, ir, smt, model
+	Input    string // fault, ll, smt2
+	Output   string // text, smt
 	Reach    bool
 }
 
@@ -239,7 +239,7 @@ func (r *Runner) Run() *CompilationOutput {
 	path := gopath.Dir(filepath)
 
 	switch r.config.Input {
-	case "fspec":
+	case "fault", "fspec":
 		tree, lstnr, ty, alias, err := r.parse(d, path, filepath, filetype, r.config.Reach)
 		if err != nil {
 			r.sendError(PhaseParsing, err)
@@ -302,6 +302,7 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
+		// Default output is "text" with full model checking
 		r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
 		r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
 		mc, err := r.probability(g.SMT(), uncertains, unknowns)

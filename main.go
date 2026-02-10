@@ -19,11 +19,11 @@ func main() {
 	var output string
 	var filepath string
 	var reach bool
-	modeCommand := flag.String("m", "check", "stop compiler at certain milestones: ast, ir, smt, or check")
-	inputCommand := flag.String("i", "fspec", "format of the input file (default: fspec)")
+	modeCommand := flag.String("m", "model", "stop compiler at certain milestones: ast, ir, smt, or model")
+	inputCommand := flag.String("i", "fault", "format of the input file (default: fault)")
 	fpCommand := flag.String("f", "", "path to file to compile")
 	reachCommand := flag.Bool("complete", false, "make sure the transitions to all defined states are specified in the model")
-	outputCommand := flag.String("format", "log", "format of the output: log, static, smt, legacy, or visualize")
+	outputCommand := flag.String("output", "text", "format of the output: text or smt")
 
 	flag.Parse()
 
@@ -38,14 +38,14 @@ func main() {
 	filepath = *fpCommand
 
 	if *modeCommand == "" {
-		mode = "check"
+		mode = "model"
 	} else {
 		mode = strings.ToLower(*modeCommand)
 		switch mode {
 		case "ast":
 		case "ir":
 		case "smt":
-		case "check":
+		case "model":
 		default:
 			fmt.Printf("%s is not a valid mode\n", mode)
 			os.Exit(1)
@@ -53,14 +53,11 @@ func main() {
 	}
 
 	if *outputCommand == "" {
-		output = "log"
+		output = "text"
 	} else {
 		output = strings.ToLower(*outputCommand)
 		switch output {
-		case "static":
-		case "log":
-		case "legacy":
-		case "visualize":
+		case "text":
 		case "smt":
 		default:
 			fmt.Printf("%s is not a valid mode\n", output)
@@ -69,18 +66,18 @@ func main() {
 	}
 
 	// Check if solver is set
-	if mode == "check" &&
+	if mode == "model" &&
 		(os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "") {
 		fmt.Printf("\nno solver configured, defaulting to SMT output without model checking. Please set SOLVERCMD and SOLVERARG variables.\n\n")
 		mode = "smt"
 	}
 
 	if *inputCommand == "" {
-		input = "fspec"
+		input = "fault"
 	} else {
 		input = strings.ToLower(*inputCommand)
 		switch input {
-		case "fspec":
+		case "fault":
 		case "ll":
 		case "smt2":
 		default:
@@ -124,7 +121,7 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 		fmt.Println(result.IR)
 	case "smt":
 		fmt.Println(result.SMT)
-	case "check":
+	case "model":
 		if result.ResultLog != nil {
 			result.ResultLog.Print()
 		} else {

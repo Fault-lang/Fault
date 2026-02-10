@@ -10,19 +10,19 @@ import (
 )
 
 type SetupModel struct {
-	step           int // 0=file, 1=mode, 2=input, 3=output
-	fileInput      textinput.Model
-	cursor         int
-	config         runner.CompilationConfig
-	width          int
-	height         int
-	validationErr  string // Error message for file validation
+	step          int // 0=file, 1=mode, 2=input, 3=output
+	fileInput     textinput.Model
+	cursor        int
+	config        runner.CompilationConfig
+	width         int
+	height        int
+	validationErr string // Error message for file validation
 }
 
 var (
-	modes   = []string{"check (recommended)", "ast", "ir", "smt"}
-	inputs  = []string{"fspec (recommended)", "ll", "smt2"}
-	outputs = []string{"log (recommended)", "smt", "static", "legacy", "visualize"}
+	modes   = []string{"model (recommended)", "ast", "ir", "smt"}
+	inputs  = []string{"fault ()", "ll", "smt2"}
+	outputs = []string{"text (recommended)", "smt"}
 )
 
 func NewSetupModel() SetupModel {
@@ -37,9 +37,9 @@ func NewSetupModel() SetupModel {
 		fileInput: ti,
 		cursor:    0,
 		config: runner.CompilationConfig{
-			Mode:   "check",
-			Input:  "fspec",
-			Output: "log",
+			Mode:   "model",
+			Input:  "fault",
+			Output: "text",
 			Reach:  false,
 		},
 	}
@@ -66,7 +66,7 @@ func (m SetupModel) Update(msg tea.Msg) (SetupModel, tea.Cmd) {
 		case "enter":
 			return m.handleEnter()
 
-		case "up", "k":
+		case "up":
 			if m.step > 0 {
 				m.cursor--
 				if m.cursor < 0 {
@@ -74,7 +74,7 @@ func (m SetupModel) Update(msg tea.Msg) (SetupModel, tea.Cmd) {
 				}
 			}
 
-		case "down", "j":
+		case "down":
 			if m.step > 0 {
 				m.cursor++
 				if m.cursor >= m.getOptionsCount() {
@@ -101,7 +101,7 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 			// Basic file validation
 			testConfig := runner.CompilationConfig{
 				Filepath: filepath,
-				Mode:     "check",
+				Mode:     "model",
 			}
 			if err := ValidateSetupConfig(testConfig); err != nil {
 				m.validationErr = err.Error()
@@ -112,12 +112,12 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 			m.validationErr = ""
 			m.config.Filepath = filepath
 			m.step++
-			m.cursor = 0 // Default to "check (recommended)"
+			m.cursor = 0 // Default to "model (recommended)"
 		}
 	case 1: // Mode
 		switch m.cursor {
 		case 0:
-			m.config.Mode = "check"
+			m.config.Mode = "model"
 		case 1:
 			m.config.Mode = "ast"
 		case 2:
@@ -126,30 +126,24 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 			m.config.Mode = "smt"
 		}
 		m.step++
-		m.cursor = 0 // Default to "fspec (recommended)"
+		m.cursor = 0 // Default to "fault (recommended)"
 	case 2: // Input
 		switch m.cursor {
 		case 0:
-			m.config.Input = "fspec"
+			m.config.Input = "fault"
 		case 1:
 			m.config.Input = "ll"
 		case 2:
 			m.config.Input = "smt2"
 		}
 		m.step++
-		m.cursor = 0 // Default to "log (recommended)"
+		m.cursor = 0 // Default to "text (recommended)"
 	case 3: // Output
 		switch m.cursor {
 		case 0:
-			m.config.Output = "log"
+			m.config.Output = "text"
 		case 1:
 			m.config.Output = "smt"
-		case 2:
-			m.config.Output = "static"
-		case 3:
-			m.config.Output = "legacy"
-		case 4:
-			m.config.Output = "visualize"
 		}
 		// Setup complete, send message to parent
 		return m, func() tea.Msg {
@@ -229,7 +223,7 @@ func (m SetupModel) View() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(InfoStyle.Render("Ctrl+T to toggle theme • Ctrl+C or Ctrl+Q to quit"))
+	b.WriteString(InfoStyle.Render("Ctrl+t to toggle theme • Ctrl+c or Ctrl+q to quit"))
 
 	return lipgloss.NewStyle().Padding(2).Render(b.String())
 }

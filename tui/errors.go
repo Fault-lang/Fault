@@ -121,8 +121,8 @@ func ValidateSetupConfig(config runner.CompilationConfig) error {
 	}
 	file.Close()
 
-	// Check solver configuration if mode is "check"
-	if config.Mode == "check" {
+	// Check solver configuration if mode is "model"
+	if config.Mode == "model" {
 		if os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "" {
 			return fmt.Errorf("solver not configured: set SOLVERCMD and SOLVERARG environment variables")
 		}

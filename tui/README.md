@@ -39,10 +39,10 @@ ViewError (on any error)
 
 #### Setup View
 - File path input (textinput)
-- Mode selection: check, ast, ir, smt
-- Input format selection: fspec, ll, smt2
-- Output format selection: log, smt, static, legacy, visualize
-- Navigation: ↑/↓ or j/k, Enter to select
+- Mode selection: model, ast, ir, smt
+- Input format selection: fault, ll, smt2
+- Output format selection: text, smt
+- Navigation: ↑/↓, Enter to select
 
 #### Progress View
 - Shows compilation phase with animated spinner
@@ -70,9 +70,9 @@ ViewError (on any error)
 
 ### Traditional CLI Mode
 ```bash
-./fault -f examples/battery.fspec -m check
+./fault -f examples/battery.fspec -m model
 ./fault -f examples/battery.fspec -m ast
-./fault -f examples/battery.fspec -m smt -format smt
+./fault -f examples/battery.fspec -m smt -output smt
 ```
 
 ## Keybindings
@@ -81,7 +81,7 @@ ViewError (on any error)
 - `Ctrl+C` or `q`: Quit
 
 ### Setup View
-- `↑`/`↓` or `j`/`k`: Navigate options
+- `↑`/`↓`: Navigate options
 - `Enter`: Select/Continue
 
 ### Progress View
@@ -89,7 +89,7 @@ ViewError (on any error)
 - No user input during compilation
 
 ### Results View
-- `↑`/`↓` or `j`/`k`: Scroll
+- `↑`/`↓`: Scroll
 - `q` or `Ctrl+C`: Exit
 
 ## Color Scheme
