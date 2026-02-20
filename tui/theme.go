@@ -8,15 +8,19 @@ import (
 
 // Theme represents a color theme
 type Theme struct {
-	Primary    lipgloss.AdaptiveColor
-	Secondary  lipgloss.AdaptiveColor
-	Success    lipgloss.AdaptiveColor
-	Error      lipgloss.AdaptiveColor
-	Warning    lipgloss.AdaptiveColor
-	Muted      lipgloss.AdaptiveColor
-	Border     lipgloss.AdaptiveColor
-	Background lipgloss.AdaptiveColor
-	Foreground lipgloss.AdaptiveColor
+	Primary        lipgloss.AdaptiveColor
+	Secondary      lipgloss.AdaptiveColor
+	Success        lipgloss.AdaptiveColor
+	Error          lipgloss.AdaptiveColor
+	Warning        lipgloss.AdaptiveColor
+	Muted          lipgloss.AdaptiveColor
+	Border         lipgloss.AdaptiveColor
+	Background     lipgloss.AdaptiveColor
+	Foreground     lipgloss.AdaptiveColor
+	SetupBorder    lipgloss.AdaptiveColor
+	ProgressBorder lipgloss.AdaptiveColor
+	ResultsBorder  lipgloss.AdaptiveColor
+	ErrorBorder    lipgloss.AdaptiveColor
 }
 
 // DefaultTheme returns an adaptive theme that works in both dark and light terminals
@@ -47,12 +51,28 @@ func DefaultTheme() Theme {
 			Dark:  "#bbb4a5", // Light gray for dark backgrounds
 		},
 		Border: lipgloss.AdaptiveColor{
-			Light: "#5b73b0ff", // Darker magenta for light backgrounds
-			Dark:  "#73b0edff", // Bright magenta for dark backgrounds
+			Light: "#5b73b0ff", // Darker blue for light backgrounds
+			Dark:  "#73b0edff", // Bright blue for dark backgrounds
 		},
 		Foreground: lipgloss.AdaptiveColor{
 			Light: "#685936ff", // Russet
 			Dark:  "#b6ae9bff", // White text
+		},
+		SetupBorder: lipgloss.AdaptiveColor{
+			Light: "#87bfc1", // Unrequited
+			Dark:  "#87bfc1", // Unrequited
+		},
+		ProgressBorder: lipgloss.AdaptiveColor{
+			Light: "#567b02", // Matcha
+			Dark:  "#e2ecba", // Familiarity
+		},
+		ResultsBorder: lipgloss.AdaptiveColor{
+			Light: "#87bfc1", // Unrequited
+			Dark:  "#87bfc1", // Unrequited
+		},
+		ErrorBorder: lipgloss.AdaptiveColor{
+			Light: "#bb0009", // Darker red for light backgrounds
+			Dark:  "#E73825", // Bright red for dark backgrounds
 		},
 	}
 }
@@ -95,6 +115,22 @@ func DarkTheme() Theme {
 			Light: "#b6ae9bff",
 			Dark:  "#b6ae9bff",
 		},
+		SetupBorder: lipgloss.AdaptiveColor{
+			Light: "#87bfc1", // Unrequited
+			Dark:  "#87bfc1", // Unrequited
+		},
+		ProgressBorder: lipgloss.AdaptiveColor{
+			Light: "#567b02", // Matcha
+			Dark:  "#e2ecba", // Familiarity
+		},
+		ResultsBorder: lipgloss.AdaptiveColor{
+			Light: "#87bfc1", // Unrequited
+			Dark:  "#87bfc1", // Unrequited
+		},
+		ErrorBorder: lipgloss.AdaptiveColor{
+			Light: "#bb0009", // Darker red for light backgrounds
+			Dark:  "#E73825", // Bright red for dark backgrounds
+		},
 	}
 }
 
@@ -135,6 +171,22 @@ func LightTheme() Theme {
 		Foreground: lipgloss.AdaptiveColor{
 			Light: "#685936ff",
 			Dark:  "#685936ff",
+		},
+		SetupBorder: lipgloss.AdaptiveColor{
+			Light: "#87bfc1", // Unrequited
+			Dark:  "#87bfc1", // Unrequited
+		},
+		ProgressBorder: lipgloss.AdaptiveColor{
+			Light: "#567b02", // Matcha
+			Dark:  "#e2ecba", // Familiarity
+		},
+		ResultsBorder: lipgloss.AdaptiveColor{
+			Light: "#87bfc1", // Unrequited
+			Dark:  "#87bfc1", // Unrequited
+		},
+		ErrorBorder: lipgloss.AdaptiveColor{
+			Light: "#bb0009", // Darker red for light backgrounds
+			Dark:  "#E73825", // Bright red for dark backgrounds
 		},
 	}
 }
@@ -207,6 +259,20 @@ func ApplyTheme(theme Theme) {
 	SuccessStyle = lipgloss.NewStyle().
 		Foreground(theme.Success).
 		Bold(true)
+
+	WarningStyle = lipgloss.NewStyle().
+		Foreground(theme.Warning).
+		Bold(true)
+
+	DividerStyle = lipgloss.NewStyle().
+		Foreground(theme.Muted)
+
+	// Update border colors
+	SetupBorderColor = theme.SetupBorder
+	ProgressBorderColor = theme.ProgressBorder
+	ResultsBorderColor = theme.ResultsBorder
+	ErrorBorderColor = theme.ErrorBorder
+	ThemeBorder = theme.Border
 
 	// Update gradient colors for progress bars
 	GradientStart = theme.Primary.Dark // Use dark variant

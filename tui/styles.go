@@ -42,6 +42,10 @@ var (
 			Foreground(lipgloss.Color("#888888")).
 			Italic(true)
 
+	WarningStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#f49e1b")).
+			Italic(true)
+
 	// Selected item style
 	SelectedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF00FF")).
@@ -73,4 +77,15 @@ var (
 	SuccessStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FF00")).
 			Bold(true)
+
+	// Border colors (will be set by ApplyTheme)
+	SetupBorderColor    lipgloss.AdaptiveColor
+	ProgressBorderColor lipgloss.AdaptiveColor
+	ResultsBorderColor  lipgloss.AdaptiveColor
+	ErrorBorderColor    lipgloss.AdaptiveColor
+	ThemeBorder         lipgloss.AdaptiveColor
+
+	// Divider style
+	DividerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#444444"))
 )

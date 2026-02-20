@@ -139,7 +139,11 @@ func (m ProgressModel) View() string {
 	b.WriteString(m.overallBar.ViewAs(overallPercent))
 	b.WriteString(fmt.Sprintf(" %.0f%%\n", overallPercent*100))
 
-	return lipgloss.NewStyle().Padding(2).Render(b.String())
+	return lipgloss.NewStyle().
+		Padding(2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ProgressBorderColor).
+		Render(b.String())
 }
 
 func min(a, b int) int {

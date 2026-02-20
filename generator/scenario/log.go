@@ -45,7 +45,7 @@ func NewLogger() *Logger {
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {
-	
+
 	roundStr := fmt.Sprintf("%d", round)
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
@@ -571,8 +571,6 @@ func (l *Logger) IsInternalVariable(varName string) bool {
 }
 
 func (l *Logger) Print() {
-	fmt.Print("\n===================================\n")
-	fmt.Printf("Fault found the following scenario\n")
 	identLevel := ""
 
 	// Track current state to show transitions
@@ -719,10 +717,12 @@ func (l *Logger) Print() {
 					}
 				}
 			} else {
-				if hasOldValue && oldValue != newValue {
+				if !hasOldValue {
+					fmt.Printf("%sSet variable %s to value %s\n", identLevel, v, newValue)
+				} else if hasOldValue && oldValue != newValue {
 					fmt.Printf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue)
 				} else {
-					fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, v, newValue)
+					fmt.Printf("%sVariable %s is still %s\n", identLevel, v, newValue)
 				}
 			}
 
@@ -752,8 +752,6 @@ func (l *Logger) Print() {
 }
 
 func (l *Logger) PrintRaw() {
-	fmt.Print("\n===================================\n")
-	fmt.Printf("Fault found the following scenario\n")
 	identLevel := ""
 	for _, e := range l.Events {
 		switch event := e.(type) {
@@ -790,8 +788,6 @@ func (l *Logger) PrintRaw() {
 func (l *Logger) String() string {
 	var sb strings.Builder
 
-	sb.WriteString("\n===================================\n")
-	sb.WriteString("Fault found the following scenario\n")
 	identLevel := ""
 
 	// Track current state to show transitions
@@ -936,10 +932,12 @@ func (l *Logger) String() string {
 					}
 				}
 			} else {
-				if hasOldValue && oldValue != newValue {
+				if !hasOldValue {
+					sb.WriteString(fmt.Sprintf("%sSet variable %s to value %s\n", identLevel, v, newValue))
+				} else if hasOldValue && oldValue != newValue {
 					sb.WriteString(fmt.Sprintf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue))
 				} else {
-					sb.WriteString(fmt.Sprintf("%sUpdate variable %s to value %s\n", identLevel, v, newValue))
+					fmt.Printf("%sVariable %s is still %s\n", identLevel, v, newValue)
 				}
 			}
 

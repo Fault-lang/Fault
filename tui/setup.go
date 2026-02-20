@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fault/runner"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -21,7 +22,7 @@ type SetupModel struct {
 
 var (
 	modes   = []string{"model (recommended)", "ast", "ir", "smt"}
-	inputs  = []string{"fault ()", "ll", "smt2"}
+	inputs  = []string{"fault (recommended)", "ll", "smt2"}
 	outputs = []string{"text (recommended)", "smt"}
 )
 
@@ -168,11 +169,20 @@ func (m SetupModel) getOptionsCount() int {
 func (m SetupModel) View() string {
 	var b strings.Builder
 
-	// Title
-	title := TitleStyle.Render(" Fault Interactive Compiler ")
-	b.WriteString(title)
+	// Header with step indicator
+	stepNames := []string{"File Selection", "Compilation Mode", "Input Format", "Output Format"}
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(SetupBorderColor).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderBottom(true).
+		BorderForeground(SetupBorderColor)
+
+	header := headerStyle.Render(fmt.Sprintf(" Fault Setup ⚙ Step %d/4: %s ", m.step+1, stepNames[m.step]))
+	b.WriteString(header)
 	b.WriteString("\n\n")
 
+	// Content area
 	switch m.step {
 	case 0:
 		b.WriteString(PromptStyle.Render("Enter the path to the file to compile:"))
@@ -186,46 +196,69 @@ func (m SetupModel) View() string {
 			b.WriteString("\n\n")
 		}
 
-		b.WriteString(InfoStyle.Render("Press Enter to continue"))
-
 	case 1:
-		b.WriteString(SubtitleStyle.Render("✓ File: " + m.config.Filepath))
+		b.WriteString(SuccessStyle.Render("✓ File: " + m.config.Filepath))
 		b.WriteString("\n\n")
 		b.WriteString(PromptStyle.Render("Select compilation mode:"))
 		b.WriteString("\n\n")
 		b.WriteString(m.renderOptions(modes))
-		b.WriteString("\n\n")
-		b.WriteString(InfoStyle.Render("Use ↑/↓ or j/k to navigate, Enter to select"))
+		b.WriteString("\n")
 
 	case 2:
-		b.WriteString(SubtitleStyle.Render("✓ File: " + m.config.Filepath))
+		b.WriteString(SuccessStyle.Render("✓ File: " + m.config.Filepath))
 		b.WriteString("\n")
-		b.WriteString(SubtitleStyle.Render("✓ Mode: " + m.config.Mode))
+		b.WriteString(SuccessStyle.Render("✓ Mode: " + m.config.Mode))
 		b.WriteString("\n\n")
 		b.WriteString(PromptStyle.Render("Select input format:"))
 		b.WriteString("\n\n")
 		b.WriteString(m.renderOptions(inputs))
-		b.WriteString("\n\n")
-		b.WriteString(InfoStyle.Render("Use ↑/↓ or j/k to navigate, Enter to select"))
+		b.WriteString("\n")
 
 	case 3:
-		b.WriteString(SubtitleStyle.Render("✓ File: " + m.config.Filepath))
+		b.WriteString(SuccessStyle.Render("✓ File: " + m.config.Filepath))
 		b.WriteString("\n")
-		b.WriteString(SubtitleStyle.Render("✓ Mode: " + m.config.Mode))
+		b.WriteString(SuccessStyle.Render("✓ Mode: " + m.config.Mode))
 		b.WriteString("\n")
-		b.WriteString(SubtitleStyle.Render("✓ Input: " + m.config.Input))
+		b.WriteString(SuccessStyle.Render("✓ Input: " + m.config.Input))
 		b.WriteString("\n\n")
 		b.WriteString(PromptStyle.Render("Select output format:"))
 		b.WriteString("\n\n")
 		b.WriteString(m.renderOptions(outputs))
-		b.WriteString("\n\n")
-		b.WriteString(InfoStyle.Render("Use ↑/↓ or j/k to navigate, Enter to select"))
+		b.WriteString("\n")
 	}
 
-	b.WriteString("\n\n")
-	b.WriteString(InfoStyle.Render("Ctrl+t to toggle theme • Ctrl+c or Ctrl+q to quit"))
+	// Footer
+	width := m.width
+	if width == 0 {
+		width = 80
+	}
+	line := strings.Repeat("─", max(width-8, 40))
+	footerTop := lipgloss.NewStyle().
+		Foreground(SetupBorderColor).
+		Render(line)
+	b.WriteString("\n")
+	b.WriteString(footerTop)
+	b.WriteString("\n")
 
-	return lipgloss.NewStyle().Padding(2).Render(b.String())
+	// Help text based on step
+	var helpText string
+	if m.step == 0 {
+		helpText = " Enter: continue • ctrl+c/ctrl+q: quit • ctrl+t: theme "
+	} else {
+		helpText = " ↑↓: navigate • Enter: select • ctrl+c/ctrl+q: quit • ctrl+t: theme "
+	}
+
+	footerStyle := lipgloss.NewStyle().
+		Foreground(InfoStyle.GetForeground())
+
+	footer := footerStyle.Render(helpText)
+	b.WriteString(footer)
+
+	return lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(SetupBorderColor).
+		Render(b.String())
 }
 
 func (m SetupModel) renderOptions(options []string) string {
@@ -246,4 +279,11 @@ func (m SetupModel) renderOptions(options []string) string {
 	}
 
 	return b.String()
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
