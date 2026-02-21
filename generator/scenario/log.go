@@ -937,7 +937,7 @@ func (l *Logger) String() string {
 				} else if hasOldValue && oldValue != newValue {
 					sb.WriteString(fmt.Sprintf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue))
 				} else {
-					fmt.Printf("%sVariable %s is still %s\n", identLevel, v, newValue)
+					sb.WriteString(fmt.Sprintf("%sVariable %s is still %s\n", identLevel, v, newValue))
 				}
 			}
 

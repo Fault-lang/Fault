@@ -46,19 +46,30 @@ func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		headerHeight := 4
-		footerHeight := 3
+		headerHeight := 5 // outer top border(1) + outer top padding(1) + header text(1) + header bottom border(1) + \n after header(1)
+		footerHeight := 6 // \n after viewport(1) + footer divider(1) + \n after divider(1) + footer text(1) + outer bottom padding(1) + outer bottom border(1)
 		verticalMarginHeight := headerHeight + footerHeight
 
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width-4, msg.Height-verticalMarginHeight)
-			m.viewport.YPosition = headerHeight
-			m.ready = true
+			// Initialize viewport with proper dimensions
+			// Use much wider width to prevent wrapping issues with ANSI codes
+			viewportWidth := msg.Width 
+			viewportHeight := msg.Height - verticalMarginHeight
 
-			// Set content based on mode
-			m.content = m.getContent()
+			m.viewport = viewport.New(viewportWidth, viewportHeight)
+			m.viewport.YPosition = headerHeight
+
+			// Ensure the viewport uses the correct width for ANSI content
+			m.viewport.Width = viewportWidth
+
+			// Set content based on mode (only once)
+			content := m.getContent()
+			m.content = lipgloss.NewStyle().Width(viewportWidth).Render(content)
 			m.viewport.SetContent(m.content)
+
+			m.ready = true
 		} else {
+			// Update dimensions on resize
 			m.viewport.Width = msg.Width - 4
 			m.viewport.Height = msg.Height - verticalMarginHeight
 		}
@@ -84,8 +95,10 @@ func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 		}
 	}
 
-	// Update viewport for other keys (arrow keys, j/k, etc.)
-	m.viewport, cmd = m.viewport.Update(msg)
+	// Forward viewport updates for arrow keys, j/k scrolling
+	if m.ready {
+		m.viewport, cmd = m.viewport.Update(msg)
+	}
 	return m, cmd
 }
 
@@ -137,7 +150,12 @@ func (m ResultsModel) formatLoggerOutput(output string) string {
 	lines := strings.Split(output, "\n")
 	var formatted strings.Builder
 
-	for _, line := range lines {
+	for i, line := range lines {
+		// Skip empty lines at the end
+		if i == len(lines)-1 && line == "" {
+			break
+		}
+
 		// Color code based on keywords using global styles
 		if strings.Contains(line, "✓") || strings.Contains(line, "PASS") || strings.Contains(line, "Success") {
 			formatted.WriteString(SuccessStyle.Render(line))
