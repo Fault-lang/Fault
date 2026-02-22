@@ -267,6 +267,14 @@ func ApplyTheme(theme Theme) {
 	DividerStyle = lipgloss.NewStyle().
 		Foreground(theme.Muted)
 
+	BrowserDirStyle = lipgloss.NewStyle().
+		Foreground(theme.Secondary).
+		PaddingLeft(2)
+
+	BrowserFaultFileStyle = lipgloss.NewStyle().
+		Foreground(theme.Success).
+		PaddingLeft(2)
+
 	// Update border colors
 	SetupBorderColor = theme.SetupBorder
 	ProgressBorderColor = theme.ProgressBorder

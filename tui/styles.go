@@ -88,4 +88,8 @@ var (
 	// Divider style
 	DividerStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#444444"))
+
+	// File browser styles (set by ApplyTheme)
+	BrowserDirStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#87bfc1")).PaddingLeft(2)
+	BrowserFaultFileStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#b5d569")).PaddingLeft(2)
 )
