@@ -85,7 +85,7 @@ func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 	err := cmd.Run()
 
 	if err != nil {
-		return "", fmt.Errorf(fmt.Sprint(err) + ": " + stderr.String())
+		return "", fmt.Errorf("%w: %s", err, stderr.String())
 	}
 	return strings.TrimSpace(out.String()), err
 }

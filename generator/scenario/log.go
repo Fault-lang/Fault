@@ -45,7 +45,7 @@ func NewLogger() *Logger {
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {
-	
+
 	roundStr := fmt.Sprintf("%d", round)
 	l.Events = append(l.Events, &FunctionCall{
 		FunctionName: fname,
@@ -571,8 +571,6 @@ func (l *Logger) IsInternalVariable(varName string) bool {
 }
 
 func (l *Logger) Print() {
-	fmt.Print("\n===================================\n")
-	fmt.Printf("Fault found the following scenario\n")
 	identLevel := ""
 
 	// Track current state to show transitions
@@ -719,10 +717,12 @@ func (l *Logger) Print() {
 					}
 				}
 			} else {
-				if hasOldValue && oldValue != newValue {
+				if !hasOldValue {
+					fmt.Printf("%sSet variable %s to value %s\n", identLevel, v, newValue)
+				} else if hasOldValue && oldValue != newValue {
 					fmt.Printf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue)
 				} else {
-					fmt.Printf("%sUpdate variable %s to value %s\n", identLevel, v, newValue)
+					fmt.Printf("%sVariable %s is still %s\n", identLevel, v, newValue)
 				}
 			}
 
@@ -752,8 +752,6 @@ func (l *Logger) Print() {
 }
 
 func (l *Logger) PrintRaw() {
-	fmt.Print("\n===================================\n")
-	fmt.Printf("Fault found the following scenario\n")
 	identLevel := ""
 	for _, e := range l.Events {
 		switch event := e.(type) {
@@ -784,4 +782,187 @@ func (l *Logger) PrintRaw() {
 		}
 	}
 	fmt.Print("\n")
+}
+
+// String returns the formatted output as a string instead of printing
+func (l *Logger) String() string {
+	var sb strings.Builder
+
+	identLevel := ""
+
+	// Track current state to show transitions
+	currentState := make(map[string]string)
+
+	// Helper to get component prefix from state variable (e.g., "infusion_pump_idle" -> "infusion_pump")
+	getComponentPrefix := func(varName string) string {
+		parts := strings.Split(varName, "_")
+		if len(parts) >= 3 {
+			// For patterns like "infusion_pump_idle", return "infusion_pump"
+			// Return all but the last part (which is the state name)
+			return strings.Join(parts[:len(parts)-1], "_")
+		}
+		return ""
+	}
+
+	// Helper to find complementary state changes in the same component
+	findComplementaryStates := func(varName string, newValue string) []string {
+		if newValue != "true" {
+			return nil
+		}
+
+		componentPrefix := getComponentPrefix(varName)
+		if componentPrefix == "" {
+			return nil
+		}
+
+		var complementary []string
+		// Look through currentState to find other states in same component that were true
+		for otherVar, otherValue := range currentState {
+			if otherValue == "true" && otherVar != varName && strings.HasPrefix(otherVar, componentPrefix+"_") {
+				complementary = append(complementary, otherVar)
+			}
+		}
+		return complementary
+	}
+
+	// Initialize currentState with starting states by looking for state variables with low SSA indices
+	componentStates := make(map[string]string) // Track which components already have a state set
+	preferredStates := []string{"idle", "silent", "empty", "off", "initial", "stopped"}
+
+	// First pass: look for preferred starting states
+	for varWithSSA, value := range l.Results {
+		if !strings.HasSuffix(varWithSSA, "_1") || value != "true" || l.IsInternalVariable(varWithSSA) {
+			continue
+		}
+
+		baseVar := getBase(varWithSSA)
+		componentPrefix := getComponentPrefix(baseVar)
+		if componentPrefix == "" {
+			continue
+		}
+
+		// Check if this is a preferred starting state
+		for _, preferred := range preferredStates {
+			if strings.HasSuffix(baseVar, "_"+preferred) {
+				if _, exists := componentStates[componentPrefix]; !exists {
+					currentState[baseVar] = value
+					componentStates[componentPrefix] = baseVar
+				}
+				break
+			}
+		}
+	}
+
+	// Second pass: fill in any components that don't have a state yet
+	for varWithSSA, value := range l.Results {
+		if !strings.HasSuffix(varWithSSA, "_1") || value != "true" || l.IsInternalVariable(varWithSSA) {
+			continue
+		}
+
+		baseVar := getBase(varWithSSA)
+		componentPrefix := getComponentPrefix(baseVar)
+		if componentPrefix == "" {
+			continue
+		}
+
+		if _, exists := componentStates[componentPrefix]; !exists {
+			currentState[baseVar] = value
+			componentStates[componentPrefix] = baseVar
+		}
+	}
+
+	for _, e := range l.Events {
+		if e.IsDead() {
+			continue
+		}
+		switch event := e.(type) {
+		case *FunctionCall:
+			if event.FunctionName == "@__run" {
+				sb.WriteString("\n")
+				sb.WriteString(fmt.Sprintf("%sStart model, run for %s rounds\n", identLevel, event.Round))
+				sb.WriteString("-----------------------------------\n")
+				identLevel += "   "
+				continue
+			}
+
+			if event.Type == "Entry" {
+				sb.WriteString(fmt.Sprintf("%sRun function %s (round %s)\n", identLevel, event.FunctionName, event.Round))
+				identLevel += "   "
+			}
+
+			if event.Type == "Exit" {
+				identLevel = identLevel[:len(identLevel)-3]
+			}
+		case *VariableUpdate:
+			// Skip internal solver variables
+			if l.IsInternalVariable(event.Variable) {
+				continue
+			}
+
+			v := getBase(event.Variable)
+			s, negated := l.IsNegated(v)
+			newValue := l.Results[event.Variable]
+			oldValue, hasOldValue := currentState[v]
+
+			// Show complementary state transitions
+			if newValue == "true" && newValue != oldValue {
+				complementary := findComplementaryStates(v, newValue)
+				for _, compVar := range complementary {
+					sb.WriteString(fmt.Sprintf("%s%s: true → false\n", identLevel, compVar))
+					currentState[compVar] = "false"
+				}
+			}
+
+			// Update state
+			currentState[v] = newValue
+
+			if l.IsStringRule[s] == true {
+				s = l.StringRules[s]
+				if hasOldValue && oldValue != newValue {
+					if negated {
+						sb.WriteString(fmt.Sprintf("%s not %s: %s → %s\n", identLevel, s, oldValue, newValue))
+					} else {
+						sb.WriteString(fmt.Sprintf("%s %s: %s → %s\n", identLevel, s, oldValue, newValue))
+					}
+				} else {
+					if negated {
+						sb.WriteString(fmt.Sprintf("%s not %s is %s\n", identLevel, s, newValue))
+					} else {
+						sb.WriteString(fmt.Sprintf("%s %s is %s\n", identLevel, s, newValue))
+					}
+				}
+			} else {
+				if !hasOldValue {
+					sb.WriteString(fmt.Sprintf("%sSet variable %s to value %s\n", identLevel, v, newValue))
+				} else if hasOldValue && oldValue != newValue {
+					sb.WriteString(fmt.Sprintf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue))
+				} else {
+					sb.WriteString(fmt.Sprintf("%sVariable %s is still %s\n", identLevel, v, newValue))
+				}
+			}
+
+		case *Solvable:
+			// Skip internal solver variables
+			if l.IsInternalVariable(event.Variable) {
+				continue
+			}
+
+			v := getBase(event.Variable)
+			newValue := l.Results[event.Variable]
+
+			if event.Type == "Uncertain" {
+				sb.WriteString(fmt.Sprintf("%sResolving variable %s to value %s (%s) \n", identLevel, v, newValue, event.Probability))
+			} else {
+				sb.WriteString(fmt.Sprintf("%sResolving variable %s to value %s\n", identLevel, v, newValue))
+			}
+
+			// Update state
+			currentState[v] = newValue
+
+		case *Message:
+			sb.WriteString(fmt.Sprintf("%s%s\n", identLevel, event.Text))
+		}
+	}
+	sb.WriteString("\n")
+	return sb.String()
 }
