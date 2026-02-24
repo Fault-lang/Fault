@@ -1,4 +1,7 @@
-### Current Status (2/1/2026)
+### Current Status (2/24/2026)
+Adding charm's Bubbletea to give a nicer interface and further improve the readability of results.
+
+#### (2/1/2026)
 Made a lot of improvements to the generated smt logic, particularly around complex ORs, XORs, etc. Also fixed some bugs with the human readable output. 
 
 #### (10/17/2025)
