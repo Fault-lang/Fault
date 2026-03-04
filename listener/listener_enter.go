@@ -69,6 +69,12 @@ func (l *FaultListener) EnterStateFunc(c *parser.StateFuncContext) {
 	l.scope = fmt.Sprint(l.scope, ".", varname)
 }
 
+func (l *FaultListener) EnterFunctionLit(c *parser.FunctionLitContext) {
+	if c.Block().GetChildCount() < 3 {
+		panic(fmt.Sprintf("Malformed fspec or fsystem file. A function cannot be empty: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	}
+}
+
 func (l *FaultListener) EnterStateBlock(c *parser.StateBlockContext) {
 	if c.GetChildCount() < 3 {
 		panic(fmt.Sprintf("Malformed fspec or fsystem file. A state function cannot be empty: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))

@@ -2226,6 +2226,28 @@ def foo = flow{
 for 1 init { foo_inst = new foo; } run {}`, true)
 }
 
+func TestEmptyFunctionLitError(t *testing.T) {
+	// functionLit (used in flow/stock properties) must not have an empty block.
+	// This mirrors the equivalent check in EnterStateBlock for stateLit.
+	test := `spec test1;
+def foo = flow{
+	bar: func{},
+};`
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	flags["testing"] = true
+
+	_, err := Execute(test, "", flags)
+	if err == nil {
+		t.Fatal("expected error for empty function body, got nil")
+	}
+
+	expected := "A function cannot be empty"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error to contain %q, got %q", expected, err.Error())
+	}
+}
+
 func TestEmptyStateBlockError(t *testing.T) {
 	// StateBlock is used inside component = states{} in .fsystem files.
 	// An empty func body (func{}) has fewer than 3 children (just { and }),
