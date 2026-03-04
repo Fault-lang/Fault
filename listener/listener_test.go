@@ -2127,7 +2127,7 @@ func assertUnderscoreError(t *testing.T, test string, specType bool) {
 	if err == nil {
 		t.Fatal("expected error for underscore in variable name, got nil")
 	}
-	if !strings.Contains(err.Error(), "may not have underscores") {
+	if !strings.Contains(err.Error(), "must be only letters or numbers") {
 		t.Fatalf("expected underscore error, got: %q", err.Error())
 	}
 }
