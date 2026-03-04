@@ -443,7 +443,11 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 			n = b.ConvertIdent(b.Env.CurrentFunction, n)
 			nIs := IsIndexed(n)
 			_, file, line, _ := runtime.Caller(1)
-			nRule = rules.NewWrap(n, "Bool", true, file, line, false, nIs)
+			isVar := true
+			if IsStaticValue(n) {
+				isVar = false
+			}
+			nRule = rules.NewWrap(n, "Bool", isVar, file, line, false, nIs)
 		}
 		return nRule
 	}

@@ -194,7 +194,7 @@ func prepAssertTest(test string) (*Compiler, error) {
 	flags["testing"] = true
 	flags["skipRun"] = false
 
-	l := listener.Execute(test, "", flags)
+	l, _ := listener.Execute(test, "", flags)
 	pre := preprocess.Execute(l)
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)

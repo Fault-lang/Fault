@@ -224,7 +224,7 @@ func prepTestSys(test string) (bool, []string) {
 
 	var path string
 
-	l := listener.Execute(test, path, flags)
+	l, _ := listener.Execute(test, path, flags)
 	pre := preprocess.Execute(l)
 	ty := types.Execute(pre.Processed, pre)
 	tracer := NewTracer()

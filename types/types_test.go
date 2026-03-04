@@ -1008,7 +1008,7 @@ func prepTest(test string, specType bool) (*Checker, error) {
 	flags["testing"] = true
 	flags["skipRun"] = false
 
-	l := listener.Execute(test, "", flags)
+	l, _ := listener.Execute(test, "", flags)
 
 	pre := preprocess.Execute(l)
 	ty := NewTypeChecker(pre)

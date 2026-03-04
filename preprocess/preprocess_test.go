@@ -759,7 +759,7 @@ func prepTest(test string, specType bool) *Processor {
 	flags := make(map[string]bool)
 	flags["specType"] = specType
 	flags["testing"] = true
-	l := listener.Execute(test, "", flags)
+	l, _ := listener.Execute(test, "", flags)
 	pre := Execute(l)
 	return pre
 }

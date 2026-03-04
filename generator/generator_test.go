@@ -603,7 +603,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 		path = gopath.Dir(filepath)
 	}
 
-	l := listener.Execute(test, path, flags)
+	l, _ := listener.Execute(test, path, flags)
 	pre := preprocess.Execute(l)
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)

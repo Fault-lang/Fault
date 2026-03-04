@@ -2,6 +2,7 @@ package listener
 
 import (
 	"fault/ast"
+	"strings"
 	"testing"
 )
 
@@ -2114,8 +2115,36 @@ func TestLeave(t *testing.T) {
 	}
 }
 
+func TestEmptyStateBlockError(t *testing.T) {
+	// StateBlock is used inside component = states{} in .fsystem files.
+	// An empty func body (func{}) has fewer than 3 children (just { and }),
+	// which should trigger the validation error.
+	test := `system test1;
+
+component x = states{
+	foo: func{},
+};
+
+start {
+	x: foo,
+};`
+	flags := make(map[string]bool)
+	flags["specType"] = false // fsystem
+	flags["testing"] = true
+
+	_, err := Execute(test, "", flags)
+	if err == nil {
+		t.Fatal("expected error for empty state block, got nil")
+	}
+
+	expected := "A state function cannot be empty"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error to contain %q, got %q", expected, err.Error())
+	}
+}
+
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
-	listener := Execute(test, "", flags)
+	listener, _ := Execute(test, "", flags)
 	return listener, listener.AST
 }
