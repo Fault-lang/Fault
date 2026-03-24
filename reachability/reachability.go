@@ -8,12 +8,15 @@ import (
 
 type Tracer struct {
 	graph     map[string]bool
-	undefined []string
+	undefined map[string]bool
 	last      string
 }
 
 func NewTracer() *Tracer {
-	return &Tracer{graph: make(map[string]bool)}
+	return &Tracer{
+		graph:     make(map[string]bool),
+		undefined: make(map[string]bool),
+	}
 }
 
 func (t *Tracer) Scan(spec *ast.Spec) error {
@@ -55,7 +58,7 @@ func (t *Tracer) walk(n ast.Node) {
 		for _, v := range node.Pairs {
 			id := strings.Join(v, "_")
 			if _, ok := t.graph[id]; !ok {
-				t.undefined = append(t.undefined, id)
+				t.undefined[id] = true
 			} else {
 				t.graph[id] = true
 				t.removeUndefined(id)
@@ -85,7 +88,7 @@ func (t *Tracer) walk(n ast.Node) {
 		for _, v := range node.Parameters {
 			id := v.(ast.Nameable).Id()
 			if _, ok := t.graph[id[1]]; !ok {
-				t.undefined = append(t.undefined, id[1])
+				t.undefined[id[1]] = true
 			} else {
 				t.graph[id[1]] = true
 				t.removeUndefined(id[1])
@@ -100,29 +103,22 @@ func (t *Tracer) walk(n ast.Node) {
 }
 
 func (t *Tracer) seenBefore(id string) bool {
-	for _, v := range t.undefined {
-		if v == id {
-			return true
-		}
-	}
-	return false
+	return t.undefined[id]
 }
 
 func (t *Tracer) removeUndefined(id string) {
-	var new []string
-	for _, v := range t.undefined {
-		if v != id {
-			new = append(new, v)
-		}
-	}
-	t.undefined = new
+	delete(t.undefined, id)
 }
 
 func (t *Tracer) check() (bool, []string) {
 	for k, v := range t.graph {
 		if !v {
-			t.undefined = append(t.undefined, k)
+			t.undefined[k] = true
 		}
 	}
-	return len(t.undefined) == 0, t.undefined
+	missing := make([]string, 0, len(t.undefined))
+	for k := range t.undefined {
+		missing = append(missing, k)
+	}
+	return len(missing) == 0, missing
 }
