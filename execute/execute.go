@@ -112,7 +112,10 @@ func (mc *ModelChecker) Solve() error {
 	}
 
 	// Remove extra output (ie "sat")
-	results = cleanExtraOutputs(results)
+	results, err = cleanExtraOutputs(results)
+	if err != nil {
+		return err
+	}
 
 	is := antlr.NewInputStream(results)
 	lexer := parser.NewSMTLIBv2Lexer(is)
@@ -136,10 +139,18 @@ type VarChange struct {
 	Parent string // SSA name of proceeding var
 }
 
-func cleanExtraOutputs(results string) string {
-	for results[0:1] != "(" {
+func cleanExtraOutputs(results string) (string, error) {
+	for {
+		if len(results) == 0 {
+			return "", errors.New("unexpected empty response from solver")
+		}
+		if results[0] == '(' {
+			return results, nil
+		}
 		newline := strings.Index(results, "\n")
+		if newline == -1 {
+			return "", fmt.Errorf("unexpected solver output (no model found): %s", results)
+		}
 		results = results[newline+1:]
 	}
-	return results
 }

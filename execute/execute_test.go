@@ -147,3 +147,39 @@ func TestFullSuite(t *testing.T) {
 		t.Fatalf("Error in full test suite: %s", err)
 	}
 }
+
+func TestCleanExtraOutputsEmpty(t *testing.T) {
+	_, err := cleanExtraOutputs("")
+	if err == nil {
+		t.Fatal("expected error for empty solver output, got nil")
+	}
+}
+
+func TestCleanExtraOutputsNoNewline(t *testing.T) {
+	_, err := cleanExtraOutputs("unsat")
+	if err == nil {
+		t.Fatal("expected error for solver output with no model, got nil")
+	}
+}
+
+func TestCleanExtraOutputsStripsPrefix(t *testing.T) {
+	input := "sat\n(model\n  (define-fun x () Real 1.0)\n)"
+	result, err := cleanExtraOutputs(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if result[0] != '(' {
+		t.Fatalf("expected result to start with '(', got %q", result[:1])
+	}
+}
+
+func TestCleanExtraOutputsAlreadyClean(t *testing.T) {
+	input := "(model\n  (define-fun x () Real 1.0)\n)"
+	result, err := cleanExtraOutputs(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if result != input {
+		t.Fatalf("expected unchanged input, got %q", result)
+	}
+}

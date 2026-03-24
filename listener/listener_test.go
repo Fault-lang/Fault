@@ -2276,6 +2276,36 @@ start {
 	}
 }
 
+func TestPopUnderflow(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic on pop() from empty stack, got none")
+		}
+		msg, ok := r.(string)
+		if !ok || !strings.Contains(msg, "stack underflow") {
+			t.Fatalf("expected stack underflow message, got %v", r)
+		}
+	}()
+	l := NewListener("", true, false)
+	l.pop()
+}
+
+func TestPeekUnderflow(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic on peek() from empty stack, got none")
+		}
+		msg, ok := r.(string)
+		if !ok || !strings.Contains(msg, "stack underflow") {
+			t.Fatalf("expected stack underflow message, got %v", r)
+		}
+	}()
+	l := NewListener("", true, false)
+	l.peek()
+}
+
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
 	listener, _ := Execute(test, "", flags)

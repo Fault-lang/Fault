@@ -103,11 +103,17 @@ func (l *FaultListener) pushN(n []ast.Node) {
 }
 
 func (l *FaultListener) pop() ast.Node {
+	if len(l.stack) == 0 {
+		panic("listener stack underflow: pop() called on empty stack")
+	}
 	var s ast.Node
 	s, l.stack = l.stack[len(l.stack)-1], l.stack[:len(l.stack)-1]
 	return s
 }
 
 func (l *FaultListener) peek() ast.Node {
+	if len(l.stack) == 0 {
+		panic("listener stack underflow: peek() called on empty stack")
+	}
 	return l.stack[len(l.stack)-1]
 }
