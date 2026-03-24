@@ -184,3 +184,129 @@ func TestListenerErrPropagatedToSolve(t *testing.T) {
 		t.Fatal("expected listener error for invalid Bool value, got nil")
 	}
 }
+
+// --- Multiple-round accumulation ---
+
+func TestMultipleRoundsAccumulateInOneTrace(t *testing.T) {
+	// Three rounds of the same variable should accumulate into a single
+	// FloatTrace rather than creating three separate traces.
+	model := `(model
+		(define-fun vault_value_0 () Real 10.0)
+		(define-fun vault_value_1 () Real 20.0)
+		(define-fun vault_value_2 () Real 30.0)
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("unexpected error: %s", l.err)
+	}
+
+	trace, ok := l.Results["vault_value"].(*FloatTrace)
+	if !ok || trace == nil {
+		t.Fatalf("expected *FloatTrace for vault_value, got %T", l.Results["vault_value"])
+	}
+	if len(trace.Get()) != 3 {
+		t.Fatalf("expected 3 entries in trace, got %d", len(trace.Get()))
+	}
+	if v, _ := trace.Index(0); v != 10.0 {
+		t.Errorf("round 0: expected 10.0, got %f", v)
+	}
+	if v, _ := trace.Index(1); v != 20.0 {
+		t.Errorf("round 1: expected 20.0, got %f", v)
+	}
+	if v, _ := trace.Index(2); v != 30.0 {
+		t.Errorf("round 2: expected 30.0, got %f", v)
+	}
+}
+
+// --- Multiple variables in one model ---
+
+func TestMultipleVariablesInModel(t *testing.T) {
+	model := `(model
+		(define-fun foo_0 () Real 1.0)
+		(define-fun bar_0 () Bool true)
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("unexpected error: %s", l.err)
+	}
+	if l.Results["foo"] == nil {
+		t.Error("expected foo in Results, got nil")
+	}
+	if l.Results["bar"] == nil {
+		t.Error("expected bar in Results, got nil")
+	}
+}
+
+// --- Values map is populated with raw strings ---
+
+func TestValuesMapPopulated(t *testing.T) {
+	model := `(model
+		(define-fun vault_value_0 () Real 42.0)
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("unexpected error: %s", l.err)
+	}
+	if l.Values["vault_value_0"] != "42.0" {
+		t.Fatalf("expected Values[vault_value_0] = 42.0, got %q", l.Values["vault_value_0"])
+	}
+}
+
+// --- Malformed symbol: non-numeric suffix sets l.err ---
+
+func TestMalformedSymbolNonNumericSuffix(t *testing.T) {
+	// splitIdent("first_var_bad") returns key="bad" which fails ParseInt.
+	bad := `(model
+		(define-fun first_var_bad () Real 50.0)
+	)`
+	l := prepTestListener(bad)
+	if l.err == nil {
+		t.Fatal("expected error for non-numeric symbol suffix, got nil")
+	}
+}
+
+func TestMalformedSymbolNoUnderscore(t *testing.T) {
+	// splitIdent("foo") returns key="foo" which fails ParseInt.
+	bad := `(model
+		(define-fun foo () Real 5.0)
+	)`
+	l := prepTestListener(bad)
+	if l.err == nil {
+		t.Fatal("expected error for symbol with no underscore, got nil")
+	}
+}
+
+// --- Error short-circuits processing of subsequent entries ---
+
+func TestErrorShortCircuitsSubsequentEntries(t *testing.T) {
+	// First define-fun has a non-numeric suffix → sets l.err.
+	// Second define-fun is valid but must not appear in Values or Results.
+	model := `(model
+		(define-fun first_var_bad () Real 50.0)
+		(define-fun second_var_1 () Real 99.0)
+	)`
+	l := prepTestListener(model)
+	if l.err == nil {
+		t.Fatal("expected error for non-numeric symbol suffix, got nil")
+	}
+	if _, ok := l.Values["second_var_1"]; ok {
+		t.Fatal("second entry should not have been written to Values after an error")
+	}
+	if l.Results["second_var"] != nil {
+		t.Fatal("second entry should not have been written to Results after an error")
+	}
+}
+
+// --- mergeTermParts: negative-prefix fast path ---
+
+func TestMergeTermPartsNegativePrefix(t *testing.T) {
+	// When parts[0] is not a valid float (e.g. the sign character "-"),
+	// mergeTermParts joins the parts directly to form a negative literal.
+	result, err := mergeTermParts([]string{"-", "3.0"})
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if result != "-3.0" {
+		t.Fatalf("expected -3.0, got %s", result)
+	}
+}
