@@ -4,7 +4,6 @@ import (
 	"fault/parser"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -132,20 +131,6 @@ func (l *FaultListener) EnterRunInit(c *parser.RunInitContext) {
 }
 
 func validVarName(varname string) bool {
-	if strings.Contains(varname, "_") {
-		return false
-	}
-
-	if strings.Contains(varname, ".") {
-		return false
-	}
-
-	// The first character should not be a number
-	var justnumbers = regexp.MustCompile("[0-9]")
-	if justnumbers.MatchString(string(varname[0])) {
-		return false
-	}
-
 	var alphanumeric = regexp.MustCompile("^[a-zA-Z0-9]*$")
 	return alphanumeric.MatchString(varname)
 }
