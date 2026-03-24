@@ -2226,6 +2226,30 @@ def foo = flow{
 for 1 init { foo_inst = new foo; } run {}`, true)
 }
 
+func TestValidVarName(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		valid bool
+	}{
+		{"letters only", "foo", true},
+		{"mixed alphanumeric", "foo123", true},
+		{"uppercase", "FooBar", true},
+		{"underscore", "foo_bar", false},
+		{"hyphen", "foo-bar", false},
+		{"empty string", "", false},
+		{"space", "foo bar", false},
+		{"dot", "foo.bar", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := validVarName(tc.input); got != tc.valid {
+				t.Errorf("validVarName(%q) = %v, want %v", tc.input, got, tc.valid)
+			}
+		})
+	}
+}
+
 func TestEmptyFunctionLitError(t *testing.T) {
 	// functionLit (used in flow/stock properties) must not have an empty block.
 	// This mirrors the equivalent check in EnterStateBlock for stateLit.
