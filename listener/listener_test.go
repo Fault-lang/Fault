@@ -2330,6 +2330,278 @@ func TestPeekUnderflow(t *testing.T) {
 	l.peek()
 }
 
+// --- validate() error paths ---
+
+func TestValidateTooFewStatements(t *testing.T) {
+	// A spec with only the declaration clause has 1 statement on the stack,
+	// which is less than 2, so validate() should panic with "Too few statements".
+	// We call Execute with testing=false to bypass the early return in validate().
+	flags := map[string]bool{"specType": true, "testing": false}
+	_, err := Execute(`spec test1;`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for spec with only declaration, got nil")
+	}
+	if !strings.Contains(err.Error(), "Too few statements") {
+		t.Fatalf("expected 'Too few statements' error, got %q", err.Error())
+	}
+}
+
+func TestValidateNoModelPossible(t *testing.T) {
+	// A spec with declaration + const but no assert/def/run block has 2 statements
+	// on the stack, but neither qualifies as a model driver, so validate() should
+	// panic with "No model possible".
+	flags := map[string]bool{"specType": true, "testing": false}
+	_, err := Execute(`spec test1;
+const x = 5;`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for spec with no assert/def/run, got nil")
+	}
+	if !strings.Contains(err.Error(), "No model possible") {
+		t.Fatalf("expected 'No model possible' error, got %q", err.Error())
+	}
+}
+
+// --- String declaration happy paths ---
+
+func TestStringDeclHappyPath(t *testing.T) {
+	test := `spec test1;
+foo = "hello";
+def bar = flow{
+	baz: func{foo + 1;},
+};
+for 1 run{};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	// Statement[1] should be a DefStatement wrapping a StringLiteral.
+	ds, ok := spec.Statements[1].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not *ast.DefStatement, got %T", spec.Statements[1])
+	}
+	if ds.Name.Value != "foo" {
+		t.Fatalf("string decl name: expected foo, got %s", ds.Name.Value)
+	}
+	if _, ok := ds.Value.(*ast.StringLiteral); !ok {
+		t.Fatalf("string decl value is not *ast.StringLiteral, got %T", ds.Value)
+	}
+}
+
+func TestStringDeclCompound(t *testing.T) {
+	// A compound string (a || b) combines operand names with || and is
+	// represented as an InfixExpression in the DefStatement value.
+	test := `spec test1;
+foo = a || b;
+def bar = flow{
+	baz: func{foo + 1;},
+};
+for 1 run{};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	ds, ok := spec.Statements[1].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not *ast.DefStatement, got %T", spec.Statements[1])
+	}
+	if _, ok := ds.Value.(*ast.InfixExpression); !ok {
+		t.Fatalf("compound string value is not *ast.InfixExpression, got %T", ds.Value)
+	}
+}
+
+// --- Invariant definitions ---
+
+func TestDefInvariant(t *testing.T) {
+	// assert x = y; uses the defInvariant rule → InvariantClause with Operator "=="
+	test := `spec test1;
+def foo = stock{
+	x: 5,
+};
+assert foo.x = 10;
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	as, ok := spec.Statements[2].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[2] is not *ast.AssertionStatement, got %T", spec.Statements[2])
+	}
+	if as.Constraint == nil {
+		t.Fatal("AssertionStatement.Constraint is nil")
+	}
+	if as.Constraint.Operator != "==" {
+		t.Fatalf("defInvariant operator: expected ==, got %q", as.Constraint.Operator)
+	}
+}
+
+func TestStageInvariant(t *testing.T) {
+	// assert when x > 0 then y > 0; uses the stageInvariant rule → InvariantClause with Operator "then"
+	test := `spec test1;
+def foo = stock{
+	x: 5,
+	y: 3,
+};
+assert when foo.x > 0 then foo.y > 0;
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	as, ok := spec.Statements[2].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[2] is not *ast.AssertionStatement, got %T", spec.Statements[2])
+	}
+	if as.Constraint == nil {
+		t.Fatal("AssertionStatement.Constraint is nil")
+	}
+	if as.Constraint.Operator != "then" {
+		t.Fatalf("stageInvariant operator: expected then, got %q", as.Constraint.Operator)
+	}
+}
+
+// --- Multiple components in a system ---
+
+func TestMultipleComponentsInStartBlock(t *testing.T) {
+	// A start block with two component:state pairs should produce a StartStatement
+	// with two entries in Pairs.
+	test := `system test1;
+
+component foo = states{
+	idle: func{
+		stay();
+	},
+};
+
+component bar = states{
+	running: func{
+		stay();
+	},
+};
+
+start {
+	foo: idle,
+	bar: running,
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	// Find the StartStatement (last statement in the spec).
+	var start *ast.StartStatement
+	for _, s := range spec.Statements {
+		if ss, ok := s.(*ast.StartStatement); ok {
+			start = ss
+			break
+		}
+	}
+	if start == nil {
+		t.Fatal("no StartStatement found in spec")
+	}
+	if len(start.Pairs) != 2 {
+		t.Fatalf("expected 2 start pairs, got %d", len(start.Pairs))
+	}
+	// Collect pairs into a map for order-independent comparison.
+	got := make(map[string]string)
+	for _, p := range start.Pairs {
+		got[p[0]] = p[1]
+	}
+	if got["foo"] != "idle" {
+		t.Errorf("expected foo:idle in start block, got foo:%q", got["foo"])
+	}
+	if got["bar"] != "running" {
+		t.Errorf("expected bar:running in start block, got bar:%q", got["bar"])
+	}
+}
+
+// --- Nested conditionals ---
+
+func TestNestedConditional(t *testing.T) {
+	// An if inside an if inside a flow function body should parse without error
+	// and produce nested IfExpression nodes.
+	test := `spec test1;
+def foo = flow{
+	bar: func{
+		if(x > 0){
+			if(y > 0){
+				1;
+			}
+		}
+	},
+};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	flow := spec.Statements[1].(*ast.DefStatement).Value.(*ast.FlowLiteral).Pairs
+	if len(flow) == 0 {
+		t.Fatal("no pairs in flow literal")
+	}
+	var fn *ast.FunctionLiteral
+	for _, v := range flow {
+		f, ok := v.(*ast.FunctionLiteral)
+		if !ok {
+			t.Fatalf("pair value is not a FunctionLiteral, got %T", v)
+		}
+		fn = f
+		break
+	}
+	if len(fn.Body.Statements) == 0 {
+		t.Fatal("function body is empty")
+	}
+	outerIf, ok := fn.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("outer statement is not an IfExpression, got %T", fn.Body.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+	if len(outerIf.Consequence.Statements) == 0 {
+		t.Fatal("outer if has empty consequence")
+	}
+	_, ok = outerIf.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("inner statement is not an IfExpression, got %T", outerIf.Consequence.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+}
+
+// --- Scope reset between struct definitions ---
+
+func TestScopeResetBetweenDefs(t *testing.T) {
+	// After parsing two def statements the listener scope should be empty,
+	// confirming that the second definition was not accidentally scoped to the first.
+	test := `spec test1;
+def foo = stock{
+	x: 5,
+};
+def bar = stock{
+	y: 3,
+};
+assert foo.x > bar.y;
+`
+	flags := map[string]bool{"specType": true}
+	l, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+	if l.scope != "" {
+		t.Fatalf("listener scope should be empty after parsing, got %q", l.scope)
+	}
+}
+
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
 	listener, _ := Execute(test, "", flags)
