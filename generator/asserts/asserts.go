@@ -470,7 +470,10 @@ func (c *Constraint) NoMore(merged []string, n int) []string {
 	var ret []string
 	for _, combo := range combos {
 		// Create inverse of the combination
-		inverse := util.SliceOfIndex(len(merged))
+		inverse, err := util.SliceOfIndex(len(merged))
+		if err != nil {
+			panic(err) // len() is always >= 0; this cannot happen
+		}
 
 		var clause []string
 		var nots []string

@@ -143,7 +143,7 @@ func Filepath(filepath string) string {
 
 func home(host string, filepath string) string {
 	path := strings.Split(filepath, "~")
-	if string(path[1][0]) == string(ospath.Separator) {
+	if len(path[1]) > 0 && path[1][0] == ospath.Separator {
 		filepath = path[1][1:]
 	} else {
 		filepath = path[1]
@@ -171,32 +171,28 @@ func uplevel(path string, host bool) string {
 }
 
 func trimSlashes(parts []string, host bool) []string {
-	if len(parts) == 0 {
-		return parts
+	if !host {
+		for len(parts) > 0 && parts[0] == "" { // Leading slashes
+			parts = parts[1:]
+		}
 	}
-
-	if parts[0] == "" && !host { //Leading slashes
-		parts = parts[1:]
-		return trimSlashes(parts, host)
+	for len(parts) > 0 && parts[len(parts)-1] == "" { // Trailing slashes
+		parts = parts[:len(parts)-1]
 	}
-
-	if parts[len(parts)-1] == "" { //Trailing slashes
-		parts = parts[0 : len(parts)-1]
-		return trimSlashes(parts, host)
-	}
-
 	return parts
 }
 
 func FormatIdent(id string) string {
 	//Removes LLVM IR specific leading characters
-	if string(id[0]) == "@" {
+	if len(id) == 0 {
+		return id
+	}
+	if id[0] == '@' || id[0] == '%' {
 		return id[1:]
-	} else if string(id[0]) == "%" {
-		return id[1:]
-	} else if string(id[0:2]) == "c\"" {
+	}
+	if len(id) >= 2 && id[0:2] == "c\"" {
 		//Trim the c" "
-		id = id[2 : len(id)-1]
+		return id[2 : len(id)-1]
 	}
 	return id
 }
@@ -291,15 +287,15 @@ func MergeIntSliceMaps(m1 map[string][]int16, m2 map[string][]int16) map[string]
 	return m1
 }
 
-func SliceOfIndex(l int) []int {
+func SliceOfIndex(l int) ([]int, error) {
 	if l < 0 {
-		panic("length cannot be negative")
+		return nil, fmt.Errorf("SliceOfIndex: length cannot be negative, got %d", l)
 	}
 	inverse := make([]int, l)
 	for i := 0; i < l; i++ {
 		inverse[i] = i
 	}
-	return inverse
+	return inverse, nil
 }
 
 func RemoveFromStringSlice(sl []string, sub string) []string {
@@ -439,13 +435,13 @@ func DetectMode(filename string) string {
 	}
 }
 
-func GetVarBase(id string) (string, int) {
+func GetVarBase(id string) (string, int, error) {
 	v := strings.Split(id, "_")
 	num, err := strconv.Atoi(v[len(v)-1])
 	if err != nil {
-		panic(fmt.Sprintf("improperly formatted variable SSA name %s", id))
+		return "", 0, fmt.Errorf("improperly formatted variable SSA name %s", id)
 	}
-	return strings.Join(v[0:len(v)-1], "_"), num
+	return strings.Join(v[0:len(v)-1], "_"), num, nil
 }
 
 func Difference(s1 map[string]bool, s2 map[string]bool) []string {
