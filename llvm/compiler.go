@@ -118,15 +118,15 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) *Compiler {
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
 	compiler.LoadMeta(specRec, uncertains, unknowns, aliases, testing)
 
 	err := compiler.Compile(tree)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return compiler
+	return compiler, nil
 }
 
 func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, test bool) {

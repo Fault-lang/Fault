@@ -760,6 +760,6 @@ func prepTest(test string, specType bool) *Processor {
 	flags["specType"] = specType
 	flags["testing"] = true
 	l, _ := listener.Execute(test, "", flags)
-	pre := Execute(l)
+	pre, _ := Execute(l)
 	return pre
 }

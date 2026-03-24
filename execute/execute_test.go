@@ -77,7 +77,10 @@ func TestProbability(t *testing.T) {
 }
 
 func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*VarChange) *ModelChecker {
-	ex := NewModelChecker()
+	ex, err := NewModelChecker()
+	if err != nil {
+		panic(err)
+	}
 	ex.LoadModel(smt, uncertains, unknowns)
 	return ex
 }
@@ -108,13 +111,19 @@ func TestFullSuite(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		pre := preprocess.Execute(lstnr)
+		pre, err := preprocess.Execute(lstnr)
+		if err != nil {
+			return err
+		}
 
 		ty := types.Execute(pre.Processed, pre)
 
 		sw := swaps.NewPrecompiler(ty)
 		tree := sw.Swap(ty.Checked)
-		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
+		if err != nil {
+			return err
+		}
 		uncertains = compiler.RawInputs.Uncertains
 		unknowns = compiler.RawInputs.Unknowns
 		if !compiler.IsValid {
@@ -122,7 +131,10 @@ func TestFullSuite(t *testing.T) {
 		}
 
 		g := generator.Execute(compiler)
-		ex := NewModelChecker()
+		ex, err := NewModelChecker()
+		if err != nil {
+			return err
+		}
 		ex.LoadModel(g.SMT(), uncertains, unknowns)
 		ok, err := ex.Check()
 		if err != nil {

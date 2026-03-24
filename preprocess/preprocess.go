@@ -37,11 +37,16 @@ func NewProcesser() *Processor {
 	}
 }
 
-func Execute(l *listener.FaultListener) *Processor {
-	pre := NewProcesser()
+func Execute(l *listener.FaultListener) (pre *Processor, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	pre = NewProcesser()
 	pre.StructsPropertyOrder = l.StructsPropertyOrder
 	pre.Run(l.AST)
-	return pre
+	return pre, nil
 }
 
 func (p *Processor) Run(n *ast.Spec) *ast.Spec {

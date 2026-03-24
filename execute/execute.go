@@ -34,24 +34,27 @@ type ModelChecker struct {
 	solver       map[string]*Solver
 }
 
-func NewModelChecker() *ModelChecker {
-
+func NewModelChecker() (*ModelChecker, error) {
+	solver, err := GenerateSolver()
+	if err != nil {
+		return nil, err
+	}
 	mc := &ModelChecker{
-		solver:       GenerateSolver(),
+		solver:       solver,
 		ResultValues: make(map[string]string),
 	}
-	return mc
+	return mc, nil
 }
 
-func GenerateSolver() map[string]*Solver {
+func GenerateSolver() (map[string]*Solver, error) {
 	command, _ := os.LookupEnv("SOLVERCMD")
 	if command == "" {
-		panic("No solver is loaded, missing SOLVERCMD")
+		return nil, errors.New("no solver is loaded, missing SOLVERCMD")
 	}
 
 	args, _ := os.LookupEnv("SOLVERARG")
 	if args == "" {
-		panic("No solver is loaded, missing SOLVERARG")
+		return nil, errors.New("no solver is loaded, missing SOLVERARG")
 	}
 
 	s := make(map[string]*Solver)
@@ -61,7 +64,7 @@ func GenerateSolver() map[string]*Solver {
 		/*Command: "z3",
 		Arguments: []string{"-in"}*/
 	}
-	return s
+	return s, nil
 }
 
 func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string /*results map[string][]*variables.VarChange, log *resultscenario.Logger*/) {

@@ -604,11 +604,17 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 	}
 
 	l, _ := listener.Execute(test, path, flags)
-	pre := preprocess.Execute(l)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		panic(err)
+	}
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	if err != nil {
+		panic(err)
+	}
 
 	//fmt.Println(compiler.GetIR())
 	generator := Execute(compiler)
