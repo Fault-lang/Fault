@@ -1,4 +1,7 @@
-### Current Status (2/24/2026)
+### Current Status (3/24/2026)
+Improving error propagation from the listener to the TUI: replaced `os.Exit(1)` calls with panic/recover so errors are returned as Go error values, allowing the TUI to display the `ViewError` screen with phase context instead of crashing. Also added input validation to catch empty function/state blocks and reject variable names with underscores or other invalid patterns earlier in compilation.
+
+#### (2/24/2026)
 Adding charm's Bubbletea to give a nicer interface and further improve the readability of results.
 
 #### (2/1/2026)

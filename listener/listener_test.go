@@ -2,6 +2,7 @@ package listener
 
 import (
 	"fault/ast"
+	"strings"
 	"testing"
 )
 
@@ -2114,8 +2115,169 @@ func TestLeave(t *testing.T) {
 	}
 }
 
+// helpers for underscore validation tests
+
+func assertUnderscoreError(t *testing.T, test string, specType bool) {
+	t.Helper()
+	flags := map[string]bool{
+		"specType": specType,
+		"testing":  true,
+	}
+	_, err := Execute(test, "", flags)
+	if err == nil {
+		t.Fatal("expected error for underscore in variable name, got nil")
+	}
+	if !strings.Contains(err.Error(), "must be only letters or numbers") {
+		t.Fatalf("expected underscore error, got: %q", err.Error())
+	}
+}
+
+func TestGlobalDeclUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `system test1;
+global foo_bar = 1;
+start {};`, false)
+}
+
+func TestStructDeclUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo_bar = stock{
+	value: 1,
+};`, true)
+}
+
+func TestComponentDeclUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `system test1;
+component foo_bar = states{
+	idle: func{
+		stay();
+	},
+};
+start { foo_bar: idle, };`, false)
+}
+
+func TestStringDeclUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+foo_bar = "hello";`, true)
+}
+
+func TestConstSpecUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+const foo_bar = 5;`, true)
+}
+
+func TestStateFuncUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `system test1;
+component foo = states{
+	foo_state: func{
+		stay();
+	},
+};
+start { foo: foo_state, };`, false)
+}
+
+func TestPropFuncUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = flow{
+	foo_fn: func{},
+};`, true)
+}
+
+func TestPropIntUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = stock{
+	foo_val: 5,
+};`, true)
+}
+
+func TestPropStringUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = stock{
+	foo_val: "hello",
+};`, true)
+}
+
+func TestPropBoolUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = stock{
+	foo_val: true,
+};`, true)
+}
+
+func TestPropVarUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = stock{
+	value: 1,
+	foo_val: value,
+};`, true)
+}
+
+func TestPropSolvableUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = stock{
+	foo_val: float(0.0, 1.0),
+};`, true)
+}
+
+func TestRunInitUnderscoreError(t *testing.T) {
+	assertUnderscoreError(t, `spec test1;
+def foo = flow{
+	x: 1,
+};
+for 1 init { foo_inst = new foo; } run {}`, true)
+}
+
+func TestEmptyFunctionLitError(t *testing.T) {
+	// functionLit (used in flow/stock properties) must not have an empty block.
+	// This mirrors the equivalent check in EnterStateBlock for stateLit.
+	test := `spec test1;
+def foo = flow{
+	bar: func{},
+};`
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	flags["testing"] = true
+
+	_, err := Execute(test, "", flags)
+	if err == nil {
+		t.Fatal("expected error for empty function body, got nil")
+	}
+
+	expected := "A function cannot be empty"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error to contain %q, got %q", expected, err.Error())
+	}
+}
+
+func TestEmptyStateBlockError(t *testing.T) {
+	// StateBlock is used inside component = states{} in .fsystem files.
+	// An empty func body (func{}) has fewer than 3 children (just { and }),
+	// which should trigger the validation error.
+	test := `system test1;
+
+component x = states{
+	foo: func{},
+};
+
+start {
+	x: foo,
+};`
+	flags := make(map[string]bool)
+	flags["specType"] = false // fsystem
+	flags["testing"] = true
+
+	_, err := Execute(test, "", flags)
+	if err == nil {
+		t.Fatal("expected error for empty state block, got nil")
+	}
+
+	expected := "A state function cannot be empty"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error to contain %q, got %q", expected, err.Error())
+	}
+}
+
 func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
-	listener := Execute(test, "", flags)
+	listener, _ := Execute(test, "", flags)
 	return listener, listener.AST
 }

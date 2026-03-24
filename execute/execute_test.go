@@ -103,9 +103,9 @@ func TestFullSuite(t *testing.T) {
 		flags["specType"] = (filetype == ".fspec")
 		flags["testing"] = false
 		flags["skipRun"] = false
-		lstnr := listener.Execute(d, fpath, flags)
-		if lstnr == nil {
-			log.Fatal("Fault parser returned nil")
+		lstnr, err := listener.Execute(d, fpath, flags)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		pre := preprocess.Execute(lstnr)

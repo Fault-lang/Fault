@@ -100,7 +100,10 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	flags["specType"] = (filetype == "fspec")
 	flags["testing"] = false
 	flags["skipRun"] = false
-	lstnr := listener.Execute(data, path, flags)
+	lstnr, err := listener.Execute(data, path, flags)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 
 	r.sendProgress(PhaseParsing, "Parsing complete", 0.14, true)
 

@@ -1071,9 +1071,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		var rawid []string
 		var spec *SpecRecord
-		if node.Spec == node.Value[0] {
-			node.Value = node.Value[1:]
-		}
+		// if node.Spec == node.Value[0] {
+		// 	node.Value = node.Value[1:]
+		// }
 
 		if p.inGlobal {
 			spec = p.getSpec(p.trail.CurrentSpec())
