@@ -128,9 +128,13 @@ func (mc *ModelChecker) Solve() error {
 	l := NewSMTListener()
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Start_())
 
+	if l.err != nil {
+		return l.err
+	}
+
 	mc.ResultValues = l.Values
 
-	return err
+	return nil
 }
 
 func (mc *ModelChecker) PlainSolve() (string, error) {

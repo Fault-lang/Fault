@@ -12,6 +12,7 @@ type SMTListener struct {
 	stack   []interface{}
 	Results map[string]Scenario
 	Values  map[string]string
+	err     error // first error encountered during the walk; halts further processing
 }
 
 func NewSMTListener() *SMTListener {
@@ -41,27 +42,38 @@ func (l *SMTListener) peek() interface{} {
 	return nil
 }
 
-func mergeTermParts(parts []string) string {
+// popString pops from the stack and asserts the value is a string.
+// On failure it records l.err and returns ("", false).
+func (l *SMTListener) popString(ctx string) (string, bool) {
+	v := l.pop()
+	s, ok := v.(string)
+	if !ok {
+		l.err = fmt.Errorf("SMT parse error in %s: expected string, got %T", ctx, v)
+		return "", false
+	}
+	return s, true
+}
+
+func mergeTermParts(parts []string) (string, error) {
 	if len(parts) == 1 {
-		return parts[0]
+		return parts[0], nil
 	}
 
 	if len(parts) > 2 {
-		panic("Too many term parts received")
+		return "", fmt.Errorf("SMT parse error: too many term parts (%d), expected 1 or 2", len(parts))
 	}
 
 	value1, err := strconv.ParseFloat(parts[0], 64)
 	if err != nil {
-		return strings.Join(parts, "") // a negative value
+		return strings.Join(parts, ""), nil // a negative value represented as "-" + digits
 	}
 
 	value2, err := strconv.ParseFloat(parts[1], 64)
 	if err != nil {
-		panic("unclear term part")
+		return "", fmt.Errorf("SMT parse error: second term part %q is not a number", parts[1])
 	}
 
-	value3 := value1 / value2
-	return fmt.Sprintf("%f", value3)
+	return fmt.Sprintf("%f", value1/value2), nil
 }
 
 func (l *SMTListener) ExitGet_model_response(c *parser.Get_model_responseContext) {
@@ -73,24 +85,43 @@ func (l *SMTListener) ExitModel_response(c *parser.Model_responseContext) {
 }
 
 func (l *SMTListener) ExitFunction_def(c *parser.Function_defContext) {
-	term := l.pop()
-	sort := l.pop()
-	sym := l.pop()
+	if l.err != nil {
+		return
+	}
 
-	t := term.(string)
-	if string(t[0]) == "(" { // Happens in negative values
+	termVal, ok := l.popString("function_def/term")
+	if !ok {
+		return
+	}
+	sortVal, ok := l.popString("function_def/sort")
+	if !ok {
+		return
+	}
+	symVal, ok := l.popString("function_def/sym")
+	if !ok {
+		return
+	}
+
+	t := termVal
+	if len(t) > 0 && t[0] == '(' {
 		t = t[1 : len(t)-2]
 	}
 
-	l.Values[sym.(string)] = t
+	l.Values[symVal] = t
 
-	value := convertTerm(sort.(string), t)
-	key, id := splitIdent(sym.(string))
-	i, err := strconv.ParseInt(key, 10, 16)
-	k := int16(i)
+	value, err := convertTerm(sortVal, t)
 	if err != nil {
-		panic(fmt.Sprintf("symbol returned from model is malformed. got=%s", sym.(string)))
+		l.err = err
+		return
 	}
+
+	key, id := splitIdent(symVal)
+	i, err := strconv.ParseInt(key, 10, 16)
+	if err != nil {
+		l.err = fmt.Errorf("symbol returned from model is malformed: %s", symVal)
+		return
+	}
+	k := int16(i)
 
 	switch v := value.(type) {
 	case float64:
@@ -107,7 +138,6 @@ func (l *SMTListener) ExitFunction_def(c *parser.Function_defContext) {
 			l.Results[id] = NewBoolTrace()
 			l.Results[id].(*BoolTrace).Add(k, v)
 		}
-
 	case int64:
 		if l.Results[id] != nil {
 			l.Results[id].(*IntTrace).Add(k, v)
@@ -123,15 +153,26 @@ func (l *SMTListener) ExitVariable(c *parser.VariableContext) {
 }
 
 func (l *SMTListener) ExitTerm(c *parser.TermContext) {
+	if l.err != nil {
+		return
+	}
+
 	term := c.GetText()
 
 	if c.GetChildCount() > 1 {
 		parts := []string{}
-		for i := 0; i < len(c.AllTerm()); i++ {
-			p := l.pop()
-			parts = append([]string{p.(string)}, parts...)
+		for range c.AllTerm() {
+			p, ok := l.popString("term/part")
+			if !ok {
+				return
+			}
+			parts = append([]string{p}, parts...)
 		}
-		merge := mergeTermParts(parts)
+		merge, err := mergeTermParts(parts)
+		if err != nil {
+			l.err = err
+			return
+		}
 		if strings.Contains(term, "-") {
 			term = fmt.Sprintf("-%s", merge)
 		} else {
@@ -145,33 +186,32 @@ func (l *SMTListener) ExitSort(c *parser.SortContext) {
 	l.push(c.GetText())
 }
 
-func convertTerm(sort string, term string) interface{} {
-	var value interface{}
-	var err error
-
+func convertTerm(sort string, term string) (interface{}, error) {
 	switch sort {
 	case "Real":
-		value, err = strconv.ParseFloat(term, 64)
+		v, err := strconv.ParseFloat(term, 64)
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("SMT parse error: Real value %q is not a valid float: %w", term, err)
 		}
+		return v, nil
 	case "Bool":
-		if term == "true" {
-			value = true
-		} else if term == "false" {
-			value = false
-		} else {
-			panic(fmt.Sprintf("bool not a valid bool. got=%s", term))
+		switch term {
+		case "true":
+			return true, nil
+		case "false":
+			return false, nil
+		default:
+			return nil, fmt.Errorf("SMT parse error: Bool value %q is not 'true' or 'false'", term)
 		}
 	case "Int":
-		value, err = strconv.ParseInt(term, 10, 64)
+		v, err := strconv.ParseInt(term, 10, 64)
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("SMT parse error: Int value %q is not a valid integer: %w", term, err)
 		}
+		return v, nil
 	default:
-		value = term
+		return term, nil
 	}
-	return value
 }
 
 func splitIdent(ident string) (string, string) {
