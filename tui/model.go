@@ -105,11 +105,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case ProgressUpdateMsg:
-		// Handle progress update
+		// Handle progress update and schedule the next read from the channel.
 		if m.state == ViewProgress {
 			var cmd tea.Cmd
 			m.progress, cmd = m.progress.Update(msg)
-			return m, cmd
+			return m, tea.Batch(cmd, waitForProgress(msg.progressCh, msg.resultCh))
 		}
 
 	case CompilationCompleteMsg:
@@ -311,24 +311,36 @@ func (m Model) errorView() string {
 		Render(b.String())
 }
 
-// startCompilation runs the compilation
-// For now, we run synchronously and return the result
-// TODO: Implement async progress updates using tea.Program.Send()
+// startCompilation runs the runner in a goroutine and returns a Cmd that
+// begins reading progress updates. Each ProgressUpdateMsg chains the next
+// read, keeping the UI responsive throughout compilation.
 func startCompilation(config runner.CompilationConfig) tea.Cmd {
-	return func() tea.Msg {
-		// Run compilation without progress updates for now
-		// The spinner in progress view will show activity
-		r := runner.NewRunner(config, nil)
+	progressCh := make(chan runner.ProgressUpdate, 20)
+	resultCh := make(chan *runner.CompilationOutput, 1)
+
+	go func() {
+		r := runner.NewRunner(config, progressCh)
 		output := r.Run()
+		resultCh <- output
+		close(progressCh)
+	}()
 
-		// Return final result
-		if output.Error != nil {
-			return CompilationErrorMsg{
-				Error: output.Error,
-				Phase: output.ErrorPhase,
+	return waitForProgress(progressCh, resultCh)
+}
+
+// waitForProgress returns a Cmd that blocks on the next value from progressCh.
+// When progressCh is closed the runner is done, so it reads the final output
+// from resultCh and returns the appropriate completion or error message.
+func waitForProgress(progressCh <-chan runner.ProgressUpdate, resultCh <-chan *runner.CompilationOutput) tea.Cmd {
+	return func() tea.Msg {
+		update, ok := <-progressCh
+		if !ok {
+			output := <-resultCh
+			if output.Error != nil {
+				return CompilationErrorMsg{Error: output.Error, Phase: output.ErrorPhase}
 			}
+			return CompilationCompleteMsg{Output: output}
 		}
-
-		return CompilationCompleteMsg{Output: output}
+		return ProgressUpdateMsg{Update: update, progressCh: progressCh, resultCh: resultCh}
 	}
 }
