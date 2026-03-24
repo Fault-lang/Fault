@@ -3,7 +3,6 @@ package reachability
 import (
 	"fault/ast"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -17,13 +16,13 @@ func NewTracer() *Tracer {
 	return &Tracer{graph: make(map[string]bool)}
 }
 
-func (t *Tracer) Scan(spec *ast.Spec) {
+func (t *Tracer) Scan(spec *ast.Spec) error {
 	t.walk(spec)
 	ch, missing := t.check()
 	if !ch {
-		fmt.Fprintf(os.Stderr, "error: system under specified, states %s are unreachable\n", missing)
-		os.Exit(1)
+		return fmt.Errorf("system under specified, states %s are unreachable", strings.Join(missing, ", "))
 	}
+	return nil
 }
 
 func (t *Tracer) walk(n ast.Node) {

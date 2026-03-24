@@ -123,7 +123,9 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 
 	if reach {
 		reacher := reachability.NewTracer()
-		reacher.Scan(ty.Checked)
+		if err := reacher.Scan(ty.Checked); err != nil {
+			return nil, nil, nil, nil, err
+		}
 	}
 
 	return tree, lstnr, ty, sw.Alias, nil
