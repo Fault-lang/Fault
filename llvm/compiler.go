@@ -158,7 +158,7 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 }
 
 func (c *Compiler) validate(specfile *ast.Spec) {
-	if c.isTesting {
+	if c.isTesting || c.isImport {
 		return
 	}
 
