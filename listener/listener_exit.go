@@ -344,7 +344,6 @@ func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
 	}
 }
 
-
 func (l *FaultListener) ExitStateFunc(c *parser.StateFuncContext) {
 	val := l.pop()
 	token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
@@ -1297,6 +1296,10 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 
 	default:
 		panic(fmt.Sprintf("top of stack not a block statement or integer: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
+	}
+
+	if rounds.Value == 0 {
+		panic(fmt.Sprintf("run block on line %d has 0 rounds: a zero-round loop produces no states", c.GetStart().GetLine()))
 	}
 
 	forSt := &ast.ForStatement{

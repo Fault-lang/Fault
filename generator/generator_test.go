@@ -555,6 +555,84 @@ func TestMultiCond(t *testing.T) {
 
 }
 
+func TestBadSpecs(t *testing.T) {
+	type specCase struct {
+		path        string
+		specType    bool
+		expectedErr string // non-empty: expect an error containing this string
+	}
+	specs := []specCase{
+		{"testdata/badspecs/nodefs.fspec", true, "Missing run block or start block"},
+		{"testdata/badspecs/doubleswap.fspec", true, ""},
+		{"testdata/badspecs/sharedstate.fspec", true, ""},
+		{"testdata/badspecs/deep.fspec", true, ""},
+		{"testdata/badspecs/zerounds.fspec", true, "zero-round loop"},
+		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
+		{"testdata/badspecs/aliaschain.fspec", true, ""},
+	}
+
+	for _, s := range specs {
+		t.Run(s.path, func(t *testing.T) {
+			data, err := os.ReadFile(s.path)
+			if err != nil {
+				t.Fatalf("could not read spec file %s: %v", s.path, err)
+			}
+
+			var result string
+			var pipelineErr error
+
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						pipelineErr = fmt.Errorf("panic: %v", r)
+					}
+				}()
+
+				flags := make(map[string]bool)
+				flags["specType"] = s.specType
+				flags["testing"] = false
+				flags["skipRun"] = false
+
+				fp := util.Filepath(s.path)
+				path := gopath.Dir(fp)
+
+				l, err := listener.Execute(string(data), path, flags)
+				if err != nil {
+					pipelineErr = fmt.Errorf("listener: %w", err)
+					return
+				}
+				pre, err := preprocess.Execute(l)
+				if err != nil {
+					pipelineErr = fmt.Errorf("preprocess: %w", err)
+					return
+				}
+				ty := types.Execute(pre.Processed, pre)
+				sw := swaps.NewPrecompiler(ty)
+				tree := sw.Swap(ty.Checked)
+				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, false)
+				if err != nil {
+					pipelineErr = fmt.Errorf("llvm: %w", err)
+					return
+				}
+				result = Execute(compiler).SMT()
+			}()
+
+			if s.expectedErr != "" {
+				if pipelineErr == nil {
+					t.Fatalf("expected error containing %q but got none", s.expectedErr)
+				} else if !strings.Contains(pipelineErr.Error(), s.expectedErr) {
+					t.Fatalf("expected error containing %q, got: %v", s.expectedErr, pipelineErr)
+				}
+			} else {
+				if pipelineErr != nil {
+					t.Fatalf("unexpected error: %v", pipelineErr)
+				}
+				t.Logf("OK %s: %d bytes of SMT", s.path, len(result))
+			}
+		})
+	}
+}
+
 func compareResults(s string, smt string, expecting string) error {
 	if !strings.Contains(smt, "(declare-fun") {
 		return fmt.Errorf("smt not valid for spec %s. \ngot=%s", s, smt)
@@ -604,11 +682,17 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 	}
 
 	l, _ := listener.Execute(test, path, flags)
-	pre := preprocess.Execute(l)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		panic(err)
+	}
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	if err != nil {
+		panic(err)
+	}
 
 	//fmt.Println(compiler.GetIR())
 	generator := Execute(compiler)

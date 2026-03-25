@@ -1,0 +1,15 @@
+spec nodefs;
+
+def s = stock{
+    v: 10,
+};
+
+def f = flow{
+    target: new s,
+    fn: func{
+        target.v <- target.v - 1;
+    },
+};
+
+assert s.v > 0;
+assume s.v < 100;

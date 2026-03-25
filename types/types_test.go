@@ -1010,8 +1010,11 @@ func prepTest(test string, specType bool) (*Checker, error) {
 
 	l, _ := listener.Execute(test, "", flags)
 
-	pre := preprocess.Execute(l)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		return nil, err
+	}
 	ty := NewTypeChecker(pre)
-	_, err := ty.Check(pre.Processed)
+	_, err = ty.Check(pre.Processed)
 	return ty, err
 }

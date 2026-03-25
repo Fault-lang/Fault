@@ -1,0 +1,23 @@
+spec sharedstate;
+
+def s = stock{ v: 10 };
+
+def inc = flow{
+    target: new s,
+    fn: func{ target.v <- target.v + 1; },
+};
+
+def dec = flow{
+    target: new s,
+    fn: func{ target.v <- target.v - 1; },
+};
+
+for 5 init{
+    shared = new s;
+    a = new inc;
+    b = new dec;
+    a.target = shared;
+    b.target = shared;
+} run {
+    a.fn | b.fn;
+}

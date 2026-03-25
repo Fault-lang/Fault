@@ -108,7 +108,10 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	r.sendProgress(PhaseParsing, "Parsing complete", 0.14, true)
 
 	r.sendProgress(PhasePreprocessing, "Preprocessing...", 0.14, false)
-	pre := preprocess.Execute(lstnr)
+	pre, err := preprocess.Execute(lstnr)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 	r.sendProgress(PhasePreprocessing, "Preprocessing complete", 0.28, true)
 
 	r.sendProgress(PhaseTypeChecking, "Type checking...", 0.28, false)
@@ -120,7 +123,9 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 
 	if reach {
 		reacher := reachability.NewTracer()
-		reacher.Scan(ty.Checked)
+		if err := reacher.Scan(ty.Checked); err != nil {
+			return nil, nil, nil, nil, err
+		}
 	}
 
 	return tree, lstnr, ty, sw.Alias, nil
@@ -182,7 +187,10 @@ func (r *Runner) smt2(ir string, compiler *llvm.Compiler) *generator.Generator {
 }
 
 func (r *Runner) plainSolve(smt string) (string, error) {
-	ex := execute.NewModelChecker()
+	ex, err := execute.NewModelChecker()
+	if err != nil {
+		return "", err
+	}
 	ex.LoadModel(smt, nil, nil)
 	ok, err := ex.Check()
 	if err != nil {
@@ -199,7 +207,10 @@ func (r *Runner) plainSolve(smt string) (string, error) {
 }
 
 func (r *Runner) probability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, error) {
-	ex := execute.NewModelChecker()
+	ex, err := execute.NewModelChecker()
+	if err != nil {
+		return nil, err
+	}
 	ex.LoadModel(smt, uncertains, unknowns)
 	ok, err := ex.Check()
 	if err != nil {
@@ -264,21 +275,19 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 
 		r.sendProgress(PhaseLLVM, "Generating LLVM IR...", 0.42, false)
-		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
+		if err != nil {
+			r.sendError(PhaseLLVM, err)
+			output.Error = err
+			output.ErrorPhase = PhaseLLVM
+			return output
+		}
 		uncertains = compiler.RawInputs.Uncertains
 		unknowns = compiler.RawInputs.Unknowns
 		r.sendProgress(PhaseLLVM, "LLVM IR generated", 0.56, true)
 
 		if r.config.Mode == "ir" {
 			output.IR = compiler.GetIR()
-			return output
-		}
-
-		if !compiler.IsValid {
-			err := fmt.Errorf("Fault found nothing to run. Missing run block or start block")
-			r.sendError(PhaseLLVM, err)
-			output.Error = err
-			output.ErrorPhase = PhaseLLVM
 			return output
 		}
 

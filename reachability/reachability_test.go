@@ -9,7 +9,7 @@ import (
 
 func TestSeenBefore(t *testing.T) {
 	tracer := NewTracer()
-	tracer.undefined = []string{"test"}
+	tracer.undefined = map[string]bool{"test": true}
 
 	if !tracer.seenBefore("test") {
 		t.Fatal("seenBefore function not working")
@@ -18,12 +18,12 @@ func TestSeenBefore(t *testing.T) {
 
 func TestRemoveUndefined(t *testing.T) {
 	tracer := NewTracer()
-	tracer.undefined = []string{"test", "test2", "test3"}
+	tracer.undefined = map[string]bool{"test": true, "test2": true, "test3": true}
 
 	tracer.removeUndefined("test2")
 
-	if len(tracer.undefined) != 2 || tracer.undefined[0] != "test" || tracer.undefined[1] != "test3" {
-		t.Fatalf("removeUndefined function not working got=%s", tracer.undefined)
+	if len(tracer.undefined) != 2 || tracer.undefined["test2"] {
+		t.Fatalf("removeUndefined function not working got=%v", tracer.undefined)
 	}
 }
 
@@ -225,7 +225,10 @@ func prepTestSys(test string) (bool, []string) {
 	var path string
 
 	l, _ := listener.Execute(test, path, flags)
-	pre := preprocess.Execute(l)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		panic(err)
+	}
 	ty := types.Execute(pre.Processed, pre)
 	tracer := NewTracer()
 	tracer.walk(ty.Checked)

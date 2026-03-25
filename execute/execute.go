@@ -34,24 +34,27 @@ type ModelChecker struct {
 	solver       map[string]*Solver
 }
 
-func NewModelChecker() *ModelChecker {
-
+func NewModelChecker() (*ModelChecker, error) {
+	solver, err := GenerateSolver()
+	if err != nil {
+		return nil, err
+	}
 	mc := &ModelChecker{
-		solver:       GenerateSolver(),
+		solver:       solver,
 		ResultValues: make(map[string]string),
 	}
-	return mc
+	return mc, nil
 }
 
-func GenerateSolver() map[string]*Solver {
+func GenerateSolver() (map[string]*Solver, error) {
 	command, _ := os.LookupEnv("SOLVERCMD")
 	if command == "" {
-		panic("No solver is loaded, missing SOLVERCMD")
+		return nil, errors.New("no solver is loaded, missing SOLVERCMD")
 	}
 
 	args, _ := os.LookupEnv("SOLVERARG")
 	if args == "" {
-		panic("No solver is loaded, missing SOLVERARG")
+		return nil, errors.New("no solver is loaded, missing SOLVERARG")
 	}
 
 	s := make(map[string]*Solver)
@@ -61,7 +64,7 @@ func GenerateSolver() map[string]*Solver {
 		/*Command: "z3",
 		Arguments: []string{"-in"}*/
 	}
-	return s
+	return s, nil
 }
 
 func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, unknowns []string /*results map[string][]*variables.VarChange, log *resultscenario.Logger*/) {
@@ -112,7 +115,10 @@ func (mc *ModelChecker) Solve() error {
 	}
 
 	// Remove extra output (ie "sat")
-	results = cleanExtraOutputs(results)
+	results, err = cleanExtraOutputs(results)
+	if err != nil {
+		return err
+	}
 
 	is := antlr.NewInputStream(results)
 	lexer := parser.NewSMTLIBv2Lexer(is)
@@ -122,9 +128,13 @@ func (mc *ModelChecker) Solve() error {
 	l := NewSMTListener()
 	antlr.ParseTreeWalkerDefault.Walk(l, p.Start_())
 
+	if l.err != nil {
+		return l.err
+	}
+
 	mc.ResultValues = l.Values
 
-	return err
+	return nil
 }
 
 func (mc *ModelChecker) PlainSolve() (string, error) {
@@ -136,10 +146,18 @@ type VarChange struct {
 	Parent string // SSA name of proceeding var
 }
 
-func cleanExtraOutputs(results string) string {
-	for results[0:1] != "(" {
+func cleanExtraOutputs(results string) (string, error) {
+	for {
+		if len(results) == 0 {
+			return "", errors.New("unexpected empty response from solver")
+		}
+		if results[0] == '(' {
+			return results, nil
+		}
 		newline := strings.Index(results, "\n")
+		if newline == -1 {
+			return "", fmt.Errorf("unexpected solver output (no model found): %s", results)
+		}
 		results = results[newline+1:]
 	}
-	return results
 }

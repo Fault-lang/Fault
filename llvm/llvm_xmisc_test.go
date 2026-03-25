@@ -6,6 +6,8 @@ package llvm
 
 import (
 	"fault/ast"
+	"fault/preprocess"
+	"strings"
 	"testing"
 )
 
@@ -48,5 +50,98 @@ func TestValidOperator(t *testing.T) {
 
 	if !c.validOperator(test1, false) {
 		t.Fatal("operator is valid but validOperator returned false")
+	}
+}
+
+func TestProcessSpecInvalidRootNode(t *testing.T) {
+	c := NewCompiler()
+	err := c.Compile(&ast.ConstantStatement{})
+	if err == nil {
+		t.Fatal("expected error for invalid root node, got nil")
+	}
+	if !strings.Contains(err.Error(), "spec file improperly formatted. Root node is") {
+		t.Fatalf("unexpected error message. got=%q", err.Error())
+	}
+}
+
+func TestProcessSpecMissingSpecDecl(t *testing.T) {
+	c := NewCompiler()
+	c.isTesting = true
+	spec := &ast.Spec{
+		Statements: []ast.Statement{
+			&ast.ConstantStatement{},
+		},
+	}
+	err := c.Compile(spec)
+	if err == nil {
+		t.Fatal("expected error for missing spec declaration, got nil")
+	}
+	if !strings.Contains(err.Error(), "spec file improperly formatted. Missing spec declaration, got") {
+		t.Fatalf("unexpected error message. got=%q", err.Error())
+	}
+}
+
+func TestProcessSpecFetchInstanceStrMapError(t *testing.T) {
+	c := NewCompiler()
+	c.isTesting = true
+	sr := preprocess.NewSpecRecord()
+	sr.SpecName = "specname"
+	sr.Order = [][]string{{"STOCK", "instancename"}}
+	c.specStructs["specname"] = sr
+
+	spec := &ast.Spec{
+		Statements: []ast.Statement{
+			&ast.SysDeclStatement{
+				Name: &ast.Identifier{Value: "sysname", ProcessedName: []string{"sysname"}},
+			},
+			&ast.DefStatement{
+				Name: &ast.Identifier{
+					Value:         "specname_instancename",
+					ProcessedName: []string{"specname", "instancename"},
+				},
+				Value: &ast.StructInstance{
+					Parent: []string{"sysname", "parentname"},
+				},
+			},
+		},
+	}
+	err := c.Compile(spec)
+	if err == nil {
+		t.Fatal("expected error when FetchInstanceStrMap fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "no stock found with name instancename") {
+		t.Fatalf("unexpected error message. got=%q", err.Error())
+	}
+}
+
+func TestProcessSpecFetchComponentError(t *testing.T) {
+	c := NewCompiler()
+	c.isTesting = true
+	sr := preprocess.NewSpecRecord()
+	sr.SpecName = "specname"
+	c.specStructs["specname"] = sr
+
+	spec := &ast.Spec{
+		Statements: []ast.Statement{
+			&ast.SysDeclStatement{
+				Name: &ast.Identifier{Value: "sysname", ProcessedName: []string{"sysname"}},
+			},
+			&ast.DefStatement{
+				Name: &ast.Identifier{
+					Value:         "specname_componentname",
+					ProcessedName: []string{"specname", "componentname"},
+				},
+				Value: &ast.ComponentLiteral{
+					ProcessedName: []string{"specname", "componentname"},
+				},
+			},
+		},
+	}
+	err := c.Compile(spec)
+	if err == nil {
+		t.Fatal("expected error when FetchComponent fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "no component found with name componentname") {
+		t.Fatalf("unexpected error message. got=%q", err.Error())
 	}
 }

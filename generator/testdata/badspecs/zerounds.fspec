@@ -1,0 +1,12 @@
+spec zerounds;
+
+def s = stock{ v: 10 };
+
+def f = flow{
+    target: new s,
+    fn: func{ target.v <- 5; },
+};
+
+for 0 init{ f1 = new f; } run {
+    f1.fn;
+}

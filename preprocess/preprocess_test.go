@@ -3,6 +3,8 @@ package preprocess
 import (
 	"fault/ast"
 	"fault/listener"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -755,11 +757,241 @@ func TestInstanceFlatten(t *testing.T) {
 	}
 }
 
+// --- SpecRecord.Fetch* not-found error paths ---
+
+func TestFetchConstantNotFound(t *testing.T) {
+	sr := NewSpecRecord()
+	sr.SpecName = "test"
+	_, err := sr.FetchConstant("missing")
+	if err == nil {
+		t.Fatal("expected error for missing constant, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("error message should mention the key name, got %q", err.Error())
+	}
+}
+
+func TestFetchStockNotFound(t *testing.T) {
+	sr := NewSpecRecord()
+	sr.SpecName = "test"
+	_, err := sr.FetchStock("missing")
+	if err == nil {
+		t.Fatal("expected error for missing stock, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("error message should mention the key name, got %q", err.Error())
+	}
+}
+
+func TestFetchFlowNotFound(t *testing.T) {
+	sr := NewSpecRecord()
+	sr.SpecName = "test"
+	_, err := sr.FetchFlow("missing")
+	if err == nil {
+		t.Fatal("expected error for missing flow, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("error message should mention the key name, got %q", err.Error())
+	}
+}
+
+func TestFetchComponentNotFound(t *testing.T) {
+	sr := NewSpecRecord()
+	sr.SpecName = "test"
+	_, err := sr.FetchComponent("missing")
+	if err == nil {
+		t.Fatal("expected error for missing component, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("error message should mention the key name, got %q", err.Error())
+	}
+}
+
+// --- Execute error propagation ---
+
+func TestExecuteReturnsError(t *testing.T) {
+	// A listener whose AST is nil causes Run to panic; Execute must catch it
+	// via defer/recover and return a non-nil error instead of crashing.
+	l := &listener.FaultListener{}
+	_, err := Execute(l)
+	if err == nil {
+		t.Fatal("expected Execute to return an error for nil AST, got nil")
+	}
+}
+
+// --- formatIndex error paths ---
+// These call p.formatIndex directly (same package) with hand-crafted AST nodes.
+
+func panicMsg(fn func()) (msg string, panicked bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			msg = fmt.Sprint(r)
+			panicked = true
+		}
+	}()
+	fn()
+	return "", false
+}
+
+func TestFormatIndexNegativeClock(t *testing.T) {
+	// Right operand is a Clock and operator is "-" → "negative indexes not possible"
+	p := NewProcesser()
+	n := &ast.InfixExpression{
+		Left:     &ast.IntegerLiteral{Value: 1},
+		Operator: "-",
+		Right:    &ast.Clock{},
+	}
+	msg, panicked := panicMsg(func() { p.formatIndex(n) })
+	if !panicked {
+		t.Fatal("expected panic, got none")
+	}
+	if !strings.Contains(msg, "negative indexes not possible") {
+		t.Fatalf("expected 'negative indexes not possible', got %q", msg)
+	}
+}
+
+func TestFormatIndexClockAddition(t *testing.T) {
+	// Left operand is a Clock and operator is "+" → "index out of range"
+	p := NewProcesser()
+	n := &ast.InfixExpression{
+		Left:     &ast.Clock{},
+		Operator: "+",
+		Right:    &ast.IntegerLiteral{Value: 1},
+	}
+	msg, panicked := panicMsg(func() { p.formatIndex(n) })
+	if !panicked {
+		t.Fatal("expected panic, got none")
+	}
+	if !strings.Contains(msg, "index out of range") {
+		t.Fatalf("expected 'index out of range', got %q", msg)
+	}
+}
+
+func TestFormatIndexClockMultiply(t *testing.T) {
+	// Left operand is a Clock and operator is "*" → "index out of range"
+	p := NewProcesser()
+	n := &ast.InfixExpression{
+		Left:     &ast.Clock{},
+		Operator: "*",
+		Right:    &ast.IntegerLiteral{Value: 2},
+	}
+	msg, panicked := panicMsg(func() { p.formatIndex(n) })
+	if !panicked {
+		t.Fatal("expected panic, got none")
+	}
+	if !strings.Contains(msg, "index out of range") {
+		t.Fatalf("expected 'index out of range', got %q", msg)
+	}
+}
+
+func TestFormatIndexFloatResult(t *testing.T) {
+	// Integer division evaluates to a FloatLiteral → "index must be a whole number"
+	p := NewProcesser()
+	n := &ast.InfixExpression{
+		Left:     &ast.IntegerLiteral{Value: 1},
+		Operator: "/",
+		Right:    &ast.IntegerLiteral{Value: 2},
+	}
+	msg, panicked := panicMsg(func() { p.formatIndex(n) })
+	if !panicked {
+		t.Fatal("expected panic, got none")
+	}
+	if !strings.Contains(msg, "index must be a whole number") {
+		t.Fatalf("expected 'index must be a whole number', got %q", msg)
+	}
+}
+
+// --- walk: unsupported index type ---
+
+func TestWalkUnsupportedIndexType(t *testing.T) {
+	// An IndexExpression whose Index is not an IntegerLiteral or InfixExpression
+	// (e.g. a FloatLiteral) triggers the "unsupported syntax for index" panic,
+	// which Execute catches and returns as an error.
+	p := NewProcesser()
+	p.trail = p.trail.PushSpec("test")
+	p.Specs["test"] = NewSpecRecord()
+	p.Specs["test"].SpecName = "test"
+	p.initialPass = false
+
+	ident := &ast.Identifier{Spec: "test", Value: "blob"}
+	ident.SetId([]string{"test", "b", "blob"})
+
+	node := &ast.IndexExpression{
+		Left:  ident,
+		Index: &ast.FloatLiteral{Value: 1.5},
+	}
+
+	msg, panicked := panicMsg(func() { p.walk(node) }) //nolint
+	if !panicked {
+		t.Fatal("expected panic for unsupported index type, got none")
+	}
+	if !strings.Contains(msg, "unsupported syntax for index") {
+		t.Fatalf("expected 'unsupported syntax for index', got %q", msg)
+	}
+}
+
+// --- getSpec panic via Execute ---
+
+func TestInstanceFlattenUnknownSpec(t *testing.T) {
+	// An Instance that references a spec name not in p.Specs causes getSpec
+	// to panic; Execute catches it and returns a non-nil error.
+	p := NewProcesser()
+	p.trail = p.trail.PushSpec("test")
+	p.Specs["test"] = NewSpecRecord()
+	p.Specs["test"].SpecName = "test"
+	p.initialPass = false
+
+	// Instance references "doesnotexist" which is not in p.Specs.
+	node := &ast.Instance{
+		Value: &ast.Identifier{Spec: "doesnotexist", Value: "foo"},
+		Name:  "bar",
+		Order: []string{},
+	}
+
+	msg, panicked := panicMsg(func() { p.walk(node) }) //nolint
+	if !panicked {
+		t.Fatal("expected panic for unknown spec, got none")
+	}
+	if !strings.Contains(msg, "doesnotexist") {
+		t.Fatalf("expected spec name in error, got %q", msg)
+	}
+}
+
+// --- Global string declaration populates Globals map ---
+
+func TestGlobalStringDecl(t *testing.T) {
+	test := `spec test1;
+foo = "hello";
+def bar = stock{
+	x: 1,
+};
+assert bar.x > 0;
+`
+	process := prepTest(test, true)
+	sr := process.Specs["test1"]
+	if sr == nil {
+		t.Fatal("spec record for test1 not found")
+	}
+	g, err := sr.FetchGlobal("foo")
+	if err != nil {
+		t.Fatalf("expected foo in Globals, got error: %s", err)
+	}
+	if g == nil {
+		t.Fatal("Globals[foo] is nil")
+	}
+}
+
+func prepTestWithError(test string, specType bool) (*Processor, error) {
+	flags := map[string]bool{"specType": specType, "testing": true}
+	l, _ := listener.Execute(test, "", flags)
+	return Execute(l)
+}
+
 func prepTest(test string, specType bool) *Processor {
 	flags := make(map[string]bool)
 	flags["specType"] = specType
 	flags["testing"] = true
 	l, _ := listener.Execute(test, "", flags)
-	pre := Execute(l)
+	pre, _ := Execute(l)
 	return pre
 }

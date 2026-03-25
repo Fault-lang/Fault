@@ -50,7 +50,6 @@ type Compiler struct {
 	// 2-index -> Choice Group
 
 	hasRunBlock bool
-	IsValid     bool
 	isTesting   bool
 	isImport    bool
 	RunRound    int16
@@ -103,7 +102,6 @@ func NewCompiler() *Compiler {
 		RawInputs:        NewRawInputs(),
 
 		hasRunBlock:   false,
-		IsValid:       false,
 		RunRound:      0,
 		builtIns:      make(map[string]*ir.Func),
 		specStructs:   make(map[string]*preprocess.SpecRecord),
@@ -118,15 +116,15 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) *Compiler {
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
 	compiler.LoadMeta(specRec, uncertains, unknowns, aliases, testing)
 
 	err := compiler.Compile(tree)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return compiler
+	return compiler, nil
 }
 
 func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, test bool) {
@@ -160,30 +158,26 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 }
 
 func (c *Compiler) validate(specfile *ast.Spec) {
-	if c.isTesting {
-		c.IsValid = true
+	if c.isTesting || c.isImport {
 		return
 	}
 
 	for i := len(specfile.Statements) - 1; i >= 0; i-- {
 		n := specfile.Statements[i]
 		if _, ok := n.(*ast.ForStatement); ok {
-			c.IsValid = true
 			return
 		}
 		if _, ok := n.(*ast.StartStatement); ok {
-			c.IsValid = true
 			return
 		}
-
 		if d, ok := n.(*ast.DefStatement); ok {
 			if _, str := d.Value.(*ast.StringLiteral); str {
-				c.IsValid = true
 				return
 			}
 		}
-
 	}
+
+	panic("Fault found nothing to run. Missing run block or start block")
 }
 
 func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
@@ -277,7 +271,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	if !c.isImport && c.IsValid { //Don't compile if the spec is being imported
+	if !c.isImport { //Don't compile if the spec is being imported
 		for _, fileNode := range specfile.Statements {
 			c.compile(fileNode)
 		}
@@ -1276,6 +1270,10 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 
 		instas := c.fetchInstances(id)
 		if len(instas) == 0 {
+			if len(id) > 2 {
+				pos := e.Position()
+				panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (line: %d col: %d)", vname, pos[0], pos[1]))
+			}
 			instas = []string{vname}
 		}
 		return &ast.AssertVar{
@@ -1302,7 +1300,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		}
 
 		if len(instas) == 0 {
-			instas = []string{vname}
+			pos := e.Position()
+			panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (line: %d col: %d)", vname, pos[0], pos[1]))
 		}
 		return &ast.AssertVar{
 			Token:        e.Token,

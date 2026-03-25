@@ -7,9 +7,13 @@ type SetupCompleteMsg struct {
 	Config runner.CompilationConfig
 }
 
-// ProgressUpdateMsg wraps progress updates from the runner
+// ProgressUpdateMsg wraps a single progress update from the runner.
+// progressCh and resultCh are threaded through so the Update handler can
+// chain the next waitForProgress read without storing channels on the model.
 type ProgressUpdateMsg struct {
-	Update runner.ProgressUpdate
+	Update     runner.ProgressUpdate
+	progressCh <-chan runner.ProgressUpdate
+	resultCh   <-chan *runner.CompilationOutput
 }
 
 // CompilationCompleteMsg is sent when compilation finishes successfully

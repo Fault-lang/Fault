@@ -12,6 +12,7 @@ import (
 	"os"
 	gopath "path"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -77,7 +78,10 @@ func TestProbability(t *testing.T) {
 }
 
 func prepTest(smt string, uncertains map[string][]float64, unknowns []string, results map[string][]*VarChange) *ModelChecker {
-	ex := NewModelChecker()
+	ex, err := NewModelChecker()
+	if err != nil {
+		panic(err)
+	}
 	ex.LoadModel(smt, uncertains, unknowns)
 	return ex
 }
@@ -89,6 +93,9 @@ func TestFullSuite(t *testing.T) {
 		uncertains := make(map[string][]float64)
 		unknowns := []string{}
 		//extract the extension from the path
+		if strings.Contains(path, "badspecs") {
+			return nil
+		}
 		filetype := filepath.Ext(path)
 		if filetype != ".fspec" && filetype != ".fsystem" {
 			return nil
@@ -108,21 +115,27 @@ func TestFullSuite(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		pre := preprocess.Execute(lstnr)
+		pre, err := preprocess.Execute(lstnr)
+		if err != nil {
+			return err
+		}
 
 		ty := types.Execute(pre.Processed, pre)
 
 		sw := swaps.NewPrecompiler(ty)
 		tree := sw.Swap(ty.Checked)
-		compiler := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, sw.Alias, false)
+		if err != nil {
+			return err
+		}
 		uncertains = compiler.RawInputs.Uncertains
 		unknowns = compiler.RawInputs.Unknowns
-		if !compiler.IsValid {
-			return fmt.Errorf("Fault found nothing to run. Missing run block or start block.")
-		}
 
 		g := generator.Execute(compiler)
-		ex := NewModelChecker()
+		ex, err := NewModelChecker()
+		if err != nil {
+			return err
+		}
 		ex.LoadModel(g.SMT(), uncertains, unknowns)
 		ok, err := ex.Check()
 		if err != nil {
@@ -145,5 +158,41 @@ func TestFullSuite(t *testing.T) {
 	err := filepath.Walk("../generator/testdata", run)
 	if err != nil {
 		t.Fatalf("Error in full test suite: %s", err)
+	}
+}
+
+func TestCleanExtraOutputsEmpty(t *testing.T) {
+	_, err := cleanExtraOutputs("")
+	if err == nil {
+		t.Fatal("expected error for empty solver output, got nil")
+	}
+}
+
+func TestCleanExtraOutputsNoNewline(t *testing.T) {
+	_, err := cleanExtraOutputs("unsat")
+	if err == nil {
+		t.Fatal("expected error for solver output with no model, got nil")
+	}
+}
+
+func TestCleanExtraOutputsStripsPrefix(t *testing.T) {
+	input := "sat\n(model\n  (define-fun x () Real 1.0)\n)"
+	result, err := cleanExtraOutputs(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if result[0] != '(' {
+		t.Fatalf("expected result to start with '(', got %q", result[:1])
+	}
+}
+
+func TestCleanExtraOutputsAlreadyClean(t *testing.T) {
+	input := "(model\n  (define-fun x () Real 1.0)\n)"
+	result, err := cleanExtraOutputs(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if result != input {
+		t.Fatalf("expected unchanged input, got %q", result)
 	}
 }

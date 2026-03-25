@@ -94,6 +94,9 @@ func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds 
 	var rules []string
 
 	for _, as := range assertList {
+		if !asserts.IsRelevant(g.Env.VarTypes, as.Constraint){ //If the assert is on a variable that is not used, drop the assert
+			continue;
+		}
 		c := asserts.NewConstraint(as, rounds, registry, whens)
 		rules = append(rules, c.Parse()...)
 	}

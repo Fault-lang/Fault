@@ -1,0 +1,12 @@
+spec emptyfunc;
+
+def s = stock{ v: 10 };
+
+def f = flow{
+    target: new s,
+    fn: func{},
+};
+
+for 1 init{ f1 = new f; } run {
+    f1.fn;
+}

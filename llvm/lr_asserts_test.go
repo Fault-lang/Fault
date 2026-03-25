@@ -195,13 +195,16 @@ func prepAssertTest(test string) (*Compiler, error) {
 	flags["skipRun"] = false
 
 	l, _ := listener.Execute(test, "", flags)
-	pre := preprocess.Execute(l)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		return nil, err
+	}
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
 	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
-	err := compiler.Compile(tree)
+	err = compiler.Compile(tree)
 	if err != nil {
 		return nil, err
 	}

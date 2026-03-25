@@ -1,0 +1,20 @@
+spec aliaschain;
+
+def s = stock{ v: 10 };
+
+def f = flow{
+    target: new s,
+    fn: func{ target.v <- 1; },
+};
+
+for 1 init{
+    s1 = new s;
+    s2 = new s;
+    f1 = new f;
+    f2 = new f;
+    f1.target = s1;
+    f2.target = f1.target;
+    f2.target = s2;
+} run {
+    f1.fn | f2.fn;
+}

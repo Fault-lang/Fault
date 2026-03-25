@@ -72,6 +72,43 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 	}
 }
 
+func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {
+	// Check c.Left. Is it a *ast.AssertVar? If not, skip.
+	if leftAssertVar, ok := c.Left.(*ast.AssertVar); ok {
+		left := HasActiveInstance(leftAssertVar.Instances, v)
+		if !left {
+			return false
+		}
+	}
+
+	//Repeat for c.Right
+	if rightAssertVar, ok := c.Right.(*ast.AssertVar); ok {
+		return HasActiveInstance(rightAssertVar.Instances, v)
+	}
+
+	return true
+}
+
+func HasActiveInstance(insts []string, vars map[string]string) bool {
+	// Check the length of the Instances property.
+	// If len == 0 return false
+	// If len > 1 return true
+	// If len == 1, check to see if the string is a key in v.
+	// If not, then the variable is not active in this spec
+	// return false. Otherwise return true
+
+	if len(insts) == 0 {
+		return false
+	}
+	if len(insts) > 1 {
+		return true
+	}
+	if _, exists := vars[insts[0]]; !exists {
+		return false
+	}
+	return true
+}
+
 func (c *Constraint) RegistryConstant(cons string) map[string]*util.StringSet {
 	subset := make(map[string]*util.StringSet)
 	for k := range c.Registry {
@@ -258,7 +295,7 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 		if e.Operator == "choose" {
 			return right
 		}
-		
+
 		return fmt.Sprintf("(%s %s)", smtlibOperators(e.Operator), right)
 
 	case *ast.IntegerLiteral:
@@ -470,7 +507,10 @@ func (c *Constraint) NoMore(merged []string, n int) []string {
 	var ret []string
 	for _, combo := range combos {
 		// Create inverse of the combination
-		inverse := util.SliceOfIndex(len(merged))
+		inverse, err := util.SliceOfIndex(len(merged))
+		if err != nil {
+			panic(err) // len() is always >= 0; this cannot happen
+		}
 
 		var clause []string
 		var nots []string
