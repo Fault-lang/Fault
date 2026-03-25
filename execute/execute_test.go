@@ -130,9 +130,6 @@ func TestFullSuite(t *testing.T) {
 		}
 		uncertains = compiler.RawInputs.Uncertains
 		unknowns = compiler.RawInputs.Unknowns
-		if !compiler.IsValid {
-			return fmt.Errorf("Fault found nothing to run. Missing run block or start block.")
-		}
 
 		g := generator.Execute(compiler)
 		ex, err := NewModelChecker()

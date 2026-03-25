@@ -66,6 +66,7 @@ func TestProcessSpecInvalidRootNode(t *testing.T) {
 
 func TestProcessSpecMissingSpecDecl(t *testing.T) {
 	c := NewCompiler()
+	c.isTesting = true
 	spec := &ast.Spec{
 		Statements: []ast.Statement{
 			&ast.ConstantStatement{},
@@ -82,6 +83,7 @@ func TestProcessSpecMissingSpecDecl(t *testing.T) {
 
 func TestProcessSpecFetchInstanceStrMapError(t *testing.T) {
 	c := NewCompiler()
+	c.isTesting = true
 	sr := preprocess.NewSpecRecord()
 	sr.SpecName = "specname"
 	sr.Order = [][]string{{"STOCK", "instancename"}}
@@ -114,6 +116,7 @@ func TestProcessSpecFetchInstanceStrMapError(t *testing.T) {
 
 func TestProcessSpecFetchComponentError(t *testing.T) {
 	c := NewCompiler()
+	c.isTesting = true
 	sr := preprocess.NewSpecRecord()
 	sr.SpecName = "specname"
 	c.specStructs["specname"] = sr

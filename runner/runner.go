@@ -291,14 +291,6 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
-		if !compiler.IsValid {
-			err := fmt.Errorf("Fault found nothing to run. Missing run block or start block")
-			r.sendError(PhaseLLVM, err)
-			output.Error = err
-			output.ErrorPhase = PhaseLLVM
-			return output
-		}
-
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
 		g := generator.Execute(compiler)
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)

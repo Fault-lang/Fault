@@ -50,7 +50,6 @@ type Compiler struct {
 	// 2-index -> Choice Group
 
 	hasRunBlock bool
-	IsValid     bool
 	isTesting   bool
 	isImport    bool
 	RunRound    int16
@@ -103,7 +102,6 @@ func NewCompiler() *Compiler {
 		RawInputs:        NewRawInputs(),
 
 		hasRunBlock:   false,
-		IsValid:       false,
 		RunRound:      0,
 		builtIns:      make(map[string]*ir.Func),
 		specStructs:   make(map[string]*preprocess.SpecRecord),
@@ -161,29 +159,25 @@ func (c *Compiler) Compile(root ast.Node) (err error) {
 
 func (c *Compiler) validate(specfile *ast.Spec) {
 	if c.isTesting {
-		c.IsValid = true
 		return
 	}
 
 	for i := len(specfile.Statements) - 1; i >= 0; i-- {
 		n := specfile.Statements[i]
 		if _, ok := n.(*ast.ForStatement); ok {
-			c.IsValid = true
 			return
 		}
 		if _, ok := n.(*ast.StartStatement); ok {
-			c.IsValid = true
 			return
 		}
-
 		if d, ok := n.(*ast.DefStatement); ok {
 			if _, str := d.Value.(*ast.StringLiteral); str {
-				c.IsValid = true
 				return
 			}
 		}
-
 	}
+
+	panic("Fault found nothing to run. Missing run block or start block")
 }
 
 func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
@@ -277,7 +271,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
 	}
 
-	if !c.isImport && c.IsValid { //Don't compile if the spec is being imported
+	if !c.isImport { //Don't compile if the spec is being imported
 		for _, fileNode := range specfile.Statements {
 			c.compile(fileNode)
 		}

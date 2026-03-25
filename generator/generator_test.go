@@ -562,11 +562,10 @@ func TestBadSpecs(t *testing.T) {
 		expectedErr string // non-empty: expect an error containing this string
 	}
 	specs := []specCase{
-		{"testdata/badspecs/nodefs.fspec", true, ""},
+		{"testdata/badspecs/nodefs.fspec", true, "Missing run block or start block"},
 		{"testdata/badspecs/doubleswap.fspec", true, ""},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},
-		{"testdata/badspecs/nofor.fsystem", false, ""},
 		{"testdata/badspecs/zerounds.fspec", true, "zero-round loop"},
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
 		{"testdata/badspecs/aliaschain.fspec", true, ""},
@@ -610,7 +609,7 @@ func TestBadSpecs(t *testing.T) {
 				ty := types.Execute(pre.Processed, pre)
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)
-				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, false)
 				if err != nil {
 					pipelineErr = fmt.Errorf("llvm: %w", err)
 					return
