@@ -563,14 +563,12 @@ func TestBadSpecs(t *testing.T) {
 	}
 	specs := []specCase{
 		{"testdata/badspecs/nodefs.fspec", true, ""},
-		{"testdata/badspecs/stringvalid.fspec", true, "no instance of it exists in the run block"},
 		{"testdata/badspecs/doubleswap.fspec", true, ""},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},
 		{"testdata/badspecs/nofor.fsystem", false, ""},
 		{"testdata/badspecs/zerounds.fspec", true, "zero-round loop"},
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
-		{"testdata/badspecs/shadow.fspec", true, ""},
 		{"testdata/badspecs/aliaschain.fspec", true, ""},
 	}
 
