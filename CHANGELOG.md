@@ -1,4 +1,7 @@
-### Current Status (3/24/2026)
+### Current Status (3/25/2026)                                           
+Removing a lot of code smell. Working through a set of bad-spec validation gaps — cases where Fault compiled invalid specs silently rather than producing a clear error.
+                                                                                                
+#### (3/24/2026)
 Improving error propagation from the listener to the TUI: replaced `os.Exit(1)` calls with panic/recover so errors are returned as Go error values, allowing the TUI to display the `ViewError` screen with phase context instead of crashing. Also added input validation to catch empty function/state blocks and reject variable names with underscores or other invalid patterns earlier in compilation.
 
 #### (2/24/2026)
