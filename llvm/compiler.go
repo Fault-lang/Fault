@@ -1276,6 +1276,10 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 
 		instas := c.fetchInstances(id)
 		if len(instas) == 0 {
+			if len(id) > 2 {
+				pos := e.Position()
+				panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (line: %d col: %d)", vname, pos[0], pos[1]))
+			}
 			instas = []string{vname}
 		}
 		return &ast.AssertVar{
@@ -1302,7 +1306,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		}
 
 		if len(instas) == 0 {
-			instas = []string{vname}
+			pos := e.Position()
+			panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (line: %d col: %d)", vname, pos[0], pos[1]))
 		}
 		return &ast.AssertVar{
 			Token:        e.Token,
