@@ -74,15 +74,9 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 
 func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {
 	// Check c.Left. Is it a *ast.AssertVar? If not, skip.
-	// If yes, check the lengthe of the Instances property.
-	// If len == 0 return false
-	// If len > 1 return true
-	// If len == 1, check to see if the string is a key in v. If not, return false. Otherwise return true
-
-	// Check c.Left
 	if leftAssertVar, ok := c.Left.(*ast.AssertVar); ok {
 		left := HasActiveInstance(leftAssertVar.Instances, v)
-		if !left{
+		if !left {
 			return false
 		}
 	}
@@ -96,14 +90,21 @@ func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {
 }
 
 func HasActiveInstance(insts []string, vars map[string]string) bool {
+	// Check the length of the Instances property.
+	// If len == 0 return false
+	// If len > 1 return true
+	// If len == 1, check to see if the string is a key in v.
+	// If not, then the variable is not active in this spec
+	// return false. Otherwise return true
+
 	if len(insts) == 0 {
-			return false
-		}
+		return false
+	}
 	if len(insts) > 1 {
-			return true
+		return true
 	}
 	if _, exists := vars[insts[0]]; !exists {
-				return false
+		return false
 	}
 	return true
 }
