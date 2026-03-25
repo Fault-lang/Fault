@@ -1,0 +1,24 @@
+spec deep;
+
+def inner = stock{ val: 5 };
+
+def middle = stock{
+    core: new inner,
+};
+
+def outer = flow{
+    layer: new middle,
+    fn: func{
+        layer.core.val <- 99;
+    },
+};
+
+for 1 init{
+    i = new inner;
+    m = new middle;
+    o = new outer;
+    m.core = i;
+    o.layer = m;
+} run {
+    o.fn;
+}

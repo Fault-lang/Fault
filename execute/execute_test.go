@@ -12,6 +12,7 @@ import (
 	"os"
 	gopath "path"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -92,6 +93,9 @@ func TestFullSuite(t *testing.T) {
 		uncertains := make(map[string][]float64)
 		unknowns := []string{}
 		//extract the extension from the path
+		if strings.Contains(path, "badspecs") {
+			return nil
+		}
 		filetype := filepath.Ext(path)
 		if filetype != ".fspec" && filetype != ".fsystem" {
 			return nil

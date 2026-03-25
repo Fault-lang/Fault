@@ -1,0 +1,7 @@
+spec stringvalid;
+
+def s = stock{ v: 10 };
+
+str = "a rule name";
+
+assert s.v > 0;

@@ -344,7 +344,6 @@ func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
 	}
 }
 
-
 func (l *FaultListener) ExitStateFunc(c *parser.StateFuncContext) {
 	val := l.pop()
 	token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
