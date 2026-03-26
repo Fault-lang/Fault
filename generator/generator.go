@@ -47,7 +47,7 @@ func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool) 
 }
 func Execute(compiler *llvm.Compiler) *Generator {
 	generator := NewGenerator(compiler.RawInputs, compiler.StringRules, compiler.IsCompound)
-	generator.Run(compiler.GetIR())
+	generator.Run(compiler.GetOptimizedIR())
 	return generator
 }
 

@@ -1,6 +1,7 @@
 package llvm
 
 import (
+	"bytes"
 	"errors"
 	"fault/ast"
 	"fault/llvm/name"
@@ -8,10 +9,12 @@ import (
 	"fault/util"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"runtime/debug"
 	"strings"
 
 	"github.com/barkimedes/go-deepcopy"
+	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
@@ -1790,6 +1793,32 @@ func negateTemporal(op string, n int) (string, int) {
 
 func (c *Compiler) GetIR() string {
 	return c.module.String()
+}
+
+func (c *Compiler) GetOptimizedIR() string {
+	return Optimize(c.module.String())
+}
+
+// Optimize runs instcombine, simplifycfg, and dce via the system opt binary.
+// Falls back to the original IR if opt is not found, fails, or produces IR
+// that cannot be parsed by llir/llvm (e.g. LLVM 15+ opaque-pointer format).
+func Optimize(llir string) string {
+	opt, err := exec.LookPath("opt")
+	if err != nil {
+		return llir
+	}
+	cmd := exec.Command(opt, "-passes=instcombine,simplifycfg,dce", "-S", "-")
+	cmd.Stdin = strings.NewReader(llir)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return llir
+	}
+	optimized := out.String()
+	if _, err := asm.ParseString("", optimized); err != nil {
+		return llir
+	}
+	return optimized
 }
 
 func (c *Compiler) setup() {
