@@ -563,12 +563,12 @@ func TestBadSpecs(t *testing.T) {
 	}
 	specs := []specCase{
 		{"testdata/badspecs/nodefs.fspec", true, "Missing run block or start block"},
-		{"testdata/badspecs/doubleswap.fspec", true, ""},
+		{"testdata/badspecs/doubleswap.fspec", true, "swapped more than once"},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},
 		{"testdata/badspecs/zerounds.fspec", true, "zero-round loop"},
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
-		{"testdata/badspecs/aliaschain.fspec", true, ""},
+		{"testdata/badspecs/aliaschain.fspec", true, "swapped more than once"},
 	}
 
 	for _, s := range specs {
@@ -667,6 +667,92 @@ func stripAndEscape(str string) string {
 		}
 	}
 	return output.String()
+}
+
+func TestSwapsNested(t *testing.T) {
+	// A flow whose target is a stock containing a nested stock.
+	// After swap, accesses to target.sub.x must resolve to the base
+	// stock variable (s_sub_x), not the flow-local name (f_target_sub_x).
+	test := `spec nestedswap;
+
+def inner = stock{
+	x: 5,
+};
+
+def outstock = stock{
+	sub: new inner,
+};
+
+def f1 = flow{
+	target: new outstock,
+	fn: func{
+		target.sub.x <- 1;
+	},
+};
+
+for 2 init{
+	s = new outstock;
+	f = new f1;
+	f.target = s;
+} run {
+	f.fn;
+}
+`
+	g := prepTest("", test, true, false)
+	smt := stripAndEscape(g.SMT())
+
+	if strings.Contains(smt, "nestedswap_f_target_sub_x") {
+		t.Fatal("SMT contains unresolved flow-local variable nestedswap_f_target_sub_x: nested alias not applied")
+	}
+	if !strings.Contains(smt, "nestedswap_s_sub_x") {
+		t.Fatalf("SMT missing expected base variable nestedswap_s_sub_x.\ngot=%s", smt)
+	}
+}
+
+func TestSwapsMultiple(t *testing.T) {
+	// A single flow with two swaps: both properties must resolve
+	// to their respective base stock variables after a single
+	// swapDeepNames call (not one per swap).
+	test := `spec multiswap;
+
+def stock1 = stock{
+	v: 10,
+};
+
+def stock2 = stock{
+	w: 5,
+};
+
+def f1 = flow{
+	addtarget: new stock1,
+	subtarget: new stock2,
+	fn1: func{
+		addtarget.v <- 3;
+	},
+	fn2: func{
+		subtarget.w -> 2;
+	},
+};
+
+for 2 init{
+	sa = new stock1;
+	sb = new stock2;
+	f = new f1;
+	f.addtarget = sa;
+	f.subtarget = sb;
+} run {
+	f.fn1 | f.fn2;
+}
+`
+	g := prepTest("", test, true, false)
+	smt := stripAndEscape(g.SMT())
+
+	if !strings.Contains(smt, "multiswap_sa_v") {
+		t.Fatalf("SMT missing expected base variable multiswap_sa_v (addtarget swap not applied).\ngot=%s", smt)
+	}
+	if !strings.Contains(smt, "multiswap_sb_w") {
+		t.Fatalf("SMT missing expected base variable multiswap_sb_w (subtarget swap not applied).\ngot=%s", smt)
+	}
 }
 
 func prepTest(filepath string, test string, specType bool, testRun bool) *Generator {

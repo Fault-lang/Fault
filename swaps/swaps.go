@@ -149,6 +149,7 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 		infix := s.(*ast.InfixExpression)
 		rawid := infix.Left.(ast.Nameable).RawId()
 		key := rawid[len(rawid)-1]
+
 		val, err := c.checker.Reference(infix.Right)
 		if err != nil {
 			return base, err
@@ -166,11 +167,16 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 
 		switch v := val.(type) {
 		case *ast.ParameterCall, *ast.Identifier:
-			c.Alias[infix.Left.(ast.Nameable).IdString()] = infix.Right.(ast.Nameable).IdString()
+			aliasKey := infix.Left.(ast.Nameable).IdString()
+			if _, ok := c.Alias[aliasKey]; ok {
+				return base, fmt.Errorf("property %q on %s is swapped more than once", key, base.Name)
+			}
+
+			c.Alias[aliasKey] = infix.Right.(ast.Nameable).IdString()
 		case *ast.StructInstance:
-			for k, v2 := range v.Properties {
-				aliasKey := fmt.Sprintf("%s_%s", infix.Left.(ast.Nameable).IdString(), k)
-				c.Alias[aliasKey] = v2.IdString()
+			leftPrefix := infix.Left.(ast.Nameable).IdString()
+			if err := c.buildPropertyAliases(leftPrefix, v.Properties); err != nil {
+				return base, fmt.Errorf("property %q on %s is swapped more than once", key, base.Name)
 			}
 
 			v.Name = key
@@ -182,10 +188,25 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 		}
 
 		base.Properties[key].Value = val
-		base = c.swapDeepNames(base)
-
 	}
+	base = c.swapDeepNames(base)
 	return base, nil
+}
+
+func (c *Precompiler) buildPropertyAliases(leftPrefix string, props map[string]*ast.StructProperty) error {
+	for k, v2 := range props {
+		aliasKey := fmt.Sprintf("%s_%s", leftPrefix, k)
+		if _, ok := c.Alias[aliasKey]; ok {
+			return fmt.Errorf("alias %q already exists", aliasKey)
+		}
+		c.Alias[aliasKey] = v2.IdString()
+		if nested, ok := v2.Value.(*ast.StructInstance); ok {
+			if err := c.buildPropertyAliases(aliasKey, nested.Properties); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Precompiler) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {

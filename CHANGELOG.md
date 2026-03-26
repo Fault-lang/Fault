@@ -1,4 +1,7 @@
-### Current Status (3/25/2026)                                           
+### Current Status (3/26/2026)
+Fixed two bugs in swaps related to performance and nested stock properties.
+
+#### (3/25/2026)
 Removing a lot of code smell. Working through a set of bad-spec validation gaps — cases where Fault compiled invalid specs silently rather than producing a clear error.
                                                                                                 
 #### (3/24/2026)
