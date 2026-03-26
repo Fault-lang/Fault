@@ -102,6 +102,11 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		b.Env.VarLoads[refname] = inst.Src
 	default:
 		base := util.FormatIdent(inst.Dst.Ident())
+		// Skip initial stores to local allocas that are never loaded or stored
+		// by any flow function — they would produce orphaned SMT declarations.
+		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] {
+			return nil
+		}
 		if IsTemp(inst.Src.Ident()) {
 			refname := fmt.Sprintf("%s-%s", b.ParentFunction, inst.Src.Ident())
 			if val, ok := b.Env.VarLoads[refname]; ok {

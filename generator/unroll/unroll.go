@@ -25,6 +25,7 @@ type Env struct {
 	MutableVars      map[string]bool        // base var names that have flow-derived state transitions
 	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
 	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
+	UsedVars         map[string]bool        // alloca names accessed by at least one flow function
 	CurrentFunction  string
 	CurrentRound     int
 	returnVoid       *PhiState
@@ -41,6 +42,7 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		MutableVars:  make(map[string]bool),
 		ConstantVals: make(map[string]value.Value),
 		StringRules:  make(map[string]string),
+		UsedVars:     make(map[string]bool),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
 		WhensThens:   make(map[string]map[string][]string),
@@ -478,6 +480,30 @@ func FindMutableVars(funcs []*ir.Func) map[string]bool {
 		}
 	}
 	return bases
+}
+
+// FindUsedVars scans all non-__run function bodies for load and store
+// instructions. Any alloca (or param pointer) that is loaded from or stored to
+// in a flow function is considered "used". Allocas that are only initialized in
+// __run and never touched by any flow can be omitted from the SMT model.
+func FindUsedVars(funcs []*ir.Func) map[string]bool {
+	used := make(map[string]bool)
+	for _, f := range funcs {
+		if util.FormatIdent(f.Ident()) == "__run" {
+			continue
+		}
+		for _, block := range f.Blocks {
+			for _, inst := range block.Insts {
+				switch v := inst.(type) {
+				case *ir.InstLoad:
+					used[util.FormatIdent(v.Src.Ident())] = true
+				case *ir.InstStore:
+					used[util.FormatIdent(v.Dst.Ident())] = true
+				}
+			}
+		}
+	}
+	return used
 }
 
 // baseVarName strips any trailing decimal digits from name.
