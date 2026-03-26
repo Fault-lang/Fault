@@ -15,7 +15,6 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
-	"github.com/llir/llvm/ir/metadata"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -65,7 +64,6 @@ type Compiler struct {
 	contextBlock    *ir.Block
 	contextFunc     *ir.Func
 	contextFuncName string
-	contextMetadata *metadata.Attachment
 
 	// Stack of variables that are in scope
 	alloc             bool
