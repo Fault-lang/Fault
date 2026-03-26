@@ -563,12 +563,12 @@ func TestBadSpecs(t *testing.T) {
 	}
 	specs := []specCase{
 		{"testdata/badspecs/nodefs.fspec", true, "Missing run block or start block"},
-		{"testdata/badspecs/doubleswap.fspec", true, ""},
+		{"testdata/badspecs/doubleswap.fspec", true, "swapped more than once"},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},
 		{"testdata/badspecs/zerounds.fspec", true, "zero-round loop"},
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
-		{"testdata/badspecs/aliaschain.fspec", true, ""},
+		{"testdata/badspecs/aliaschain.fspec", true, "swapped more than once"},
 	}
 
 	for _, s := range specs {

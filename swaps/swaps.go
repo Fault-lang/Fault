@@ -149,6 +149,7 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 		infix := s.(*ast.InfixExpression)
 		rawid := infix.Left.(ast.Nameable).RawId()
 		key := rawid[len(rawid)-1]
+
 		val, err := c.checker.Reference(infix.Right)
 		if err != nil {
 			return base, err
@@ -166,10 +167,18 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 
 		switch v := val.(type) {
 		case *ast.ParameterCall, *ast.Identifier:
-			c.Alias[infix.Left.(ast.Nameable).IdString()] = infix.Right.(ast.Nameable).IdString()
+			aliasKey := infix.Left.(ast.Nameable).IdString()
+			if _, ok := c.Alias[aliasKey]; ok {
+				return base, fmt.Errorf("property %q on %s is swapped more than once", key, base.Name)
+			}
+
+			c.Alias[aliasKey] = infix.Right.(ast.Nameable).IdString()
 		case *ast.StructInstance:
 			for k, v2 := range v.Properties {
 				aliasKey := fmt.Sprintf("%s_%s", infix.Left.(ast.Nameable).IdString(), k)
+				if _, ok := c.Alias[aliasKey]; ok {
+					return base, fmt.Errorf("property %q on %s is swapped more than once", key, base.Name)
+				}
 				c.Alias[aliasKey] = v2.IdString()
 			}
 
