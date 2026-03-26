@@ -174,12 +174,9 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 
 			c.Alias[aliasKey] = infix.Right.(ast.Nameable).IdString()
 		case *ast.StructInstance:
-			for k, v2 := range v.Properties {
-				aliasKey := fmt.Sprintf("%s_%s", infix.Left.(ast.Nameable).IdString(), k)
-				if _, ok := c.Alias[aliasKey]; ok {
-					return base, fmt.Errorf("property %q on %s is swapped more than once", key, base.Name)
-				}
-				c.Alias[aliasKey] = v2.IdString()
+			leftPrefix := infix.Left.(ast.Nameable).IdString()
+			if err := c.buildPropertyAliases(leftPrefix, v.Properties); err != nil {
+				return base, fmt.Errorf("property %q on %s is swapped more than once", key, base.Name)
 			}
 
 			v.Name = key
@@ -194,6 +191,22 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 	}
 	base = c.swapDeepNames(base)
 	return base, nil
+}
+
+func (c *Precompiler) buildPropertyAliases(leftPrefix string, props map[string]*ast.StructProperty) error {
+	for k, v2 := range props {
+		aliasKey := fmt.Sprintf("%s_%s", leftPrefix, k)
+		if _, ok := c.Alias[aliasKey]; ok {
+			return fmt.Errorf("alias %q already exists", aliasKey)
+		}
+		c.Alias[aliasKey] = v2.IdString()
+		if nested, ok := v2.Value.(*ast.StructInstance); ok {
+			if err := c.buildPropertyAliases(aliasKey, nested.Properties); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Precompiler) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
