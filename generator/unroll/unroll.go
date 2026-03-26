@@ -22,8 +22,9 @@ type Env struct {
 	RawInputs        *llvm.RawInputs
 	VarLoads         map[string]value.Value
 	VarTypes         map[string]string
-	MutableVars      map[string]bool   // base var names that have flow-derived state transitions
+	MutableVars      map[string]bool        // base var names that have flow-derived state transitions
 	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
+	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
 	CurrentFunction  string
 	CurrentRound     int
 	returnVoid       *PhiState
@@ -39,6 +40,7 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		VarTypes:     make(map[string]string),
 		MutableVars:  make(map[string]bool),
 		ConstantVals: make(map[string]value.Value),
+		StringRules:  make(map[string]string),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
 		WhensThens:   make(map[string]map[string][]string),
@@ -539,7 +541,8 @@ func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rul
 			// rather than declaring them as free SMT variables.
 			switch gl.Init.(type) {
 			case *constant.Float, *constant.Int:
-				if hasVersionSuffix(id) && !e.MutableVars[baseVarName(id)] && !isASolvable(id, RawInputs) {
+				_, isString := e.StringRules[id]
+				if hasVersionSuffix(id) && !e.MutableVars[baseVarName(id)] && !isASolvable(id, RawInputs) && !isString {
 					e.ConstantVals[id] = gl.Init
 					continue
 				}
@@ -687,9 +690,12 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
 		if v, ok := e.VarLoads[refname]; ok {
-			// Inlined constant — return the literal value directly (not a variable)
-			if c, isConst := v.(constant.Constant); isConst {
-				litStr := extractLiteral(c)
+			// Inlined constant literal — return value directly (not a variable reference).
+			// Must match concrete types; *ir.Global also satisfies constant.Constant so
+			// we cannot use the interface assertion alone.
+			switch c := v.(type) {
+			case *constant.Float, *constant.Int:
+				litStr := extractLiteral(c.(constant.Constant))
 				ty := LookupType(refname, v)
 				return litStr, ty, false
 			}

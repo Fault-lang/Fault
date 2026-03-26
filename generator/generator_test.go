@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	gopath "path"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -654,7 +655,12 @@ func compareResults(s string, smt string, expecting string) error {
 	return nil
 }
 
+var blockNumRe = regexp.MustCompile(`block\d+(true|false)`)
+
 func stripAndEscape(str string) string {
+	// Normalize block variable names: block<n>true/block<n>false → blocktrue/blockfalse
+	// so that LLVM IR block renumbering (e.g. from optimization passes) doesn't break tests.
+	str = blockNumRe.ReplaceAllString(str, "block${1}")
 	var output strings.Builder
 	output.Grow(len(str))
 	for _, ch := range str {
