@@ -65,6 +65,7 @@ func (g *Generator) Run(llopt string) {
 }
 
 func (g *Generator) newCallgraph(m *ir.Module) {
+	g.Env.MutableVars = unroll.FindMutableVars(m.Funcs)
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
 	g.sortFuncs(m.Funcs)
 

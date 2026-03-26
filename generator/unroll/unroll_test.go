@@ -33,22 +33,57 @@ func TestNewLLFunc(t *testing.T) {
 }
 
 func TestNewConstants(t *testing.T) {
+	// Spec-level constants (no version digit suffix) are always declared in SMT.
 	e := NewEnv(llvm.NewRawInputs())
 	globals := []*ir.Global{
-		ir.NewGlobalDef("test_global1", constant.NewFloat(irtypes.Double, 10)),
-		ir.NewGlobalDef("test_global2", constant.NewInt(irtypes.I1, 0)),
-		ir.NewGlobalDef("test_global3", constant.NewFloat(irtypes.Double, 30)),
+		ir.NewGlobalDef("spec_constA", constant.NewFloat(irtypes.Double, 10)),
+		ir.NewGlobalDef("spec_constB", constant.NewInt(irtypes.I1, 0)),
+		ir.NewGlobalDef("spec_constC", constant.NewFloat(irtypes.Double, 30)),
 	}
 	rawInputs := &llvm.RawInputs{}
 
 	expected := []rules.Rule{
-		declareVar("test_global1", "Real", &rules.Wrap{Value: "10.0"}, false),
-		declareVar("test_global2", "Bool", &rules.Wrap{Value: "0"}, false),
-		declareVar("test_global3", "Real", &rules.Wrap{Value: "30.0"}, false),
+		declareVar("spec_constA", "Real", &rules.Wrap{Value: "10.0"}, false),
+		declareVar("spec_constB", "Bool", &rules.Wrap{Value: "0"}, false),
+		declareVar("spec_constC", "Real", &rules.Wrap{Value: "30.0"}, false),
 	}
 
 	result := NewConstants(e, globals, rawInputs)
 	assert.Equal(t, expected, result)
+}
+
+func TestNewConstantsInlinesUnmodifiedStocks(t *testing.T) {
+	// Versioned stock properties (digit suffix) that have no local alloca
+	// (i.e. no flow modifies them) should be inlined into ConstantVals rather
+	// than declared as free SMT variables.
+	e := NewEnv(llvm.NewRawInputs())
+	// s_v1 is a versioned stock property; MutableVars["s_v"] is unset → constant stock
+	globals := []*ir.Global{
+		ir.NewGlobalDef("spec_s_v1", constant.NewFloat(irtypes.Double, 5)),
+	}
+	rawInputs := &llvm.RawInputs{}
+
+	result := NewConstants(e, globals, rawInputs)
+	assert.Empty(t, result, "constant stock should be inlined, not declared")
+
+	litVal, ok := e.ConstantVals["spec_s_v1"]
+	assert.True(t, ok, "constant stock literal should be stored in ConstantVals")
+	assert.NotNil(t, litVal)
+}
+
+func TestNewConstantsDeclaresModifiedStocks(t *testing.T) {
+	// Versioned stock properties that DO have a local alloca (flow modifies them)
+	// must still be declared as SMT variables.
+	e := NewEnv(llvm.NewRawInputs())
+	e.MutableVars["spec_s_v"] = true // flow creates spec_s_v2 alloca
+	globals := []*ir.Global{
+		ir.NewGlobalDef("spec_s_v1", constant.NewFloat(irtypes.Double, 5)),
+	}
+	rawInputs := &llvm.RawInputs{}
+
+	result := NewConstants(e, globals, rawInputs)
+	assert.Len(t, result, 1, "mutable stock's initial value should be declared in SMT")
+	assert.Empty(t, e.ConstantVals, "mutable stock should not be in ConstantVals")
 }
 func TestUnroll(t *testing.T) {
 	env := NewEnv(llvm.NewRawInputs())

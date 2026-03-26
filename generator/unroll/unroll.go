@@ -22,6 +22,8 @@ type Env struct {
 	RawInputs        *llvm.RawInputs
 	VarLoads         map[string]value.Value
 	VarTypes         map[string]string
+	MutableVars      map[string]bool   // base var names that have flow-derived state transitions
+	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
 	CurrentFunction  string
 	CurrentRound     int
 	returnVoid       *PhiState
@@ -35,6 +37,8 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		RawInputs:    ri,
 		VarLoads:     make(map[string]value.Value),
 		VarTypes:     make(map[string]string),
+		MutableVars:  make(map[string]bool),
+		ConstantVals: make(map[string]value.Value),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
 		WhensThens:   make(map[string]map[string][]string),
@@ -455,6 +459,62 @@ func (b *LLBlock) fetchIdent(id string, r rules.Rule) rules.Rule {
 	return r
 }
 
+// FindMutableVars scans all function bodies and returns the set of base variable
+// names (trailing digits stripped) that have local alloca instructions. If a
+// versioned stock property (e.g. "s_v1") has no local alloca with the same base
+// ("s_v"), it is never written by any flow and its value can be inlined.
+func FindMutableVars(funcs []*ir.Func) map[string]bool {
+	bases := make(map[string]bool)
+	for _, f := range funcs {
+		for _, block := range f.Blocks {
+			for _, inst := range block.Insts {
+				if alloca, ok := inst.(*ir.InstAlloca); ok {
+					name := util.FormatIdent(alloca.Ident())
+					bases[baseVarName(name)] = true
+				}
+			}
+		}
+	}
+	return bases
+}
+
+// baseVarName strips any trailing decimal digits from name.
+// e.g. "s_v2" → "s_v", "spec_stock1" → "spec_stock"
+func baseVarName(name string) string {
+	i := len(name)
+	for i > 0 && name[i-1] >= '0' && name[i-1] <= '9' {
+		i--
+	}
+	return name[:i]
+}
+
+// hasVersionSuffix returns true if name ends with a decimal digit, indicating
+// it is a versioned stock property rather than a spec-level constant.
+func hasVersionSuffix(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
+	last := name[len(name)-1]
+	return last >= '0' && last <= '9'
+}
+
+// extractLiteral formats a constant value as an SMT-compatible literal string,
+// using the same approach as constantRule (big.Float/big.Int decimal).
+func extractLiteral(c constant.Constant) string {
+	switch cv := c.(type) {
+	case *constant.Float:
+		str := cv.X.String()
+		if !strings.Contains(str, ".") {
+			str += ".0"
+		}
+		return str
+	case *constant.Int:
+		return cv.X.String()
+	default:
+		return FormatValue(c)
+	}
+}
+
 func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rules.Rule {
 	// Constants cannot be changed and therefore don't increment
 	// in SSA. So instead of return a *rule we can skip directly
@@ -475,6 +535,15 @@ func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rul
 		b.Env.VarTypes[id] = gl.Type().String()
 
 		if !IsIndexed(id) && !IsClocked(id) {
+			// Inline constant stocks (versioned globals never written by any flow)
+			// rather than declaring them as free SMT variables.
+			switch gl.Init.(type) {
+			case *constant.Float, *constant.Int:
+				if hasVersionSuffix(id) && !e.MutableVars[baseVarName(id)] && !isASolvable(id, RawInputs) {
+					e.ConstantVals[id] = gl.Init
+					continue
+				}
+			}
 			ru := b.constantRule(id, gl.Init, RawInputs)
 			if ru == nil {
 				continue
@@ -618,6 +687,12 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
 		if v, ok := e.VarLoads[refname]; ok {
+			// Inlined constant — return the literal value directly (not a variable)
+			if c, isConst := v.(constant.Constant); isConst {
+				litStr := extractLiteral(c)
+				ty := LookupType(refname, v)
+				return litStr, ty, false
+			}
 			ty := LookupType(refname, v)
 			xid := v.Ident()
 			return util.FormatIdent(xid), ty, true

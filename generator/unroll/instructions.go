@@ -204,7 +204,12 @@ func (b *LLBlock) tempRule(inst value.Value, r rules.Rule) {
 
 func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, inst.Ident())
-	b.Env.VarLoads[refname] = inst.Src
+	srcName := util.FormatIdent(inst.Src.Ident())
+	if litVal, isConst := b.Env.ConstantVals[srcName]; isConst {
+		b.Env.VarLoads[refname] = litVal
+	} else {
+		b.Env.VarLoads[refname] = inst.Src
+	}
 	b.Env.VarTypes[refname] = inst.Src.Type().String()
 	return []rules.Rule{}
 }
