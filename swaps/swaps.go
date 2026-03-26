@@ -191,9 +191,8 @@ func (c *Precompiler) swapValues(base *ast.StructInstance) (*ast.StructInstance,
 		}
 
 		base.Properties[key].Value = val
-		base = c.swapDeepNames(base)
-
 	}
+	base = c.swapDeepNames(base)
 	return base, nil
 }
 
