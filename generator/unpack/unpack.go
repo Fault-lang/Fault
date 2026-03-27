@@ -367,11 +367,14 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 	for i, p := range phis {
 		var rule_set []string
 		for var_name, vals := range p {
-			//If the vals are the same as the last known value, we don't need to create a phi
+			//If the vals are the same as the last known value, we don't need to create a phi rule,
+			// but we still record the branch in sync so the fill-in pass doesn't incorrectly
+			// replace this branch's value with OnEntry.
 			if last != nil {
 				if last_vals, ok := last[var_name]; ok {
 					if vals[len(vals)-1] == last_vals[len(last_vals)-1] {
-						continue // No need to create a phi, the value is the same as the last known value
+						sync[var_name] = append(sync[var_name], i)
+						continue
 					}
 				}
 			}
@@ -383,14 +386,10 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 				hasPhi[var_name] = true
 			}
 
-			var idx int
-			if vals[len(vals)-1] == u.SSA.Get(var_name) { // I actually don't know what's wrong here
-				idx = len(vals) - 2 // Bug in phis for ORs. The Phi cannot be the same as the last known value
-			} else {
-				idx = len(vals) - 1 // The last value is the current value
-			}
-
-			ends := fmt.Sprintf("%s_%d", var_name, vals[idx])
+			// ends is always vals[-1]: the branch's final SSA value for this variable.
+			// The phi SSA (u.SSA.Get after Update) is always last_branch_end+1, so it
+			// can never equal vals[-1] when SSA is managed correctly.
+			ends := fmt.Sprintf("%s_%d", var_name, vals[len(vals)-1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 
 			i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
