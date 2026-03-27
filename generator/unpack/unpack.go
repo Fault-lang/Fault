@@ -470,34 +470,65 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 	var tI, fI []*rules.Init
 	var tRules, fRules []string
 	var hasPhi map[string]bool
+
 	tI, tRules, hasPhi = u.buildPhis(tPhis, nil)
 	tInit = append(tInit, tI...)
-	tSelectorName := util.FormatBlock(blocknames["true"])
-	tInit = append(tInit, rules.NewInit(tSelectorName, "Bool", 0, nil, false, false))
-	tSelectorRule := u.Log.NewBranchSelector(tSelectorName, 0, tRules, InitsToList((tInit)))
-	u.Log.AddBranchSelector(tSelectorRule)
-	//u.Log.QueueFork(InitsToList(tInit))
 
 	if len(fPhis) > 0 {
 		fI, fRules, _ = u.buildPhis(fPhis, hasPhi)
 		fInit = append(fInit, fI...)
+
+		// Liveness check: if a variable is modified in only one branch, the other
+		// branch needs an identity phi (= entry value) to keep the model complete.
+		tPhiVars := varsInPhis(tPhis)
+		fPhiVars := varsInPhis(fPhis)
+		for k := range tPhiVars {
+			if !fPhiVars[k] {
+				if entry := u.OnEntry[k]; len(entry) > 0 {
+					fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, entry[len(entry)-1]))
+				}
+			}
+		}
+		for k := range fPhiVars {
+			if !tPhiVars[k] {
+				if entry := u.OnEntry[k]; len(entry) > 0 {
+					tRules = append(tRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, entry[len(entry)-1]))
+				}
+			}
+		}
 	} else {
 		// If there are no rules in the false branch we still need the phis
 		blocknames["false"] = fmt.Sprintf("%sfalse", blocknames["true"][0:len(blocknames["true"])-4])
 		for l := range tPhis {
-			for k, _ := range tPhis[l] {
+			for k := range tPhis[l] {
 				fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
 			}
 		}
 	}
+
+	// Create selectors after all rules are finalized (so complement rules are included)
+	tSelectorName := util.FormatBlock(blocknames["true"])
+	tInit = append(tInit, rules.NewInit(tSelectorName, "Bool", 0, nil, false, false))
+	tSelectorRule := u.Log.NewBranchSelector(tSelectorName, 0, tRules, InitsToList((tInit)))
+	u.Log.AddBranchSelector(tSelectorRule)
+
 	fSelectorName := util.FormatBlock(blocknames["false"])
 	fInit = append(fI, rules.NewInit(fSelectorName, "Bool", 0, nil, false, false))
 	fSelectorRule := u.Log.NewBranchSelector(fSelectorName, 0, fRules, InitsToList((fInit)))
 	u.Log.AddBranchSelector(fSelectorRule)
 
-	//u.Log.QueueFork(InitsToList(fInit))
 	inits := append(tInit, fInit...)
 	return inits, tSelectorRule, fSelectorRule
+}
+
+func varsInPhis(phis []map[string][]int16) map[string]bool {
+	vars := make(map[string]bool)
+	for _, p := range phis {
+		for k := range p {
+			vars[k] = true
+		}
+	}
+	return vars
 }
 
 func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
