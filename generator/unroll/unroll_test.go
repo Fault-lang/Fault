@@ -85,6 +85,32 @@ func TestNewConstantsDeclaresModifiedStocks(t *testing.T) {
 	assert.Len(t, result, 1, "mutable stock's initial value should be declared in SMT")
 	assert.Empty(t, e.ConstantVals, "mutable stock should not be in ConstantVals")
 }
+func TestFindUsedVars(t *testing.T) {
+	// Non-__run function: loads from alloca "a", stores to alloca "b".
+	// Both should appear in UsedVars.
+	flowFunc := ir.NewFunc("flow_fn", irtypes.Void)
+	entry := flowFunc.NewBlock("entry")
+	allocaA := entry.NewAlloca(irtypes.Double)
+	allocaA.SetName("a")
+	allocaB := entry.NewAlloca(irtypes.Double)
+	allocaB.SetName("b")
+	loadedA := entry.NewLoad(irtypes.Double, allocaA)
+	entry.NewStore(loadedA, allocaB)
+
+	// __run function: stores to alloca "c". Should be excluded from UsedVars.
+	runFunc := ir.NewFunc("__run", irtypes.Void)
+	runEntry := runFunc.NewBlock("entry")
+	allocaC := runEntry.NewAlloca(irtypes.Double)
+	allocaC.SetName("c")
+	runEntry.NewStore(constant.NewFloat(irtypes.Double, 0), allocaC)
+
+	used := FindUsedVars([]*ir.Func{flowFunc, runFunc})
+
+	assert.True(t, used["a"], "a (loaded in flow_fn) should be in UsedVars")
+	assert.True(t, used["b"], "b (stored in flow_fn) should be in UsedVars")
+	assert.False(t, used["c"], "c (only stored in __run) should not be in UsedVars")
+}
+
 func TestUnroll(t *testing.T) {
 	env := NewEnv(llvm.NewRawInputs())
 	irf := ir.NewFunc("test", irtypes.Void)
