@@ -111,6 +111,10 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 		os.Exit(1)
 	}
 
+	if result.Message != "" {
+		fmt.Println(result.Message)
+	}
+
 	// Print results based on mode
 	switch mode {
 	case "ast":

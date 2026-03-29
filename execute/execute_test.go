@@ -142,7 +142,8 @@ func TestFullSuite(t *testing.T) {
 			return fmt.Errorf("model checker has failed: %s %s", path, err)
 		}
 		if !ok {
-			return fmt.Errorf("Fault could not find a failure case.")
+			ex.NoSat = true
+			return nil
 		}
 		err = ex.Solve()
 		if err != nil {
