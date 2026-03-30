@@ -137,13 +137,13 @@ func TestComponent(t *testing.T) {
 	ifblock := foo["initial"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	ifcond := ifblock.Condition.(*ast.InfixExpression)
 	left := ifcond.Left.(*ast.InfixExpression)
-	state := left.Left.(*ast.This).RawId()
+	state := left.Left.(*ast.ParameterCall).RawId()
 	if len(state) != 3 || state[0] != "test" || state[1] != "foo" || state[2] != "initial" {
 		t.Fatalf("state conditional wrap incorrect got=%s", state)
 	}
 
 	right := ifcond.Right.(*ast.InfixExpression)
-	this := right.Left.(*ast.This).RawId()
+	this := right.Left.(*ast.ParameterCall).RawId()
 	if len(this) != 3 || this[0] != "test" || this[1] != "foo" || this[2] != "x" {
 		t.Fatalf("this special word not converted to correct context got=%s", this)
 	}

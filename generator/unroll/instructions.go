@@ -117,7 +117,12 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				if !IsBoolean(v) && !IsNumeric(v) {
 					v = util.FormatIdent(v)
 				}
-				ru = append(ru, b.createRule(base, v, ty, "="))
+				if strings.HasPrefix(v, "__hist_") {
+					offset, histBase := parseHistSentinel(v)
+					ru = append(ru, b.createHistoryRule(base, histBase, offset, ty))
+				} else {
+					ru = append(ru, b.createRule(base, v, ty, "="))
+				}
 			} else if ref, ok := b.irRefs[refname]; ok {
 				switch r := ref.(type) {
 				case *rules.Infix:
@@ -721,4 +726,25 @@ func (b *LLBlock) compareRuleOp(op string) string {
 	default:
 		return op
 	}
+}
+
+// parseHistSentinel extracts the round offset and base variable name from a
+// history sentinel global name of the form "__hist_N_base_var_name".
+func parseHistSentinel(name string) (int, string) {
+	without := strings.TrimPrefix(name, "__hist_")
+	idx := strings.Index(without, "_")
+	offset, _ := strconv.Atoi(without[:idx])
+	return offset, without[idx+1:]
+}
+
+// createHistoryRule builds an Infix rule whose RHS is a HistoryWrap, producing
+// SMT like (= lhs_N base_M) where M is the SSA version Offset rounds back.
+func (b *LLBlock) createHistoryRule(lhs string, histBase string, offset int, ty string) rules.Rule {
+	xIs := IsIndexed(lhs)
+	_, file, line, _ := runtime.Caller(1)
+	wid := rules.NewWrap(lhs, ty, true, file, line, true, xIs)
+	wid.SetOmit(b.Env.CurrentFunction)
+	wid.SetWhensThens(b.Env.WhensThens)
+	hwrap := &rules.HistoryWrap{Base: histBase, Offset: offset, Type: ty}
+	return &rules.Infix{X: wid, Ty: ty, Y: hwrap, Op: "="}
 }

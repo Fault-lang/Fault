@@ -271,6 +271,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) ([]*rules.Init, string) {
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Vwrap:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
+	case *rules.HistoryWrap:
+		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.FuncCall:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Stay:
@@ -342,6 +344,8 @@ func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]st
 		}
 
 	case *rules.Vwrap:
+		// Nothing to do
+	case *rules.HistoryWrap:
 		// Nothing to do
 	case *rules.FuncCall:
 		// Nothing to do

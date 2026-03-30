@@ -480,6 +480,8 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 			node.InferredType = &ast.Type{Type: "COMPONENT", Scope: 0, Parameters: nil}
 		}
 		return node, nil
+	case *ast.This:
+		return node, nil
 	default:
 		pos := node.(ast.Node).Position()
 		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
@@ -517,6 +519,10 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 			Parameters: nil}, nil
 	case *ast.ParameterCall:
 		return c.lookupCallType(n)
+	case *ast.This:
+		rawid = n.RawId()
+	default:
+		return nil, fmt.Errorf("Type unimplemented")
 	}
 
 	spec := c.SpecStructs[rawid[0]]
@@ -578,8 +584,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			Scope:      0,
 			Parameters: nil}
 		return node, err
-	
-	
+
 	case *ast.InfixExpression:
 		if COMPARE[node.Operator] {
 			node.InferredType = &ast.Type{Type: "BOOL",
@@ -811,6 +816,21 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 
 		node.InferredType = typeable(node.Right)
 		return node, err
+	case *ast.This:
+		n2, err := c.lookupReference(node)
+		if err != nil {
+			return node, err
+		}
+
+		tnode, err := c.typecheck(n2)
+		if err != nil {
+			return node, err
+		}
+
+		node.InferredType = &ast.Type{Type: tnode.Type(),
+			Scope:      0,
+			Parameters: nil}
+		return node, err
 	default:
 		pos := node.(ast.Node).Position()
 		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
@@ -1016,6 +1036,16 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 			return n, err
 		}
 		return nil, fmt.Errorf("cannot establish node %s", b.IdString())
+	case *ast.This:
+		rawid := b.RawId()
+		spec := c.SpecStructs[rawid[0]]
+		ty, _ := spec.GetStructType(rawid)
+		p, err := spec.FetchVar(rawid, ty)
+		if err == nil {
+			return c.lookupReference(p)
+		}
+		id := b.Id()
+		return c.lookupStruct(id, ty)
 	default:
 		if c.isValue(base) {
 			return c.infer(base)

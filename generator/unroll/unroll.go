@@ -760,13 +760,26 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 	yIs := IsIndexed(y)
 	_, file, line, _ := runtime.Caller(1)
 
-	xr := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
-	xr.SetWhensThens(b.Env.WhensThens)
-	xr.SetOmit(b.Env.CurrentFunction)
+	var xr, yr rules.Rule
+	if strings.HasPrefix(x, "__hist_") {
+		offset, histBase := parseHistSentinel(x)
+		xr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyX}
+	} else {
+		wx := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
+		wx.SetWhensThens(b.Env.WhensThens)
+		wx.SetOmit(b.Env.CurrentFunction)
+		xr = wx
+	}
 
-	yr := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
-	yr.SetWhensThens(b.Env.WhensThens)
-	yr.SetOmit(b.Env.CurrentFunction)
+	if strings.HasPrefix(y, "__hist_") {
+		offset, histBase := parseHistSentinel(y)
+		yr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyY}
+	} else {
+		wy := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
+		wy.SetWhensThens(b.Env.WhensThens)
+		wy.SetOmit(b.Env.CurrentFunction)
+		yr = wy
+	}
 
 	return &rules.Infix{
 		X:  xr,

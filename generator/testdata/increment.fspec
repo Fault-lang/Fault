@@ -1,0 +1,16 @@
+spec increment;
+
+def fib = flow{
+    value: 0,
+    step: func{
+        if this.value == 0 {
+              this.value = 1;
+        }else{
+              this.value <- this.value[now-1];
+        }
+    }
+};
+
+for 5 init{f = new fib;} run{
+    f.step;
+}

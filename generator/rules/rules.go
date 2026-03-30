@@ -1235,6 +1235,67 @@ func (vw *Vwrap) Branch() string {
 	return vw.tag.branch
 }
 
+// HistoryWrap represents a reference to a prior-round value: variable[now-N].
+// WriteRule resolves to the SSA version N-1 steps before the current one, so
+// that Infix produces e.g. (= value_2 value_1) for `value <- value[now-1]`.
+type HistoryWrap struct {
+	Rule
+	Base     string // SMT base variable name, e.g. "spec_flow_value"
+	Offset   int    // rounds back, e.g. 1 for now-1
+	Type     string
+	Round    int
+	PhiLevel int
+	OnEntry  map[string][]int16
+	tag      *branch
+}
+
+func (h *HistoryWrap) ruleNode() {}
+func (h *HistoryWrap) LoadContext(phiLevel int, _ map[string]bool, onEntry map[string][]int16, _ *scenario.Logger) {
+	h.PhiLevel = phiLevel
+	h.OnEntry = onEntry
+}
+func (h *HistoryWrap) SetRound(r int) { h.Round = r }
+func (h *HistoryWrap) GetRound() int  { return h.Round }
+func (h *HistoryWrap) String() string {
+	return fmt.Sprintf("%s[now-%d]", h.Base, h.Offset)
+}
+func (h *HistoryWrap) Assertless() string { return h.String() }
+func (h *HistoryWrap) Tag(k1 string, k2 string) {
+	h.tag = &branch{branch: k1, block: k2}
+}
+func (h *HistoryWrap) IsTagged() bool { return h.tag != nil }
+func (h *HistoryWrap) Choice() string {
+	if h.tag != nil {
+		return h.tag.block
+	}
+	return ""
+}
+func (h *HistoryWrap) Branch() string {
+	if h.tag != nil {
+		return h.tag.branch
+	}
+	return ""
+}
+
+// WriteRule returns the SMT variable name for the value Offset rounds back.
+//
+// Outside an ITE block: Y (RHS) is always resolved before X (LHS) in
+// Infix.WriteRule, so ssa.Get(Base) holds the end-of-previous-round version.
+//
+// Inside an ITE block: the true branch may have already incremented the SSA
+// counter before the false branch runs, so we use OnEntry[Base][PhiLevel]
+// (the SSA state at ITE entry) instead of ssa.Get.
+func (h *HistoryWrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	var base int16
+	if h.OnEntry != nil && h.OnEntry[h.Base] != nil && len(h.OnEntry[h.Base]) > h.PhiLevel {
+		base = h.OnEntry[h.Base][h.PhiLevel]
+	} else {
+		base = ssa.Get(h.Base)
+	}
+	v := base - int16(h.Offset-1)
+	return nil, fmt.Sprintf("%s_%d", h.Base, v), ssa
+}
+
 type branch struct {
 	branch string
 	block  string

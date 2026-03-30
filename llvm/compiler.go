@@ -805,15 +805,53 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 }
 
 func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
-	var value value.Value
-	if node.Left.Type() == "BOOL" {
-		value = constant.NewBool(false)
-	} else {
-		value = constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	switch idx := node.Index.(type) {
+	case *ast.InfixExpression:
+		// now - N: load from a sentinel global encoding the history reference
+		offset := int(idx.Right.(*ast.IntegerLiteral).Value)
+		return c.historyLoad(node.Left.(*ast.ParameterCall).RawId(), offset, node.Position())
+	case *ast.Clock:
+		// now: same as the current value
+		return c.lookupIdent(node.Id(), node.Position())
 	}
-	c.setConst(node.RawId(), value)
-	c.globalVariable(node.Id(), value, node.Position())
+
+	// Fallback for unrecognised index forms — should not be reached with valid ASTs
+	var val value.Value
+	if node.Left.Type() == "BOOL" {
+		val = constant.NewBool(false)
+	} else {
+		val = constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	}
+	c.setConst(node.RawId(), val)
+	c.globalVariable(node.Id(), val, node.Position())
 	return c.lookupIdent(node.Id(), node.Position())
+}
+
+// historyLoad declares (or reuses) a sentinel global whose name encodes the
+// history reference, and returns a load from it. The SMT generator detects the
+// "__hist_N_" prefix and resolves it to the correct prior SSA version.
+func (c *Compiler) historyLoad(id []string, offset int, pos []int) *ir.InstLoad {
+	base := strings.Join(id, "_")
+	sentinelName := fmt.Sprintf("__hist_%d_%s", offset, base)
+
+	s := c.specs[id[0]]
+	ty := s.GetSpecType(base)
+	if ty == nil {
+		ty = irtypes.Double
+	}
+
+	if _, exists := c.specGlobals[sentinelName]; !exists {
+		var initVal constant.Constant
+		if ty == irtypes.I1 {
+			initVal = constant.NewInt(irtypes.I1, 0)
+		} else {
+			initVal = constant.NewFloat(irtypes.Double, 0)
+		}
+		g := c.module.NewGlobalDef(sentinelName, initVal)
+		c.specGlobals[sentinelName] = g
+	}
+
+	return c.contextBlock.NewLoad(ty, c.specGlobals[sentinelName])
 }
 
 func (c *Compiler) compilePrefix(node *ast.PrefixExpression) value.Value {
@@ -1072,6 +1110,7 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	case *ast.This:
 		id := v.Id()
 		return c.lookupIdent(id, node.Position())
+	//HERE
 	default:
 		return c.compileValue(node)
 	}

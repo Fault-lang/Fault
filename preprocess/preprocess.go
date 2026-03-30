@@ -1110,12 +1110,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if node.Value[0] == "this" {
 			//Convert this
 			rawid := append([]string{p.trail.CurrentSpec(), p.scope}, node.Value[1:]...)
-			node2 := &ast.This{
-				Token:         node.Token,
-				Value:         rawid[len(rawid)-2:],
-				ProcessedName: rawid,
-			}
-			return node2, err
+			node.Value = rawid[2:]
+			node.ProcessedName = rawid
+			return node, err
 		}
 
 		var rawid []string
