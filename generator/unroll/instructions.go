@@ -39,8 +39,10 @@ func (b *LLBlock) parseInstruct(inst ir.Instruction) []rules.Rule {
 		return b.parseCall(inst)
 	// case *ir.InstPhi:
 	// 	return b.parsePhi(inst)
-	// case *ir.InstGetElementPtr:
-	// 	return b.parseGetElementPtr(inst)
+	case *ir.InstGetElementPtr:
+		//Do nothing — GEP instructions are pointer arithmetic artefacts from
+		// certain LLVM optimization passes; they carry no semantic content for
+		// the SMT model and can be safely ignored.
 	case *ir.InstXor:
 		return b.parseXor(inst)
 	case *ir.InstAnd:

@@ -15,10 +15,12 @@ jobs:
       - image: cimg/go:1.24.3
     steps:
       - run:
-          name: Install LLVM
+          name: Install LLVM 18
           command: |
-            sudo apt-get update
-            sudo apt-get install llvm
+            wget -O /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+            chmod +x /tmp/llvm.sh
+            sudo /tmp/llvm.sh 18
+            sudo update-alternatives --install /usr/bin/opt opt /usr/bin/opt-18 18
       - checkout
       - restore_cache:
           keys:
