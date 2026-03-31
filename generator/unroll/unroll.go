@@ -656,6 +656,9 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" {
 		return nil
 	}
+	if strings.HasPrefix(id, "__hist_") {
+		return nil
+	}
 
 	switch val := c.(type) {
 	case *constant.Int:

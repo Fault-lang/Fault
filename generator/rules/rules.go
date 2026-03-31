@@ -690,10 +690,6 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	if wr, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsLoggable(x) {
-		i.Log.UpdateVariable(x, wr.OmitFromOutput)
-	}
-
 	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
 }
 
@@ -1246,13 +1242,15 @@ type HistoryWrap struct {
 	Round    int
 	PhiLevel int
 	OnEntry  map[string][]int16
+	Log      *scenario.Logger
 	tag      *branch
 }
 
 func (h *HistoryWrap) ruleNode() {}
-func (h *HistoryWrap) LoadContext(phiLevel int, _ map[string]bool, onEntry map[string][]int16, _ *scenario.Logger) {
+func (h *HistoryWrap) LoadContext(phiLevel int, _ map[string]bool, onEntry map[string][]int16, log *scenario.Logger) {
 	h.PhiLevel = phiLevel
 	h.OnEntry = onEntry
+	h.Log = log
 }
 func (h *HistoryWrap) SetRound(r int) { h.Round = r }
 func (h *HistoryWrap) GetRound() int  { return h.Round }
@@ -1279,13 +1277,27 @@ func (h *HistoryWrap) Branch() string {
 
 // WriteRule returns the SMT variable name for the value Offset rounds back.
 //
-// Outside an ITE block: Y (RHS) is always resolved before X (LHS) in
-// Infix.WriteRule, so ssa.Get(Base) holds the end-of-previous-round version.
+// When per-round phi history is available (via Log.RoundPhis), it resolves
+// value[now-N] by looking N+1 positions back in the phi list, where index 0
+// is the initial (pre-round) SSA and index K is the phi output after round K.
+// This ensures phi outputs are not counted as part of "now", giving correct
+// Fibonacci-like semantics for accumulation rules like `value <- value[now-1]`.
 //
-// Inside an ITE block: the true branch may have already incremented the SSA
-// counter before the false branch runs, so we use OnEntry[Base][PhiLevel]
-// (the SSA state at ITE entry) instead of ssa.Get.
+// Falls back to raw SSA arithmetic when no phi history is available.
 func (h *HistoryWrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	if h.Log != nil {
+		if roundPhis, ok := h.Log.RoundPhis[h.Base]; ok && len(roundPhis) > 0 {
+			// RoundPhis[0] = initial SSA, RoundPhis[K] = phi after round K.
+			// "now" inside round N = len(roundPhis) (N entries completed so far).
+			// value[now-Offset] = RoundPhis[len - Offset - 1].
+			idx := len(roundPhis) - h.Offset - 1
+			if idx < 0 {
+				idx = 0
+			}
+			return nil, fmt.Sprintf("%s_%d", h.Base, roundPhis[idx]), ssa
+		}
+	}
+	// Fallback: arithmetic on the ITE-entry SSA (used when no phi history exists yet).
 	var base int16
 	if h.OnEntry != nil && h.OnEntry[h.Base] != nil && len(h.OnEntry[h.Base]) > h.PhiLevel {
 		base = h.OnEntry[h.Base][h.PhiLevel]

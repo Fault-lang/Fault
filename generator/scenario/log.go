@@ -25,6 +25,9 @@ type Logger struct {
 	IsCompound      map[string]bool // Filter display of compound rules
 	IsPhi           map[string]bool
 	BranchSelectors []*BranchSelector // rules to make the solution easier to parse
+	// RoundPhis stores per-variable phi SSA history: index 0 = initial SSA (before any rounds),
+	// index N = phi output SSA after round N. Used by HistoryWrap to resolve value[now-N].
+	RoundPhis map[string][]int16
 }
 
 func NewLogger() *Logger {
@@ -41,7 +44,12 @@ func NewLogger() *Logger {
 		IsStringRule:  make(map[string]bool),
 		IsCompound:    make(map[string]bool),
 		IsPhi:         make(map[string]bool),
+		RoundPhis:     make(map[string][]int16),
 	}
+}
+
+func (l *Logger) AddRoundPhi(varName string, ssa int16) {
+	l.RoundPhis[varName] = append(l.RoundPhis[varName], ssa)
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {
@@ -360,10 +368,17 @@ func (l *Logger) Kill() {
 			}
 		}
 
-		// Also check for messages directly in this function
+		// Also check for messages or alive nested function calls directly in this function
 		if !hasLiveUpdates {
 			for i := entryIdx + 1; i < exitIdx; i++ {
-				if _, ok := l.Events[i].(*Message); ok && !l.Events[i].IsDead() {
+				if l.Events[i].IsDead() {
+					continue
+				}
+				if _, ok := l.Events[i].(*Message); ok {
+					hasLiveUpdates = true
+					break
+				}
+				if fc, ok := l.Events[i].(*FunctionCall); ok && fc.Type == "Entry" {
 					hasLiveUpdates = true
 					break
 				}

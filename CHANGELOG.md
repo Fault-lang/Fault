@@ -1,5 +1,5 @@
 ### Current Status (3/26/2026)
-Fixed two bugs in swaps related to performance and nested stock properties.
+Fixed two bugs in swaps related to performance and nested stock properties. Finally implemented LLVM optimization passes. Resolved some long standing bugs around phi values and especially the spec clock. Clarified the interface so that no-sat does not return an error.
 
 #### (3/25/2026)
 Removing a lot of code smell. Working through a set of bad-spec validation gaps — cases where Fault compiled invalid specs silently rather than producing a clear error.
