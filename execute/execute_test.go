@@ -152,7 +152,14 @@ func TestFullSuite(t *testing.T) {
 		g.ResultLog.Results = ex.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Kill()
-		g.ResultLog.Print()
+
+		// Looking for past bug where Kill() killed
+		// all the variables by accident ^_^;;
+		ret := g.ResultLog.String()
+		if strings.TrimSpace(ret) == "" {
+			return fmt.Errorf("All variables killed in spec %s", path)
+		}
+
 		return nil
 	}
 
