@@ -47,6 +47,7 @@ type CompilationConfig struct {
 
 type CompilationOutput struct {
 	ResultLog  *scenario.Logger
+	Message    string
 	SMT        string
 	AST        *ast.Spec
 	IR         string
@@ -217,7 +218,8 @@ func (r *Runner) probability(smt string, uncertains map[string][]float64, unknow
 		return nil, fmt.Errorf("model checker has failed: %s", err)
 	}
 	if !ok {
-		return nil, fmt.Errorf("Fault could not find a failure case")
+		ex.NoSat = true
+		return ex, nil
 	}
 	err = ex.Solve()
 	if err != nil {
@@ -325,8 +327,12 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 		r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
-
 		r.sendProgress(PhaseResults, "Processing results...", 0.85, false)
+		if mc.NoSat {
+			r.sendProgress(PhaseResults, "Fault could not find a failure case. All good!", 1.0, true)
+			output.Message = "Fault could not find a failure case. All good!"
+			return output
+		}
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Validate()

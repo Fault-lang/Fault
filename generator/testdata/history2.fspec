@@ -1,0 +1,16 @@
+spec history2;
+
+def seq = flow{
+    value: 0,
+    step: func{
+        if this.value == 0 {
+            this.value = 1;
+        } else {
+            this.value <- this.value[now-2];
+        }
+    }
+};
+
+for 5 init{s = new seq;} run{
+    s.step;
+}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	gopath "path"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -472,6 +473,42 @@ func TestImports(t *testing.T) {
 	}
 }
 
+func TestClocks(t *testing.T) {
+	specs := []string{
+		"testdata/increment.fspec",
+		"testdata/history1.fspec",
+		"testdata/history2.fspec",
+		"testdata/history3.fspec",
+		"testdata/history4.fspec",
+	}
+	smt2s := []string{
+		"testdata/increment.smt2",
+		"testdata/history1.smt2",
+		"testdata/history2.smt2",
+		"testdata/history3.smt2",
+		"testdata/history4.smt2",
+	}
+
+	for i, s := range specs {
+		data, err := os.ReadFile(s)
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s))
+		}
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		g := prepTest(s, string(data), true, false)
+
+		err = compareResults(s, g.SMT(), string(expecting))
+
+		if err != nil {
+			fmt.Println(g.SMT())
+			t.Fatal(err.Error())
+		}
+	}
+}
+
 func TestSys(t *testing.T) {
 	specs := [][]string{
 		{"testdata/statecharts/statechart.fsystem", "0"},
@@ -654,7 +691,12 @@ func compareResults(s string, smt string, expecting string) error {
 	return nil
 }
 
+var blockNumRe = regexp.MustCompile(`block\d+(true|false)`)
+
 func stripAndEscape(str string) string {
+	// Normalize block variable names: block<n>true/block<n>false → blocktrue/blockfalse
+	// so that LLVM IR block renumbering (e.g. from optimization passes) doesn't break tests.
+	str = blockNumRe.ReplaceAllString(str, "block${1}")
 	var output strings.Builder
 	output.Grow(len(str))
 	for _, ch := range str {
@@ -752,6 +794,90 @@ for 2 init{
 	}
 	if !strings.Contains(smt, "multiswap_sb_w") {
 		t.Fatalf("SMT missing expected base variable multiswap_sb_w (subtarget swap not applied).\ngot=%s", smt)
+	}
+}
+
+func TestUnusedVarElimination(t *testing.T) {
+	// A stock with two properties: only "used" is accessed in the flow function.
+	// The "unused" property should be absent from the generated SMT.
+	test := `spec test1;
+
+	def props = stock{
+		used: 5,
+		unused: 10,
+	};
+
+	def f = flow{
+		snap: new props,
+		fn: func{
+			snap.used <- 1;
+		},
+	};
+
+	for 1 init{ inst = new f; } run { inst.fn; };
+	`
+	g := prepTest("", test, true, false)
+	smt := stripAndEscape(g.SMT())
+
+	if strings.Contains(smt, "test1_inst_snap_unused") {
+		t.Fatalf("SMT contains unused variable test1_inst_snap_unused; should have been eliminated.\ngot=%s", smt)
+	}
+	if !strings.Contains(smt, "test1_inst_snap_used") {
+		t.Fatalf("SMT missing expected variable test1_inst_snap_used.\ngot=%s", smt)
+	}
+}
+
+func TestPhiCompleteness(t *testing.T) {
+	// True branch modifies snap.a; false branch modifies snap.b.
+	// With the phi completeness fix, both variables must be fully constrained
+	// in both branches of the ite assertion (identity rules added for the branch
+	// that doesn't directly modify a variable).
+	test := `spec phitest;
+
+	def s = stock{
+		a: 5,
+		b: 10,
+	};
+
+	def f = flow{
+		snap: new s,
+		fn: func{
+			if snap.a > 3 {
+				snap.a <- 1;
+			} else {
+				snap.b <- 1;
+			}
+		},
+	};
+
+	for 1 init{ inst = new f; } run { inst.fn; };
+	`
+	g := prepTest("", test, true, false)
+	smt := stripAndEscape(g.SMT())
+
+	iteIdx := strings.Index(smt, "(assert(ite")
+	if iteIdx < 0 {
+		t.Fatal("no ite assertion found in SMT")
+	}
+	iteExpr := smt[iteIdx:]
+
+	// snap.b is only modified in the false branch. Without the phi completeness fix,
+	// snap.b_ would only appear in the false side of the ite.
+	// With the fix, snap.b_ also appears in the true side as an identity rule
+	// (= b_phi b_entry), so the count across the whole ite expression is higher.
+	// False branch alone: b_phi(LHS) + b_1(assign) + b_phi(LHS) + b_1(RHS) → varies
+	// Both branches: additional b_phi(LHS) + b_entry(RHS) in true branch.
+	bCount := strings.Count(iteExpr, "phitest_inst_snap_b_")
+	if bCount < 4 {
+		t.Fatalf("phitest_inst_snap_b_ appears %d times in ite expression (want >= 4: constrained in both branches).\nite=%s", bCount, iteExpr)
+	}
+
+	// snap.a is only modified in the true branch. Without the fix, snap.a_ would
+	// only appear in the condition and true side. With the fix, snap.a_ also appears
+	// in the false side as an identity rule.
+	aCount := strings.Count(iteExpr, "phitest_inst_snap_a_")
+	if aCount < 5 {
+		t.Fatalf("phitest_inst_snap_a_ appears %d times in ite expression (want >= 5: constrained in both branches).\nite=%s", aCount, iteExpr)
 	}
 }
 

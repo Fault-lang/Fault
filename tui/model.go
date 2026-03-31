@@ -121,6 +121,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			msg.Output.AST,
 			msg.Output.SMT,
 			msg.Output.IR,
+			msg.Output.Message,
 			m.config.Mode,
 		)
 

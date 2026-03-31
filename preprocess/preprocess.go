@@ -496,24 +496,41 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if err != nil {
 			return node, err
 		}
+		// Dead branch elimination: if the expression was a static IfExpression,
+		// walk returns the live BlockStatement directly — forward it up for flattening
+		if _, ok := pro.(*ast.BlockStatement); ok {
+			return pro, err
+		}
 		node.Expression = pro.(ast.Expression)
 		return node, err
 	case *ast.ForStatement:
 		p.inGlobal = true
-		for i, v := range node.Inits.Statements {
+		var initStmts []ast.Statement
+		for _, v := range node.Inits.Statements {
 			pro, err = p.walk(v)
 			if err != nil {
 				return node, err
 			}
-			node.Inits.Statements[i] = pro.(ast.Statement)
+			if block, ok := pro.(*ast.BlockStatement); ok {
+				initStmts = append(initStmts, block.Statements...)
+			} else {
+				initStmts = append(initStmts, pro.(ast.Statement))
+			}
 		}
-		for i, v := range node.Body.Statements {
+		node.Inits.Statements = initStmts
+		var bodyStmts []ast.Statement
+		for _, v := range node.Body.Statements {
 			pro, err = p.walk(v)
 			if err != nil {
 				return node, err
 			}
-			node.Body.Statements[i] = pro.(ast.Statement)
+			if block, ok := pro.(*ast.BlockStatement); ok {
+				bodyStmts = append(bodyStmts, block.Statements...)
+			} else {
+				bodyStmts = append(bodyStmts, pro.(ast.Statement))
+			}
 		}
+		node.Body.Statements = bodyStmts
 		p.inGlobal = false
 		return node, err
 	case *ast.StartStatement:
@@ -540,7 +557,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			if err != nil {
 				return node, err
 			}
-			statements = append(statements, pro.(ast.Statement))
+			// Dead branch elimination: if walk returned a BlockStatement, flatten it inline
+			if block, ok := pro.(*ast.BlockStatement); ok {
+				statements = append(statements, block.Statements...)
+			} else {
+				statements = append(statements, pro.(ast.Statement))
+			}
 		}
 		node.Statements = statements
 		return node, err
@@ -608,6 +630,28 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		cond, err := p.walk(node.Condition)
 		if err != nil {
 			return node, err
+		}
+
+		// Dead branch elimination: if the condition is statically known, return only the live branch
+		if result, static := evalStaticCondition(cond.(ast.Expression)); static {
+			if result {
+				return p.walk(node.Consequence)
+			}
+			if node.Alternative != nil {
+				return p.walk(node.Alternative)
+			}
+			if node.Elif != nil {
+				elif, err := p.walk(node.Elif)
+				if err != nil {
+					return node, err
+				}
+				if block, ok := elif.(*ast.BlockStatement); ok {
+					return block, err
+				}
+				stmt := &ast.ExpressionStatement{Expression: elif.(ast.Expression)}
+				return &ast.BlockStatement{Statements: []ast.Statement{stmt}}, err
+			}
+			return &ast.BlockStatement{}, err
 		}
 
 		conseq, err := p.walk(node.Consequence)
@@ -1066,12 +1110,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if node.Value[0] == "this" {
 			//Convert this
 			rawid := append([]string{p.trail.CurrentSpec(), p.scope}, node.Value[1:]...)
-			node2 := &ast.This{
-				Token:         node.Token,
-				Value:         rawid[len(rawid)-2:],
-				ProcessedName: rawid,
-			}
-			return node2, err
+			node.Value = rawid[2:]
+			node.ProcessedName = rawid
+			return node, err
 		}
 
 		var rawid []string
@@ -1256,4 +1297,45 @@ func alreadyNamed(n1 []string, n2 []string) bool {
 		}
 	}
 	return true
+}
+
+// evalStaticCondition returns (result, true) if cond can be evaluated at compile time.
+func evalStaticCondition(cond ast.Expression) (bool, bool) {
+	switch c := cond.(type) {
+	case *ast.Boolean:
+		return c.Value, true
+	case *ast.InfixExpression:
+		lf := literalToFloat(c.Left)
+		rf := literalToFloat(c.Right)
+		if lf == nil || rf == nil {
+			return false, false
+		}
+		switch c.Operator {
+		case ">":
+			return *lf > *rf, true
+		case "<":
+			return *lf < *rf, true
+		case ">=":
+			return *lf >= *rf, true
+		case "<=":
+			return *lf <= *rf, true
+		case "==":
+			return *lf == *rf, true
+		case "!=":
+			return *lf != *rf, true
+		}
+	}
+	return false, false
+}
+
+func literalToFloat(e ast.Expression) *float64 {
+	switch v := e.(type) {
+	case *ast.FloatLiteral:
+		f := v.Value
+		return &f
+	case *ast.IntegerLiteral:
+		f := float64(v.Value)
+		return &f
+	}
+	return nil
 }

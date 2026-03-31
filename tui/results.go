@@ -17,6 +17,7 @@ type ResultsModel struct {
 	ast      *ast.Spec
 	smt      string
 	ir       string
+	message  string
 	content  string
 	ready    bool
 	width    int
@@ -24,13 +25,14 @@ type ResultsModel struct {
 	mode     string
 }
 
-func NewResultsModel(logger *scenario.Logger, astSpec *ast.Spec, smt string, ir string, mode string) ResultsModel {
+func NewResultsModel(logger *scenario.Logger, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
 	return ResultsModel{
-		logger: logger,
-		ast:    astSpec,
-		smt:    smt,
-		ir:     ir,
-		mode:   mode,
+		logger:  logger,
+		ast:     astSpec,
+		smt:     smt,
+		ir:      ir,
+		message: message,
+		mode:    mode,
 	}
 }
 
@@ -53,7 +55,7 @@ func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 		if !m.ready {
 			// Initialize viewport with proper dimensions
 			// Use much wider width to prevent wrapping issues with ANSI codes
-			viewportWidth := msg.Width 
+			viewportWidth := msg.Width
 			viewportHeight := msg.Height - verticalMarginHeight
 
 			m.viewport = viewport.New(viewportWidth, viewportHeight)
@@ -138,6 +140,10 @@ func (m ResultsModel) getContent() string {
 		content.WriteString(divider)
 		content.WriteString("\n\n")
 		content.WriteString(fmt.Sprintf("%v", m.ast))
+	} else if m.message != "" {
+		content.WriteString(divider)
+		content.WriteString("\n\n")
+		content.WriteString(InfoStyle.Render(m.message))
 	} else {
 		content.WriteString(InfoStyle.Render("No output available"))
 	}

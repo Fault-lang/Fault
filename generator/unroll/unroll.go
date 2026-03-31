@@ -22,6 +22,10 @@ type Env struct {
 	RawInputs        *llvm.RawInputs
 	VarLoads         map[string]value.Value
 	VarTypes         map[string]string
+	MutableVars      map[string]bool        // base var names that have flow-derived state transitions
+	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
+	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
+	UsedVars         map[string]bool        // alloca names accessed by at least one flow function
 	CurrentFunction  string
 	CurrentRound     int
 	returnVoid       *PhiState
@@ -35,6 +39,10 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		RawInputs:    ri,
 		VarLoads:     make(map[string]value.Value),
 		VarTypes:     make(map[string]string),
+		MutableVars:  make(map[string]bool),
+		ConstantVals: make(map[string]value.Value),
+		StringRules:  make(map[string]string),
+		UsedVars:     make(map[string]bool),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
 		WhensThens:   make(map[string]map[string][]string),
@@ -455,6 +463,86 @@ func (b *LLBlock) fetchIdent(id string, r rules.Rule) rules.Rule {
 	return r
 }
 
+// FindMutableVars scans all function bodies and returns the set of base variable
+// names (trailing digits stripped) that have local alloca instructions. If a
+// versioned stock property (e.g. "s_v1") has no local alloca with the same base
+// ("s_v"), it is never written by any flow and its value can be inlined.
+func FindMutableVars(funcs []*ir.Func) map[string]bool {
+	bases := make(map[string]bool)
+	for _, f := range funcs {
+		for _, block := range f.Blocks {
+			for _, inst := range block.Insts {
+				if alloca, ok := inst.(*ir.InstAlloca); ok {
+					name := util.FormatIdent(alloca.Ident())
+					bases[baseVarName(name)] = true
+				}
+			}
+		}
+	}
+	return bases
+}
+
+// FindUsedVars scans all non-__run function bodies for load and store
+// instructions. Any alloca (or param pointer) that is loaded from or stored to
+// in a flow function is considered "used". Allocas that are only initialized in
+// __run and never touched by any flow can be omitted from the SMT model.
+func FindUsedVars(funcs []*ir.Func) map[string]bool {
+	used := make(map[string]bool)
+	for _, f := range funcs {
+		if util.FormatIdent(f.Ident()) == "__run" {
+			continue
+		}
+		for _, block := range f.Blocks {
+			for _, inst := range block.Insts {
+				switch v := inst.(type) {
+				case *ir.InstLoad:
+					used[util.FormatIdent(v.Src.Ident())] = true
+				case *ir.InstStore:
+					used[util.FormatIdent(v.Dst.Ident())] = true
+				}
+			}
+		}
+	}
+	return used
+}
+
+// baseVarName strips any trailing decimal digits from name.
+// e.g. "s_v2" → "s_v", "spec_stock1" → "spec_stock"
+func baseVarName(name string) string {
+	i := len(name)
+	for i > 0 && name[i-1] >= '0' && name[i-1] <= '9' {
+		i--
+	}
+	return name[:i]
+}
+
+// hasVersionSuffix returns true if name ends with a decimal digit, indicating
+// it is a versioned stock property rather than a spec-level constant.
+func hasVersionSuffix(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
+	last := name[len(name)-1]
+	return last >= '0' && last <= '9'
+}
+
+// extractLiteral formats a constant value as an SMT-compatible literal string,
+// using the same approach as constantRule (big.Float/big.Int decimal).
+func extractLiteral(c constant.Constant) string {
+	switch cv := c.(type) {
+	case *constant.Float:
+		str := cv.X.String()
+		if !strings.Contains(str, ".") {
+			str += ".0"
+		}
+		return str
+	case *constant.Int:
+		return cv.X.String()
+	default:
+		return FormatValue(c)
+	}
+}
+
 func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rules.Rule {
 	// Constants cannot be changed and therefore don't increment
 	// in SSA. So instead of return a *rule we can skip directly
@@ -475,6 +563,16 @@ func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rul
 		b.Env.VarTypes[id] = gl.Type().String()
 
 		if !IsIndexed(id) && !IsClocked(id) {
+			// Inline constant stocks (versioned globals never written by any flow)
+			// rather than declaring them as free SMT variables.
+			switch gl.Init.(type) {
+			case *constant.Float, *constant.Int:
+				_, isString := e.StringRules[id]
+				if hasVersionSuffix(id) && !e.MutableVars[baseVarName(id)] && !isASolvable(id, RawInputs) && !isString {
+					e.ConstantVals[id] = gl.Init
+					continue
+				}
+			}
 			ru := b.constantRule(id, gl.Init, RawInputs)
 			if ru == nil {
 				continue
@@ -558,6 +656,9 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" {
 		return nil
 	}
+	if strings.HasPrefix(id, "__hist_") {
+		return nil
+	}
 
 	switch val := c.(type) {
 	case *constant.Int:
@@ -618,6 +719,15 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
 		if v, ok := e.VarLoads[refname]; ok {
+			// Inlined constant literal — return value directly (not a variable reference).
+			// Must match concrete types; *ir.Global also satisfies constant.Constant so
+			// we cannot use the interface assertion alone.
+			switch c := v.(type) {
+			case *constant.Float, *constant.Int:
+				litStr := extractLiteral(c.(constant.Constant))
+				ty := LookupType(refname, v)
+				return litStr, ty, false
+			}
 			ty := LookupType(refname, v)
 			xid := v.Ident()
 			return util.FormatIdent(xid), ty, true
@@ -653,13 +763,26 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 	yIs := IsIndexed(y)
 	_, file, line, _ := runtime.Caller(1)
 
-	xr := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
-	xr.SetWhensThens(b.Env.WhensThens)
-	xr.SetOmit(b.Env.CurrentFunction)
+	var xr, yr rules.Rule
+	if strings.HasPrefix(x, "__hist_") {
+		offset, histBase := parseHistSentinel(x)
+		xr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyX}
+	} else {
+		wx := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
+		wx.SetWhensThens(b.Env.WhensThens)
+		wx.SetOmit(b.Env.CurrentFunction)
+		xr = wx
+	}
 
-	yr := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
-	yr.SetWhensThens(b.Env.WhensThens)
-	yr.SetOmit(b.Env.CurrentFunction)
+	if strings.HasPrefix(y, "__hist_") {
+		offset, histBase := parseHistSentinel(y)
+		yr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyY}
+	} else {
+		wy := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
+		wy.SetWhensThens(b.Env.WhensThens)
+		wy.SetOmit(b.Env.CurrentFunction)
+		yr = wy
+	}
 
 	return &rules.Infix{
 		X:  xr,

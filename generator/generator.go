@@ -47,7 +47,7 @@ func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool) 
 }
 func Execute(compiler *llvm.Compiler) *Generator {
 	generator := NewGenerator(compiler.RawInputs, compiler.StringRules, compiler.IsCompound)
-	generator.Run(compiler.GetIR())
+	generator.Run(compiler.GetOptimizedIR())
 	return generator
 }
 
@@ -65,6 +65,9 @@ func (g *Generator) Run(llopt string) {
 }
 
 func (g *Generator) newCallgraph(m *ir.Module) {
+	g.Env.MutableVars = unroll.FindMutableVars(m.Funcs)
+	g.Env.UsedVars = unroll.FindUsedVars(m.Funcs)
+	g.Env.StringRules = g.StringRules
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
 	g.sortFuncs(m.Funcs)
 

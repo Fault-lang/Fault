@@ -25,6 +25,9 @@ type Logger struct {
 	IsCompound      map[string]bool // Filter display of compound rules
 	IsPhi           map[string]bool
 	BranchSelectors []*BranchSelector // rules to make the solution easier to parse
+	// RoundPhis stores per-variable phi SSA history: index 0 = initial SSA (before any rounds),
+	// index N = phi output SSA after round N. Used by HistoryWrap to resolve value[now-N].
+	RoundPhis map[string][]int16
 }
 
 func NewLogger() *Logger {
@@ -41,7 +44,12 @@ func NewLogger() *Logger {
 		IsStringRule:  make(map[string]bool),
 		IsCompound:    make(map[string]bool),
 		IsPhi:         make(map[string]bool),
+		RoundPhis:     make(map[string][]int16),
 	}
+}
+
+func (l *Logger) AddRoundPhi(varName string, ssa int16) {
+	l.RoundPhis[varName] = append(l.RoundPhis[varName], ssa)
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {
@@ -360,10 +368,17 @@ func (l *Logger) Kill() {
 			}
 		}
 
-		// Also check for messages directly in this function
+		// Also check for messages or alive nested function calls directly in this function
 		if !hasLiveUpdates {
 			for i := entryIdx + 1; i < exitIdx; i++ {
-				if _, ok := l.Events[i].(*Message); ok && !l.Events[i].IsDead() {
+				if l.Events[i].IsDead() {
+					continue
+				}
+				if _, ok := l.Events[i].(*Message); ok {
+					hasLiveUpdates = true
+					break
+				}
+				if fc, ok := l.Events[i].(*FunctionCall); ok && fc.Type == "Entry" {
 					hasLiveUpdates = true
 					break
 				}
@@ -378,122 +393,7 @@ func (l *Logger) Kill() {
 			}
 		}
 	}
-
-	// deadSet := make(map[string]bool)
-
-	// for phi, options := range l.ForksCaps {
-	// 	phiVal, ok := l.Results[phi]
-	// 	if !ok {
-	// 		// No value for this phi in the model; skip or log.
-	// 		continue
-	// 	}
-
-	// 	// Find which endstateVar matches the phi value.
-	// 	chosenIdx := -1
-	// 	for i, endstate := range options {
-	// 		if l.Results[endstate] == phiVal {
-	// 			chosenIdx = i
-	// 			break
-	// 		}
-	// 	}
-	// 	if chosenIdx == -1 {
-	// 		// No matching option — either model is weird or encoding changed.
-	// 		// You might want to log/return an error instead of silently skipping.
-	// 		continue
-	// 	}
-
-	// 	// All other options are dead branches.
-	// 	for i, endstate := range options {
-	// 		if i == chosenIdx {
-	// 			continue
-	// 		}
-	// 		// Kill all vars in that branch.
-	// 		for _, v := range l.Forks[endstate] {
-	// 			deadSet[v] = true
-	// 		}
-	// 	}
-	// }
-
-	// // Convert set to slice.
-	// dead := make([]string, 0, len(deadSet))
-	// for v := range deadSet {
-	// 	dead = append(dead, v)
-	// }
-
-	// if len(dead) == 0 {
-	// 	return
-	// }
-
-	// for i, event := range l.Events {
-	// 	switch e := event.(type) {
-	// 	case *VariableUpdate:
-	// 		if slices.Contains(dead, e.Variable) {
-	// 			l.Events[i].MarkDead()
-	// 			for _, i := range l.FuncIndexes[e.Variable] {
-	// 				l.Events[i].MarkDead()
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// for fname, vars := range l.BranchVars {
-	// 	for _, v := range vars {
-	// 		if slices.Contains(dead, v) {
-	// 			// Kill Variable Updates
-	// 			for _, i := range l.BranchIndexes[fname] {
-	// 				l.Events[i].MarkDead()
-	// 			}
-	// 			// Kill Function Calls themselves
-	// 			for _, i := range l.FuncIndexes[fname] {
-	// 				l.Events[i].MarkDead()
-	// 			}
-
-	// 			break
-	// 		}
-	// 	}
-	// }
 }
-
-// func (l *Logger) Kill() {
-// 	var deadends, dead []string
-// 	for phi, options := range l.ForksCaps {
-// 		phi_value := l.Results[phi]
-// 		for i, o := range options {
-// 			if phi_value == l.Results[o] {
-// 				deadends = append(deadends, options[0:i]...)
-// 				if i+1 < len(options) {
-// 					deadends = append(deadends, options[i+1:]...)
-// 				}
-
-// 				for _, d := range deadends {
-// 					dead = append(dead, l.Forks[d]...)
-// 				}
-// 				deadends = []string{}
-// 				break
-// 			}
-// 		}
-// 	}
-
-// 	if len(dead) == 0 {
-// 		return
-// 	}
-// 	for fname, vars := range l.BranchVars {
-// 		for _, v := range vars {
-// 			if slices.Contains(dead, v) {
-// 				// Kill Variable Updates
-// 				for _, i := range l.BranchIndexes[fname] {
-// 					l.Events[i].MarkDead()
-// 				}
-// 				// Kill Function Calls themselves
-// 				for _, i := range l.FuncIndexes[fname] {
-// 					l.Events[i].MarkDead()
-// 				}
-
-// 				break
-// 			}
-// 		}
-// 	}
-// }
 
 type BranchSelector struct {
 	Name string

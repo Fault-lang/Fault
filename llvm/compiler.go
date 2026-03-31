@@ -1,6 +1,7 @@
 package llvm
 
 import (
+	"bytes"
 	"errors"
 	"fault/ast"
 	"fault/llvm/name"
@@ -8,14 +9,15 @@ import (
 	"fault/util"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"runtime/debug"
 	"strings"
 
 	"github.com/barkimedes/go-deepcopy"
+	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
-	"github.com/llir/llvm/ir/metadata"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -65,7 +67,6 @@ type Compiler struct {
 	contextBlock    *ir.Block
 	contextFunc     *ir.Func
 	contextFuncName string
-	contextMetadata *metadata.Attachment
 
 	// Stack of variables that are in scope
 	alloc             bool
@@ -804,15 +805,53 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 }
 
 func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
-	var value value.Value
-	if node.Left.Type() == "BOOL" {
-		value = constant.NewBool(false)
-	} else {
-		value = constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	switch idx := node.Index.(type) {
+	case *ast.InfixExpression:
+		// now - N: load from a sentinel global encoding the history reference
+		offset := int(idx.Right.(*ast.IntegerLiteral).Value)
+		return c.historyLoad(node.Left.(ast.Nameable).RawId(), offset, node.Position())
+	case *ast.Clock:
+		// now: same as the current value
+		return c.lookupIdent(node.Id(), node.Position())
 	}
-	c.setConst(node.RawId(), value)
-	c.globalVariable(node.Id(), value, node.Position())
+
+	// Fallback for unrecognised index forms — should not be reached with valid ASTs
+	var val value.Value
+	if node.Left.Type() == "BOOL" {
+		val = constant.NewBool(false)
+	} else {
+		val = constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	}
+	c.setConst(node.RawId(), val)
+	c.globalVariable(node.Id(), val, node.Position())
 	return c.lookupIdent(node.Id(), node.Position())
+}
+
+// historyLoad declares (or reuses) a sentinel global whose name encodes the
+// history reference, and returns a load from it. The SMT generator detects the
+// "__hist_N_" prefix and resolves it to the correct prior SSA version.
+func (c *Compiler) historyLoad(id []string, offset int, pos []int) *ir.InstLoad {
+	base := strings.Join(id, "_")
+	sentinelName := fmt.Sprintf("__hist_%d_%s", offset, base)
+
+	s := c.specs[id[0]]
+	ty := s.GetSpecType(base)
+	if ty == nil {
+		ty = irtypes.Double
+	}
+
+	if _, exists := c.specGlobals[sentinelName]; !exists {
+		var initVal constant.Constant
+		if ty == irtypes.I1 {
+			initVal = constant.NewInt(irtypes.I1, 0)
+		} else {
+			initVal = constant.NewFloat(irtypes.Double, 0)
+		}
+		g := c.module.NewGlobalDef(sentinelName, initVal)
+		c.specGlobals[sentinelName] = g
+	}
+
+	return c.contextBlock.NewLoad(ty, c.specGlobals[sentinelName])
 }
 
 func (c *Compiler) compilePrefix(node *ast.PrefixExpression) value.Value {
@@ -891,14 +930,18 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		}
 
 		r := c.compileValue(node.Right)
-		n, ok := node.Left.(*ast.ParameterCall)
-		if !ok {
+		var rawId []string
+		switch n := node.Left.(type) {
+		case *ast.ParameterCall:
+			rawId = n.RawId()
+		case *ast.Identifier:
+			rawId = n.RawId()
+		default:
 			pos := node.Position()
 			panic(fmt.Sprintf("cannot use <- or -> operator on a non-stock value col: %d, line: %d", pos[0], pos[1]))
 		}
-
-		pos := n.Position()
-		id = c.AliasToBaseRaw(n.RawId())
+		pos := node.Left.Position()
+		id = c.AliasToBaseRaw(rawId)
 
 		s = c.specs[id[0]]
 
@@ -1071,6 +1114,7 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 	case *ast.This:
 		id := v.Id()
 		return c.lookupIdent(id, node.Position())
+	//HERE
 	default:
 		return c.compileValue(node)
 	}
@@ -1792,6 +1836,32 @@ func negateTemporal(op string, n int) (string, int) {
 
 func (c *Compiler) GetIR() string {
 	return c.module.String()
+}
+
+func (c *Compiler) GetOptimizedIR() string {
+	return Optimize(c.module.String())
+}
+
+// Optimize runs instcombine, simplifycfg, and dce via the system opt binary.
+// Falls back to the original IR if opt is not found, fails, or produces IR
+// that cannot be parsed by llir/llvm (e.g. LLVM 15+ opaque-pointer format).
+func Optimize(llir string) string {
+	opt, err := exec.LookPath("opt")
+	if err != nil {
+		return llir
+	}
+	cmd := exec.Command(opt, "-passes=instcombine,simplifycfg,dce", "-S", "-")
+	cmd.Stdin = strings.NewReader(llir)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return llir
+	}
+	optimized := out.String()
+	if _, err := asm.ParseString("", optimized); err != nil {
+		return llir
+	}
+	return optimized
 }
 
 func (c *Compiler) setup() {

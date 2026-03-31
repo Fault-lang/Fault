@@ -142,7 +142,8 @@ func TestFullSuite(t *testing.T) {
 			return fmt.Errorf("model checker has failed: %s %s", path, err)
 		}
 		if !ok {
-			return fmt.Errorf("Fault could not find a failure case.")
+			ex.NoSat = true
+			return nil
 		}
 		err = ex.Solve()
 		if err != nil {
@@ -151,7 +152,14 @@ func TestFullSuite(t *testing.T) {
 		g.ResultLog.Results = ex.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Kill()
-		g.ResultLog.Print()
+
+		// Looking for past bug where Kill() killed
+		// all the variables by accident ^_^;;
+		ret := g.ResultLog.String()
+		if strings.TrimSpace(ret) == "" {
+			return fmt.Errorf("All variables killed in spec %s", path)
+		}
+
 		return nil
 	}
 

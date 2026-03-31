@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 	"unicode"
@@ -17,6 +18,9 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	irtypes "github.com/llir/llvm/ir/types"
 )
+
+var blockNumRe = regexp.MustCompile(`block-\d+`)
+var groupHashRe = regexp.MustCompile(`[0-9a-f]{32}`)
 
 // These tests need to be run with go test, when run separately the block numbers are different
 // and the tests fail.
@@ -851,6 +855,8 @@ func compareResults(llvm string, expecting string, ir string) error {
 }
 
 func stripAndEscape(str string) string {
+	str = blockNumRe.ReplaceAllString(str, "block")
+	str = groupHashRe.ReplaceAllString(str, "HASH")
 	var output strings.Builder
 	output.Grow(len(str))
 	for _, ch := range str {

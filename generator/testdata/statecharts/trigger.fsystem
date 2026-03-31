@@ -1,6 +1,6 @@
 system trigger;
 
-import "../simple.fspec";
+import simple "../simpleA.fspec";
 
 global fl = new simple.fl;
 

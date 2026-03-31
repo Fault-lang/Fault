@@ -28,6 +28,7 @@ type ModelChecker struct {
 	SMT          string
 	Uncertains   map[string][]float64
 	Unknowns     []string
+	NoSat        bool
 	Results      map[string][]*VarChange
 	ResultValues map[string]string
 	Log          *scenario.Logger

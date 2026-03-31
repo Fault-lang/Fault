@@ -137,13 +137,13 @@ func TestComponent(t *testing.T) {
 	ifblock := foo["initial"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	ifcond := ifblock.Condition.(*ast.InfixExpression)
 	left := ifcond.Left.(*ast.InfixExpression)
-	state := left.Left.(*ast.This).RawId()
+	state := left.Left.(*ast.ParameterCall).RawId()
 	if len(state) != 3 || state[0] != "test" || state[1] != "foo" || state[2] != "initial" {
 		t.Fatalf("state conditional wrap incorrect got=%s", state)
 	}
 
 	right := ifcond.Right.(*ast.InfixExpression)
-	this := right.Left.(*ast.This).RawId()
+	this := right.Left.(*ast.ParameterCall).RawId()
 	if len(this) != 3 || this[0] != "test" || this[1] != "foo" || this[2] != "x" {
 		t.Fatalf("this special word not converted to correct context got=%s", this)
 	}
@@ -529,7 +529,7 @@ func TestCollapseIfElse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
 	for 1 run {
-			if true {
+			if a > 1 {
 				3;
 			}else if a != 0{
 				if a == 2{
@@ -567,7 +567,7 @@ func TestCollapseElse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
 	for 1 run {
-			if true {
+			if a > 1 {
 				3;
 			}else{
 				if a == 2{
@@ -978,6 +978,56 @@ assert bar.x > 0;
 	}
 	if g == nil {
 		t.Fatal("Globals[foo] is nil")
+	}
+}
+
+func TestDeadBranchElimTrue(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	for 1 run {
+		if 5 > 3 {
+			a + 1;
+		} else {
+			a - 1;
+		}
+	};
+	`
+	process := prepTest(test, true)
+	body := process.Processed.Statements[2].(*ast.ForStatement).Body
+	if len(body.Statements) != 1 {
+		t.Fatalf("expected 1 statement after dead branch elimination, got %d", len(body.Statements))
+	}
+	expr, ok := body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected ExpressionStatement, got %T", body.Statements[0])
+	}
+	if _, isIf := expr.Expression.(*ast.IfExpression); isIf {
+		t.Fatal("IfExpression was not eliminated — dead branch (else) should have been pruned")
+	}
+}
+
+func TestDeadBranchElimFalse(t *testing.T) {
+	test := `spec test1;
+	const a = 2;
+	for 1 run {
+		if 3 > 5 {
+			a + 1;
+		} else {
+			a - 1;
+		}
+	};
+	`
+	process := prepTest(test, true)
+	body := process.Processed.Statements[2].(*ast.ForStatement).Body
+	if len(body.Statements) != 1 {
+		t.Fatalf("expected 1 statement after dead branch elimination, got %d", len(body.Statements))
+	}
+	expr, ok := body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected ExpressionStatement, got %T", body.Statements[0])
+	}
+	if _, isIf := expr.Expression.(*ast.IfExpression); isIf {
+		t.Fatal("IfExpression was not eliminated — dead branch (if) should have been pruned")
 	}
 }
 

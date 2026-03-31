@@ -39,8 +39,10 @@ func (b *LLBlock) parseInstruct(inst ir.Instruction) []rules.Rule {
 		return b.parseCall(inst)
 	// case *ir.InstPhi:
 	// 	return b.parsePhi(inst)
-	// case *ir.InstGetElementPtr:
-	// 	return b.parseGetElementPtr(inst)
+	case *ir.InstGetElementPtr:
+		//Do nothing — GEP instructions are pointer arithmetic artefacts from
+		// certain LLVM optimization passes; they carry no semantic content for
+		// the SMT model and can be safely ignored.
 	case *ir.InstXor:
 		return b.parseXor(inst)
 	case *ir.InstAnd:
@@ -102,6 +104,11 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		b.Env.VarLoads[refname] = inst.Src
 	default:
 		base := util.FormatIdent(inst.Dst.Ident())
+		// Skip initial stores to local allocas that are never loaded or stored
+		// by any flow function — they would produce orphaned SMT declarations.
+		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] {
+			return nil
+		}
 		if IsTemp(inst.Src.Ident()) {
 			refname := fmt.Sprintf("%s-%s", b.ParentFunction, inst.Src.Ident())
 			if val, ok := b.Env.VarLoads[refname]; ok {
@@ -112,7 +119,12 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				if !IsBoolean(v) && !IsNumeric(v) {
 					v = util.FormatIdent(v)
 				}
-				ru = append(ru, b.createRule(base, v, ty, "="))
+				if strings.HasPrefix(v, "__hist_") {
+					offset, histBase := parseHistSentinel(v)
+					ru = append(ru, b.createHistoryRule(base, histBase, offset, ty))
+				} else {
+					ru = append(ru, b.createRule(base, v, ty, "="))
+				}
 			} else if ref, ok := b.irRefs[refname]; ok {
 				switch r := ref.(type) {
 				case *rules.Infix:
@@ -204,7 +216,12 @@ func (b *LLBlock) tempRule(inst value.Value, r rules.Rule) {
 
 func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, inst.Ident())
-	b.Env.VarLoads[refname] = inst.Src
+	srcName := util.FormatIdent(inst.Src.Ident())
+	if litVal, isConst := b.Env.ConstantVals[srcName]; isConst {
+		b.Env.VarLoads[refname] = litVal
+	} else {
+		b.Env.VarLoads[refname] = inst.Src
+	}
 	b.Env.VarTypes[refname] = inst.Src.Type().String()
 	return []rules.Rule{}
 }
@@ -711,4 +728,25 @@ func (b *LLBlock) compareRuleOp(op string) string {
 	default:
 		return op
 	}
+}
+
+// parseHistSentinel extracts the round offset and base variable name from a
+// history sentinel global name of the form "__hist_N_base_var_name".
+func parseHistSentinel(name string) (int, string) {
+	without := strings.TrimPrefix(name, "__hist_")
+	idx := strings.Index(without, "_")
+	offset, _ := strconv.Atoi(without[:idx])
+	return offset, without[idx+1:]
+}
+
+// createHistoryRule builds an Infix rule whose RHS is a HistoryWrap, producing
+// SMT like (= lhs_N base_M) where M is the SSA version Offset rounds back.
+func (b *LLBlock) createHistoryRule(lhs string, histBase string, offset int, ty string) rules.Rule {
+	xIs := IsIndexed(lhs)
+	_, file, line, _ := runtime.Caller(1)
+	wid := rules.NewWrap(lhs, ty, true, file, line, true, xIs)
+	wid.SetOmit(b.Env.CurrentFunction)
+	wid.SetWhensThens(b.Env.WhensThens)
+	hwrap := &rules.HistoryWrap{Base: histBase, Offset: offset, Type: ty}
+	return &rules.Infix{X: wid, Ty: ty, Y: hwrap, Op: "="}
 }

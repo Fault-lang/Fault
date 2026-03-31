@@ -690,10 +690,6 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	if wr, ok := i.X.(*Wrap); ok && i.Op == "=" && !i.Log.IsLoggable(x) {
-		i.Log.UpdateVariable(x, wr.OmitFromOutput)
-	}
-
 	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
 }
 
@@ -1233,6 +1229,86 @@ func (vw *Vwrap) Choice() string {
 
 func (vw *Vwrap) Branch() string {
 	return vw.tag.branch
+}
+
+// HistoryWrap represents a reference to a prior-round value: variable[now-N].
+// WriteRule resolves to the SSA version N-1 steps before the current one, so
+// that Infix produces e.g. (= value_2 value_1) for `value <- value[now-1]`.
+type HistoryWrap struct {
+	Rule
+	Base     string // SMT base variable name, e.g. "spec_flow_value"
+	Offset   int    // rounds back, e.g. 1 for now-1
+	Type     string
+	Round    int
+	PhiLevel int
+	OnEntry  map[string][]int16
+	Log      *scenario.Logger
+	tag      *branch
+}
+
+func (h *HistoryWrap) ruleNode() {}
+func (h *HistoryWrap) LoadContext(phiLevel int, _ map[string]bool, onEntry map[string][]int16, log *scenario.Logger) {
+	h.PhiLevel = phiLevel
+	h.OnEntry = onEntry
+	h.Log = log
+}
+func (h *HistoryWrap) SetRound(r int) { h.Round = r }
+func (h *HistoryWrap) GetRound() int  { return h.Round }
+func (h *HistoryWrap) String() string {
+	return fmt.Sprintf("%s[now-%d]", h.Base, h.Offset)
+}
+func (h *HistoryWrap) Assertless() string { return h.String() }
+func (h *HistoryWrap) Tag(k1 string, k2 string) {
+	h.tag = &branch{branch: k1, block: k2}
+}
+func (h *HistoryWrap) IsTagged() bool { return h.tag != nil }
+func (h *HistoryWrap) Choice() string {
+	if h.tag != nil {
+		return h.tag.block
+	}
+	return ""
+}
+func (h *HistoryWrap) Branch() string {
+	if h.tag != nil {
+		return h.tag.branch
+	}
+	return ""
+}
+
+// WriteRule returns the SMT variable name for the value Offset rounds back.
+//
+// When per-round phi history is available (via Log.RoundPhis), it resolves
+// value[now-N] by looking N+1 positions back in the phi list, where index 0
+// is the initial (pre-round) SSA and index K is the phi output after round K.
+// This ensures phi outputs are not counted as part of "now", giving correct
+// Fibonacci-like semantics for accumulation rules like `value <- value[now-1]`.
+//
+// Falls back to raw SSA arithmetic when no phi history is available.
+func (h *HistoryWrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	if h.Log != nil {
+		if roundPhis, ok := h.Log.RoundPhis[h.Base]; ok && len(roundPhis) > 0 {
+			// RoundPhis[0] = initial SSA, RoundPhis[K] = phi after round K.
+			// "now" inside round N = len(roundPhis) (N entries completed so far).
+			// value[now-Offset] = RoundPhis[len - Offset - 1].
+			idx := len(roundPhis) - h.Offset - 1
+			if idx < 0 {
+				idx = 0
+			}
+			return nil, fmt.Sprintf("%s_%d", h.Base, roundPhis[idx]), ssa
+		}
+	}
+	// Fallback: arithmetic on the ITE-entry SSA (used when no phi history exists yet).
+	var base int16
+	if h.OnEntry != nil && h.OnEntry[h.Base] != nil && len(h.OnEntry[h.Base]) > h.PhiLevel {
+		base = h.OnEntry[h.Base][h.PhiLevel]
+	} else {
+		base = ssa.Get(h.Base)
+	}
+	v := base - int16(h.Offset-1)
+	if v < 0 {
+		v = 0
+	}
+	return nil, fmt.Sprintf("%s_%d", h.Base, v), ssa
 }
 
 type branch struct {

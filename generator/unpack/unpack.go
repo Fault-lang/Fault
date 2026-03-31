@@ -172,7 +172,7 @@ func (u *Unpacker) InitVars() []string {
 func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
 	//Unpack the constants
 	r := u.unpackConstants(con)
-	u.Log.EnterFunction(f.Ident, u.Round)
+	u.Log.EnterFunction(f.Ident, f.Env.CurrentRound)
 
 	// Unpack the rules
 	r0 := u.unpackBlock(f.Start)
@@ -256,6 +256,7 @@ func (u *Unpacker) unpackRule(r rules.Rule) ([]*rules.Init, string) {
 
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Ite:
+		u.SetRound(ru.GetRound())
 		inits, rule = u.unpackIte(ru)
 	case *rules.Prefix:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
@@ -270,6 +271,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) ([]*rules.Init, string) {
 	case *rules.Wrap:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Vwrap:
+		inits, rule, u.SSA = ru.WriteRule(u.SSA)
+	case *rules.HistoryWrap:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.FuncCall:
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
@@ -343,6 +346,8 @@ func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]st
 
 	case *rules.Vwrap:
 		// Nothing to do
+	case *rules.HistoryWrap:
+		// Nothing to do
 	case *rules.FuncCall:
 		// Nothing to do
 	case *rules.Stay:
@@ -367,11 +372,14 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 	for i, p := range phis {
 		var rule_set []string
 		for var_name, vals := range p {
-			//If the vals are the same as the last known value, we don't need to create a phi
+			//If the vals are the same as the last known value, we don't need to create a phi rule,
+			// but we still record the branch in sync so the fill-in pass doesn't incorrectly
+			// replace this branch's value with OnEntry.
 			if last != nil {
 				if last_vals, ok := last[var_name]; ok {
 					if vals[len(vals)-1] == last_vals[len(last_vals)-1] {
-						continue // No need to create a phi, the value is the same as the last known value
+						sync[var_name] = append(sync[var_name], i)
+						continue
 					}
 				}
 			}
@@ -383,14 +391,10 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 				hasPhi[var_name] = true
 			}
 
-			var idx int
-			if vals[len(vals)-1] == u.SSA.Get(var_name) { // I actually don't know what's wrong here
-				idx = len(vals) - 2 // Bug in phis for ORs. The Phi cannot be the same as the last known value
-			} else {
-				idx = len(vals) - 1 // The last value is the current value
-			}
-
-			ends := fmt.Sprintf("%s_%d", var_name, vals[idx])
+			// ends is always vals[-1]: the branch's final SSA value for this variable.
+			// The phi SSA (u.SSA.Get after Update) is always last_branch_end+1, so it
+			// can never equal vals[-1] when SSA is managed correctly.
+			ends := fmt.Sprintf("%s_%d", var_name, vals[len(vals)-1])
 			phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 
 			i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
@@ -442,7 +446,8 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 		var rule_set []string
 		for var_name, vals := range p {
 
-			if !hasPhi[var_name] {
+			isNew := !hasPhi[var_name]
+			if isNew {
 				u.SSA.Update(var_name)
 				hasPhi[var_name] = true
 			}
@@ -453,6 +458,23 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 			i.SetRound(u.Round)
 			inits = append(inits, i)
 			u.Log.AddPhiOption(phi, ends)
+
+			if isNew {
+				// Log the phi output variable in the current function scope.
+				// This must happen here (at creation time) rather than when the phi
+				// is later read in a condition, which would misplace it in the next
+				// round's scope.
+				u.Log.UpdateVariable(phi, false)
+
+				// Record per-round phi SSAs for HistoryWrap's value[now-N] resolution.
+				// On the first phi ever for this variable, prepend the initial SSA (before
+				// any rounds) so that RoundPhis[0] = initial, RoundPhis[N] = phi after round N.
+				if _, exists := u.Log.RoundPhis[var_name]; !exists {
+					initialSSA := u.OnEntry[var_name][len(u.OnEntry[var_name])-1]
+					u.Log.AddRoundPhi(var_name, initialSSA)
+				}
+				u.Log.AddRoundPhi(var_name, u.SSA.Get(var_name))
+			}
 
 			rule_set = append(rule_set, fmt.Sprintf("(= %s %s)", phi, ends))
 		}
@@ -470,34 +492,87 @@ func (u *Unpacker) buildItePhis(tPhis []map[string][]int16, fPhis []map[string][
 	var tI, fI []*rules.Init
 	var tRules, fRules []string
 	var hasPhi map[string]bool
+
+	// Save the exclusive branch inits (before phi outputs are appended) for use in
+	// BranchSelector.Vars. Phi output variables are written by BOTH branches via the
+	// ITE phi merge, so they are always live — including them in Vars would cause Kill()
+	// to incorrectly mark them dead when the other branch selector is false.
+	tExclusive := make([]*rules.Init, len(tInit))
+	copy(tExclusive, tInit)
+	fExclusive := make([]*rules.Init, len(fInit))
+	copy(fExclusive, fInit)
+
 	tI, tRules, hasPhi = u.buildPhis(tPhis, nil)
 	tInit = append(tInit, tI...)
-	tSelectorName := util.FormatBlock(blocknames["true"])
-	tInit = append(tInit, rules.NewInit(tSelectorName, "Bool", 0, nil, false, false))
-	tSelectorRule := u.Log.NewBranchSelector(tSelectorName, 0, tRules, InitsToList((tInit)))
-	u.Log.AddBranchSelector(tSelectorRule)
-	//u.Log.QueueFork(InitsToList(tInit))
 
 	if len(fPhis) > 0 {
 		fI, fRules, _ = u.buildPhis(fPhis, hasPhi)
 		fInit = append(fInit, fI...)
+
+		// Liveness check: if a variable is modified in only one branch, the other
+		// branch needs an identity phi (= entry value) to keep the model complete.
+		tPhiVars := varsInPhis(tPhis)
+		fPhiVars := varsInPhis(fPhis)
+		for k := range tPhiVars {
+			if !fPhiVars[k] {
+				if entry := u.OnEntry[k]; len(entry) > 0 {
+					fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, entry[len(entry)-1]))
+				}
+			}
+		}
+		for k := range fPhiVars {
+			if !tPhiVars[k] {
+				if entry := u.OnEntry[k]; len(entry) > 0 {
+					tRules = append(tRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, entry[len(entry)-1]))
+				}
+			}
+		}
 	} else {
 		// If there are no rules in the false branch we still need the phis
 		blocknames["false"] = fmt.Sprintf("%sfalse", blocknames["true"][0:len(blocknames["true"])-4])
 		for l := range tPhis {
-			for k, _ := range tPhis[l] {
+			for k := range tPhis[l] {
 				fRules = append(fRules, fmt.Sprintf("(= %s_%d %s_%d)", k, u.SSA.Get(k), k, u.OnEntry[k][len(u.OnEntry[k])-1]))
 			}
 		}
 	}
-	fSelectorName := util.FormatBlock(blocknames["false"])
-	fInit = append(fI, rules.NewInit(fSelectorName, "Bool", 0, nil, false, false))
-	fSelectorRule := u.Log.NewBranchSelector(fSelectorName, 0, fRules, InitsToList((fInit)))
+
+	// Create selectors after all rules are finalized (so complement rules are included).
+	// Use the current round as the SSA index so selectors are unique per round —
+	// reusing the same Bool variable across rounds causes UNSAT when the branch condition
+	// evaluates differently in different rounds.
+	// Use only exclusive branch inits (not phi outputs) in Vars so Kill() does not
+	// incorrectly mark phi output variables as dead.
+	tSelectorInit := rules.NewInit(tSelectorName(blocknames), "Bool", u.Round, nil, false, false)
+	tInit = append(tInit, tSelectorInit)
+	tSelectorRule := u.Log.NewBranchSelector(tSelectorName(blocknames), u.Round, tRules, InitsToList(append(tExclusive, tSelectorInit)))
+	u.Log.AddBranchSelector(tSelectorRule)
+
+	fSelectorInit := rules.NewInit(fSelectorName(blocknames), "Bool", u.Round, nil, false, false)
+	fInit = append(fI, fSelectorInit)
+	fSelectorRule := u.Log.NewBranchSelector(fSelectorName(blocknames), u.Round, fRules, InitsToList(append(fExclusive, fSelectorInit)))
 	u.Log.AddBranchSelector(fSelectorRule)
 
-	//u.Log.QueueFork(InitsToList(fInit))
 	inits := append(tInit, fInit...)
 	return inits, tSelectorRule, fSelectorRule
+}
+
+func tSelectorName(blocknames map[string]string) string {
+	return util.FormatBlock(blocknames["true"])
+}
+
+func fSelectorName(blocknames map[string]string) string {
+	return util.FormatBlock(blocknames["false"])
+}
+
+func varsInPhis(phis []map[string][]int16) map[string]bool {
+	vars := make(map[string]bool)
+	for _, p := range phis {
+		for k := range p {
+			vars[k] = true
+		}
+	}
+	return vars
 }
 
 func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
