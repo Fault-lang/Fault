@@ -473,6 +473,42 @@ func TestImports(t *testing.T) {
 	}
 }
 
+func TestClocks(t *testing.T) {
+	specs := []string{
+		"testdata/increment.fspec",
+		"testdata/history1.fspec",
+		"testdata/history2.fspec",
+		"testdata/history3.fspec",
+		"testdata/history4.fspec",
+	}
+	smt2s := []string{
+		"testdata/increment.smt2",
+		"testdata/history1.smt2",
+		"testdata/history2.smt2",
+		"testdata/history3.smt2",
+		"testdata/history4.smt2",
+	}
+
+	for i, s := range specs {
+		data, err := os.ReadFile(s)
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s))
+		}
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		g := prepTest(s, string(data), true, false)
+
+		err = compareResults(s, g.SMT(), string(expecting))
+
+		if err != nil {
+			fmt.Println(g.SMT())
+			t.Fatal(err.Error())
+		}
+	}
+}
+
 func TestSys(t *testing.T) {
 	specs := [][]string{
 		{"testdata/statecharts/statechart.fsystem", "0"},

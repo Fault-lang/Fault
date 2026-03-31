@@ -809,7 +809,7 @@ func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
 	case *ast.InfixExpression:
 		// now - N: load from a sentinel global encoding the history reference
 		offset := int(idx.Right.(*ast.IntegerLiteral).Value)
-		return c.historyLoad(node.Left.(*ast.ParameterCall).RawId(), offset, node.Position())
+		return c.historyLoad(node.Left.(ast.Nameable).RawId(), offset, node.Position())
 	case *ast.Clock:
 		// now: same as the current value
 		return c.lookupIdent(node.Id(), node.Position())
@@ -930,14 +930,18 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		}
 
 		r := c.compileValue(node.Right)
-		n, ok := node.Left.(*ast.ParameterCall)
-		if !ok {
+		var rawId []string
+		switch n := node.Left.(type) {
+		case *ast.ParameterCall:
+			rawId = n.RawId()
+		case *ast.Identifier:
+			rawId = n.RawId()
+		default:
 			pos := node.Position()
 			panic(fmt.Sprintf("cannot use <- or -> operator on a non-stock value col: %d, line: %d", pos[0], pos[1]))
 		}
-
-		pos := n.Position()
-		id = c.AliasToBaseRaw(n.RawId())
+		pos := node.Left.Position()
+		id = c.AliasToBaseRaw(rawId)
 
 		s = c.specs[id[0]]
 

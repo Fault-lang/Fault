@@ -1305,6 +1305,9 @@ func (h *HistoryWrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		base = ssa.Get(h.Base)
 	}
 	v := base - int16(h.Offset-1)
+	if v < 0 {
+		v = 0
+	}
 	return nil, fmt.Sprintf("%s_%d", h.Base, v), ssa
 }
 

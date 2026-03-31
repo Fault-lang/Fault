@@ -1,0 +1,18 @@
+system nofor;
+
+import "../simple.fspec";
+
+global fl = new simple.fl;
+
+component drain = states{
+    initial: func{
+        if !fl.active {
+            advance(this.done);
+        }
+    },
+    done: func{
+        stay();
+    },
+};
+
+start { drain: initial };

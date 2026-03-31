@@ -1,0 +1,16 @@
+spec history1;
+
+def counter = flow{
+    value: 1,
+    step: func{
+        if this.value > 0 {
+            this.value <- this.value[now-1];
+        } else {
+            this.value = 1;
+        }
+    }
+};
+
+for 4 init{c = new counter;} run{
+    c.step;
+}
