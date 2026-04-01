@@ -139,15 +139,6 @@ func printAST(spec interface{}) {
 }
 
 func runInteractiveMode() {
-	// Check solver configuration
-	if os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "" {
-		fmt.Fprintf(os.Stderr, "\n⚠️  Warning: No solver configured.\n")
-		fmt.Fprintf(os.Stderr, "   Model checking requires SOLVERCMD and SOLVERARG environment variables.\n")
-		fmt.Fprintf(os.Stderr, "   You can still use ast, ir, and smt modes.\n\n")
-		fmt.Fprintf(os.Stderr, "Press Enter to continue or Ctrl+C to exit...")
-		fmt.Scanln()
-	}
-
 	p := tea.NewProgram(
 		tui.NewModel(),
 		tea.WithAltScreen(),       // Full-screen TUI
