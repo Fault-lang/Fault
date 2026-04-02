@@ -246,8 +246,17 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 
 	case *ast.Nil:
 	case *ast.IndexExpression:
-		subset := c.FilterRegistryByIndex(e.Left.String(), e.Index.String())
-		return rules.NewVarSets(subset)
+		assertVar, ok := e.Left.(*ast.AssertVar)
+		if !ok {
+			subset := c.FilterRegistryByIndex(e.Left.String(), e.Index.String())
+			return rules.NewVarSets(subset)
+		}
+		merged := make(map[string]*util.StringSet)
+		for _, inst := range assertVar.Instances {
+			subset := c.FilterRegistryByIndex(inst, e.Index.String())
+			merged = util.MergeStringSets(merged, subset)
+		}
+		return rules.NewVarSets(merged)
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
