@@ -990,7 +990,8 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		}
 
 		if w.HaveSeen[w.Value] ||
-			len(w.OnEntry) == 0 {
+			len(w.OnEntry) == 0 ||
+			len(w.OnEntry[w.Value]) <= w.PhiLevel {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Get(w.Value))
 			return nil, rule, ssa
 		}

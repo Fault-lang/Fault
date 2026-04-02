@@ -9,7 +9,7 @@ import (
 
 func TestAddOK(t *testing.T) {
 	test := `spec test1;
-			def test = stock{
+			def test = flow{
 				x: func{2+2;},
 				y: func{2+3.1;},
 				z: func{
@@ -25,7 +25,7 @@ func TestAddOK(t *testing.T) {
 	}
 
 	spec := checker.SpecStructs["test1"]
-	testv, _ := spec.FetchStock("test")
+	testv, _ := spec.FetchFlow("test")
 	x := testv["x"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if x.(*ast.InfixExpression).InferredType.Type != "INT" {
@@ -129,7 +129,7 @@ func TestInstanceError(t *testing.T) {
 
 func TestComplex(t *testing.T) {
 	test := `spec test1;
-			def test = stock{
+			def test = flow{
 				x: func{(2.1*8)+2.3/(5-2);},
 			};
 	`
@@ -140,7 +140,7 @@ func TestComplex(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	testv, _ := consts.FetchStock("test")
+	testv, _ := consts.FetchFlow("test")
 	x := testv["x"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if x.(*ast.InfixExpression).InferredType.Type != "FLOAT" {
@@ -311,7 +311,7 @@ func TestTypesInStruct(t *testing.T) {
 
 func TestNils(t *testing.T) {
 	test := `spec test1;
-			def test = stock{
+			def test = flow{
 			x:func{nil + 3;},
 			y:func{4 + nil;},
 			z:func{nil + nil;},
@@ -323,7 +323,7 @@ func TestNils(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	testv, _ := consts.FetchStock("test")
+	testv, _ := consts.FetchFlow("test")
 	x := testv["x"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if x.(*ast.InfixExpression).InferredType.Type != "INT" {
@@ -722,7 +722,7 @@ func TestPrefix(t *testing.T) {
 	test := `spec test1;
 			const b = -2.3;
 
-			def test = stock{
+			def test = flow{
 				a: func{!2.3;},
 			};
 	`
@@ -733,7 +733,7 @@ func TestPrefix(t *testing.T) {
 	}
 
 	consts := checker.SpecStructs["test1"]
-	testv, _ := consts.FetchStock("test")
+	testv, _ := consts.FetchFlow("test")
 	a := testv["a"].(*ast.FunctionLiteral).Body.Statements[0].(*ast.ExpressionStatement).Expression
 
 	if a.(*ast.PrefixExpression).InferredType.Type != "BOOL" {

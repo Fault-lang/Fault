@@ -44,7 +44,7 @@ func TestNewConstants(t *testing.T) {
 
 	expected := []rules.Rule{
 		declareVar("spec_constA", "Real", &rules.Wrap{Value: "10.0"}, false),
-		declareVar("spec_constB", "Bool", &rules.Wrap{Value: "0"}, false),
+		declareVar("spec_constB", "Bool", &rules.Wrap{Value: "false"}, false),
 		declareVar("spec_constC", "Real", &rules.Wrap{Value: "30.0"}, false),
 	}
 

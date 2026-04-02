@@ -663,7 +663,15 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	switch val := c.(type) {
 	case *constant.Int:
 		ty := LookupType(id, val)
-		return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, false)
+		v := val.X.String()
+		if ty == "Bool" {
+			if v == "0" {
+				v = "false"
+			} else {
+				v = "true"
+			}
+		}
+		return declareVar(id, ty, &rules.Wrap{Value: v}, false)
 	case *constant.ExprAnd, *constant.ExprOr, *constant.ExprFNeg:
 		ty := LookupType(id, val)
 		x := b.constExpr(val)

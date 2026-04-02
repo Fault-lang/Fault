@@ -191,7 +191,9 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 
 	switch decl := specfile.Statements[0].(type) {
 	case *ast.SpecDeclStatement:
-		c.currentSpec = decl.Name.Value
+		if !c.isImport {
+			c.currentSpec = decl.Name.Value
+		}
 		c.specs[c.currentSpec] = NewCompiledSpec(c.currentSpec)
 
 		if c.isImport { //We still want the globals compiled
@@ -306,6 +308,7 @@ func (c *Compiler) compile(node ast.Node) {
 		break
 	case *ast.ImportStatement:
 		parent := c.currentSpec
+		c.currentSpec = v.Name.Value // use the import alias as the spec name
 		c.isImport = true
 		c.processSpec(v.Tree)
 		c.isImport = false
@@ -1121,7 +1124,8 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 }
 
 func (c *Compiler) compileIdent(node *ast.Identifier) *ir.InstLoad {
-	return c.lookupIdent(node.Id(), node.Position())
+	id := c.AliasToBaseRaw(node.Id())
+	return c.lookupIdent(id, node.Position())
 }
 
 func (c *Compiler) compileThis(node *ast.This) *ir.InstLoad {
