@@ -194,7 +194,9 @@ func (c *Constraint) Parse() []string {
 	}
 
 	var smt []string
-	smt = append(smt, fmt.Sprintf("(assert %s)", l))
+	if l != "" {
+		smt = append(smt, fmt.Sprintf("(assert %s)", l))
+	}
 	return smt
 }
 
@@ -406,6 +408,9 @@ func (c *Constraint) applyTemporal() string {
 		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
 	case "always": // Every state is true
 		m := c.merge(c.Left, c.Right, c.Op)
+		if len(m.List()) == 0 {
+			return ""
+		}
 		return fmt.Sprintf("(%s %s)", c.Off, strings.Join(m.List(), " "))
 	case "eventually-always": // Once the statement is true, it stays true
 		m := c.merge(c.Left, c.Right, c.Op)
