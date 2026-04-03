@@ -219,7 +219,7 @@ invariant
 
 assignment
     : expressionList ('+' | '-' | '^' | '*' | '/' | '%' | '<<' | '>>' | '&' | '&^')? '=' expressionList #MiscAssign
-    | expressionList ('->' | '<-') expressionList #FaultAssign
+    | expressionList ('->' | '<-' | PLUS_ASSIGN | MINUS_ASSIGN) expressionList #FaultAssign
     ;
 
 emptyStmt

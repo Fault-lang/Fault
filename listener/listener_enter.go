@@ -4,6 +4,7 @@ import (
 	"fault/parser"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -16,7 +17,11 @@ func validVarName(varname string) bool {
 
 func assertValidVarName(varname string, token antlr.Token) {
 	if !validVarName(varname) {
-		panic(fmt.Sprintf("Variable names must be only letters or numbers: line %d col %d", token.GetLine(), token.GetColumn()))
+		msg := fmt.Sprintf("Variable names must be only letters or numbers: line %d col %d", token.GetLine(), token.GetColumn())
+		if strings.ContainsRune(varname, '_') {
+			msg += "\n  Hint: Fault identifiers cannot contain underscores — use camelCase instead (e.g. 'myVariable' not 'my_variable')"
+		}
+		panic(msg)
 	}
 }
 

@@ -434,14 +434,14 @@ func (l *FaultListener) ExitFaultAssign(c *parser.FaultAssignContext) {
 
 	right := l.pop()
 	left := l.pop()
-	if operator == "->" {
+	if operator == "->" || operator == "-=" {
 		token2 := ast.GenerateToken("MINUS", "-", c.GetStart(), c.GetStop())
 		valChange = &ast.InfixExpression{
 			Token:    token2,
 			Left:     left.(ast.Expression),
 			Operator: "-",
 			Right:    right.(ast.Expression)}
-	} else if operator == "<-" {
+	} else if operator == "<-" || operator == "+=" {
 		token2 := ast.GenerateToken("ADD", "+", c.GetStart(), c.GetStop())
 
 		valChange = &ast.InfixExpression{
