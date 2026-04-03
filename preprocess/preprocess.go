@@ -1209,6 +1209,26 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			node.ProcessedName = rawid
 		}
 
+		if ty == "NIL" {
+			// Check whether the user referenced a stock/flow type definition instead of an instance.
+			// e.g. "ratelimiter.tokenBucket.tokens" where tokenBucket is a def, not a new'd instance.
+			// node.Value[0] may repeat the spec alias, so strip it to get the definition name.
+			defName := ""
+			if len(node.Value) >= 2 && node.Value[0] == node.Spec {
+				defName = node.Value[1]
+			} else if len(node.Value) >= 1 {
+				defName = node.Value[0]
+			}
+			if defName != "" {
+				if _, ferr := spec.FetchStock(defName); ferr == nil {
+					return node, fmt.Errorf("'%s.%s' is a stock type definition, not an instance — stock definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, defName, node.Value[len(node.Value)-1])
+				}
+				if _, ferr := spec.FetchFlow(defName); ferr == nil {
+					return node, fmt.Errorf("'%s.%s' is a flow type definition, not an instance — flow definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, defName, node.Value[len(node.Value)-1])
+				}
+			}
+		}
+
 		branch, err := spec.FetchVar(rawid, ty)
 		if err != nil {
 			return node, err
