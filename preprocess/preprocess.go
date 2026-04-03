@@ -1159,9 +1159,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec := p.getSpec(p.trail.CurrentSpec())
 		rawid := p.buildIdContext(spec.Id())
 
-		rawid = append(rawid, node.Name.Value)
-
-		node.ProcessedName = rawid
+		if node.Name != nil {
+			rawid = append(rawid, node.Name.Value)
+			node.ProcessedName = rawid
+		}
 		return node, err
 
 	case *ast.ParameterCall:

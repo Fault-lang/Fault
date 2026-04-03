@@ -1499,9 +1499,14 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
+	filename := id + ".fspec"
+	lexer.RemoveErrorListeners()
+	lexer.AddErrorListener(&FaultErrorListener{Filename: filename})
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewFaultParser(stream)
+	p.RemoveErrorListeners()
+	p.AddErrorListener(&FaultErrorListener{Filename: filename})
 	listener := NewListener("", false, true)
 	listener.currSpec = id
 	listener.specs = l.specs
