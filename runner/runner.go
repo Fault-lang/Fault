@@ -47,6 +47,7 @@ type CompilationConfig struct {
 
 type CompilationOutput struct {
 	ResultLog  *scenario.Logger
+	Asserts    []*ast.AssertionStatement
 	Message    string
 	SMT        string
 	AST        *ast.Spec
@@ -333,6 +334,8 @@ func (r *Runner) Run() *CompilationOutput {
 			output.Message = "Fault could not find a failure case. All good!"
 			return output
 		}
+		mc.EvaluateViolations(compiler.RawInputs.Asserts)
+		output.Asserts = compiler.RawInputs.Asserts
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Validate()

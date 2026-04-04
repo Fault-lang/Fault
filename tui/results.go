@@ -14,6 +14,7 @@ import (
 type ResultsModel struct {
 	viewport viewport.Model
 	logger   *scenario.Logger
+	asserts  []*ast.AssertionStatement
 	ast      *ast.Spec
 	smt      string
 	ir       string
@@ -25,9 +26,10 @@ type ResultsModel struct {
 	mode     string
 }
 
-func NewResultsModel(logger *scenario.Logger, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
+func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
 	return ResultsModel{
 		logger:  logger,
+		asserts: asserts,
 		ast:     astSpec,
 		smt:     smt,
 		ir:      ir,
@@ -122,6 +124,14 @@ func (m ResultsModel) getContent() string {
 		content.WriteString(divider)
 		content.WriteString("\n\n")
 		content.WriteString(m.formatLoggerOutput(m.logger.String()))
+		if len(m.asserts) > 0 {
+			content.WriteString("\n")
+			content.WriteString(sectionStyle.Render("Assertions"))
+			content.WriteString("\n")
+			content.WriteString(divider)
+			content.WriteString("\n\n")
+			content.WriteString(m.formatAssertions(m.asserts))
+		}
 	} else if m.smt != "" {
 		content.WriteString(sectionStyle.Render("⛰️ SMT Output"))
 		content.WriteString("\n")
@@ -149,6 +159,20 @@ func (m ResultsModel) getContent() string {
 	}
 
 	return content.String()
+}
+
+func (m ResultsModel) formatAssertions(asserts []*ast.AssertionStatement) string {
+	var sb strings.Builder
+	for _, a := range asserts {
+		line := a.EvLogString(true)
+		if a.Violated {
+			sb.WriteString(ErrorStyle.Render(line))
+		} else {
+			sb.WriteString(SuccessStyle.Render(line))
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 func (m ResultsModel) formatLoggerOutput(output string) string {

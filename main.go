@@ -128,6 +128,9 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 	case "model":
 		if result.ResultLog != nil {
 			result.ResultLog.Print()
+			for _, a := range result.Asserts {
+				fmt.Println(a.EvLogString(true))
+			}
 		} else {
 			fmt.Println(result.SMT)
 		}
