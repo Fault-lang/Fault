@@ -194,7 +194,9 @@ func (c *Constraint) Parse() []string {
 	}
 
 	var smt []string
-	smt = append(smt, fmt.Sprintf("(assert %s)", l))
+	if l != "" {
+		smt = append(smt, fmt.Sprintf("(assert %s)", l))
+	}
 	return smt
 }
 
@@ -246,8 +248,17 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 
 	case *ast.Nil:
 	case *ast.IndexExpression:
-		subset := c.FilterRegistryByIndex(e.Left.String(), e.Index.String())
-		return rules.NewVarSets(subset)
+		assertVar, ok := e.Left.(*ast.AssertVar)
+		if !ok {
+			subset := c.FilterRegistryByIndex(e.Left.String(), e.Index.String())
+			return rules.NewVarSets(subset)
+		}
+		merged := make(map[string]*util.StringSet)
+		for _, inst := range assertVar.Instances {
+			subset := c.FilterRegistryByIndex(inst, e.Index.String())
+			merged = util.MergeStringSets(merged, subset)
+		}
+		return rules.NewVarSets(merged)
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
@@ -397,6 +408,9 @@ func (c *Constraint) applyTemporal() string {
 		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
 	case "always": // Every state is true
 		m := c.merge(c.Left, c.Right, c.Op)
+		if len(m.List()) == 0 {
+			return ""
+		}
 		return fmt.Sprintf("(%s %s)", c.Off, strings.Join(m.List(), " "))
 	case "eventually-always": // Once the statement is true, it stays true
 		m := c.merge(c.Left, c.Right, c.Op)

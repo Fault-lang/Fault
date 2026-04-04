@@ -1,12 +1,16 @@
 spec history1;
 
-def counter = flow{
+def v = stock{
     value: 1,
+};
+
+def counter = flow{
+    place: new v,
     step: func{
-        if this.value > 0 {
-            this.value <- this.value[now-1];
+        if place.value > 0 {
+            place.value <- place.value[now-1];
         } else {
-            this.value = 1;
+            place.value = 1;
         }
     }
 };

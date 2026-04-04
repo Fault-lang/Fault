@@ -6,7 +6,7 @@ global fl = new simple.fl;
 
 component drain = states{
     initial: func{
-        if !fl.active {
+        if !simple.active {
             advance(this.open);
         }
     },

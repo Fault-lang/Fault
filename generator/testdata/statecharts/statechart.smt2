@@ -1,1 +1,112 @@
-(set-logicQF_NRA)(declare-funstatechart_fl_active_0()Bool)(declare-funstatechart_fl_vault_value_0()Real)(declare-funstatechart_drain_initial_0()Bool)(declare-funstatechart_drain_open_0()Bool)(declare-funstatechart_drain_close_0()Bool)(declare-funstatechart_drain_initial_1()Bool)(declare-funstatechart_fl_vault_value_1()Real)(declare-funstatechart_fl_vault_value_2()Real)(declare-funblocktrue_2()Bool)(declare-funblockfalse_2()Bool)(declare-funstatechart_fl_vault_value_3()Real)(declare-funblocktrue_2()Bool)(declare-funblockfalse_2()Bool)(declare-funstatechart_drain_open_1()Bool)(declare-funstatechart_drain_open_2()Bool)(declare-funblocktrue_2()Bool)(declare-funblockfalse_2()Bool)(declare-funstatechart_drain_close_1()Bool)(declare-funstatechart_drain_close_2()Bool)(declare-funblocktrue_2()Bool)(declare-funblockfalse_2()Bool)(declare-funstatechart_drain_close_3()Bool)(declare-funstatechart_drain_close_4()Bool)(declare-funblocktrue_2()Bool)(declare-funblockfalse_2()Bool)(declare-funstatechart_fl_vault_value_4()Real)(declare-funstatechart_fl_vault_value_5()Real)(declare-funstatechart_fl_vault_value_6()Real)(declare-funblocktrue_2()Bool)(declare-funblockfalse_2()Bool)(declare-funstatechart_drain_open_3()Bool)(declare-funstatechart_drain_open_4()Bool)(declare-funstatechart_drain_close_5()Bool)(declare-funstatechart_drain_close_6()Bool)(declare-funstatechart_drain_close_7()Bool)(declare-funstatechart_drain_close_8()Bool)(assert(=statechart_fl_active_0false))(assert(=statechart_fl_vault_value_030.0))(assert(=statechart_drain_initial_0false))(assert(=statechart_drain_open_0false))(assert(=statechart_drain_close_0false))(assert(=statechart_drain_initial_1true))(assert(=statechart_fl_vault_value_1(+statechart_fl_vault_value_0(-statechart_fl_vault_value_02.0))))(assert(ite(>statechart_fl_vault_value_04.0)(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_fl_vault_value_2statechart_fl_vault_value_1))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_fl_vault_value_2statechart_fl_vault_value_0))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(ite(notstatechart_drain_close_0)(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_fl_vault_value_3statechart_fl_vault_value_2))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_fl_vault_value_3statechart_fl_vault_value_0))))(assert(=statechart_drain_open_1true))(assert(ite(and(=statechart_drain_initial_1true)(notstatechart_fl_active_0))(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_drain_open_2statechart_drain_open_1))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_drain_open_2statechart_drain_open_0))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(=statechart_drain_close_1true))(assert(ite(and(=statechart_drain_open_2true)(<statechart_fl_vault_value_30.0))(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_drain_close_2statechart_drain_close_1))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_drain_close_2statechart_drain_close_0))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(=statechart_drain_close_3true))(assert(ite(=statechart_drain_close_2true)(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_drain_close_4statechart_drain_close_3))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_drain_close_4statechart_drain_close_2))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(=statechart_fl_vault_value_4(+statechart_fl_vault_value_3(-statechart_fl_vault_value_32.0))))(assert(ite(>statechart_fl_vault_value_34.0)(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_fl_vault_value_5statechart_fl_vault_value_4))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_fl_vault_value_5statechart_fl_vault_value_3))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(ite(notstatechart_drain_close_4)(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_fl_vault_value_6statechart_fl_vault_value_5))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_fl_vault_value_6statechart_fl_vault_value_3))))(assert(=statechart_drain_open_3true))(assert(ite(and(=statechart_drain_initial_1true)(notstatechart_fl_active_0))(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_drain_open_4statechart_drain_open_3))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_drain_open_4statechart_drain_open_2))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(=statechart_drain_close_5true))(assert(ite(and(=statechart_drain_open_4true)(<statechart_fl_vault_value_60.0))(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_drain_close_6statechart_drain_close_5))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_drain_close_6statechart_drain_close_4))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(=statechart_drain_close_7true))(assert(ite(=statechart_drain_close_6true)(and(=blocktrue_2true)(=blockfalse_2false)(=statechart_drain_close_8statechart_drain_close_7))(and(=blocktrue_2false)(=blockfalse_2true)(=statechart_drain_close_8statechart_drain_close_6))))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))(assert(or(andblocktrue_2(notblockfalse_2))(and(notblocktrue_2)blockfalse_2)))
+(set-logic QF_NRA)
+(declare-fun statechart_fl_vault_value_0 () Real)
+(declare-fun statechart_drain_initial_0 () Bool)
+(declare-fun statechart_drain_open_0 () Bool)
+(declare-fun statechart_drain_close_0 () Bool)
+(declare-fun statechart_drain_initial_1 () Bool)
+(declare-fun statechart_fl_vault_value_1 () Real)
+(declare-fun statechart_fl_vault_value_2 () Real)
+(declare-fun block16true_2 () Bool)
+(declare-fun block16false_2 () Bool)
+(declare-fun statechart_fl_vault_value_3 () Real)
+(declare-fun block13true_2 () Bool)
+(declare-fun block13false_2 () Bool)
+(declare-fun statechart_drain_open_1 () Bool)
+(declare-fun statechart_drain_open_2 () Bool)
+(declare-fun block3true_2 () Bool)
+(declare-fun block3false_2 () Bool)
+(declare-fun statechart_drain_close_1 () Bool)
+(declare-fun statechart_drain_close_2 () Bool)
+(declare-fun block7true_2 () Bool)
+(declare-fun block7false_2 () Bool)
+(declare-fun statechart_drain_close_3 () Bool)
+(declare-fun statechart_drain_close_4 () Bool)
+(declare-fun block10true_2 () Bool)
+(declare-fun block10false_2 () Bool)
+(declare-fun statechart_fl_vault_value_4 () Real)
+(declare-fun statechart_fl_vault_value_5 () Real)
+(declare-fun statechart_fl_vault_value_6 () Real)
+(declare-fun block18true_2 () Bool)
+(declare-fun block18false_2 () Bool)
+(declare-fun statechart_drain_open_3 () Bool)
+(declare-fun statechart_drain_open_4 () Bool)
+(declare-fun statechart_drain_close_5 () Bool)
+(declare-fun statechart_drain_close_6 () Bool)
+(declare-fun statechart_drain_close_7 () Bool)
+(declare-fun statechart_drain_close_8 () Bool)
+(declare-fun simple_active_0 () Bool)
+(assert (= simple_active_0 true))
+
+(assert (= statechart_fl_vault_value_0 30.0))
+(assert (= statechart_drain_initial_0 false))
+(assert (= statechart_drain_open_0 false))
+(assert (= statechart_drain_close_0 false))
+(assert (= statechart_drain_initial_1 true))
+(assert (= statechart_fl_vault_value_1 (+ statechart_fl_vault_value_0 (- statechart_fl_vault_value_0 2.0))))
+
+(assert (ite (> statechart_fl_vault_value_0 4.0) (and (= block16true_2 true) (= block16false_2 false) (= statechart_fl_vault_value_2 statechart_fl_vault_value_1)) (and (= block16true_2 false) (= block16false_2 true) (= statechart_fl_vault_value_2 statechart_fl_vault_value_0))))
+(assert (or (and block16true_2
+(not block16false_2))
+(and (not block16true_2)
+block16false_2)))
+
+(assert (ite (not statechart_drain_close_0) (and (= block13true_2 true) (= block13false_2 false) (= statechart_fl_vault_value_3 statechart_fl_vault_value_2)) (and (= block13true_2 false) (= block13false_2 true) (= statechart_fl_vault_value_3 statechart_fl_vault_value_0))))
+(assert (= statechart_drain_open_1 true))
+
+(assert (ite (and (= statechart_drain_initial_1 true) (not simple_active_0)) (and (= block3true_2 true) (= block3false_2 false) (= statechart_drain_open_2 statechart_drain_open_1)) (and (= block3true_2 false) (= block3false_2 true) (= statechart_drain_open_2 statechart_drain_open_0))))
+(assert (or (and block3true_2
+(not block3false_2))
+(and (not block3true_2)
+block3false_2)))
+(assert (= statechart_drain_close_1 true))
+
+(assert (ite (and (= statechart_drain_open_2 true) (< statechart_fl_vault_value_3 0.0)) (and (= block7true_2 true) (= block7false_2 false) (= statechart_drain_close_2 statechart_drain_close_1)) (and (= block7true_2 false) (= block7false_2 true) (= statechart_drain_close_2 statechart_drain_close_0))))
+(assert (or (and block7true_2
+(not block7false_2))
+(and (not block7true_2)
+block7false_2)))
+(assert (= statechart_drain_close_3 true))
+
+(assert (ite (= statechart_drain_close_2 true) (and (= block10true_2 true) (= block10false_2 false) (= statechart_drain_close_4 statechart_drain_close_3)) (and (= block10true_2 false) (= block10false_2 true) (= statechart_drain_close_4 statechart_drain_close_2))))
+(assert (or (and block10true_2
+(not block10false_2))
+(and (not block10true_2)
+block10false_2)))
+(assert (= statechart_fl_vault_value_4 (+ statechart_fl_vault_value_3 (- statechart_fl_vault_value_3 2.0))))
+
+(assert (ite (> statechart_fl_vault_value_3 4.0) (and (= block16true_2 true) (= block16false_2 false) (= statechart_fl_vault_value_5 statechart_fl_vault_value_4)) (and (= block16true_2 false) (= block16false_2 true) (= statechart_fl_vault_value_5 statechart_fl_vault_value_3))))
+(assert (or (and block16true_2
+(not block16false_2))
+(and (not block16true_2)
+block16false_2)))
+
+(assert (ite (not statechart_drain_close_4) (and (= block18true_2 true) (= block18false_2 false) (= statechart_fl_vault_value_6 statechart_fl_vault_value_5)) (and (= block18true_2 false) (= block18false_2 true) (= statechart_fl_vault_value_6 statechart_fl_vault_value_3))))
+(assert (= statechart_drain_open_3 true))
+
+(assert (ite (and (= statechart_drain_initial_1 true) (not simple_active_0)) (and (= block3true_2 true) (= block3false_2 false) (= statechart_drain_open_4 statechart_drain_open_3)) (and (= block3true_2 false) (= block3false_2 true) (= statechart_drain_open_4 statechart_drain_open_2))))
+(assert (or (and block3true_2
+(not block3false_2))
+(and (not block3true_2)
+block3false_2)))
+(assert (= statechart_drain_close_5 true))
+
+(assert (ite (and (= statechart_drain_open_4 true) (< statechart_fl_vault_value_6 0.0)) (and (= block7true_2 true) (= block7false_2 false) (= statechart_drain_close_6 statechart_drain_close_5)) (and (= block7true_2 false) (= block7false_2 true) (= statechart_drain_close_6 statechart_drain_close_4))))
+(assert (or (and block7true_2
+(not block7false_2))
+(and (not block7true_2)
+block7false_2)))
+(assert (= statechart_drain_close_7 true))
+
+(assert (ite (= statechart_drain_close_6 true) (and (= block10true_2 true) (= block10false_2 false) (= statechart_drain_close_8 statechart_drain_close_7)) (and (= block10true_2 false) (= block10false_2 true) (= statechart_drain_close_8 statechart_drain_close_6))))
+(assert (or (and block10true_2
+(not block10false_2))
+(and (not block10true_2)
+block10false_2)))
+(assert (or (and block18true_2
+(not block18false_2))
+(and (not block18true_2)
+block18false_2)))
+(assert (or (and block13true_2
+(not block13false_2))
+(and (not block13true_2)
+block13false_2)))

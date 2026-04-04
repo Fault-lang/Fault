@@ -12,12 +12,12 @@ component a = states{
         (advance(this.option1) && advance(this.option2)) || advance(this.option3);
     },
     option2: func{
-        if fl.active {
+        if simple.active {
             advance(this.option1) || advance(this.option3);
         }
     },
     option3: func{
-        if !fl.active {
+        if !simple.active {
             advance(this.option1) || advance(this.option2);
         }else{
             advance(this.option1) && advance(this.option2) || advance(this.option3);

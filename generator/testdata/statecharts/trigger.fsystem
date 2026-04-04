@@ -9,12 +9,12 @@ component x = states{
         fl.fn;
     },
     bar: func{
-        if fl.active {
+        if simple.active {
             fl.fn;
         }
     },
     bash: func{
-        if fl.active {
+        if simple.active {
             advance(this.foo);
         }else{
             fl.fn;

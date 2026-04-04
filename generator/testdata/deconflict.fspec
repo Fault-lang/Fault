@@ -1,0 +1,18 @@
+spec deconflict;
+
+const conflict = true;
+
+def s = stock{
+    value: false,
+};
+
+def f = flow{
+    conflict: new s,
+    fn: func{
+        conflict.value = true;
+    }
+};
+
+for 1 init{ t = new f; } run {
+    t.fn;
+}

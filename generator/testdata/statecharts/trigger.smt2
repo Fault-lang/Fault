@@ -1,1 +1,91 @@
-(set-logicQF_NRA)(declare-funtrigger_fl_active_0()Bool)(declare-funtrigger_fl_vault_value_0()Real)(declare-funtrigger_x_foo_0()Bool)(declare-funtrigger_x_bar_0()Bool)(declare-funtrigger_x_bash_0()Bool)(declare-funtrigger_x_foo_1()Bool)(declare-funtrigger_fl_vault_value_1()Real)(declare-funtrigger_fl_vault_value_2()Real)(declare-funblock145true_0()Bool)(declare-funblock145false_0()Bool)(declare-funtrigger_fl_vault_value_3()Real)(declare-funblock143true_0()Bool)(declare-funblock143false_0()Bool)(declare-funtrigger_fl_vault_value_4()Real)(declare-funtrigger_fl_vault_value_5()Real)(declare-funblock150true_0()Bool)(declare-funblock150false_0()Bool)(declare-funtrigger_fl_vault_value_6()Real)(declare-funblock148true_0()Bool)(declare-funblock148false_0()Bool)(declare-funtrigger_fl_vault_value_7()Real)(declare-funtrigger_fl_vault_value_8()Real)(declare-funblock155true_0()Bool)(declare-funblock155false_0()Bool)(declare-funtrigger_fl_vault_value_9()Real)(declare-funblock153true_0()Bool)(declare-funblock153false_0()Bool)(declare-funtrigger_x_foo_2()Bool)(declare-funtrigger_x_foo_3()Bool)(declare-funblock157true_0()Bool)(declare-funblock157false_0()Bool)(assert(=trigger_fl_active_0false))(assert(=trigger_fl_vault_value_030.0))(assert(=trigger_x_foo_0false))(assert(=trigger_x_bar_0false))(assert(=trigger_x_bash_0false))(assert(=trigger_x_foo_1true))(assert(=trigger_fl_vault_value_1(+trigger_fl_vault_value_0(-trigger_fl_vault_value_02.0))))(assert(ite(>trigger_fl_vault_value_04.0)(and(=block145true_0true)(=block145false_0false)(=trigger_fl_vault_value_2trigger_fl_vault_value_1))(and(=block145true_0false)(=block145false_0true)(=trigger_fl_vault_value_2trigger_fl_vault_value_0))))(assert(or(andblock145true_0(notblock145false_0))(and(notblock145true_0)block145false_0)))(assert(ite(=trigger_x_foo_1true)(and(=block143true_0true)(=block143false_0false)(=trigger_fl_vault_value_3trigger_fl_vault_value_2))(and(=block143true_0false)(=block143false_0true)(=trigger_fl_vault_value_3trigger_fl_vault_value_0))))(assert(or(andblock143true_0(notblock143false_0))(and(notblock143true_0)block143false_0)))(assert(=trigger_fl_vault_value_4(+trigger_fl_vault_value_3(-trigger_fl_vault_value_32.0))))(assert(ite(>trigger_fl_vault_value_34.0)(and(=block150true_0true)(=block150false_0false)(=trigger_fl_vault_value_5trigger_fl_vault_value_4))(and(=block150true_0false)(=block150false_0true)(=trigger_fl_vault_value_5trigger_fl_vault_value_3))))(assert(or(andblock150true_0(notblock150false_0))(and(notblock150true_0)block150false_0)))(assert(ite(and(=trigger_x_bar_0true)(=trigger_fl_active_0true))(and(=block148true_0true)(=block148false_0false)(=trigger_fl_vault_value_6trigger_fl_vault_value_5))(and(=block148true_0false)(=block148false_0true)(=trigger_fl_vault_value_6trigger_fl_vault_value_3))))(assert(or(andblock148true_0(notblock148false_0))(and(notblock148true_0)block148false_0)))(assert(=trigger_fl_vault_value_7(+trigger_fl_vault_value_6(-trigger_fl_vault_value_62.0))))(assert(ite(>trigger_fl_vault_value_64.0)(and(=block155true_0true)(=block155false_0false)(=trigger_fl_vault_value_8trigger_fl_vault_value_7))(and(=block155true_0false)(=block155false_0true)(=trigger_fl_vault_value_8trigger_fl_vault_value_6))))(assert(or(andblock155true_0(notblock155false_0))(and(notblock155true_0)block155false_0)))(assert(ite(=trigger_x_bash_0true)(and(=block153true_0true)(=block153false_0false)(=trigger_fl_vault_value_9trigger_fl_vault_value_8))(and(=block153true_0false)(=block153false_0true)(=trigger_fl_vault_value_9trigger_fl_vault_value_6))))(assert(=trigger_x_foo_2true))(assert(ite(and(=trigger_x_bash_0true)(=trigger_fl_active_0true))(and(=block157true_0true)(=block157false_0false)(=trigger_x_foo_3trigger_x_foo_2))(and(=block157true_0false)(=block157false_0true)(=trigger_x_foo_3trigger_x_foo_1))))(assert(or(andblock157true_0(notblock157false_0))(and(notblock157true_0)block157false_0)))(assert(or(andblock153true_0(notblock153false_0))(and(notblock153true_0)block153false_0)))
+(set-logic QF_NRA)
+(declare-fun trigger_fl_vault_value_0 () Real)
+(declare-fun trigger_x_foo_0 () Bool)
+(declare-fun trigger_x_bar_0 () Bool)
+(declare-fun trigger_x_bash_0 () Bool)
+(declare-fun trigger_x_foo_1 () Bool)
+(declare-fun trigger_fl_vault_value_1 () Real)
+(declare-fun trigger_fl_vault_value_2 () Real)
+(declare-fun block5true_0 () Bool)
+(declare-fun block5false_0 () Bool)
+(declare-fun trigger_fl_vault_value_3 () Real)
+(declare-fun block3true_0 () Bool)
+(declare-fun block3false_0 () Bool)
+(declare-fun trigger_fl_vault_value_4 () Real)
+(declare-fun trigger_fl_vault_value_5 () Real)
+(declare-fun block10true_0 () Bool)
+(declare-fun block10false_0 () Bool)
+(declare-fun trigger_fl_vault_value_6 () Real)
+(declare-fun block8true_0 () Bool)
+(declare-fun block8false_0 () Bool)
+(declare-fun trigger_fl_vault_value_7 () Real)
+(declare-fun trigger_fl_vault_value_8 () Real)
+(declare-fun block15true_0 () Bool)
+(declare-fun block15false_0 () Bool)
+(declare-fun trigger_fl_vault_value_9 () Real)
+(declare-fun block13true_0 () Bool)
+(declare-fun block13false_0 () Bool)
+(declare-fun trigger_x_foo_2 () Bool)
+(declare-fun trigger_x_foo_3 () Bool)
+(declare-fun block17true_0 () Bool)
+(declare-fun block17false_0 () Bool)
+(declare-fun simple_active_0 () Bool)
+(assert (= simple_active_0 true))
+
+(assert (= trigger_fl_vault_value_0 30.0))
+(assert (= trigger_x_foo_0 false))
+(assert (= trigger_x_bar_0 false))
+(assert (= trigger_x_bash_0 false))
+(assert (= trigger_x_foo_1 true))
+
+(assert (= trigger_fl_vault_value_1 (+ trigger_fl_vault_value_0 (- trigger_fl_vault_value_0 2.0))))
+
+(assert (ite (> trigger_fl_vault_value_0 4.0) (and (= block5true_0 true) (= block5false_0 false) (= trigger_fl_vault_value_2 trigger_fl_vault_value_1)) (and (= block5true_0 false) (= block5false_0 true) (= trigger_fl_vault_value_2 trigger_fl_vault_value_0))))
+(assert (or (and block5true_0
+(not block5false_0))
+(and (not block5true_0)
+block5false_0)))
+
+(assert (ite (= trigger_x_foo_1 true) (and (= block3true_0 true) (= block3false_0 false) (= trigger_fl_vault_value_3 trigger_fl_vault_value_2)) (and (= block3true_0 false) (= block3false_0 true) (= trigger_fl_vault_value_3 trigger_fl_vault_value_0))))
+(assert (or (and block3true_0
+(not block3false_0))
+(and (not block3true_0)
+block3false_0)))
+
+
+(assert (= trigger_fl_vault_value_4 (+ trigger_fl_vault_value_3 (- trigger_fl_vault_value_3 2.0))))
+
+(assert (ite (> trigger_fl_vault_value_3 4.0) (and (= block10true_0 true) (= block10false_0 false) (= trigger_fl_vault_value_5 trigger_fl_vault_value_4)) (and (= block10true_0 false) (= block10false_0 true) (= trigger_fl_vault_value_5 trigger_fl_vault_value_3))))
+(assert (or (and block10true_0
+(not block10false_0))
+(and (not block10true_0)
+block10false_0)))
+
+(assert (ite (and (= trigger_x_bar_0 true) (= simple_active_0 true)) (and (= block8true_0 true) (= block8false_0 false) (= trigger_fl_vault_value_6 trigger_fl_vault_value_5)) (and (= block8true_0 false) (= block8false_0 true) (= trigger_fl_vault_value_6 trigger_fl_vault_value_3))))
+(assert (or (and block8true_0
+(not block8false_0))
+(and (not block8true_0)
+block8false_0)))
+
+
+(assert (= trigger_fl_vault_value_7 (+ trigger_fl_vault_value_6 (- trigger_fl_vault_value_6 2.0))))
+
+(assert (ite (> trigger_fl_vault_value_6 4.0) (and (= block15true_0 true) (= block15false_0 false) (= trigger_fl_vault_value_8 trigger_fl_vault_value_7)) (and (= block15true_0 false) (= block15false_0 true) (= trigger_fl_vault_value_8 trigger_fl_vault_value_6))))
+(assert (or (and block15true_0
+(not block15false_0))
+(and (not block15true_0)
+block15false_0)))
+
+(assert (ite (= trigger_x_bash_0 true) (and (= block13true_0 true) (= block13false_0 false) (= trigger_fl_vault_value_9 trigger_fl_vault_value_8)) (and (= block13true_0 false) (= block13false_0 true) (= trigger_fl_vault_value_9 trigger_fl_vault_value_6))))
+(assert (= trigger_x_foo_2 true))
+
+(assert (ite (and (= trigger_x_bash_0 true) (= simple_active_0 true)) (and (= block17true_0 true) (= block17false_0 false) (= trigger_x_foo_3 trigger_x_foo_2)) (and (= block17true_0 false) (= block17false_0 true) (= trigger_x_foo_3 trigger_x_foo_1))))
+(assert (or (and block17true_0
+(not block17false_0))
+(and (not block17true_0)
+block17false_0)))
+(assert (or (and block13true_0
+(not block13false_0))
+(and (not block13true_0)
+block13false_0)))
+

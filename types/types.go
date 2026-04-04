@@ -137,6 +137,9 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			if err != nil {
 				return node, err
 			}
+			if _, ok := tnode.(*ast.FunctionLiteral); ok {
+				return nil, fmt.Errorf("stock %s: property %q cannot be a function; functions belong in flows", node.IdString(), key)
+			}
 			node.Pairs[propid] = tnode.(ast.Expression)
 			name := append(rawid, key)
 			spec.UpdateVar(name, "STOCK", tnode)
@@ -155,6 +158,12 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			tnode, err = c.typecheck(v)
 			if err != nil {
 				return node, err
+			}
+			switch tnode.(type) {
+			case *ast.FunctionLiteral, *ast.Instance, *ast.StructInstance:
+				// allowed: functions and stock references
+			default:
+				return nil, fmt.Errorf("flow %s: property %q must be a function or stock reference; use a stock to hold plain values", node.IdString(), key)
 			}
 			node.Pairs[propid] = tnode.(ast.Expression)
 			name := append(rawid, key)

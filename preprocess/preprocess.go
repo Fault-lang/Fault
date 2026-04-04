@@ -131,6 +131,13 @@ func (p *Processor) collapsibleIf(n ast.Node) bool {
 }
 
 func (p *Processor) collapse(parent *ast.IfExpression, child *ast.IfExpression) *ast.IfExpression {
+	// If child's consequence is itself a collapsible if, collapse child with grandchild first
+	// so the combined condition nests as: parent && (child && grandchild)
+	if p.collapsibleIf(child.Consequence) {
+		grandchild := child.Consequence.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+		child = p.collapse(child, grandchild)
+	}
+
 	node := &ast.IfExpression{}
 	// Add the condition of parent to child
 	cond := &ast.InfixExpression{Left: parent.Condition, Right: child.Condition, Operator: "&&"}
@@ -139,14 +146,21 @@ func (p *Processor) collapse(parent *ast.IfExpression, child *ast.IfExpression) 
 
 	// If elif block add condition of parent
 	if child.Elif != nil {
-		el := p.collapse(parent, child.Elif)
-		node.Elif = p.attachElif(parent, el)
+		node.Elif = p.collapse(parent, child.Elif)
 	}
 
 	// If Else, convert to elif block and add condition of parent
 	if child.Alternative != nil {
 		el := &ast.IfExpression{Condition: parent.Condition, Consequence: child.Alternative}
-		node.Elif = p.attachElif(parent, el)
+		if node.Elif == nil {
+			node.Elif = el
+		} else {
+			tail := node.Elif
+			for tail.Elif != nil {
+				tail = tail.Elif
+			}
+			tail.Elif = el
+		}
 	}
 	return node
 }
@@ -659,8 +673,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			return node, err
 		}
 
+		var innerElif *ast.IfExpression
 		if p.collapsibleIf(conseq) {
 			pro = p.collapse(node, conseq.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression))
+			innerElif = pro.Elif
 		} else {
 			pro.Condition = cond.(ast.Expression)
 			pro.Consequence = conseq.(*ast.BlockStatement)
@@ -668,11 +684,39 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		var elif ast.Node
 		if node.Elif != nil {
+			// Count original outer elif nodes so we can insert innerElif at the
+			// right position: after the original elifs, before any else-derived elifs.
+			outerElifLen := 0
+			for curr := node.Elif; curr != nil; curr = curr.Elif {
+				outerElifLen++
+			}
+
 			elif, err = p.walk(node.Elif) // Since Elif is an IfExpression we already check for collapsibility
 			if err != nil {
 				return node, err
 			}
 			pro.Elif = elif.(*ast.IfExpression)
+
+			if innerElif != nil {
+				// Walk to the node just before where else-derived elifs start.
+				var prevNode *ast.IfExpression
+				currNode := pro.Elif
+				for i := 0; i < outerElifLen && currNode != nil; i++ {
+					prevNode = currNode
+					currNode = currNode.Elif
+				}
+				// Insert innerElif between prevNode and currNode (else-derived).
+				if prevNode != nil {
+					prevNode.Elif = innerElif
+					if currNode != nil {
+						innerTail := innerElif
+						for innerTail.Elif != nil {
+							innerTail = innerTail.Elif
+						}
+						innerTail.Elif = currNode
+					}
+				}
+			}
 		}
 
 		var alt ast.Node
@@ -684,13 +728,12 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			if p.collapsibleIf(alt) {
 				el := alt.(*ast.BlockStatement).Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
-				if node.Elif == nil {
+				if pro.Elif == nil {
 					pro.Elif = el
-					pro.Alternative = nil
 				} else {
-					pro.Elif = p.attachElif(node.Elif, el)
-					pro.Alternative = nil
+					p.attachElif(pro.Elif, el)
 				}
+				pro.Alternative = nil
 			} else {
 				pro.Alternative = alt.(*ast.BlockStatement)
 			}
@@ -1070,6 +1113,24 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec = im
 		} else {
 			spec = p.getSpec(p.trail.CurrentSpec())
+			// If the identifier is not in the current spec either, search
+			// all imported specs (e.g. a bare constant from an imported spec
+			// used inside a system-file component).
+			_, curCheck := spec.FetchConstant(node.Value)
+			_, curCheck2 := spec.FetchGlobal(node.Value)
+			if curCheck != nil && curCheck2 != nil {
+				for _, s := range p.Specs {
+					if s.Id() == p.trail.CurrentSpec() {
+						continue
+					}
+					_, c1 := s.FetchConstant(node.Value)
+					_, c2 := s.FetchGlobal(node.Value)
+					if c1 == nil || c2 == nil {
+						spec = s
+						break
+					}
+				}
+			}
 		}
 		rawid := p.buildIdContext(spec.Id())
 
@@ -1098,9 +1159,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec := p.getSpec(p.trail.CurrentSpec())
 		rawid := p.buildIdContext(spec.Id())
 
-		rawid = append(rawid, node.Name.Value)
-
-		node.ProcessedName = rawid
+		if node.Name != nil {
+			rawid = append(rawid, node.Name.Value)
+			node.ProcessedName = rawid
+		}
 		return node, err
 
 	case *ast.ParameterCall:
@@ -1146,6 +1208,26 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			ty, _ = spec.GetStructType(rawid)
 
 			node.ProcessedName = rawid
+		}
+
+		if ty == "NIL" {
+			// Check whether the user referenced a stock/flow type definition instead of an instance.
+			// e.g. "ratelimiter.tokenBucket.tokens" where tokenBucket is a def, not a new'd instance.
+			// node.Value[0] may repeat the spec alias, so strip it to get the definition name.
+			defName := ""
+			if len(node.Value) >= 2 && node.Value[0] == node.Spec {
+				defName = node.Value[1]
+			} else if len(node.Value) >= 1 {
+				defName = node.Value[0]
+			}
+			if defName != "" {
+				if _, ferr := spec.FetchStock(defName); ferr == nil {
+					return node, fmt.Errorf("'%s.%s' is a stock type definition, not an instance — stock definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, defName, node.Value[len(node.Value)-1])
+				}
+				if _, ferr := spec.FetchFlow(defName); ferr == nil {
+					return node, fmt.Errorf("'%s.%s' is a flow type definition, not an instance — flow definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, defName, node.Value[len(node.Value)-1])
+				}
+			}
 		}
 
 		branch, err := spec.FetchVar(rawid, ty)

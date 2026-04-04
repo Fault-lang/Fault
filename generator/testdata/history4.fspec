@@ -1,13 +1,17 @@
 spec history4;
 
-def seq = flow{
-    value: 1,
+def v = stock{
+    value: 0,
     A: true,
     B: true,
+};
+
+def seq = flow{
+    place: new v,
     step: func{
-        if A { 
-            if B { 
-                this.value <- this.value[now-1];
+        if place.A { 
+            if place.B { 
+                place.value <- place.value[now-1];
             }
         }
     }

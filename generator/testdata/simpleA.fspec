@@ -1,11 +1,12 @@
 spec simpleA;
 
+const active = true;
+
 def st = stock{
     value: 30,
 };
 
 def fl = flow{
-    active: false,
     vault: new st,
     fn: func{
         if vault.value > 4 {

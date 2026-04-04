@@ -13,15 +13,16 @@ import (
 )
 
 type SetupModel struct {
-	step          int // 0=file, 1=mode, 2=input, 3=output
-	fileInput     textinput.Model
-	cursor        int
-	config        runner.CompilationConfig
-	width         int
-	height        int
-	validationErr string // Error message for file validation
-	browseMode    bool
-	fileBrowser   FileBrowserModel
+	step            int // 0=file, 1=mode, 2=input, 3=output
+	fileInput       textinput.Model
+	cursor          int
+	config          runner.CompilationConfig
+	width           int
+	height          int
+	validationErr   string // Error message for file validation
+	browseMode      bool
+	fileBrowser     FileBrowserModel
+	solverAvailable bool
 }
 
 var (
@@ -30,6 +31,15 @@ var (
 	outputs = []string{"text (recommended)", "smt"}
 )
 
+// activeModes returns the list of selectable modes. When no solver is
+// configured, "model" is excluded because it requires SOLVERCMD/SOLVERARG.
+func (m SetupModel) activeModes() []string {
+	if m.solverAvailable {
+		return modes
+	}
+	return []string{"ast", "ir", "smt"}
+}
+
 func NewSetupModel() SetupModel {
 	ti := textinput.New()
 	ti.Placeholder = "path/to/file.fspec"
@@ -37,16 +47,22 @@ func NewSetupModel() SetupModel {
 	ti.CharLimit = 256
 	ti.Width = 50
 
+	solverAvailable := os.Getenv("SOLVERCMD") != "" && os.Getenv("SOLVERARG") != ""
+	defaultMode := "smt"
+	if solverAvailable {
+		defaultMode = "model"
+	}
 	return SetupModel{
 		step:      0,
 		fileInput: ti,
 		cursor:    0,
 		config: runner.CompilationConfig{
-			Mode:   "model",
+			Mode:   defaultMode,
 			Input:  "fault",
 			Output: "text",
 			Reach:  false,
 		},
+		solverAvailable: solverAvailable,
 	}
 }
 
@@ -184,10 +200,11 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 		if m.fileInput.Value() != "" {
 			fp := m.fileInput.Value()
 
-			// Basic file validation
+			// Basic file validation — use "smt" mode so ValidateSetupConfig
+			// checks only file existence/permissions, not solver configuration.
 			testConfig := runner.CompilationConfig{
 				Filepath: fp,
-				Mode:     "model",
+				Mode:     "smt",
 			}
 			if err := ValidateSetupConfig(testConfig); err != nil {
 				m.validationErr = err.Error()
@@ -201,15 +218,19 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 			m.cursor = 0 // Default to "model (recommended)"
 		}
 	case 1: // Mode
-		switch m.cursor {
-		case 0:
-			m.config.Mode = "model"
-		case 1:
-			m.config.Mode = "ast"
-		case 2:
-			m.config.Mode = "ir"
-		case 3:
-			m.config.Mode = "smt"
+		active := m.activeModes()
+		if m.cursor < len(active) {
+			label := active[m.cursor]
+			switch {
+			case strings.HasPrefix(label, "model"):
+				m.config.Mode = "model"
+			case strings.HasPrefix(label, "ast"):
+				m.config.Mode = "ast"
+			case strings.HasPrefix(label, "ir"):
+				m.config.Mode = "ir"
+			case strings.HasPrefix(label, "smt"):
+				m.config.Mode = "smt"
+			}
 		}
 		m.step++
 		m.cursor = 0 // Default to "fault (recommended)"
@@ -242,7 +263,7 @@ func (m SetupModel) handleEnter() (SetupModel, tea.Cmd) {
 func (m SetupModel) getOptionsCount() int {
 	switch m.step {
 	case 1:
-		return len(modes)
+		return len(m.activeModes())
 	case 2:
 		return len(inputs)
 	case 3:
@@ -291,9 +312,15 @@ func (m SetupModel) View() string {
 	case 1:
 		b.WriteString(SuccessStyle.Render("✓ File: " + m.config.Filepath))
 		b.WriteString("\n\n")
+		if !m.solverAvailable {
+			b.WriteString(ErrorStyle.Render("⚠ No solver configured — model mode unavailable."))
+			b.WriteString("\n")
+			b.WriteString(UnselectedStyle.Render("  Set SOLVERCMD=z3 and SOLVERARG=-in to enable it."))
+			b.WriteString("\n\n")
+		}
 		b.WriteString(PromptStyle.Render("Select compilation mode:"))
 		b.WriteString("\n\n")
-		b.WriteString(m.renderOptions(modes))
+		b.WriteString(m.renderOptions(m.activeModes()))
 		b.WriteString("\n")
 
 	case 2:
