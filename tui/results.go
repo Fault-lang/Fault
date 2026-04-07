@@ -15,6 +15,7 @@ type ResultsModel struct {
 	viewport viewport.Model
 	logger   *scenario.Logger
 	asserts  []*ast.AssertionStatement
+	warnings []string
 	ast      *ast.Spec
 	smt      string
 	ir       string
@@ -26,15 +27,16 @@ type ResultsModel struct {
 	mode     string
 }
 
-func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
+func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, warnings []string, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
 	return ResultsModel{
-		logger:  logger,
-		asserts: asserts,
-		ast:     astSpec,
-		smt:     smt,
-		ir:      ir,
-		message: message,
-		mode:    mode,
+		logger:   logger,
+		asserts:  asserts,
+		warnings: warnings,
+		ast:      astSpec,
+		smt:      smt,
+		ir:       ir,
+		message:  message,
+		mode:     mode,
 	}
 }
 
@@ -116,6 +118,15 @@ func (m ResultsModel) getContent() string {
 		MarginBottom(1)
 
 	divider := DividerStyle.Render(strings.Repeat("─", 80))
+
+	// Warnings appear at the top regardless of output type.
+	if len(m.warnings) > 0 {
+		for _, w := range m.warnings {
+			content.WriteString(WarningStyle.Render("⚠ " + w))
+			content.WriteString("\n")
+		}
+		content.WriteString("\n")
+	}
 
 	// Check what output is actually available and format accordingly
 	if m.logger != nil {

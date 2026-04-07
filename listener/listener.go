@@ -26,6 +26,7 @@ type FaultListener struct {
 	StructsPropertyOrder map[string][]string
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node
+	MaxRounds            int64 // highest for-loop round count seen (including imports)
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
