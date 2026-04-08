@@ -369,6 +369,24 @@ func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
 // ExitForStmt is called when production forStmt is exited.
 func (s *BaseFaultParserListener) ExitForStmt(ctx *ForStmtContext) {}
 
+// EnterSysForStmt is called when production sysForStmt is entered.
+func (s *BaseFaultParserListener) EnterSysForStmt(ctx *SysForStmtContext) {}
+
+// ExitSysForStmt is called when production sysForStmt is exited.
+func (s *BaseFaultParserListener) ExitSysForStmt(ctx *SysForStmtContext) {}
+
+// EnterSysRunBlock is called when production sysRunBlock is entered.
+func (s *BaseFaultParserListener) EnterSysRunBlock(ctx *SysRunBlockContext) {}
+
+// ExitSysRunBlock is called when production sysRunBlock is exited.
+func (s *BaseFaultParserListener) ExitSysRunBlock(ctx *SysRunBlockContext) {}
+
+// EnterSysRunStepExpr is called when production sysRunStepExpr is entered.
+func (s *BaseFaultParserListener) EnterSysRunStepExpr(ctx *SysRunStepExprContext) {}
+
+// ExitSysRunStepExpr is called when production sysRunStepExpr is exited.
+func (s *BaseFaultParserListener) ExitSysRunStepExpr(ctx *SysRunStepExprContext) {}
+
 // EnterRounds is called when production rounds is entered.
 func (s *BaseFaultParserListener) EnterRounds(ctx *RoundsContext) {}
 

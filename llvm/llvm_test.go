@@ -835,6 +835,84 @@ block-51:
 
 }
 
+func TestSysRunBlock(t *testing.T) {
+	test := `
+	system test;
+
+	component a = states{
+		on: func{
+			stay();
+		},
+		off: func{
+			stay();
+		},
+	};
+
+	component b = states{
+		idle: func{
+			stay();
+		},
+	};
+
+	start {
+		a: on,
+		b: idle,
+	};
+
+	for 2 run {
+		a | b;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	if !compiler.hasSysRunBlock {
+		t.Fatal("hasSysRunBlock should be true for sysForStmt with component identifiers")
+	}
+
+	ir := compiler.GetIR()
+
+	// Parallel group markers should appear (from compileParallel on component names)
+	if !strings.Contains(ir, "_start") || !strings.Contains(ir, "_close") {
+		t.Fatal("IR should contain parallel group start/close markers")
+	}
+
+	// Both component state functions should appear in the IR
+	if !strings.Contains(ir, "@test_a_on__state") {
+		t.Fatal("IR should contain @test_a_on__state")
+	}
+	if !strings.Contains(ir, "@test_b_idle__state") {
+		t.Fatal("IR should contain @test_b_idle__state")
+	}
+
+	// stateCheck() should NOT have been called outside the parallel block,
+	// so the __run function should call state functions only inside parallel groups.
+	// Verify the IR is valid.
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {
 		return fmt.Errorf("optimized ir not valid. \ngot=%s", ir)

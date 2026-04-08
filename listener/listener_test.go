@@ -1818,6 +1818,134 @@ func TestSysSpec(t *testing.T) {
 	}
 }
 
+func TestSysForStmt(t *testing.T) {
+	test := `system test1;
+
+			import "foo.fspec";
+
+			global fl = new foo.fl;
+
+			component A = states{
+				on: func{
+					stay();
+				},
+				off: func{
+					stay();
+				},
+			};
+
+			component B = states{
+				idle: func{
+					stay();
+				},
+			};
+
+			start {
+				A: on,
+				B: idle,
+			};
+
+			for 3 run {
+				A | B;
+			}
+			`
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	l, sys := prepTest(test, flags)
+
+	if sys == nil {
+		t.Fatal("prepTest() returned nil AST")
+	}
+
+	// MaxRounds should be set from sysForStmt, not from any imported fspec
+	if l.MaxRounds != 3 {
+		t.Fatalf("MaxRounds should be 3, got=%d", l.MaxRounds)
+	}
+
+	// isSysSpec should be set
+	if !l.isSysSpec {
+		t.Fatal("isSysSpec should be true for system spec")
+	}
+
+	// ForStatement should be in the AST
+	var forSt *ast.ForStatement
+	for _, stmt := range sys.Statements {
+		if f, ok := stmt.(*ast.ForStatement); ok {
+			forSt = f
+			break
+		}
+	}
+	if forSt == nil {
+		t.Fatal("no ForStatement found in AST")
+	}
+
+	if forSt.Rounds.Value != 3 {
+		t.Fatalf("ForStatement rounds should be 3, got=%d", forSt.Rounds.Value)
+	}
+
+	// Body should contain a ParallelFunctions with two Identifier expressions
+	if len(forSt.Body.Statements) != 1 {
+		t.Fatalf("ForStatement body should have 1 statement, got=%d", len(forSt.Body.Statements))
+	}
+
+	pf, ok := forSt.Body.Statements[0].(*ast.ParallelFunctions)
+	if !ok {
+		t.Fatalf("body statement should be ParallelFunctions, got=%T", forSt.Body.Statements[0])
+	}
+
+	if len(pf.Expressions) != 2 {
+		t.Fatalf("ParallelFunctions should have 2 expressions, got=%d", len(pf.Expressions))
+	}
+
+	ident0, ok0 := pf.Expressions[0].(*ast.Identifier)
+	ident1, ok1 := pf.Expressions[1].(*ast.Identifier)
+	if !ok0 || !ok1 {
+		t.Fatalf("ParallelFunctions expressions should be Identifiers, got=%T and %T", pf.Expressions[0], pf.Expressions[1])
+	}
+
+	if ident0.Value != "A" {
+		t.Fatalf("first identifier should be A, got=%s", ident0.Value)
+	}
+	if ident1.Value != "B" {
+		t.Fatalf("second identifier should be B, got=%s", ident1.Value)
+	}
+}
+
+func TestSysForStmtMaxRoundsIsolation(t *testing.T) {
+	// When a sysSpec imports an fspec with a higher round count,
+	// the sysSpec's own round count should NOT be overwritten by the import.
+	test := `system test1;
+
+			import "foo.fspec";
+
+			global fl = new foo.fl;
+
+			component A = states{
+				on: func{ stay(); },
+			};
+
+			start {
+				A: on,
+			};
+
+			for 2 run {
+				A;
+			}
+			`
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	l, sys := prepTest(test, flags)
+
+	if sys == nil {
+		t.Fatal("prepTest() returned nil AST")
+	}
+
+	// MaxRounds should reflect the sysForStmt's own round count, not any imported fspec
+	if l.MaxRounds != 2 {
+		t.Fatalf("MaxRounds should be 2, got=%d", l.MaxRounds)
+	}
+}
+
 func TestSwap(t *testing.T) {
 	test := `system test1;
 

@@ -182,6 +182,15 @@ type FaultParserListener interface {
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
+	// EnterSysForStmt is called when entering the sysForStmt production.
+	EnterSysForStmt(c *SysForStmtContext)
+
+	// EnterSysRunBlock is called when entering the sysRunBlock production.
+	EnterSysRunBlock(c *SysRunBlockContext)
+
+	// EnterSysRunStepExpr is called when entering the sysRunStepExpr production.
+	EnterSysRunStepExpr(c *SysRunStepExprContext)
+
 	// EnterRounds is called when entering the rounds production.
 	EnterRounds(c *RoundsContext)
 
@@ -463,6 +472,15 @@ type FaultParserListener interface {
 
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
+
+	// ExitSysForStmt is called when exiting the sysForStmt production.
+	ExitSysForStmt(c *SysForStmtContext)
+
+	// ExitSysRunBlock is called when exiting the sysRunBlock production.
+	ExitSysRunBlock(c *SysRunBlockContext)
+
+	// ExitSysRunStepExpr is called when exiting the sysRunStepExpr production.
+	ExitSysRunStepExpr(c *SysRunStepExprContext)
 
 	// ExitRounds is called when exiting the rounds production.
 	ExitRounds(c *RoundsContext)

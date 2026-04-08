@@ -51,9 +51,10 @@ type Compiler struct {
 	// 1-index -> Parallel Group
 	// 2-index -> Choice Group
 
-	hasRunBlock bool
-	isTesting   bool
-	isImport    bool
+	hasRunBlock    bool
+	hasSysRunBlock bool
+	isTesting      bool
+	isImport       bool
 	RunRound    int16
 
 	currentSpec      string
@@ -237,6 +238,15 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			switch n := v.(type) {
 			case *ast.ForStatement:
 				c.hasRunBlock = true
+				if len(n.Body.Statements) > 0 {
+					if pf, ok := n.Body.Statements[0].(*ast.ParallelFunctions); ok {
+						if len(pf.Expressions) > 0 {
+							if _, ok := pf.Expressions[0].(*ast.Identifier); ok {
+								c.hasSysRunBlock = true
+							}
+						}
+					}
+				}
 				continue
 			case *ast.DefStatement:
 				switch d := n.Value.(type) {
@@ -371,7 +381,9 @@ func (c *Compiler) compile(node ast.Node) {
 				c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			}
 			c.compileBlock(v.Body)
-			c.stateCheck()
+			if !c.hasSysRunBlock {
+				c.stateCheck()
+			}
 			c.RunRound = c.RunRound + 1
 		}
 
@@ -726,13 +738,18 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 	gname := name.RuleGroup(node.String())
 	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
 	for i := 0; i < len(node.Expressions); i++ {
-		l := c.compileValue(node.Expressions[i])
-		switch exp := l.(type) {
-		case *ir.Func:
-			id := node.Expressions[i].(*ast.ParameterCall).Id()
-			s := c.specs[id[0]]
-			params := s.GetParams(id)
-			c.contextBlock.NewCall(exp, params...)
+		switch expr := node.Expressions[i].(type) {
+		case *ast.Identifier:
+			// Component name reference from sysForStmt run block
+			c.stateCheckForComponent(expr.Spec, expr.Value)
+		case *ast.ParameterCall:
+			l := c.compileValue(expr)
+			if f, ok := l.(*ir.Func); ok {
+				id := expr.Id()
+				s := c.specs[id[0]]
+				params := s.GetParams(id)
+				c.contextBlock.NewCall(f, params...)
+			}
 		}
 	}
 	//"Close" instead of "end" because we need the value to be 38 bytes.
@@ -1592,6 +1609,19 @@ func (c *Compiler) stateCheck() {
 		s := c.specs[id[0]]
 		params := s.GetParams(id)
 		c.contextBlock.NewCall(v.Func, params...)
+	}
+}
+
+func (c *Compiler) stateCheckForComponent(spec, componentName string) {
+	prefix := spec + "_" + componentName + "_"
+	for _, k := range c.ComponentOrder {
+		if strings.HasPrefix(k, prefix) {
+			v := c.Components[k]
+			id := v.Id
+			s := c.specs[id[0]]
+			params := s.GetParams(id)
+			c.contextBlock.NewCall(v.Func, params...)
+		}
 	}
 }
 
