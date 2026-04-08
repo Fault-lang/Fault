@@ -118,6 +118,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = ViewResults
 		m.results = NewResultsModel(
 			msg.Output.ResultLog,
+			msg.Output.Asserts,
+			msg.Output.Warnings,
 			msg.Output.AST,
 			msg.Output.SMT,
 			msg.Output.IR,

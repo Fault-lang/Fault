@@ -111,6 +111,10 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 		os.Exit(1)
 	}
 
+	for _, w := range result.Warnings {
+		fmt.Fprintln(os.Stderr, w)
+	}
+
 	if result.Message != "" {
 		fmt.Println(result.Message)
 	}
@@ -128,6 +132,9 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 	case "model":
 		if result.ResultLog != nil {
 			result.ResultLog.Print()
+			for _, a := range result.Asserts {
+				fmt.Println(a.EvLogString(true))
+			}
 		} else {
 			fmt.Println(result.SMT)
 		}

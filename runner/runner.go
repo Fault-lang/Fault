@@ -47,12 +47,29 @@ type CompilationConfig struct {
 
 type CompilationOutput struct {
 	ResultLog  *scenario.Logger
+	Asserts    []*ast.AssertionStatement
+	Warnings   []string
 	Message    string
 	SMT        string
 	AST        *ast.Spec
 	IR         string
 	Error      error
 	ErrorPhase ProgressPhase
+}
+
+const highRoundThreshold = int64(5)
+
+// checkHighRoundCount warns when any for-loop (including in imported specs)
+// has a round count at or above highRoundThreshold. lstnr.MaxRounds is set
+// during parsing for all for-loops regardless of skipRun.
+func checkHighRoundCount(maxRounds int64, warnings []string) []string {
+	if maxRounds >= highRoundThreshold {
+		warnings = append(warnings, fmt.Sprintf(
+			"'for %d run' generates a large SMT formula — most properties are provable in 3–4 rounds. Consider reducing the round count.",
+			maxRounds,
+		))
+	}
+	return warnings
 }
 
 type Runner struct {
@@ -293,6 +310,7 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
+		output.Warnings = checkHighRoundCount(lstnr.MaxRounds, output.Warnings)
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
 		g := generator.Execute(compiler)
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
@@ -333,6 +351,8 @@ func (r *Runner) Run() *CompilationOutput {
 			output.Message = "Fault could not find a failure case. All good!"
 			return output
 		}
+		mc.EvaluateViolations(compiler.RawInputs.Asserts)
+		output.Asserts = compiler.RawInputs.Asserts
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Validate()

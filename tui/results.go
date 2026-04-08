@@ -14,6 +14,8 @@ import (
 type ResultsModel struct {
 	viewport viewport.Model
 	logger   *scenario.Logger
+	asserts  []*ast.AssertionStatement
+	warnings []string
 	ast      *ast.Spec
 	smt      string
 	ir       string
@@ -25,14 +27,16 @@ type ResultsModel struct {
 	mode     string
 }
 
-func NewResultsModel(logger *scenario.Logger, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
+func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, warnings []string, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
 	return ResultsModel{
-		logger:  logger,
-		ast:     astSpec,
-		smt:     smt,
-		ir:      ir,
-		message: message,
-		mode:    mode,
+		logger:   logger,
+		asserts:  asserts,
+		warnings: warnings,
+		ast:      astSpec,
+		smt:      smt,
+		ir:       ir,
+		message:  message,
+		mode:     mode,
 	}
 }
 
@@ -115,6 +119,15 @@ func (m ResultsModel) getContent() string {
 
 	divider := DividerStyle.Render(strings.Repeat("─", 80))
 
+	// Warnings appear at the top regardless of output type.
+	if len(m.warnings) > 0 {
+		for _, w := range m.warnings {
+			content.WriteString(WarningStyle.Render("⚠ " + w))
+			content.WriteString("\n")
+		}
+		content.WriteString("\n")
+	}
+
 	// Check what output is actually available and format accordingly
 	if m.logger != nil {
 		content.WriteString(sectionStyle.Render("🌋 Fault found the following scenario"))
@@ -122,6 +135,14 @@ func (m ResultsModel) getContent() string {
 		content.WriteString(divider)
 		content.WriteString("\n\n")
 		content.WriteString(m.formatLoggerOutput(m.logger.String()))
+		if len(m.asserts) > 0 {
+			content.WriteString("\n")
+			content.WriteString(sectionStyle.Render("Assertions"))
+			content.WriteString("\n")
+			content.WriteString(divider)
+			content.WriteString("\n\n")
+			content.WriteString(m.formatAssertions(m.asserts))
+		}
 	} else if m.smt != "" {
 		content.WriteString(sectionStyle.Render("⛰️ SMT Output"))
 		content.WriteString("\n")
@@ -149,6 +170,20 @@ func (m ResultsModel) getContent() string {
 	}
 
 	return content.String()
+}
+
+func (m ResultsModel) formatAssertions(asserts []*ast.AssertionStatement) string {
+	var sb strings.Builder
+	for _, a := range asserts {
+		line := a.EvLogString(true)
+		if a.Violated {
+			sb.WriteString(ErrorStyle.Render(line))
+		} else {
+			sb.WriteString(SuccessStyle.Render(line))
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 func (m ResultsModel) formatLoggerOutput(output string) string {

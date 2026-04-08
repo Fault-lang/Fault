@@ -1309,6 +1309,10 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 		Inits:  block2,
 	}
 
+	if rounds.Value > l.MaxRounds {
+		l.MaxRounds = rounds.Value
+	}
+
 	if !l.skipRun {
 		l.push(forSt)
 	}
@@ -1528,6 +1532,11 @@ func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64,
 	for k, v := range l2.StructsPropertyOrder {
 		l1.StructsPropertyOrder[k] = v
 	}
+
+	if l2.MaxRounds > l1.MaxRounds {
+		l1.MaxRounds = l2.MaxRounds
+	}
+
 	return l1.Uncertains, l1.Unknowns, l1.StructsPropertyOrder, l1.specs
 }
 
