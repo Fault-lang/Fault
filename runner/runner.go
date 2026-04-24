@@ -51,7 +51,7 @@ type CompilationConfig struct {
 	Input                string // fault, ll, smt2
 	Output               string // text, smt
 	Reach                bool
-	LargeSMTLineOverride int // if > 0, overrides LargeSMTThreshold (for testing)
+	LargeSMTLineOverride int // if > 0, overrides the default LargeSMTThreshold constant
 }
 
 // PendingModelCheck holds everything needed to resume model checking after

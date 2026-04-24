@@ -25,6 +25,7 @@ func main() {
 	fpCommand := flag.String("f", "", "path to file to compile")
 	reachCommand := flag.Bool("complete", false, "make sure the transitions to all defined states are specified in the model")
 	outputCommand := flag.String("output", "text", "format of the output: text or smt")
+	smtThresholdCommand := flag.Int("smt-threshold", 0, fmt.Sprintf("warn before sending SMT formulas larger than this many lines to the solver (default: %d)", runner.LargeSMTThreshold))
 
 	flag.Parse()
 
@@ -91,16 +92,17 @@ func main() {
 		reach = true
 	}
 
-	runTraditionalMode(filepath, mode, input, output, reach)
+	runTraditionalMode(filepath, mode, input, output, reach, *smtThresholdCommand)
 }
 
-func runTraditionalMode(filepath, mode, input, output string, reach bool) {
+func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThreshold int) {
 	config := runner.CompilationConfig{
-		Filepath: filepath,
-		Mode:     mode,
-		Input:    input,
-		Output:   output,
-		Reach:    reach,
+		Filepath:             filepath,
+		Mode:                 mode,
+		Input:                input,
+		Output:               output,
+		Reach:                reach,
+		LargeSMTLineOverride: smtThreshold,
 	}
 
 	// Run without progress updates (nil channel)
