@@ -19,6 +19,7 @@ type FaultListener struct {
 	currSpec             string
 	specs                []string
 	skipRun              bool
+	isSysSpec            bool
 	Path                 string // The location of the main spec
 	testing              bool   // bypass imports when we're running unit tests
 	Uncertains           map[string][]float64

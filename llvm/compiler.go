@@ -51,9 +51,10 @@ type Compiler struct {
 	// 1-index -> Parallel Group
 	// 2-index -> Choice Group
 
-	hasRunBlock bool
-	isTesting   bool
-	isImport    bool
+	hasRunBlock    bool
+	hasSysRunBlock bool
+	isTesting      bool
+	isImport       bool
 	RunRound    int16
 
 	currentSpec      string
@@ -80,12 +81,14 @@ type Compiler struct {
 	specFunctions  map[string]value.Value
 	specGlobals    map[string]*ir.Global
 	sysGlobals     []*ir.Param
-	Components     map[string]*StateFunc
-	ComponentOrder []string
-	States         map[string]bool
-	Alias          map[string]string
-	StringRules    map[string]string
-	IsCompound     map[string]bool
+	Components       map[string]*StateFunc
+	ComponentOrder   []string
+	StateTransitions map[string]string // state key → advance() target state key
+	StartStates      map[string]string // component prefix → starting state key
+	States           map[string]bool
+	Alias            map[string]string
+	StringRules      map[string]string
+	IsCompound       map[string]bool
 }
 
 func NewCompiler() *Compiler {
@@ -108,10 +111,12 @@ func NewCompiler() *Compiler {
 		specStructs:   make(map[string]*preprocess.SpecRecord),
 		specFunctions: make(map[string]value.Value),
 		specGlobals:   make(map[string]*ir.Global),
-		Components:    make(map[string]*StateFunc),
-		States:        make(map[string]bool),
-		StringRules:   make(map[string]string),
-		IsCompound:    make(map[string]bool),
+		Components:       make(map[string]*StateFunc),
+		StateTransitions: make(map[string]string),
+		StartStates:      make(map[string]string),
+		States:           make(map[string]bool),
+		StringRules:      make(map[string]string),
+		IsCompound:       make(map[string]bool),
 	}
 	c.setup()
 	return c
@@ -237,6 +242,15 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			switch n := v.(type) {
 			case *ast.ForStatement:
 				c.hasRunBlock = true
+				if len(n.Body.Statements) > 0 {
+					if pf, ok := n.Body.Statements[0].(*ast.ParallelFunctions); ok {
+						if len(pf.Expressions) > 0 {
+							if _, ok := pf.Expressions[0].(*ast.Identifier); ok {
+								c.hasSysRunBlock = true
+							}
+						}
+					}
+				}
 				continue
 			case *ast.DefStatement:
 				switch d := n.Value.(type) {
@@ -371,7 +385,9 @@ func (c *Compiler) compile(node ast.Node) {
 				c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			}
 			c.compileBlock(v.Body)
-			c.stateCheck()
+			if !c.hasSysRunBlock {
+				c.stateCheck()
+			}
 			c.RunRound = c.RunRound + 1
 		}
 
@@ -398,6 +414,10 @@ func (c *Compiler) compile(node ast.Node) {
 				c.contextBlock.NewStore(r, p)
 			}
 
+			// Record the start state so stateCheck can follow transitions from here
+			componentPrefix := c.currentSpec + "_" + p[0] + "_"
+			startKey := c.currentSpec + "_" + p[0] + "_" + p[1] + "__state"
+			c.StartStates[componentPrefix] = startKey
 		}
 
 		if !c.hasRunBlock { // If no run block,
@@ -601,6 +621,10 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			c.States[v.IdString()] = true
 			c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
 			c.ComponentOrder = append(c.ComponentOrder, childId)
+			for _, target := range scanAdvanceTargets(v.Body) {
+				c.StateTransitions[childId] = target + "__state"
+				break // only the first advance() determines the next state
+			}
 			val2 := c.compileBlock(v.Body)
 			c.contextBlock.NewRet(val2)
 			c.contextBlock = oldBlock
@@ -723,20 +747,35 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 }
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
-	gname := name.RuleGroup(node.String())
-	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
+	// Single-expression parallel groups have no actual parallelism — don't emit
+	// __parallelGroup markers. Markers in unreachable "after" blocks would leave
+	// Env.ParallelGrouping set permanently, causing subsequent state function calls
+	// in __run to be incorrectly accumulated into one giant parallel group (N! blowup).
+	emitMarkers := len(node.Expressions) > 1
+	var gname string
+	if emitMarkers {
+		gname = name.RuleGroup(node.String())
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
+	}
 	for i := 0; i < len(node.Expressions); i++ {
-		l := c.compileValue(node.Expressions[i])
-		switch exp := l.(type) {
-		case *ir.Func:
-			id := node.Expressions[i].(*ast.ParameterCall).Id()
-			s := c.specs[id[0]]
-			params := s.GetParams(id)
-			c.contextBlock.NewCall(exp, params...)
+		switch expr := node.Expressions[i].(type) {
+		case *ast.Identifier:
+			// Component name reference from sysForStmt run block
+			c.stateCheckForComponent(expr.Spec, expr.Value)
+		case *ast.ParameterCall:
+			l := c.compileValue(expr)
+			if f, ok := l.(*ir.Func); ok {
+				id := expr.Id()
+				s := c.specs[id[0]]
+				params := s.GetParams(id)
+				c.contextBlock.NewCall(f, params...)
+			}
 		}
 	}
-	//"Close" instead of "end" because we need the value to be 38 bytes.
-	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", gname)), c.markers[1])
+	if emitMarkers {
+		//"Close" instead of "end" because we need the value to be 38 bytes.
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", gname)), c.markers[1])
+	}
 }
 
 func (c *Compiler) compileFunction(node ast.Node) value.Value {
@@ -1586,13 +1625,108 @@ func (c *Compiler) generateParameters(id []string, data map[string]ast.Node, com
 }
 
 func (c *Compiler) stateCheck() {
+	emitted := make(map[string]bool)
+
+	// Emit components that have a known start state in transition order
+	seenPrefix := make(map[string]bool)
 	for _, k := range c.ComponentOrder {
-		v := c.Components[k]
+		for prefix, startKey := range c.StartStates {
+			if strings.HasPrefix(k, prefix) && !seenPrefix[prefix] {
+				seenPrefix[prefix] = true
+				c.emitTransitionChain(startKey, emitted)
+			}
+		}
+	}
+
+	// Emit any remaining states (no start state info) in declaration order
+	for _, k := range c.ComponentOrder {
+		if !emitted[k] {
+			v := c.Components[k]
+			id := v.Id
+			s := c.specs[id[0]]
+			params := s.GetParams(id)
+			c.contextBlock.NewCall(v.Func, params...)
+		}
+	}
+}
+
+func (c *Compiler) stateCheckForComponent(spec, componentName string) {
+	prefix := spec + "_" + componentName + "_"
+	emitted := make(map[string]bool)
+
+	if startKey, ok := c.StartStates[prefix]; ok {
+		c.emitTransitionChain(startKey, emitted)
+	}
+
+	// Emit any remaining states in declaration order
+	for _, k := range c.ComponentOrder {
+		if strings.HasPrefix(k, prefix) && !emitted[k] {
+			v := c.Components[k]
+			id := v.Id
+			s := c.specs[id[0]]
+			params := s.GetParams(id)
+			c.contextBlock.NewCall(v.Func, params...)
+		}
+	}
+}
+
+// emitTransitionChain walks the advance() transition graph starting from startKey,
+// emitting a call for each state until there is no transition or a state is revisited.
+func (c *Compiler) emitTransitionChain(startKey string, emitted map[string]bool) {
+	current := startKey
+	for current != "" && !emitted[current] {
+		v, ok := c.Components[current]
+		if !ok {
+			break
+		}
+		emitted[current] = true
 		id := v.Id
 		s := c.specs[id[0]]
 		params := s.GetParams(id)
 		c.contextBlock.NewCall(v.Func, params...)
+		current = c.StateTransitions[current]
 	}
+}
+
+// scanAdvanceTargets scans a function body for advance() calls and returns
+// the IdString of each target state found, in order.
+func scanAdvanceTargets(body *ast.BlockStatement) []string {
+	var targets []string
+	for _, stmt := range body.Statements {
+		targets = append(targets, scanAdvanceNode(stmt)...)
+	}
+	return targets
+}
+
+func scanAdvanceNode(node ast.Node) []string {
+	var targets []string
+	switch v := node.(type) {
+	case *ast.ExpressionStatement:
+		targets = append(targets, scanAdvanceNode(v.Expression)...)
+	case *ast.BuiltIn:
+		if v.Function == "advance" {
+			if toState, ok := v.Parameters["toState"]; ok {
+				if n, ok := toState.(ast.Nameable); ok {
+					targets = append(targets, n.IdString())
+				}
+			}
+		}
+	case *ast.InfixExpression:
+		targets = append(targets, scanAdvanceNode(v.Left)...)
+		targets = append(targets, scanAdvanceNode(v.Right)...)
+	case *ast.PrefixExpression:
+		targets = append(targets, scanAdvanceNode(v.Right)...)
+	case *ast.IfExpression:
+		targets = append(targets, scanAdvanceNode(v.Consequence)...)
+		if v.Alternative != nil {
+			targets = append(targets, scanAdvanceNode(v.Alternative)...)
+		}
+	case *ast.BlockStatement:
+		for _, s := range v.Statements {
+			targets = append(targets, scanAdvanceNode(s)...)
+		}
+	}
+	return targets
 }
 
 func (c *Compiler) fetchOrder(id []string) []string {

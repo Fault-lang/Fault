@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	gopath "path"
+	"strings"
 )
 
 type ProgressPhase int
@@ -27,34 +28,56 @@ const (
 	PhaseSMT
 	PhaseModelChecking
 	PhaseResults
+	PhaseConfirmLargeSMT // paused: waiting for user to confirm large SMT
 )
 
+// LargeSMTThreshold is the number of SMT lines above which Fault pauses
+// and asks the user whether to proceed with model checking.
+const LargeSMTThreshold = 10_000
+
 type ProgressUpdate struct {
-	Phase   ProgressPhase
-	Status  string  // "Parsing AST...", "Type checking complete", etc.
-	Percent float64 // 0.0 to 1.0
-	Done    bool
-	Error   error
+	Phase     ProgressPhase
+	Status    string  // "Parsing AST...", "Type checking complete", etc.
+	Percent   float64 // 0.0 to 1.0
+	Done      bool
+	Error     error
+	SMTLines  int       // non-zero when Phase == PhaseConfirmLargeSMT
+	ConfirmCh chan bool  // send true to proceed, false to abort (Phase == PhaseConfirmLargeSMT)
 }
 
 type CompilationConfig struct {
-	Filepath string
-	Mode     string // ast, ir, smt, model
-	Input    string // fault, ll, smt2
-	Output   string // text, smt
-	Reach    bool
+	Filepath             string
+	Mode                 string // ast, ir, smt, model
+	Input                string // fault, ll, smt2
+	Output               string // text, smt
+	Reach                bool
+	LargeSMTLineOverride int // if > 0, overrides the default LargeSMTThreshold constant
+	SMTTimeout           int // (set-option :timeout N) in milliseconds; 0 = no limit
+	SMTMemoryMaxSize     int // (set-option :memory_max_size N) in MB; 0 = no limit
+}
+
+// PendingModelCheck holds everything needed to resume model checking after
+// the user confirms they want to proceed past a large-SMT warning.
+type PendingModelCheck struct {
+	SMT        string
+	Uncertains map[string][]float64
+	Unknowns   []string
+	Asserts    []*ast.AssertionStatement
+	ResultLog  *scenario.Logger
 }
 
 type CompilationOutput struct {
-	ResultLog  *scenario.Logger
-	Asserts    []*ast.AssertionStatement
-	Warnings   []string
-	Message    string
-	SMT        string
-	AST        *ast.Spec
-	IR         string
-	Error      error
-	ErrorPhase ProgressPhase
+	ResultLog     *scenario.Logger
+	Asserts       []*ast.AssertionStatement
+	Warnings      []string
+	Message       string
+	SMT           string
+	AST           *ast.Spec
+	IR            string
+	Error         error
+	ErrorPhase    ProgressPhase
+	LargeSMTLines int                // non-zero: run paused before solving due to large SMT
+	Pending       *PendingModelCheck // non-nil when LargeSMTLines > 0 (CLI resume path)
 }
 
 const highRoundThreshold = int64(5)
@@ -200,7 +223,10 @@ func (r *Runner) validateFiletype(data string, filetype string) bool {
 }
 
 func (r *Runner) smt2(ir string, compiler *llvm.Compiler) *generator.Generator {
-	g := generator.Execute(compiler)
+	g := generator.Execute(compiler, generator.GeneratorOptions{
+		Timeout:       r.config.SMTTimeout,
+		MemoryMaxSize: r.config.SMTMemoryMaxSize,
+	})
 	return g
 }
 
@@ -312,7 +338,10 @@ func (r *Runner) Run() *CompilationOutput {
 
 		output.Warnings = checkHighRoundCount(lstnr.MaxRounds, output.Warnings)
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
-		g := generator.Execute(compiler)
+		g := generator.Execute(compiler, generator.GeneratorOptions{
+			Timeout:       r.config.SMTTimeout,
+			MemoryMaxSize: r.config.SMTMemoryMaxSize,
+		})
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
 
 		if r.config.Mode == "smt" {
@@ -320,9 +349,44 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
+		smt := g.SMT()
+		smtLines := strings.Count(smt, "\n") + 1
+		threshold := LargeSMTThreshold
+		if r.config.LargeSMTLineOverride > 0 {
+			threshold = r.config.LargeSMTLineOverride
+		}
+		if smtLines > threshold {
+			if r.progress != nil {
+				// TUI path: block until user confirms or cancels.
+				confirmCh := make(chan bool, 1)
+				r.progress <- ProgressUpdate{
+					Phase:     PhaseConfirmLargeSMT,
+					Status:    fmt.Sprintf("SMT formula is %d lines", smtLines),
+					SMTLines:  smtLines,
+					ConfirmCh: confirmCh,
+				}
+				if !<-confirmCh {
+					output.LargeSMTLines = smtLines
+					return output
+				}
+			} else {
+				// CLI path: return early; caller prompts and calls Resume().
+				output.LargeSMTLines = smtLines
+				output.SMT = smt
+				output.Pending = &PendingModelCheck{
+					SMT:        smt,
+					Uncertains: uncertains,
+					Unknowns:   unknowns,
+					Asserts:    compiler.RawInputs.Asserts,
+					ResultLog:  g.ResultLog,
+				}
+				return output
+			}
+		}
+
 		if r.config.Output == "smt" {
 			r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
-			scenario, err := r.plainSolve(g.SMT())
+			scenario, err := r.plainSolve(smt)
 			if err != nil {
 				r.sendError(PhaseModelChecking, err)
 				output.Error = err
@@ -337,7 +401,7 @@ func (r *Runner) Run() *CompilationOutput {
 		// Default output is "text" with full model checking
 		r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
 		r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
-		mc, err := r.probability(g.SMT(), uncertains, unknowns)
+		mc, err := r.probability(smt, uncertains, unknowns)
 		if err != nil {
 			r.sendError(PhaseModelChecking, err)
 			output.Error = err
@@ -409,5 +473,38 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 	}
 
+	return output
+}
+
+// Resume completes model checking after the user confirms they want to proceed
+// past a large-SMT warning. It is called by the CLI after prompting the user;
+// the TUI uses the ConfirmCh approach instead (the runner goroutine unblocks).
+func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
+	output := &CompilationOutput{}
+
+	r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
+	r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
+	mc, err := r.probability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	if err != nil {
+		r.sendError(PhaseModelChecking, err)
+		output.Error = err
+		output.ErrorPhase = PhaseModelChecking
+		return output
+	}
+	r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
+	r.sendProgress(PhaseResults, "Processing results...", 0.85, false)
+	if mc.NoSat {
+		r.sendProgress(PhaseResults, "Fault could not find a failure case. All good!", 1.0, true)
+		output.Message = "Fault could not find a failure case. All good!"
+		return output
+	}
+	mc.EvaluateViolations(pending.Asserts)
+	output.Asserts = pending.Asserts
+	pending.ResultLog.Results = mc.ResultValues
+	pending.ResultLog.Trace()
+	pending.ResultLog.Validate()
+	pending.ResultLog.Kill()
+	r.sendProgress(PhaseResults, "Results ready", 1.0, true)
+	output.ResultLog = pending.ResultLog
 	return output
 }

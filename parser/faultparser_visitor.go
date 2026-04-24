@@ -182,6 +182,15 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#sysForStmt.
+	VisitSysForStmt(ctx *SysForStmtContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#sysRunBlock.
+	VisitSysRunBlock(ctx *SysRunBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#sysRunStepExpr.
+	VisitSysRunStepExpr(ctx *SysRunStepExprContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#rounds.
 	VisitRounds(ctx *RoundsContext) interface{}
 

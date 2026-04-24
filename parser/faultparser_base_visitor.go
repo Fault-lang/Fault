@@ -240,6 +240,18 @@ func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitSysForStmt(ctx *SysForStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitSysRunBlock(ctx *SysRunBlockContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitSysRunStepExpr(ctx *SysRunStepExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitRounds(ctx *RoundsContext) interface{} {
 	return v.VisitChildren(ctx)
 }

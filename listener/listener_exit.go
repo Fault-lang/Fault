@@ -1318,6 +1318,82 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	}
 }
 
+func (l *FaultListener) ExitSysForStmt(c *parser.SysForStmtContext) {
+	token := ast.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
+
+	run := l.pop()
+	if run == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
+	}
+
+	block, ok := run.(*ast.BlockStatement)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
+	}
+
+	num := l.pop()
+	rounds, ok := num.(*ast.IntegerLiteral)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
+	}
+
+	if rounds.Value == 0 {
+		panic(fmt.Sprintf("run block on line %d has 0 rounds: a zero-round loop produces no states", c.GetStart().GetLine()))
+	}
+
+	forSt := &ast.ForStatement{
+		Token:  token,
+		Rounds: rounds,
+		Body:   block,
+		Inits:  &ast.BlockStatement{},
+	}
+
+	l.MaxRounds = rounds.Value
+
+	l.push(forSt)
+}
+
+func (l *FaultListener) ExitSysRunBlock(c *parser.SysRunBlockContext) {
+	token := ast.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
+
+	sl := &ast.BlockStatement{
+		Token: token,
+	}
+
+	steps := c.AllSysRunStep()
+	for i := len(steps) - 1; i >= 0; i-- {
+		ex := l.pop()
+		switch t := ex.(type) {
+		case *ast.ParallelFunctions:
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		default:
+			panic(fmt.Sprintf("sys run block expected parallel functions, got=%T", t))
+		}
+	}
+	l.push(sl)
+}
+
+func (l *FaultListener) ExitSysRunStepExpr(c *parser.SysRunStepExprContext) {
+	token := ast.GenerateToken("PARALLEL", c.GetText(), c.GetStart(), c.GetStop())
+
+	idents := c.AllIDENT()
+	var exp []ast.Expression
+	for _, ident := range idents {
+		idToken := ast.GenerateToken("IDENT", ident.GetText(), c.GetStart(), c.GetStop())
+		exp = append(exp, &ast.Identifier{
+			Token: idToken,
+			Value: ident.GetText(),
+			Spec:  l.currSpec,
+		})
+	}
+
+	e := &ast.ParallelFunctions{
+		Token:       token,
+		Expressions: exp,
+	}
+	l.push(e)
+}
+
 func (l *FaultListener) ExitDefInvariant(c *parser.DefInvariantContext) {
 	right := l.pop()
 	left := l.pop()
@@ -1533,7 +1609,7 @@ func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64,
 		l1.StructsPropertyOrder[k] = v
 	}
 
-	if l2.MaxRounds > l1.MaxRounds {
+	if !l1.isSysSpec && l2.MaxRounds > l1.MaxRounds {
 		l1.MaxRounds = l2.MaxRounds
 	}
 
@@ -1630,6 +1706,7 @@ func (l *FaultListener) ExitSysSpec(c *parser.SysSpecContext) {
 }
 
 func (l *FaultListener) ExitSysClause(c *parser.SysClauseContext) {
+	l.isSysSpec = true
 	token := ast.GenerateToken("SYS_DECL", "SYS_DECL", c.GetStart(), c.GetStop())
 
 	iden_token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())

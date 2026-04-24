@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"fault/generator"
 	"fault/runner"
 	"fault/tui"
 	"fault/util"
@@ -24,6 +26,9 @@ func main() {
 	fpCommand := flag.String("f", "", "path to file to compile")
 	reachCommand := flag.Bool("complete", false, "make sure the transitions to all defined states are specified in the model")
 	outputCommand := flag.String("output", "text", "format of the output: text or smt")
+	smtThresholdCommand := flag.Int("smt-threshold", 0, fmt.Sprintf("warn before sending SMT formulas larger than this many lines to the solver (default: %d)", runner.LargeSMTThreshold))
+	smtTimeoutCommand := flag.Int("timeout", generator.DefaultSMTTimeout, "solver timeout in milliseconds via (set-option :timeout N); 0 = no limit")
+	smtMemoryCommand := flag.Int("memory-max-size", generator.DefaultSMTMemoryMaxSize, "solver memory limit in MB via (set-option :memory_max_size N); 0 = no limit")
 
 	flag.Parse()
 
@@ -90,16 +95,19 @@ func main() {
 		reach = true
 	}
 
-	runTraditionalMode(filepath, mode, input, output, reach)
+	runTraditionalMode(filepath, mode, input, output, reach, *smtThresholdCommand, *smtTimeoutCommand, *smtMemoryCommand)
 }
 
-func runTraditionalMode(filepath, mode, input, output string, reach bool) {
+func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThreshold, smtTimeout, smtMemoryMaxSize int) {
 	config := runner.CompilationConfig{
-		Filepath: filepath,
-		Mode:     mode,
-		Input:    input,
-		Output:   output,
-		Reach:    reach,
+		Filepath:             filepath,
+		Mode:                 mode,
+		Input:                input,
+		Output:               output,
+		Reach:                reach,
+		LargeSMTLineOverride: smtThreshold,
+		SMTTimeout:           smtTimeout,
+		SMTMemoryMaxSize:     smtMemoryMaxSize,
 	}
 
 	// Run without progress updates (nil channel)
@@ -109,6 +117,25 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 	if result.Error != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		os.Exit(1)
+	}
+
+	// Large SMT: prompt before sending to solver.
+	if result.LargeSMTLines > 0 && result.Pending != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: the SMT formula is %d lines.\n", result.LargeSMTLines)
+		fmt.Fprintf(os.Stderr, "Sending a formula this large to the solver may take a very long time.\n")
+		fmt.Fprintf(os.Stderr, "Proceed with model checking? [y/N]: ")
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		line = strings.TrimSpace(strings.ToLower(line))
+		if line != "y" && line != "yes" {
+			fmt.Fprintln(os.Stderr, "Aborted.")
+			os.Exit(0)
+		}
+		result = r.Resume(result.Pending)
+		if result.Error != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
+			os.Exit(1)
+		}
 	}
 
 	for _, w := range result.Warnings {

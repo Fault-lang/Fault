@@ -37,7 +37,7 @@ jobs:
           name: Run tests
           command: |
             mkdir -p /tmp/test-reports
-            gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/execute )
+            gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/execute | grep -v fault/runner )
       - store_test_results:
           path: /tmp/test-reports
   

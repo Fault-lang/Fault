@@ -1,4 +1,7 @@
-### Current Status (3/31/2026)
+### Current Status (4/24/2026)
+Added invariant analysis and stricter syntax validation that catches more invalid specs at compile time. Fixed a bug in parallel run execution and improved component order handling. The SMT solver configuration now supports timeouts and memory limits, with warnings when solver output is unexpectedly large. Added a configurable threshold flag and an ASCII logo to the TUI.
+
+### (3/31/2026)
 Fixed two bugs in swaps related to performance and nested stock properties. Finally implemented LLVM optimization passes. Resolved some long standing bugs around phi values and especially the spec clock. Clarified the interface so that no-sat does not return an error.
 
 #### (3/25/2026)
