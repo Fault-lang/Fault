@@ -37,3 +37,13 @@ type RetryCompilationMsg struct{}
 
 // BackToSetupMsg is sent when user wants to go back to setup from error
 type BackToSetupMsg struct{}
+
+// LargeSMTWarningMsg is sent when the SMT formula exceeds the size threshold.
+// The TUI transitions to a confirmation dialog; the runner goroutine is blocked
+// waiting for a response on ConfirmCh.
+type LargeSMTWarningMsg struct {
+	SMTLines   int
+	ConfirmCh  chan bool
+	ProgressCh <-chan runner.ProgressUpdate
+	ResultCh   <-chan *runner.CompilationOutput
+}

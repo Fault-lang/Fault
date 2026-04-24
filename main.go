@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fault/runner"
 	"fault/tui"
 	"fault/util"
@@ -109,6 +110,25 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool) {
 	if result.Error != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
 		os.Exit(1)
+	}
+
+	// Large SMT: prompt before sending to solver.
+	if result.LargeSMTLines > 0 && result.Pending != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: the SMT formula is %d lines.\n", result.LargeSMTLines)
+		fmt.Fprintf(os.Stderr, "Sending a formula this large to the solver may take a very long time.\n")
+		fmt.Fprintf(os.Stderr, "Proceed with model checking? [y/N]: ")
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		line = strings.TrimSpace(strings.ToLower(line))
+		if line != "y" && line != "yes" {
+			fmt.Fprintln(os.Stderr, "Aborted.")
+			os.Exit(0)
+		}
+		result = r.Resume(result.Pending)
+		if result.Error != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
+			os.Exit(1)
+		}
 	}
 
 	for _, w := range result.Warnings {

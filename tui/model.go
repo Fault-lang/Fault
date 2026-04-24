@@ -16,6 +16,7 @@ const (
 	ViewProgress
 	ViewResults
 	ViewError
+	ViewConfirmLargeSMT
 )
 
 type Model struct {
@@ -36,6 +37,10 @@ type Model struct {
 	errorPhase   runner.ProgressPhase
 	errorCursor  int // For error view actions
 	darkMode     bool // Theme toggle
+
+	// Large SMT confirmation state
+	largeSMT LargeSMTWarningMsg
+	largeSMTCursor int // 0 = Proceed, 1 = Abort
 }
 
 func NewModel() Model {
@@ -105,6 +110,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case ProgressUpdateMsg:
+		// Large SMT warning: pause and ask the user before sending to solver.
+		if msg.Update.Phase == runner.PhaseConfirmLargeSMT {
+			m.largeSMT = LargeSMTWarningMsg{
+				SMTLines:   msg.Update.SMTLines,
+				ConfirmCh:  msg.Update.ConfirmCh,
+				ProgressCh: msg.progressCh,
+				ResultCh:   msg.resultCh,
+			}
+			m.largeSMTCursor = 0
+			m.state = ViewConfirmLargeSMT
+			return m, nil
+		}
 		// Handle progress update and schedule the next read from the channel.
 		if m.state == ViewProgress {
 			var cmd tea.Cmd
@@ -113,6 +130,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case CompilationCompleteMsg:
+		// Ignore the drain message when the user cancelled a large-SMT run.
+		if msg.Output.LargeSMTLines > 0 {
+			return m, nil
+		}
 		// Transition to results view
 		m.output = msg.Output
 		m.state = ViewResults
@@ -196,6 +217,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.progress, cmd = m.progress.Update(msg)
 	case ViewResults:
 		m.results, cmd = m.results.Update(msg)
+	case ViewConfirmLargeSMT:
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "up", "k":
+				if m.largeSMTCursor > 0 {
+					m.largeSMTCursor--
+				}
+			case "down", "j":
+				if m.largeSMTCursor < 1 {
+					m.largeSMTCursor++
+				}
+			case "enter":
+				if m.largeSMTCursor == 0 {
+					// Proceed: unblock runner, resume progress view.
+					m.largeSMT.ConfirmCh <- true
+					m.state = ViewProgress
+					return m, waitForProgress(m.largeSMT.ProgressCh, m.largeSMT.ResultCh)
+				}
+				// Abort: unblock runner (it returns early), go back to setup.
+				m.largeSMT.ConfirmCh <- false
+				m.state = ViewSetup
+				m.setup = NewSetupModel()
+				m.config = nil
+				return m, m.setup.Init()
+			case "y":
+				m.largeSMT.ConfirmCh <- true
+				m.state = ViewProgress
+				return m, waitForProgress(m.largeSMT.ProgressCh, m.largeSMT.ResultCh)
+			case "n", "q":
+				m.largeSMT.ConfirmCh <- false
+				m.state = ViewSetup
+				m.setup = NewSetupModel()
+				m.config = nil
+				return m, m.setup.Init()
+			}
+		}
 	case ViewError:
 		// Handle error view navigation
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -242,8 +299,44 @@ func (m Model) View() string {
 		return m.results.View()
 	case ViewError:
 		return m.errorView()
+	case ViewConfirmLargeSMT:
+		return m.confirmLargeSMTView()
 	}
 	return ""
+}
+
+func (m Model) confirmLargeSMTView() string {
+	var b strings.Builder
+
+	title := TitleStyle.Render(" ⚠ Large SMT Formula ")
+	b.WriteString(title)
+	b.WriteString("\n\n")
+
+	b.WriteString(fmt.Sprintf("The generated SMT formula is %s lines long.\n", WarningStyle.Render(fmt.Sprintf("%d", m.largeSMT.SMTLines))))
+	b.WriteString("Sending a formula this large to the solver may take a very long time.\n\n")
+
+	actions := []string{"Proceed with model checking", "Abort and go back"}
+	for i, action := range actions {
+		cursor := "  "
+		if i == m.largeSMTCursor {
+			cursor = "❯ "
+		}
+		if i == m.largeSMTCursor {
+			b.WriteString(SelectedStyle.Render(cursor + action))
+		} else {
+			b.WriteString(UnselectedStyle.Render(cursor + action))
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(InfoStyle.Render("↑/↓ or j/k to navigate • Enter to select • [Y]es • [N]o"))
+
+	return lipgloss.NewStyle().
+		Padding(2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#FFA500")).
+		Render(b.String())
 }
 
 func (m Model) errorView() string {
