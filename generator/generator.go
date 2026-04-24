@@ -9,11 +9,24 @@ import (
 	"fault/generator/unroll"
 	"fault/llvm"
 	"fault/util"
+	"fmt"
 	"strings"
 
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
 )
+
+const (
+	DefaultSMTTimeout       = 30_000 // milliseconds
+	DefaultSMTMemoryMaxSize = 1_096  // MB
+)
+
+// GeneratorOptions controls optional SMT-LIB2 solver directives that are
+// prepended to the generated formula.
+type GeneratorOptions struct {
+	Timeout       int // (set-option :timeout N) in milliseconds; 0 = omit
+	MemoryMaxSize int // (set-option :memory_max_size N) in MB; 0 = omit
+}
 
 // Take LL IR and Generate SMTLib2
 //
@@ -35,18 +48,27 @@ type Generator struct {
 	IsCompound  map[string]bool
 }
 
-func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool) *Generator {
+func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, opts GeneratorOptions) *Generator {
+	var preamble []string
+	if opts.Timeout > 0 {
+		preamble = append(preamble, fmt.Sprintf("(set-option :timeout %d)", opts.Timeout))
+	}
+	if opts.MemoryMaxSize > 0 {
+		preamble = append(preamble, fmt.Sprintf("(set-option :memory_max_size %d)", opts.MemoryMaxSize))
+	}
+	preamble = append(preamble, "(set-logic QF_NRA)")
 	return &Generator{
 		functions:   make(map[string]*ir.Func),
 		Env:         unroll.NewEnv(ri),
-		smt:         []string{"(set-logic QF_NRA)"},
+		smt:         preamble,
 		RawInputs:   ri,
 		StringRules: sr,
 		IsCompound:  is,
 	}
 }
-func Execute(compiler *llvm.Compiler) *Generator {
-	generator := NewGenerator(compiler.RawInputs, compiler.StringRules, compiler.IsCompound)
+
+func Execute(compiler *llvm.Compiler, opts GeneratorOptions) *Generator {
+	generator := NewGenerator(compiler.RawInputs, compiler.StringRules, compiler.IsCompound, opts)
 	generator.Run(compiler.GetOptimizedIR())
 	return generator
 }

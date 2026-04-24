@@ -52,6 +52,8 @@ type CompilationConfig struct {
 	Output               string // text, smt
 	Reach                bool
 	LargeSMTLineOverride int // if > 0, overrides the default LargeSMTThreshold constant
+	SMTTimeout           int // (set-option :timeout N) in milliseconds; 0 = no limit
+	SMTMemoryMaxSize     int // (set-option :memory_max_size N) in MB; 0 = no limit
 }
 
 // PendingModelCheck holds everything needed to resume model checking after
@@ -221,7 +223,10 @@ func (r *Runner) validateFiletype(data string, filetype string) bool {
 }
 
 func (r *Runner) smt2(ir string, compiler *llvm.Compiler) *generator.Generator {
-	g := generator.Execute(compiler)
+	g := generator.Execute(compiler, generator.GeneratorOptions{
+		Timeout:       r.config.SMTTimeout,
+		MemoryMaxSize: r.config.SMTMemoryMaxSize,
+	})
 	return g
 }
 
@@ -333,7 +338,10 @@ func (r *Runner) Run() *CompilationOutput {
 
 		output.Warnings = checkHighRoundCount(lstnr.MaxRounds, output.Warnings)
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
-		g := generator.Execute(compiler)
+		g := generator.Execute(compiler, generator.GeneratorOptions{
+			Timeout:       r.config.SMTTimeout,
+			MemoryMaxSize: r.config.SMTMemoryMaxSize,
+		})
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
 
 		if r.config.Mode == "smt" {
