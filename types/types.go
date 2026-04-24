@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/barkimedes/go-deepcopy"
 )
 
 var COMPARE = map[string]bool{
@@ -1044,6 +1046,15 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		if n != nil {
 			return n, err
 		}
+		// The constant may be defined in the identifier's original spec (e.g. imported fspec)
+		if b.Spec != "" && b.Spec != rawid[0] {
+			if importSpec, ok := c.SpecStructs[b.Spec]; ok {
+				n, _ = importSpec.FetchConstant(b.Value)
+				if n != nil {
+					return n, err
+				}
+			}
+		}
 		return nil, fmt.Errorf("cannot establish node %s", b.IdString())
 	case *ast.This:
 		rawid := b.RawId()
@@ -1109,6 +1120,33 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 			if err != nil {
 				return nil, err
 			}
+			// If the value is still an unresolved identifier, resolve it to its
+			// actual value (e.g. a constant from an imported spec).
+				if ident, isIdent := cnode.(*ast.Identifier); isIdent {
+				if resolved, lookupErr := c.lookupReference(ident); lookupErr == nil {
+					if resolvedNode, inferErr := c.infer(resolved); inferErr == nil {
+						if _, stillIdent := resolvedNode.(*ast.Identifier); !stillIdent {
+							// Deep copy to avoid mutating the shared constant node (e.g. the
+							// same IntegerLiteral returned by FetchConstant for every instance).
+							copyNode, copyErr := deepcopy.Anything(resolvedNode)
+							if copyErr == nil {
+								resolvedNode = copyNode.(ast.Node)
+							}
+							if nameable, ok := resolvedNode.(ast.Nameable); ok {
+								// Use the StructProperty's ProcessedName (v.ProcessedName) which
+								// is correctly scoped to this instance. The identifier's own
+								// ProcessedName may have been inherited from another instance.
+								if len(v.ProcessedName) > 0 {
+									nameable.SetId(v.ProcessedName)
+								} else {
+									nameable.SetId(ident.ProcessedName)
+								}
+								cnode = resolvedNode
+							}
+						}
+					}
+				}
+			}
 			v.Value = cnode
 			ret[k] = v
 			continue
@@ -1117,10 +1155,10 @@ func (c *Checker) complexInstances(base *ast.StructInstance) (*ast.StructInstanc
 		rawid = b.RawId()
 
 		cnode, err := c.complexInstances(b)
-		props := ast.ExtractBranches(cnode.Properties)
 		if err != nil {
 			return nil, err
 		}
+		props := ast.ExtractBranches(cnode.Properties)
 
 		spec := c.SpecStructs[rawid[0]]
 		spec.Update(rawid, props)

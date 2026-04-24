@@ -301,6 +301,71 @@ func TestTemporalSys(t *testing.T) {
 	}
 }
 
+func TestCrossRoundWhenThen(t *testing.T) {
+	// Verify that `assert when A then B` fires correctly across rounds.
+	//
+	// The Fault model works as follows:
+	//   - Variables carry their round-N phi value into round N+1 unchanged.
+	//   - Combos are generated at every SSA Init (new-value assignment).
+	//   - The cross-round combo (a_active_5, b_on_3) detects:
+	//       "a.active is still true in round 2 AND b.on was false at end of round 1"
+	//   - The combo (a_active_3, b_on_3) detects the same-round case:
+	//       "both active=true, on=false at end of round 1"
+	//
+	// Together these cover: if A=true at end of round 1 and B=false at
+	// the beginning of round 2 (= end of round 1 phi value), the assertion fires.
+	test := `system test1;
+		component a = states{
+			active: func{
+				stay();
+			},
+			inactive: func{
+				stay();
+			},
+		};
+
+		component b = states{
+			on: func{
+				stay();
+			},
+			off: func{
+				stay();
+			},
+		};
+
+		assert when a.active then b.on;
+
+		start{
+			a: active,
+			b: on,
+		};
+
+		for 2 run{};
+		`
+
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+	stripped := stripAndEscape(smt)
+
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatal("no SMT generated")
+	}
+
+	// The assertion must contain the key cross-round combo:
+	// (and test1_a_active_5 (not test1_b_on_3))
+	// where _5 is round-2's a.active phi and _3 is round-1's b.on phi.
+	// This combo fires when a is still active in round 2 but b was already
+	// inactive at the end of round 1 (= beginning of round 2).
+	if !strings.Contains(stripped, "(andtest1_a_active_5(nottest1_b_on_3))") {
+		t.Fatalf("missing cross-round combo (a_active_5, b_on_3) in assertion.\ngot SMT:\n%s", smt)
+	}
+
+	// Also verify the same-round combo for completeness.
+	if !strings.Contains(stripped, "(andtest1_a_active_3(nottest1_b_on_3))") {
+		t.Fatalf("missing same-round combo (a_active_3, b_on_3) in assertion.\ngot SMT:\n%s", smt)
+	}
+}
+
 //func TestTemporalSys2(t *testing.T) {
 // 	test := `system test1;
 

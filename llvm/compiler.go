@@ -747,8 +747,16 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 }
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
-	gname := name.RuleGroup(node.String())
-	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
+	// Single-expression parallel groups have no actual parallelism — don't emit
+	// __parallelGroup markers. Markers in unreachable "after" blocks would leave
+	// Env.ParallelGrouping set permanently, causing subsequent state function calls
+	// in __run to be incorrectly accumulated into one giant parallel group (N! blowup).
+	emitMarkers := len(node.Expressions) > 1
+	var gname string
+	if emitMarkers {
+		gname = name.RuleGroup(node.String())
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", gname)), c.markers[1])
+	}
 	for i := 0; i < len(node.Expressions); i++ {
 		switch expr := node.Expressions[i].(type) {
 		case *ast.Identifier:
@@ -764,8 +772,10 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 			}
 		}
 	}
-	//"Close" instead of "end" because we need the value to be 38 bytes.
-	c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", gname)), c.markers[1])
+	if emitMarkers {
+		//"Close" instead of "end" because we need the value to be 38 bytes.
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", gname)), c.markers[1])
+	}
 }
 
 func (c *Compiler) compileFunction(node ast.Node) value.Value {
