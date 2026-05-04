@@ -1002,6 +1002,109 @@ func TestIndexError(t *testing.T) {
 	}
 }
 
+// --- unfunc type checker tests ---
+//
+// Stocks and components live in separate file types (fspec vs fsystem), so the
+// full parse pipeline can't combine them in tests. These tests construct the
+// Checker and SpecRecord directly.
+
+// makeUnfuncChecker builds a Checker pre-loaded with a "test1" spec whose
+// "generic" stock has the given fields.
+func makeUnfuncChecker(fields ...string) *Checker {
+	sr := preprocess.NewSpecRecord()
+	sr.SpecName = "test1"
+	stockFields := make(map[string]ast.Node)
+	for _, f := range fields {
+		stockFields[f] = &ast.StringLiteral{Value: `"` + f + `"`}
+	}
+	sr.AddStock("generic", stockFields)
+
+	return &Checker{
+		SpecStructs: map[string]*preprocess.SpecRecord{"test1": sr},
+		Instances:   make(map[string]*ast.StructInstance),
+		temps:       make(map[string]*ast.Type),
+	}
+}
+
+// paramCall builds a ParameterCall with Spec="test1" and Value=[stock, field].
+func paramCall(stock, field string) *ast.ParameterCall {
+	return &ast.ParameterCall{
+		Value: []string{stock, field},
+		Spec:  "test1",
+	}
+}
+
+func TestUnfuncValidFields(t *testing.T) {
+	c := makeUnfuncChecker("name", "id")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "name"),
+		Emits:    paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on valid unfunc. got=%s", err)
+	}
+}
+
+func TestUnfuncUnknownStock(t *testing.T) {
+	c := makeUnfuncChecker("name", "id")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("doesNotExist", "name"),
+		Emits:    paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught reference to nonexistent stock")
+	}
+}
+
+func TestUnfuncUnknownField(t *testing.T) {
+	c := makeUnfuncChecker("name", "id")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "name"),
+		Emits:    paramCall("generic", "nonexistent"),
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught reference to nonexistent field")
+	}
+}
+
+func TestUnfuncCompoundRequiresValid(t *testing.T) {
+	c := makeUnfuncChecker("id", "joinId")
+	uf := &ast.UnfuncLiteral{
+		Requires: &ast.InfixExpression{
+			Token:    ast.Token{Type: "AND", Literal: "&&"},
+			Left:     paramCall("generic", "id"),
+			Operator: "&&",
+			Right:    paramCall("generic", "joinId"),
+		},
+		Emits: paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on valid compound unfunc. got=%s", err)
+	}
+}
+
+func TestUnfuncCompoundRequiresInvalidField(t *testing.T) {
+	// "joinId" is not in the stock — only "id" is.
+	c := makeUnfuncChecker("id")
+	uf := &ast.UnfuncLiteral{
+		Requires: &ast.InfixExpression{
+			Token:    ast.Token{Type: "AND", Literal: "&&"},
+			Left:     paramCall("generic", "id"),
+			Operator: "&&",
+			Right:    paramCall("generic", "joinId"),
+		},
+		Emits: paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught missing field in compound requires")
+	}
+}
+
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

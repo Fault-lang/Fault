@@ -373,6 +373,79 @@ func (l *FaultListener) ExitStateLit(c *parser.StateLitContext) {
 	l.push(f)
 }
 
+func (l *FaultListener) ExitUnfuncState(c *parser.UnfuncStateContext) {
+	val := l.pop()
+	token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	l.push(&ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	})
+	l.push(val)
+
+	scope := strings.Split(l.scope, ".")
+	l.scope = strings.Join(scope[0:len(scope)-1], ".")
+}
+
+func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
+	token := ast.GenerateToken("UNFUNC", "unfunc", c.GetStart(), c.GetStop())
+
+	clauses := c.UnfuncBlock().AllUnfuncClause()
+
+	// Pop one expression per clause (in stack order: last clause on top)
+	exprs := make([]ast.Node, len(clauses))
+	for i := len(clauses) - 1; i >= 0; i-- {
+		exprs[i] = l.pop()
+	}
+
+	uf := &ast.UnfuncLiteral{Token: token}
+	for i, clause := range clauses {
+		expr := exprs[i].(ast.Expression)
+		switch clause.(type) {
+		case *parser.RequiresClauseContext:
+			uf.Requires = expr
+		case *parser.EmitsClauseContext:
+			uf.Emits = expr
+		}
+	}
+
+	l.push(uf)
+}
+
+func (l *FaultListener) ExitUnfuncExpr(c *parser.UnfuncExprContext) {
+	// base case: paramCall — already pushed by ExitParamCall
+	if c.ParamCall() != nil {
+		return
+	}
+	// parenthesised expression — inner already on stack
+	if c.LPAREN() != nil {
+		return
+	}
+	// '!' unfuncExpr
+	if c.BANG() != nil {
+		token := ast.GenerateToken("BANG", "!", c.GetStart(), c.GetStop())
+		rght := l.pop()
+		l.push(&ast.PrefixExpression{
+			Token:    token,
+			Operator: "!",
+			Right:    rght.(ast.Expression),
+		})
+		return
+	}
+	// unfuncExpr ('&&' | '||') unfuncExpr
+	op := c.GetChild(1).(antlr.TerminalNode).GetText()
+	token := ast.GenerateToken(string(ast.OPS[op]), op, c.GetStart(), c.GetStop())
+	rght := l.pop()
+	lft := l.pop()
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: op,
+		Right:    rght.(ast.Expression),
+	})
+}
+
 func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
 	val := l.pop()
 	token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())

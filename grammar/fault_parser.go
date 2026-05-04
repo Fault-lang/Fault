@@ -1,7 +1,6 @@
-// Code generated from FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from grammar/FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // FaultParser
-
 import (
 	"fmt"
 	"strconv"
@@ -1149,16 +1148,6 @@ func (s *SysSpecContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SysSpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSysSpec(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) SysSpec() (localctx ISysSpecContext) {
 	localctx = NewSysSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 0, FaultParserRULE_sysSpec)
@@ -1392,16 +1381,6 @@ func (s *SysClauseContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SysClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSysClause(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) SysClause() (localctx ISysClauseContext) {
 	localctx = NewSysClauseContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 2, FaultParserRULE_sysClause)
@@ -1620,16 +1599,6 @@ func (s *GlobalDeclContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *GlobalDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitGlobalDecl(s)
-	}
-}
-
-func (s *GlobalDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitGlobalDecl(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -1922,16 +1891,6 @@ func (s *SwapContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SwapContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSwap(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Swap() (localctx ISwapContext) {
 	localctx = NewSwapContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 6, FaultParserRULE_swap)
@@ -2176,16 +2135,6 @@ func (s *ComponentDeclContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ComponentDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitComponentDecl(s)
-	}
-}
-
-func (s *ComponentDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitComponentDecl(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -2480,16 +2429,6 @@ func (s *StartBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StartBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStartBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) StartBlock() (localctx IStartBlockContext) {
 	localctx = NewStartBlockContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 10, FaultParserRULE_startBlock)
@@ -2687,16 +2626,6 @@ func (s *StartPairContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StartPairContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStartPair(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) StartPair() (localctx IStartPairContext) {
 	localctx = NewStartPairContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 12, FaultParserRULE_startPair)
@@ -2881,16 +2810,6 @@ func (s *SpecContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSpec(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Spec() (localctx ISpecContext) {
 	localctx = NewSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 14, FaultParserRULE_spec)
@@ -3038,16 +2957,6 @@ func (s *SpecClauseContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *SpecClauseContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitSpecClause(s)
-	}
-}
-
-func (s *SpecClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSpecClause(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -3226,16 +3135,6 @@ func (s *ImportDeclContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ImportDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitImportDecl(s)
-	}
-}
-
-func (s *ImportDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitImportDecl(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -3423,16 +3322,6 @@ func (s *ImportSpecContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ImportSpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitImportSpec(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) ImportSpec() (localctx IImportSpecContext) {
 	localctx = NewImportSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 20, FaultParserRULE_importSpec)
@@ -3575,16 +3464,6 @@ func (s *ImportPathContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ImportPathContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitImportPath(s)
-	}
-}
-
-func (s *ImportPathContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitImportPath(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -3774,16 +3653,6 @@ func (s *DeclarationContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *DeclarationContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitDeclaration(s)
-	}
-}
-
-func (s *DeclarationContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitDeclaration(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -3997,16 +3866,6 @@ func (s *ConstDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ConstDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitConstDecl(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) ConstDecl() (localctx IConstDeclContext) {
 	localctx = NewConstDeclContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 26, FaultParserRULE_constDecl)
@@ -4202,16 +4061,6 @@ func (s *ConstSpecContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ConstSpecContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitConstSpec(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) ConstSpec() (localctx IConstSpecContext) {
 	localctx = NewConstSpecContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 28, FaultParserRULE_constSpec)
@@ -4381,16 +4230,6 @@ func (s *StringDeclContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *StringDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitStringDecl(s)
-	}
-}
-
-func (s *StringDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStringDecl(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -4622,16 +4461,6 @@ func (s *CompoundStringContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *CompoundStringContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitCompoundString(s)
-	}
-}
-
-func (s *CompoundStringContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitCompoundString(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -4918,16 +4747,6 @@ func (s *IdentListContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *IdentListContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitIdentList(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) IdentList() (localctx IIdentListContext) {
 	localctx = NewIdentListContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 34, FaultParserRULE_identList)
@@ -5130,16 +4949,6 @@ func (s *ConstantsContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ConstantsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitConstants(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Constants() (localctx IConstantsContext) {
 	localctx = NewConstantsContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 36, FaultParserRULE_constants)
@@ -5270,16 +5079,6 @@ func (s *NilContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *NilContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitNil(s)
-	}
-}
-
-func (s *NilContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitNil(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -5424,16 +5223,6 @@ func (s *ExpressionListContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ExpressionListContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitExpressionList(s)
-	}
-}
-
-func (s *ExpressionListContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitExpressionList(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -5600,16 +5389,6 @@ func (s *StructDeclContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *StructDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitStructDecl(s)
-	}
-}
-
-func (s *StructDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStructDecl(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -5808,16 +5587,6 @@ func (s *StockContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type FlowContext struct {
 	StructTypeContext
 }
@@ -5906,16 +5675,6 @@ func (s *FlowContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *FlowContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitFlow(s)
-	}
-}
-
-func (s *FlowContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitFlow(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -6241,16 +6000,6 @@ func (s *SfMiscContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SfMiscContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSfMisc(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type PropFuncContext struct {
 	SfPropertiesContext
 }
@@ -6302,16 +6051,6 @@ func (s *PropFuncContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *PropFuncContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitPropFunc(s)
-	}
-}
-
-func (s *PropFuncContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPropFunc(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -6482,16 +6221,6 @@ func (s *StateFuncContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StateFuncContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStateFunc(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type UnfuncStateContext struct {
 	ComPropertiesContext
 }
@@ -6546,16 +6275,6 @@ func (s *UnfuncStateContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *UnfuncStateContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitUnfuncState(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type CompMiscContext struct {
 	ComPropertiesContext
 }
@@ -6599,16 +6318,6 @@ func (s *CompMiscContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *CompMiscContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitCompMisc(s)
-	}
-}
-
-func (s *CompMiscContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitCompMisc(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -6803,16 +6512,6 @@ func (s *PropSolvableContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *PropSolvableContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPropSolvable(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type PropBoolContext struct {
 	StructPropertiesContext
 }
@@ -6864,16 +6563,6 @@ func (s *PropBoolContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *PropBoolContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitPropBool(s)
-	}
-}
-
-func (s *PropBoolContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPropBool(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -6931,16 +6620,6 @@ func (s *PropIntContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *PropIntContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPropInt(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type PropStringContext struct {
 	StructPropertiesContext
 }
@@ -6992,16 +6671,6 @@ func (s *PropStringContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *PropStringContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitPropString(s)
-	}
-}
-
-func (s *PropStringContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPropString(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -7072,16 +6741,6 @@ func (s *PropVarContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *PropVarContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitPropVar(s)
-	}
-}
-
-func (s *PropVarContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPropVar(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -7372,16 +7031,6 @@ func (s *InitDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *InitDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitInitDecl(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) InitDecl() (localctx IInitDeclContext) {
 	localctx = NewInitDeclContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 52, FaultParserRULE_initDecl)
@@ -7505,16 +7154,6 @@ func (s *BlockContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *BlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitBlock(s)
-	}
-}
-
-func (s *BlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBlock(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -7673,16 +7312,6 @@ func (s *StatementListContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *StatementListContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitStatementList(s)
-	}
-}
-
-func (s *StatementListContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStatementList(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -7893,16 +7522,6 @@ func (s *StatementContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StatementContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStatement(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Statement() (localctx IStatementContext) {
 	localctx = NewStatementContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 58, FaultParserRULE_statement)
@@ -8103,16 +7722,6 @@ func (s *SimpleStmtContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SimpleStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSimpleStmt(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) SimpleStmt() (localctx ISimpleStmtContext) {
 	localctx = NewSimpleStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 60, FaultParserRULE_simpleStmt)
@@ -8260,16 +7869,6 @@ func (s *IncDecStmtContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *IncDecStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitIncDecStmt(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) IncDecStmt() (localctx IIncDecStmtContext) {
 	localctx = NewIncDecStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 62, FaultParserRULE_incDecStmt)
@@ -8384,16 +7983,6 @@ func (s *BoolExpressionContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *BoolExpressionContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitBoolExpression(s)
-	}
-}
-
-func (s *BoolExpressionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBoolExpression(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -8520,16 +8109,6 @@ func (s *BoolCompoundContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *BoolCompoundContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitBoolCompound(s)
-	}
-}
-
-func (s *BoolCompoundContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBoolCompound(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -8717,16 +8296,6 @@ func (s *BoolAndContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *BoolAndContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitBoolAnd(s)
-	}
-}
-
-func (s *BoolAndContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBoolAnd(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -8922,16 +8491,6 @@ func (s *BoolPrimaryContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *BoolPrimaryContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBoolPrimary(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) BoolPrimary() (localctx IBoolPrimaryContext) {
 	localctx = NewBoolPrimaryContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 70, FaultParserRULE_boolPrimary)
@@ -9107,16 +8666,6 @@ func (s *BuiltinsContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *BuiltinsContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitBuiltins(s)
-	}
-}
-
-func (s *BuiltinsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBuiltins(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -9360,16 +8909,6 @@ func (s *AccessHistoryContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *AccessHistoryContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitAccessHistory(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) AccessHistory() (localctx IAccessHistoryContext) {
 	localctx = NewAccessHistoryContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 74, FaultParserRULE_accessHistory)
@@ -9557,16 +9096,6 @@ func (s *AssertionContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *AssertionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitAssertion(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Assertion() (localctx IAssertionContext) {
 	localctx = NewAssertionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 76, FaultParserRULE_assertion)
@@ -9738,16 +9267,6 @@ func (s *AssumptionContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *AssumptionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitAssumption(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Assumption() (localctx IAssumptionContext) {
 	localctx = NewAssumptionContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 78, FaultParserRULE_assumption)
@@ -9902,16 +9421,6 @@ func (s *TemporalContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *TemporalContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitTemporal(s)
-	}
-}
-
-func (s *TemporalContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitTemporal(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -10077,16 +9586,6 @@ func (s *InvarContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *InvarContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitInvar(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type StageInvariantContext struct {
 	InvariantContext
 }
@@ -10166,16 +9665,6 @@ func (s *StageInvariantContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StageInvariantContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStageInvariant(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type DefInvariantContext struct {
 	InvariantContext
 }
@@ -10239,16 +9728,6 @@ func (s *DefInvariantContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *DefInvariantContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitDefInvariant(s)
-	}
-}
-
-func (s *DefInvariantContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitDefInvariant(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -10504,16 +9983,6 @@ func (s *MiscAssignContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *MiscAssignContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitMiscAssign(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type FaultAssignContext struct {
 	AssignmentContext
 }
@@ -10598,16 +10067,6 @@ func (s *FaultAssignContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *FaultAssignContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitFaultAssign(s)
-	}
-}
-
-func (s *FaultAssignContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitFaultAssign(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -10771,16 +10230,6 @@ func (s *EmptyStmtContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *EmptyStmtContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitEmptyStmt(s)
-	}
-}
-
-func (s *EmptyStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitEmptyStmt(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -10981,16 +10430,6 @@ func (s *IfStmtContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *IfStmtContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitIfStmt(s)
-	}
-}
-
-func (s *IfStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitIfStmt(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -11265,16 +10704,6 @@ func (s *IfStmtRunContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *IfStmtRunContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitIfStmtRun(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) IfStmtRun() (localctx IIfStmtRunContext) {
 	localctx = NewIfStmtRunContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 90, FaultParserRULE_ifStmtRun)
@@ -11546,16 +10975,6 @@ func (s *IfStmtStateContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *IfStmtStateContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitIfStmtState(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) IfStmtState() (localctx IIfStmtStateContext) {
 	localctx = NewIfStmtStateContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 92, FaultParserRULE_ifStmtState)
@@ -11801,16 +11220,6 @@ func (s *ForStmtContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ForStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitForStmt(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) ForStmt() (localctx IForStmtContext) {
 	localctx = NewForStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 94, FaultParserRULE_forStmt)
@@ -12017,16 +11426,6 @@ func (s *SysForStmtContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SysForStmtContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSysForStmt(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) SysForStmt() (localctx ISysForStmtContext) {
 	localctx = NewSysForStmtContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 96, FaultParserRULE_sysForStmt)
@@ -12203,16 +11602,6 @@ func (s *SysRunBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SysRunBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSysRunBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) SysRunBlock() (localctx ISysRunBlockContext) {
 	localctx = NewSysRunBlockContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 98, FaultParserRULE_sysRunBlock)
@@ -12385,16 +11774,6 @@ func (s *SysRunStepExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *SysRunStepExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSysRunStepExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) SysRunStep() (localctx ISysRunStepContext) {
 	localctx = NewSysRunStepContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 100, FaultParserRULE_sysRunStep)
@@ -12542,16 +11921,6 @@ func (s *RoundsContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *RoundsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRounds(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Rounds() (localctx IRoundsContext) {
 	localctx = NewRoundsContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 102, FaultParserRULE_rounds)
@@ -12661,16 +12030,6 @@ func (s *ParamCallContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ParamCallContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitParamCall(s)
-	}
-}
-
-func (s *ParamCallContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitParamCall(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -12880,16 +12239,6 @@ func (s *StateBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StateBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStateBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) StateBlock() (localctx IStateBlockContext) {
 	localctx = NewStateBlockContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 106, FaultParserRULE_stateBlock)
@@ -13091,16 +12440,6 @@ func (s *StateStepExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StateStepExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStateStepExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type StateExprContext struct {
 	StateStepContext
 }
@@ -13144,16 +12483,6 @@ func (s *StateExprContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *StateExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitStateExpr(s)
-	}
-}
-
-func (s *StateExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStateExpr(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -13223,16 +12552,6 @@ func (s *BuiltinInfixContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *BuiltinInfixContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBuiltinInfix(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type StateChainContext struct {
 	StateStepContext
 }
@@ -13292,16 +12611,6 @@ func (s *StateChainContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *StateChainContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitStateChain(s)
-	}
-}
-
-func (s *StateChainContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStateChain(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -13536,16 +12845,6 @@ func (s *RunBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *RunBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRunBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) RunBlock() (localctx IRunBlockContext) {
 	localctx = NewRunBlockContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 110, FaultParserRULE_runBlock)
@@ -13717,16 +13016,6 @@ func (s *InitBlockContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *InitBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitInitBlock(s)
-	}
-}
-
-func (s *InitBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitInitBlock(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -13981,16 +13270,6 @@ func (s *RunInitContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *RunInitContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitRunInit(s)
-	}
-}
-
-func (s *RunInitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRunInit(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -14249,16 +13528,6 @@ func (s *RunStepExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *RunStepExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRunStepExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type RunExprContext struct {
 	RunStepContext
 }
@@ -14321,16 +13590,6 @@ func (s *RunExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *RunExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRunExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type RunIfExprContext struct {
 	RunStepContext
 }
@@ -14374,16 +13633,6 @@ func (s *RunIfExprContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *RunIfExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitRunIfExpr(s)
-	}
-}
-
-func (s *RunIfExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRunIfExpr(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -14576,16 +13825,6 @@ func (s *FaultTypeContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *FaultTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitFaultType(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) FaultType() (localctx IFaultTypeContext) {
 	localctx = NewFaultTypeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 118, FaultParserRULE_faultType)
@@ -14759,16 +13998,6 @@ func (s *SolvableContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *SolvableContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitSolvable(s)
-	}
-}
-
-func (s *SolvableContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitSolvable(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -14953,16 +14182,6 @@ func (s *PostfixContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *PostfixContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPostfix(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Postfix() (localctx IPostfixContext) {
 	localctx = NewPostfixContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 122, FaultParserRULE_postfix)
@@ -15105,16 +14324,6 @@ func (s *TypedContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *TypedContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitTyped(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type ExprContext struct {
 	ExpressionContext
 }
@@ -15161,16 +14370,6 @@ func (s *ExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type ExprPrefixContext struct {
 	ExpressionContext
 }
@@ -15214,16 +14413,6 @@ func (s *ExprPrefixContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ExprPrefixContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitExprPrefix(s)
-	}
-}
-
-func (s *ExprPrefixContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitExprPrefix(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -15371,16 +14560,6 @@ func (s *LrExprContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *LrExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitLrExpr(s)
-	}
-}
-
-func (s *LrExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitLrExpr(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -15827,16 +15006,6 @@ func (s *OperandContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *OperandContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitOperand(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Operand() (localctx IOperandContext) {
 	localctx = NewOperandContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 126, FaultParserRULE_operand)
@@ -16017,16 +15186,6 @@ func (s *OpClockContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *OpClockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitOpClock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type OpNameContext struct {
 	OperandNameContext
 }
@@ -16058,16 +15217,6 @@ func (s *OpNameContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *OpNameContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitOpName(s)
-	}
-}
-
-func (s *OpNameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitOpName(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -16117,16 +15266,6 @@ func (s *OpParamContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *OpParamContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitOpParam(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type OpInstanceContext struct {
 	OperandNameContext
 }
@@ -16173,16 +15312,6 @@ func (s *OpInstanceContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *OpInstanceContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitOpInstance(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type OpThisContext struct {
 	OperandNameContext
 }
@@ -16214,16 +15343,6 @@ func (s *OpThisContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *OpThisContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitOpThis(s)
-	}
-}
-
-func (s *OpThisContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitOpThis(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -16454,16 +15573,6 @@ func (s *PrefixContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *PrefixContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitPrefix(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Prefix() (localctx IPrefixContext) {
 	localctx = NewPrefixContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 130, FaultParserRULE_prefix)
@@ -16615,16 +15724,6 @@ func (s *NumericContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *NumericContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitNumeric(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Numeric() (localctx INumericContext) {
 	localctx = NewNumericContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 132, FaultParserRULE_numeric)
@@ -16751,16 +15850,6 @@ func (s *IntegerContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *IntegerContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitInteger(s)
-	}
-}
-
-func (s *IntegerContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitInteger(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -16899,16 +15988,6 @@ func (s *NegativeContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *NegativeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitNegative(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Negative() (localctx INegativeContext) {
 	localctx = NewNegativeContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 136, FaultParserRULE_negative)
@@ -17036,16 +16115,6 @@ func (s *Float_Context) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *Float_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitFloat_(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) Float_() (localctx IFloat_Context) {
 	localctx = NewFloat_Context(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 138, FaultParserRULE_float_)
@@ -17144,16 +16213,6 @@ func (s *String_Context) EnterRule(listener antlr.ParseTreeListener) {
 func (s *String_Context) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitString_(s)
-	}
-}
-
-func (s *String_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitString_(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -17260,16 +16319,6 @@ func (s *Bool_Context) EnterRule(listener antlr.ParseTreeListener) {
 func (s *Bool_Context) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitBool_(s)
-	}
-}
-
-func (s *Bool_Context) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitBool_(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -17391,16 +16440,6 @@ func (s *FunctionLitContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *FunctionLitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitFunctionLit(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) FunctionLit() (localctx IFunctionLitContext) {
 	localctx = NewFunctionLitContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 144, FaultParserRULE_functionLit)
@@ -17518,16 +16557,6 @@ func (s *StateLitContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StateLitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitStateLit(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *FaultParser) StateLit() (localctx IStateLitContext) {
 	localctx = NewStateLitContext(p, p.GetParserRuleContext(), p.GetState())
 	p.EnterRule(localctx, 146, FaultParserRULE_stateLit)
@@ -17642,16 +16671,6 @@ func (s *UnfuncLitContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *UnfuncLitContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitUnfuncLit(s)
-	}
-}
-
-func (s *UnfuncLitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitUnfuncLit(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -17810,16 +16829,6 @@ func (s *UnfuncBlockContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *UnfuncBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitUnfuncBlock(s)
-	}
-}
-
-func (s *UnfuncBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitUnfuncBlock(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -18032,16 +17041,6 @@ func (s *EmitsClauseContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *EmitsClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitEmitsClause(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 type RequiresClauseContext struct {
 	UnfuncClauseContext
 }
@@ -18089,16 +17088,6 @@ func (s *RequiresClauseContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *RequiresClauseContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitRequiresClause(s)
-	}
-}
-
-func (s *RequiresClauseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitRequiresClause(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -18309,16 +17298,6 @@ func (s *UnfuncExprContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *UnfuncExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitUnfuncExpr(s)
-	}
-}
-
-func (s *UnfuncExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitUnfuncExpr(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -18554,16 +17533,6 @@ func (s *EosContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *EosContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(FaultParserListener); ok {
 		listenerT.ExitEos(s)
-	}
-}
-
-func (s *EosContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case FaultParserVisitor:
-		return t.VisitEos(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 

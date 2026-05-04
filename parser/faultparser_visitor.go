@@ -89,6 +89,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#StateFunc.
 	VisitStateFunc(ctx *StateFuncContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#UnfuncState.
+	VisitUnfuncState(ctx *UnfuncStateContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#compMisc.
 	VisitCompMisc(ctx *CompMiscContext) interface{}
 
@@ -295,6 +298,21 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#stateLit.
 	VisitStateLit(ctx *StateLitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncLit.
+	VisitUnfuncLit(ctx *UnfuncLitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncBlock.
+	VisitUnfuncBlock(ctx *UnfuncBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#requiresClause.
+	VisitRequiresClause(ctx *RequiresClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#emitsClause.
+	VisitEmitsClause(ctx *EmitsClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncExpr.
+	VisitUnfuncExpr(ctx *UnfuncExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#eos.
 	VisitEos(ctx *EosContext) interface{}

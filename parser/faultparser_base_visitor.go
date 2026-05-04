@@ -116,6 +116,10 @@ func (v *BaseFaultParserVisitor) VisitStateFunc(ctx *StateFuncContext) interface
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitUnfuncState(ctx *UnfuncStateContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitCompMisc(ctx *CompMiscContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -389,6 +393,26 @@ func (v *BaseFaultParserVisitor) VisitFunctionLit(ctx *FunctionLitContext) inter
 }
 
 func (v *BaseFaultParserVisitor) VisitStateLit(ctx *StateLitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitUnfuncLit(ctx *UnfuncLitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitUnfuncBlock(ctx *UnfuncBlockContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRequiresClause(ctx *RequiresClauseContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitsClause(ctx *EmitsClauseContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitUnfuncExpr(ctx *UnfuncExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

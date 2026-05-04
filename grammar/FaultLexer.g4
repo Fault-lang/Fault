@@ -53,6 +53,9 @@ SYSTEM: 'system';
 START: 'start';
 STATE: 'states';
 STAY: 'stay';
+UNFUNC: 'unfunc';
+REQUIRES: 'requires';
+EMITS: 'emits';
 
 // Types
 

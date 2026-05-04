@@ -1,4 +1,4 @@
-// Code generated from FaultLexer.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from grammar/FaultLexer.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser
 

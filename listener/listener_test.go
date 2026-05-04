@@ -2735,3 +2735,239 @@ func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	listener, _ := Execute(test, "", flags)
 	return listener, listener.AST
 }
+
+// --- unfunc{} listener tests ---
+
+// unfuncLiteral returns the single UnfuncLiteral from a component with one state.
+func unfuncLiteralFromSpec(t *testing.T, spec *ast.Spec) *ast.UnfuncLiteral {
+	t.Helper()
+	comp := spec.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	for _, v := range comp.Pairs {
+		uf, ok := v.(*ast.UnfuncLiteral)
+		if !ok {
+			t.Fatalf("component pair value is not UnfuncLiteral, got %T", v)
+		}
+		return uf
+	}
+	t.Fatal("no pairs in component")
+	return nil
+}
+
+func TestUnfuncSimple(t *testing.T) {
+	// A single unfunc state with one requires and one emits clause.
+	test := `system test1;
+
+component fetch = states{
+	getByName: unfunc{
+		requires generic.name,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	def, ok := spec.Statements[1].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("expected DefStatement, got %T", spec.Statements[1])
+	}
+	comp, ok := def.Value.(*ast.ComponentLiteral)
+	if !ok {
+		t.Fatalf("expected ComponentLiteral, got %T", def.Value)
+	}
+	var uf *ast.UnfuncLiteral
+	for _, v := range comp.Pairs {
+		u, ok := v.(*ast.UnfuncLiteral)
+		if !ok {
+			t.Fatalf("component pair value is not UnfuncLiteral, got %T", v)
+		}
+		uf = u
+		break
+	}
+
+	req, ok := uf.Requires.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("Requires is not a ParameterCall, got %T", uf.Requires)
+	}
+	if strings.Join(req.Value, ".") != "generic.name" {
+		t.Errorf("Requires = %v, want generic.name", req.Value)
+	}
+
+	emit, ok := uf.Emits.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("Emits is not a ParameterCall, got %T", uf.Emits)
+	}
+	if strings.Join(emit.Value, ".") != "generic.id" {
+		t.Errorf("Emits = %v, want generic.id", emit.Value)
+	}
+}
+
+func TestUnfuncMultipleRequires(t *testing.T) {
+	// requires with && should produce an InfixExpression preserving the operator.
+	test := `system test1;
+
+component fetch = states{
+	getWithJoin: unfunc{
+		requires generic.id && generic.joinId,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	infix, ok := uf.Requires.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Requires is not an InfixExpression, got %T", uf.Requires)
+	}
+	if infix.Operator != "&&" {
+		t.Errorf("operator = %q, want &&", infix.Operator)
+	}
+	if infix.Left.String() != "generic.joinId" && infix.Right.String() != "generic.joinId" {
+		t.Error("neither side of Requires contains generic.joinId")
+	}
+}
+
+func TestUnfuncMultipleEmits(t *testing.T) {
+	// emits with && should produce an InfixExpression preserving the operator.
+	test := `system test1;
+
+component fetch = states{
+	getDetails: unfunc{
+		requires generic.id,
+		emits generic.name && generic.joinId,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	infix, ok := uf.Emits.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Emits is not an InfixExpression, got %T", uf.Emits)
+	}
+	if infix.Operator != "&&" {
+		t.Errorf("operator = %q, want &&", infix.Operator)
+	}
+	if infix.Left.String() != "generic.name" && infix.Right.String() != "generic.name" {
+		t.Error("neither side of Emits contains generic.name")
+	}
+}
+
+func TestUnfuncRequiresOr(t *testing.T) {
+	// requires with || should produce an InfixExpression with || operator.
+	test := `system test1;
+
+component fetch = states{
+	getByNameOrId: unfunc{
+		requires generic.name || generic.id,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	infix, ok := uf.Requires.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Requires is not an InfixExpression, got %T", uf.Requires)
+	}
+	if infix.Operator != "||" {
+		t.Errorf("operator = %q, want ||", infix.Operator)
+	}
+}
+
+func TestUnfuncRequiresNot(t *testing.T) {
+	// requires with ! should produce a PrefixExpression wrapping the ParameterCall.
+	test := `system test1;
+
+component fetch = states{
+	getIfNotDeleted: unfunc{
+		requires !generic.deleted,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	prefix, ok := uf.Requires.(*ast.PrefixExpression)
+	if !ok {
+		t.Fatalf("Requires is not a PrefixExpression, got %T", uf.Requires)
+	}
+	if prefix.Operator != "!" {
+		t.Errorf("operator = %q, want !", prefix.Operator)
+	}
+	inner, ok := prefix.Right.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("inner expression is not a ParameterCall, got %T", prefix.Right)
+	}
+	if strings.Join(inner.Value, ".") != "generic.deleted" {
+		t.Errorf("inner = %v, want generic.deleted", inner.Value)
+	}
+}
+
+func TestUnfuncMixedWithFunc(t *testing.T) {
+	// A component containing both a func{} state and an unfunc{} state.
+	test := `system test1;
+
+component fetch = states{
+	idle: func{
+		stay();
+	},
+	getByName: unfunc{
+		requires generic.name,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	comp := spec.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	if len(comp.Pairs) != 2 {
+		t.Fatalf("expected 2 component pairs, got %d", len(comp.Pairs))
+	}
+
+	var funcCount, unfuncCount int
+	for _, v := range comp.Pairs {
+		switch v.(type) {
+		case *ast.FunctionLiteral:
+			funcCount++
+		case *ast.UnfuncLiteral:
+			unfuncCount++
+		}
+	}
+	if funcCount != 1 {
+		t.Errorf("expected 1 FunctionLiteral, got %d", funcCount)
+	}
+	if unfuncCount != 1 {
+		t.Errorf("expected 1 UnfuncLiteral, got %d", unfuncCount)
+	}
+}

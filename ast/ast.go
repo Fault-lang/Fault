@@ -1643,3 +1643,46 @@ func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
 	}
 	return nil
 }
+
+// UnfuncLiteral represents an unfunc{} state block — an uninterpreted function
+// declared only by its requires and emits clauses.
+type UnfuncLiteral struct {
+	Token         Token
+	Requires      Expression // expression tree preserving &&, ||, ! operators
+	Emits         Expression
+	ProcessedName []string
+}
+
+func (ul *UnfuncLiteral) expressionNode()      {}
+func (ul *UnfuncLiteral) TokenLiteral() string { return ul.Token.Literal }
+func (ul *UnfuncLiteral) Position() []int      { return ul.Token.GetPosition() }
+func (ul *UnfuncLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("unfunc{requires ")
+	if ul.Requires != nil {
+		out.WriteString(ul.Requires.String())
+	}
+	out.WriteString(", emits ")
+	if ul.Emits != nil {
+		out.WriteString(ul.Emits.String())
+	}
+	out.WriteString("}")
+	return out.String()
+}
+func (ul *UnfuncLiteral) GetToken() Token { return ul.Token }
+func (ul *UnfuncLiteral) Type() string    { return "UNFUNC" }
+func (ul *UnfuncLiteral) SetType(ty *Type) {
+	// skip
+}
+func (ul *UnfuncLiteral) Id() []string {
+	return []string{ul.ProcessedName[0], strings.Join(ul.ProcessedName[1:], "_")}
+}
+func (ul *UnfuncLiteral) SetId(id []string) {
+	ul.ProcessedName = id
+}
+func (ul *UnfuncLiteral) IdString() string {
+	return strings.Join(ul.ProcessedName, "_")
+}
+func (ul *UnfuncLiteral) RawId() []string {
+	return ul.ProcessedName
+}

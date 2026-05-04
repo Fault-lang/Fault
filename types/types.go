@@ -192,6 +192,14 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 
 		return node, err
+	case *ast.UnfuncLiteral:
+		if err = c.checkUnfuncExpr(node.Requires, "requires"); err != nil {
+			return node, err
+		}
+		if err = c.checkUnfuncExpr(node.Emits, "emits"); err != nil {
+			return node, err
+		}
+		return node, nil
 	case *ast.AssertionStatement:
 		n, err := c.inferFunction(node.Constraint)
 		valtype := typeable(n)
@@ -365,6 +373,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 	case *ast.FlowLiteral:
 		return true
 	case *ast.ComponentLiteral:
+		return true
+	case *ast.UnfuncLiteral:
 		return true
 	case *ast.IndexExpression:
 		return true
@@ -1244,6 +1254,50 @@ func IsNumeric(t *ast.Type) bool {
 		return true
 	}
 	return false
+}
+
+// checkUnfuncExpr walks an unfunc requires/emits expression tree and validates
+// every ParameterCall leaf against SpecStructs.
+func (c *Checker) checkUnfuncExpr(expr ast.Expression, clause string) error {
+	if expr == nil {
+		return nil
+	}
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return c.checkUnfuncFieldRef(e, clause)
+	case *ast.InfixExpression:
+		if err := c.checkUnfuncExpr(e.Left, clause); err != nil {
+			return err
+		}
+		return c.checkUnfuncExpr(e.Right, clause)
+	case *ast.PrefixExpression:
+		return c.checkUnfuncExpr(e.Right, clause)
+	}
+	return nil
+}
+
+func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) error {
+	if len(pc.Value) != 2 {
+		return fmt.Errorf("unfunc %s: expected stock.field reference, got %q", clause, pc.String())
+	}
+	stockName := pc.Value[0]
+	fieldName := pc.Value[1]
+
+	spec, ok := c.SpecStructs[pc.Spec]
+	if !ok {
+		return fmt.Errorf("unfunc %s: spec %q not found", clause, pc.Spec)
+	}
+
+	fields, err := spec.FetchStock(stockName)
+	if err != nil {
+		return fmt.Errorf("unfunc %s: stock %q not found", clause, stockName)
+	}
+
+	if fields[fieldName] == nil {
+		return fmt.Errorf("unfunc %s: stock %q has no field %q", clause, stockName, fieldName)
+	}
+
+	return nil
 }
 
 func typeable(node ast.Node) *ast.Type {

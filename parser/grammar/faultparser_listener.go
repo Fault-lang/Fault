@@ -1,7 +1,6 @@
-// Code generated from FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from grammar/FaultParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // FaultParser
-
 import "github.com/antlr4-go/antlr/v4"
 
 // FaultParserListener is a complete listener for a parse tree produced by FaultParser.

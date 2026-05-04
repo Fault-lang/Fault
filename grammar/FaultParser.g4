@@ -125,8 +125,9 @@ sfProperties
     ;
 
 comProperties
-    : IDENT ':' stateLit #StateFunc
-    | structProperties   #compMisc
+    : IDENT ':' stateLit   #StateFunc
+    | IDENT ':' unfuncLit  #UnfuncState
+    | structProperties     #compMisc
     ;
 
 structProperties
@@ -382,6 +383,27 @@ functionLit
 
 stateLit
     : 'func' stateBlock
+    ;
+
+unfuncLit
+    : UNFUNC unfuncBlock
+    ;
+
+unfuncBlock
+    : '{' (unfuncClause (',' unfuncClause)* ','?)? '}'
+    ;
+
+unfuncClause
+    : REQUIRES unfuncExpr  #requiresClause
+    | EMITS unfuncExpr     #emitsClause
+    ;
+
+unfuncExpr
+    : unfuncExpr '&&' unfuncExpr
+    | unfuncExpr '||' unfuncExpr
+    | '!' unfuncExpr
+    | '(' unfuncExpr ')'
+    | paramCall
     ;
 
 eos
