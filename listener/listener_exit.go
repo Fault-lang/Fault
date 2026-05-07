@@ -713,6 +713,8 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 			n := l.packageCallsAsRunSteps(t)
 			t = n.(*ast.ExpressionStatement)
 			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		case *ast.SolvableStep:
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 		default:
 			panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
 		}
@@ -838,6 +840,11 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 		Expressions: exp,
 	}
 	l.push(e)
+}
+
+func (l *FaultListener) ExitRunSolvableExpr(c *parser.RunSolvableExprContext) {
+	token := ast.GenerateToken("SYNTH", "__", c.GetStart(), c.GetStop())
+	l.push(&ast.SolvableStep{Token: token})
 }
 
 func (l *FaultListener) ExitStateStepExpr(c *parser.StateStepExprContext) {
@@ -1389,6 +1396,112 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 	if !l.skipRun {
 		l.push(forSt)
 	}
+}
+
+func (l *FaultListener) ExitRunStmt(c *parser.RunStmtContext) {
+	token := ast.GenerateToken("RUN", "run", c.GetStart(), c.GetStop())
+
+	run := l.pop()
+	if run == nil {
+		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
+	}
+
+	block, ok := run.(*ast.BlockStatement)
+	if !ok {
+		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
+	}
+
+	var inits *ast.BlockStatement
+	if c.InitBlock() != nil {
+		initVal := l.pop()
+		inits, ok = initVal.(*ast.BlockStatement)
+		if !ok {
+			panic(fmt.Sprintf("top of stack not a block statement for init: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), initVal))
+		}
+	} else {
+		inits = &ast.BlockStatement{}
+	}
+
+	runSt := &ast.RunStatement{
+		Token: token,
+		Inits: inits,
+		Steps: blockToRunSteps(block),
+	}
+
+	if !l.skipRun {
+		l.push(runSt)
+	}
+}
+
+// blockToRunSteps converts the BlockStatement produced by ExitRunBlock into
+// typed RunStep values for RunStatement.Steps.
+func blockToRunSteps(block *ast.BlockStatement) []ast.RunStep {
+	var steps []ast.RunStep
+	for _, stmt := range block.Statements {
+		switch s := stmt.(type) {
+		case *ast.SolvableStep:
+			steps = append(steps, s)
+		case *ast.ParallelFunctions:
+			// | operator from runStepExpr — each expression is a ParameterCall
+			calls := make([]*ast.ParameterCall, 0, len(s.Expressions))
+			for _, e := range s.Expressions {
+				if pc, ok := e.(*ast.ParameterCall); ok {
+					calls = append(calls, pc)
+				}
+			}
+			steps = append(steps, &ast.CallStep{
+				Token:    s.Token,
+				Calls:    calls,
+				Operator: "|",
+			})
+		case *ast.ExpressionStatement:
+			step := exprToCallStep(s)
+			if step != nil {
+				steps = append(steps, step)
+			}
+		}
+	}
+	return steps
+}
+
+// exprToCallStep converts an ExpressionStatement from the run block into a CallStep.
+func exprToCallStep(stmt *ast.ExpressionStatement) *ast.CallStep {
+	switch e := stmt.Expression.(type) {
+	case *ast.ParameterCall:
+		return &ast.CallStep{
+			Token:    e.Token,
+			Calls:    []*ast.ParameterCall{e},
+			Operator: "",
+		}
+	case *ast.InfixExpression:
+		if e.Operator == "&&" || e.Operator == "||" || e.Operator == "|" {
+			calls := collectParamCalls(e)
+			if len(calls) > 0 {
+				return &ast.CallStep{
+					Token:    e.Token,
+					Calls:    calls,
+					Operator: e.Operator,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// collectParamCalls recursively extracts ParameterCall leaves from an infix tree.
+func collectParamCalls(e *ast.InfixExpression) []*ast.ParameterCall {
+	var calls []*ast.ParameterCall
+	if pc, ok := e.Left.(*ast.ParameterCall); ok {
+		calls = append(calls, pc)
+	} else if inf, ok := e.Left.(*ast.InfixExpression); ok {
+		calls = append(calls, collectParamCalls(inf)...)
+	}
+	if pc, ok := e.Right.(*ast.ParameterCall); ok {
+		calls = append(calls, pc)
+	} else if inf, ok := e.Right.(*ast.InfixExpression); ok {
+		calls = append(calls, collectParamCalls(inf)...)
+	}
+	return calls
 }
 
 func (l *FaultListener) ExitSysForStmt(c *parser.SysForStmtContext) {

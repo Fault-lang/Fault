@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? (forStmt | sysForStmt)?
+    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? (forStmt | sysForStmt | runStmt)?
     ;
 
 sysClause
@@ -40,7 +40,7 @@ startPair
 */
 
 spec
-    : specClause declaration* forStmt?
+    : specClause declaration* (forStmt | runStmt)?
     ;
 
 specClause
@@ -243,6 +243,10 @@ forStmt
     : 'for' rounds ('init' initBlock)? 'run' runBlock eos?
     ;
 
+runStmt
+    : 'run' ('init' initBlock)? runBlock eos?
+    ;
+
 sysForStmt
     : 'for' rounds 'run' sysRunBlock eos?
     ;
@@ -289,7 +293,8 @@ initStep
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
     | simpleStmt eos                              #runExpr
-    | ifStmtRun                                     #runIfExpr
+    | ifStmtRun                                   #runIfExpr
+    | SYNTH eos                                   #runSolvableExpr
     ;
 
 faultType

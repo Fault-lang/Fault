@@ -432,6 +432,89 @@ func (fs *ForStatement) SetType(ty *Type) {
 	//Skip
 }
 
+type RunStep interface {
+	runStepNode()
+	statementNode()
+	TokenLiteral() string
+	Position() []int
+	String() string
+	GetToken() Token
+	Type() string
+	SetType(*Type)
+}
+
+// CallStep represents one step in a run block that calls one or more functions.
+// Operator is "", "&&", "|", or "||":
+//   - "":   single explicit call (e.g. foo.fn1)
+//   - "&&": simultaneous calls — all fire in the same step (e.g. foo.fn1 && foo.fn2)
+//   - "|":  choice — Fault picks whichever satisfies constraints (e.g. foo.fn1 | foo.fn2)
+//   - "||": same semantics as "|" from the expression path
+type CallStep struct {
+	Token    Token
+	Calls    []*ParameterCall
+	Operator string
+}
+
+func (cs *CallStep) runStepNode()          {}
+func (cs *CallStep) statementNode()        {}
+func (cs *CallStep) TokenLiteral() string  { return cs.Token.Literal }
+func (cs *CallStep) Position() []int       { return cs.Token.GetPosition() }
+func (cs *CallStep) GetToken() Token       { return cs.Token }
+func (cs *CallStep) Type() string          { return "" }
+func (cs *CallStep) SetType(ty *Type)      {}
+func (cs *CallStep) String() string {
+	var out bytes.Buffer
+	parts := []string{}
+	for _, c := range cs.Calls {
+		parts = append(parts, c.String())
+	}
+	if cs.Operator == "" {
+		out.WriteString(parts[0])
+	} else {
+		out.WriteString(strings.Join(parts, " "+cs.Operator+" "))
+	}
+	out.WriteString(";")
+	return out.String()
+}
+
+// SolvableStep represents a __ placeholder — Fault synthesizes which function runs here.
+type SolvableStep struct {
+	Token Token
+}
+
+func (ss *SolvableStep) runStepNode()         {}
+func (ss *SolvableStep) statementNode()       {}
+func (ss *SolvableStep) TokenLiteral() string { return ss.Token.Literal }
+func (ss *SolvableStep) Position() []int      { return ss.Token.GetPosition() }
+func (ss *SolvableStep) GetToken() Token      { return ss.Token }
+func (ss *SolvableStep) Type() string         { return "" }
+func (ss *SolvableStep) SetType(ty *Type)     {}
+func (ss *SolvableStep) String() string       { return "__;" }
+
+// RunStatement is the new step-based run block, replacing ForStatement.
+// Each element of Steps is either a CallStep or a SolvableStep.
+type RunStatement struct {
+	Token Token
+	Inits *BlockStatement
+	Steps []RunStep
+}
+
+func (rs *RunStatement) statementNode()       {}
+func (rs *RunStatement) TokenLiteral() string { return rs.Token.Literal }
+func (rs *RunStatement) Position() []int      { return rs.Token.GetPosition() }
+func (rs *RunStatement) GetToken() Token      { return rs.Token }
+func (rs *RunStatement) Type() string         { return "" }
+func (rs *RunStatement) SetType(ty *Type)     {}
+func (rs *RunStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("run {")
+	for _, s := range rs.Steps {
+		out.WriteString(s.String())
+	}
+	out.WriteString("}")
+	return out.String()
+}
+
 type StartStatement struct {
 	Token Token
 	Pairs [][]string

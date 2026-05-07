@@ -244,6 +244,10 @@ func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitRunStmt(ctx *RunStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitSysForStmt(ctx *SysForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -305,6 +309,10 @@ func (v *BaseFaultParserVisitor) VisitRunExpr(ctx *RunExprContext) interface{} {
 }
 
 func (v *BaseFaultParserVisitor) VisitRunIfExpr(ctx *RunIfExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitRunSolvableExpr(ctx *RunSolvableExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

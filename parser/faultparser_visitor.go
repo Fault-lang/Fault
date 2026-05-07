@@ -185,6 +185,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#runStmt.
+	VisitRunStmt(ctx *RunStmtContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#sysForStmt.
 	VisitSysForStmt(ctx *SysForStmtContext) interface{}
 
@@ -232,6 +235,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#runIfExpr.
 	VisitRunIfExpr(ctx *RunIfExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runSolvableExpr.
+	VisitRunSolvableExpr(ctx *RunSolvableExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}

@@ -978,6 +978,91 @@ func TestRunInit(t *testing.T) {
 
 }
 
+func TestRunStmtExplicitStep(t *testing.T) {
+	test := `spec test1;
+			 run init{d = new foo;} {
+				d.fn;
+			 };
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
+	if !ok {
+		t.Fatalf("Statement is not a RunStatement. got=%T", spec.Statements[1])
+	}
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("RunStatement does not have 1 step. got=%d", len(runSt.Steps))
+	}
+	step, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("Step is not a CallStep. got=%T", runSt.Steps[0])
+	}
+	if len(step.Calls) != 1 {
+		t.Fatalf("CallStep does not have 1 call. got=%d", len(step.Calls))
+	}
+	if step.Operator != "|" {
+		t.Fatalf("CallStep operator should be | for single call from runStepExpr, got=%q", step.Operator)
+	}
+}
+
+func TestRunStmtSolvableStep(t *testing.T) {
+	test := `spec test1;
+			 run init{d = new foo;} {
+				__;
+				d.fn;
+				__;
+			 };
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
+	if !ok {
+		t.Fatalf("Statement is not a RunStatement. got=%T", spec.Statements[1])
+	}
+	if len(runSt.Steps) != 3 {
+		t.Fatalf("RunStatement does not have 3 steps. got=%d", len(runSt.Steps))
+	}
+	if _, ok := runSt.Steps[0].(*ast.SolvableStep); !ok {
+		t.Fatalf("Step[0] is not a SolvableStep. got=%T", runSt.Steps[0])
+	}
+	if _, ok := runSt.Steps[1].(*ast.CallStep); !ok {
+		t.Fatalf("Step[1] is not a CallStep. got=%T", runSt.Steps[1])
+	}
+	if _, ok := runSt.Steps[2].(*ast.SolvableStep); !ok {
+		t.Fatalf("Step[2] is not a SolvableStep. got=%T", runSt.Steps[2])
+	}
+}
+
+func TestRunStmtChoiceStep(t *testing.T) {
+	test := `spec test1;
+			 run init{d = new foo;} {
+				d.fn | d.fn2;
+			 };
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
+	if !ok {
+		t.Fatalf("Statement is not a RunStatement. got=%T", spec.Statements[1])
+	}
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("RunStatement does not have 1 step. got=%d", len(runSt.Steps))
+	}
+	step, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("Step is not a CallStep. got=%T", runSt.Steps[0])
+	}
+	if len(step.Calls) != 2 {
+		t.Fatalf("CallStep does not have 2 calls. got=%d", len(step.Calls))
+	}
+	if step.Operator != "|" {
+		t.Fatalf("CallStep operator should be |, got=%q", step.Operator)
+	}
+}
+
 func TestIncr(t *testing.T) {
 	test := `spec test1;
 			 for 5 run{

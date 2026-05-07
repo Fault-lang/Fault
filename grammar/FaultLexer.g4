@@ -67,6 +67,8 @@ TY_NATURAL: 'natural';
 TY_UNCERTAIN: 'uncertain';
 TY_UNKNOWN: 'unknown';
 
+SYNTH: '__';
+
 IDENT: LETTER (LETTER | UNICODE_DIGIT)*;
 
 // Punctuation

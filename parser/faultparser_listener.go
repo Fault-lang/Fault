@@ -185,6 +185,9 @@ type FaultParserListener interface {
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
+	// EnterRunStmt is called when entering the runStmt production.
+	EnterRunStmt(c *RunStmtContext)
+
 	// EnterSysForStmt is called when entering the sysForStmt production.
 	EnterSysForStmt(c *SysForStmtContext)
 
@@ -232,6 +235,9 @@ type FaultParserListener interface {
 
 	// EnterRunIfExpr is called when entering the runIfExpr production.
 	EnterRunIfExpr(c *RunIfExprContext)
+
+	// EnterRunSolvableExpr is called when entering the runSolvableExpr production.
+	EnterRunSolvableExpr(c *RunSolvableExprContext)
 
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
@@ -494,6 +500,9 @@ type FaultParserListener interface {
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
 
+	// ExitRunStmt is called when exiting the runStmt production.
+	ExitRunStmt(c *RunStmtContext)
+
 	// ExitSysForStmt is called when exiting the sysForStmt production.
 	ExitSysForStmt(c *SysForStmtContext)
 
@@ -541,6 +550,9 @@ type FaultParserListener interface {
 
 	// ExitRunIfExpr is called when exiting the runIfExpr production.
 	ExitRunIfExpr(c *RunIfExprContext)
+
+	// ExitRunSolvableExpr is called when exiting the runSolvableExpr production.
+	ExitRunSolvableExpr(c *RunSolvableExprContext)
 
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)

@@ -375,6 +375,12 @@ func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
 // ExitForStmt is called when production forStmt is exited.
 func (s *BaseFaultParserListener) ExitForStmt(ctx *ForStmtContext) {}
 
+// EnterRunStmt is called when production runStmt is entered.
+func (s *BaseFaultParserListener) EnterRunStmt(ctx *RunStmtContext) {}
+
+// ExitRunStmt is called when production runStmt is exited.
+func (s *BaseFaultParserListener) ExitRunStmt(ctx *RunStmtContext) {}
+
 // EnterSysForStmt is called when production sysForStmt is entered.
 func (s *BaseFaultParserListener) EnterSysForStmt(ctx *SysForStmtContext) {}
 
@@ -470,6 +476,12 @@ func (s *BaseFaultParserListener) EnterRunIfExpr(ctx *RunIfExprContext) {}
 
 // ExitRunIfExpr is called when production runIfExpr is exited.
 func (s *BaseFaultParserListener) ExitRunIfExpr(ctx *RunIfExprContext) {}
+
+// EnterRunSolvableExpr is called when production runSolvableExpr is entered.
+func (s *BaseFaultParserListener) EnterRunSolvableExpr(ctx *RunSolvableExprContext) {}
+
+// ExitRunSolvableExpr is called when production runSolvableExpr is exited.
+func (s *BaseFaultParserListener) ExitRunSolvableExpr(ctx *RunSolvableExprContext) {}
 
 // EnterFaultType is called when production faultType is entered.
 func (s *BaseFaultParserListener) EnterFaultType(ctx *FaultTypeContext) {}
