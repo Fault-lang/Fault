@@ -547,6 +547,36 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		node.Body.Statements = bodyStmts
 		p.inGlobal = false
 		return node, err
+	case *ast.RunStatement:
+		p.inGlobal = true
+		if node.Inits != nil {
+			var initStmts []ast.Statement
+			for _, v := range node.Inits.Statements {
+				pro, err = p.walk(v)
+				if err != nil {
+					return node, err
+				}
+				if block, ok := pro.(*ast.BlockStatement); ok {
+					initStmts = append(initStmts, block.Statements...)
+				} else {
+					initStmts = append(initStmts, pro.(ast.Statement))
+				}
+			}
+			node.Inits.Statements = initStmts
+		}
+		for _, step := range node.Steps {
+			if cs, ok := step.(*ast.CallStep); ok {
+				for i, pc := range cs.Calls {
+					n, err := p.walk(pc)
+					if err != nil {
+						return node, err
+					}
+					cs.Calls[i] = n.(*ast.ParameterCall)
+				}
+			}
+		}
+		p.inGlobal = false
+		return node, err
 	case *ast.StartStatement:
 		return node, err
 	case *ast.FunctionLiteral:

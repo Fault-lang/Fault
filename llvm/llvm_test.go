@@ -119,6 +119,86 @@ func TestRunBlock(t *testing.T) {
 	}
 }
 
+func TestRunStmtExplicit(t *testing.T) {
+	test := `spec test1;
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					buzz.a <- buzz.a + 1;
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+			};
+
+			run init{test = new foo;} {
+				test.fizz;
+			};
+	`
+
+	llvm, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	// __synthStep should NOT appear — no solvable steps
+	if strings.Contains(string(ir), "__synthStep") {
+		t.Fatalf("__synthStep marker should not appear in IR without solvable steps")
+	}
+
+	// The flow function should be defined and called
+	if !strings.Contains(string(ir), "test1_test_fizz") {
+		t.Fatalf("expected test1_test_fizz function in IR, got:\n%s", string(ir))
+	}
+}
+
+func TestRunStmtSolvable(t *testing.T) {
+	test := `spec test1;
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					buzz.a <- buzz.a + 1;
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+			};
+
+			run init{test = new foo;} {
+				__;
+				test.fizz;
+				__;
+			};
+	`
+
+	llvm, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	// __synthStep marker must appear
+	if !strings.Contains(string(ir), "__synthStep") {
+		t.Fatalf("expected __synthStep marker in IR for solvable steps, got:\n%s", string(ir))
+	}
+
+	// The explicit step should still compile
+	if !strings.Contains(string(ir), "test1_test_fizz") {
+		t.Fatalf("expected test1_test_fizz function in IR, got:\n%s", string(ir))
+	}
+}
+
 func TestIfCond(t *testing.T) {
 	test := `spec test1;
 			const a = 2.3;

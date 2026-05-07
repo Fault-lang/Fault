@@ -47,9 +47,10 @@ func NewRawInputs() *RawInputs {
 
 type Compiler struct {
 	module  *ir.Module
-	markers []*ir.Global // 0-index -> Round
+	markers    []*ir.Global // 0-index -> Round
 	// 1-index -> Parallel Group
 	// 2-index -> Choice Group
+	// 3-index -> Synth Step (lazy, only created if RunStatement uses __)
 
 	hasRunBlock    bool
 	hasSysRunBlock bool
@@ -385,6 +386,25 @@ func (c *Compiler) compile(node ast.Node) {
 				c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			}
 			c.compileBlock(v.Body)
+			if !c.hasSysRunBlock {
+				c.stateCheck()
+			}
+			c.RunRound = c.RunRound + 1
+		}
+
+		c.contextFuncName = ""
+
+	case *ast.RunStatement:
+		c.contextFuncName = "__run"
+
+		// Compile init block at round 1
+		c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
+		c.compileBlock(v.Inits)
+		c.RunRound = c.RunRound + 1
+
+		for _, step := range v.Steps {
+			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
+			c.compileRunStep(step)
 			if !c.hasSysRunBlock {
 				c.stateCheck()
 			}
@@ -737,6 +757,10 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 		switch exp := body[i].(type) {
 		case *ast.ParallelFunctions:
 			c.compileParallel(exp)
+		case *ast.SolvableStep:
+			c.compileRunStep(exp)
+		case *ast.CallStep:
+			c.compileRunStep(exp)
 		case ast.Expression:
 			ret = c.compileFunction(exp)
 		case *ast.ExpressionStatement:
@@ -744,6 +768,34 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 		}
 	}
 	return ret
+}
+
+func (c *Compiler) synthStepMarker() *ir.Global {
+	if len(c.markers) < 4 {
+		g := c.module.NewGlobalDef("__synthStep", constant.NewCharArray(make([]byte, 38)))
+		c.markers = append(c.markers, g)
+	}
+	return c.markers[3]
+}
+
+func (c *Compiler) compileRunStep(step ast.RunStep) {
+	switch s := step.(type) {
+	case *ast.SolvableStep:
+		// Mark this step as a synthesis slot — the generator will solve for which function runs here.
+		stepName := name.RuleGroup(fmt.Sprintf("synth_%d", c.RunRound))
+		marker := c.synthStepMarker()
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_start", stepName)), marker)
+		c.contextBlock.NewStore(constant.NewCharArrayFromString(fmt.Sprintf("%s_close", stepName)), marker)
+	case *ast.CallStep:
+		pf := &ast.ParallelFunctions{
+			Token:       s.Token,
+			Expressions: make([]ast.Expression, len(s.Calls)),
+		}
+		for i, call := range s.Calls {
+			pf.Expressions[i] = call
+		}
+		c.compileParallel(pf)
+	}
 }
 
 func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
@@ -1455,7 +1507,7 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		fname = fname + "__state"
 	}
 
-	if c.RunRound == 1 { //initialize
+	if c.RunRound >= 1 && c.specFunctions[fname] == nil { //initialize once, on first call
 		params := c.generateParameters(rawId, branch, component)
 		if component {
 			params = c.includeGlobalParams(params)

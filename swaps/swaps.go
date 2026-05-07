@@ -72,6 +72,16 @@ func (c *Precompiler) walk(n ast.Node) ast.Node {
 		}
 		node.Inits.Statements = st
 		return node
+	case *ast.RunStatement:
+		if node.Inits != nil {
+			var st []ast.Statement
+			for _, v := range node.Inits.Statements {
+				snode := c.walk(v)
+				st = append(st, snode.(ast.Statement))
+			}
+			node.Inits.Statements = st
+		}
+		return node
 	case *ast.StartStatement:
 		return node
 	case *ast.FunctionLiteral:
