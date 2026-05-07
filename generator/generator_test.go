@@ -948,6 +948,53 @@ func TestPhiCompleteness(t *testing.T) {
 	}
 }
 
+func TestSynthSlot(t *testing.T) {
+	// A run block with a synthesis step (__) between two explicit steps.
+	// The SMT should contain:
+	//   - synth_N selector declarations for the candidate function(s)
+	//   - exactly-one constraint: (assert (or synth_N_...))
+	//   - implication: (assert (=> synth_N_... ...))
+	test := `spec test1;
+	def foo = flow{
+		buzz: new bar,
+		fizz: func{
+			buzz.a <- buzz.a + 1;
+		},
+	};
+	def bar = stock{
+		a: 10,
+	};
+	run init{t = new foo;} {
+		t.fizz;
+		__;
+		t.fizz;
+	};
+	`
+
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Must be valid SMT
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatalf("SMT missing declare-fun. got=%s", smt)
+	}
+
+	// Selector for the synthesis slot must be declared
+	if !strings.Contains(smt, "synth_") {
+		t.Fatalf("SMT missing synth_ selector. got=%s", smt)
+	}
+
+	// Must have an implication from the selector
+	if !strings.Contains(smt, "(=>") {
+		t.Fatalf("SMT missing implication rule. got=%s", smt)
+	}
+
+	// fizz must be called (both explicit and inside synthesis)
+	if !strings.Contains(smt, "test1_t_buzz_a") {
+		t.Fatalf("SMT missing buzz.a variable. got=%s", smt)
+	}
+}
+
 func prepTest(filepath string, test string, specType bool, testRun bool) *Generator {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

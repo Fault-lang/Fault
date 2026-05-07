@@ -99,6 +99,8 @@ func (t *Tracer) walk(n ast.Node) {
 		t.walk(node.Right)
 	case *ast.PrefixExpression:
 		t.walk(node.Right)
+	case *ast.RunStatement:
+		// RunStatement is fspec-only; no component states to trace.
 	}
 }
 

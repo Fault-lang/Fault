@@ -98,6 +98,35 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		return ru
 	}
 
+	if vname == "@__synthStep" {
+		group := strings.Split(inst.Src.Ident(), "_")
+		marker := group[len(group)-1]
+		if marker == "start\"" {
+			// Nothing to do on start — the slot has no IR calls inside it.
+			return ru
+		}
+		// On close: build a SynthSlot with all candidate flow functions.
+		candidates := make(map[string][]rules.Rule)
+		for fname, rawF := range b.rawFunctions {
+			if fname == "__run" || isBuiltIn(fname) || strings.HasSuffix(fname, "__state") {
+				continue
+			}
+			enter := rules.NewFuncCall(fname, "Enter", b.Env.CurrentRound)
+			exit := rules.NewFuncCall(fname, "Exit", b.Env.CurrentRound)
+			v := NewLLFunc(b.Env, b.rawFunctions, rawF)
+			v.Unroll()
+			candidates[fname] = v.GetAllRules(enter, exit)
+		}
+		if len(candidates) > 0 {
+			slot := &rules.SynthSlot{
+				Round:      b.Env.CurrentRound,
+				Candidates: candidates,
+			}
+			ru = append(ru, slot)
+		}
+		return ru
+	}
+
 	switch inst.Src.Type().(type) {
 	case *irtypes.ArrayType:
 		refname := fmt.Sprintf("%s-%s", b.ParentFunction, inst.Dst.Ident())

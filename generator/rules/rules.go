@@ -1329,6 +1329,46 @@ func TagRules(ru []Rule, branch string, block string) []Rule {
 	return tagged
 }
 
+// SynthSlot represents a synthesis step (__ in the run block).
+// The generator enumerates all candidate flow functions and asks the SMT
+// solver to pick exactly one to execute at this step.
+type SynthSlot struct {
+	Rule
+	Round      int
+	Candidates map[string][]Rule // fname → pre-unrolled rules for that function
+	tag        *branch
+}
+
+func (ss *SynthSlot) ruleNode() {}
+func (ss *SynthSlot) LoadContext(_ int, _ map[string]bool, _ map[string][]int16, _ *scenario.Logger) {
+}
+func (ss *SynthSlot) SetRound(r int) {
+	ss.Round = r
+	for _, rules := range ss.Candidates {
+		for _, ru := range rules {
+			ru.SetRound(r)
+		}
+	}
+}
+func (ss *SynthSlot) GetRound() int { return ss.Round }
+func (ss *SynthSlot) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	return nil, "", ssa // handled by unpackSynthSlot
+}
+func (ss *SynthSlot) String() string {
+	var names []string
+	for k := range ss.Candidates {
+		names = append(names, k)
+	}
+	return fmt.Sprintf("synth(%s)", strings.Join(names, "|"))
+}
+func (ss *SynthSlot) Assertless() string { return ss.String() }
+func (ss *SynthSlot) IsTagged() bool     { return ss.tag != nil }
+func (ss *SynthSlot) Choice() string     { return ss.tag.block }
+func (ss *SynthSlot) Branch() string     { return ss.tag.branch }
+func (ss *SynthSlot) Tag(k1 string, k2 string) {
+	ss.tag = &branch{branch: k1, block: k2}
+}
+
 func TagRule(ru Rule, branch string, block string) Rule {
 	if ru.IsTagged() {
 		return ru //Don't retag something (nestled phis)

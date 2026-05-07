@@ -26,6 +26,7 @@ type Env struct {
 	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
 	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
 	UsedVars         map[string]bool        // alloca names accessed by at least one flow function
+	WriteSets        map[string]map[string]bool // fname → set of global base var names the function stores to
 	CurrentFunction  string
 	CurrentRound     int
 	returnVoid       *PhiState
@@ -43,6 +44,7 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		ConstantVals: make(map[string]value.Value),
 		StringRules:  make(map[string]string),
 		UsedVars:     make(map[string]bool),
+		WriteSets:    make(map[string]map[string]bool),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
 		WhensThens:   make(map[string]map[string][]string),
@@ -506,6 +508,33 @@ func FindUsedVars(funcs []*ir.Func) map[string]bool {
 	return used
 }
 
+// FindWriteSets scans all non-__run function bodies and returns, for each
+// function, the set of global variable base names it stores to.
+func FindWriteSets(funcs []*ir.Func) map[string]map[string]bool {
+	writeSets := make(map[string]map[string]bool)
+	for _, f := range funcs {
+		fname := util.FormatIdent(f.Ident())
+		if fname == "__run" || isBuiltIn(f.Ident()) {
+			continue
+		}
+		written := make(map[string]bool)
+		for _, block := range f.Blocks {
+			for _, inst := range block.Insts {
+				if store, ok := inst.(*ir.InstStore); ok {
+					dst := util.FormatIdent(store.Dst.Ident())
+					if IsGlobal(store.Dst.Ident()) {
+						written[baseVarName(dst)] = true
+					}
+				}
+			}
+		}
+		if len(written) > 0 {
+			writeSets[fname] = written
+		}
+	}
+	return writeSets
+}
+
 // baseVarName strips any trailing decimal digits from name.
 // e.g. "s_v2" → "s_v", "spec_stock1" → "spec_stock"
 func baseVarName(name string) string {
@@ -653,7 +682,7 @@ func extractVariables(e ast.Node) []string {
 }
 
 func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.RawInputs) rules.Rule {
-	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" {
+	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" || id == "__synthStep" {
 		return nil
 	}
 	if strings.HasPrefix(id, "__hist_") {

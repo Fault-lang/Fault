@@ -6,6 +6,7 @@ import (
 	"fault/generator/unroll"
 	"fault/util"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -278,6 +279,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) ([]*rules.Init, string) {
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Stay:
 		u.Log.AddMessage("Stay in current state", u.Round)
+	case *rules.SynthSlot:
+		inits, rule = u.unpackSynthSlot(ru)
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
@@ -352,6 +355,8 @@ func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]st
 		// Nothing to do
 	case *rules.Stay:
 		// Nothing to do
+	case *rules.SynthSlot:
+		// Nothing to do — candidates' when/then will be handled when they unpack
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
@@ -651,6 +656,98 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 
 	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
 
+	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
+}
+
+// unpackSynthSlot handles a synthesis step (__).
+// It mirrors unpackOrs: one branch per candidate function, exactly-one selector constraint,
+// conditional transitions, and phi merges for changed variables (frame conditions are
+// provided automatically by the phi mechanism — unchanged vars get identity phis).
+func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string) {
+	if len(slot.Candidates) == 0 {
+		return nil, ""
+	}
+
+	// Sort candidate names for deterministic SMT output.
+	names := make([]string, 0, len(slot.Candidates))
+	for n := range slot.Candidates {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	var ruleSet [][]string
+	var ret []string
+	var hasPhi map[string]bool
+	var inits []*rules.Init
+	var queue [][]string
+	var caps [][]string
+	var branches []map[string][]int16
+
+	slotName := fmt.Sprintf("synth_%d", slot.Round)
+	u.NewLevel()
+	u.SetEntries(u.SSA)
+	u.Log.EnterFunction(slotName, slot.Round)
+
+	for _, fname := range names {
+		candidateRules := slot.Candidates[fname]
+		var lines []string
+
+		u2 := NewUnpacker(fmt.Sprintf("%s_%s", slotName, fname))
+		u2.Inherits(u)
+
+		var initQue []string
+		for _, l := range candidateRules {
+			init, line := u2.unpackRule(l)
+			lines = append(lines, line)
+			initQue = append(initQue, InitsToList(init)...)
+			u.AddInit(init)
+			u.Register(init)
+		}
+		ruleSet = append(ruleSet, lines)
+		phiClone := u.GetPhis(u.SSA, u2.SSA)
+		branches = append(branches, phiClone)
+		u.SSA = u2.SSA.Clone()
+
+		queue = append(queue, initQue)
+		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
+	}
+
+	inits, caps, hasPhi = u.buildPhisOrs(branches, hasPhi)
+	var selectors []string
+	var branchAssertions []string
+
+	for i, rs := range ruleSet {
+		fname := names[i]
+		selectorName := fmt.Sprintf("%s_%s", slotName, fname)
+		inits = append(inits, rules.NewInit(selectorName, "Bool", slot.Round, nil, false, false))
+		selectors = append(selectors, selectorName)
+		selectorRule := u.Log.NewBranchSelector(selectorName, slot.Round, caps[i], queue[i])
+		u.Log.AddBranchSelector(selectorRule)
+		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+
+		var nonEmpty []string
+		for _, r := range rs {
+			if r != "" {
+				nonEmpty = append(nonEmpty, r)
+			}
+		}
+		if len(nonEmpty) > 0 {
+			var branchRule string
+			if len(nonEmpty) == 1 {
+				branchRule = nonEmpty[0]
+			} else {
+				branchRule = fmt.Sprintf("(and %s)", strings.Join(nonEmpty, "\n"))
+			}
+			branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", selectorName, branchRule))
+		}
+	}
+
+	u.AddInit(inits)
+	u.PopEntries()
+	u.Log.ExitFunction(slotName, slot.Round)
+
+	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
 	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
