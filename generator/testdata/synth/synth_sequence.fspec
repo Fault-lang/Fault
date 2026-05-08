@@ -1,0 +1,26 @@
+spec synth_sequence;
+
+// Two synthesis slots in sequence.
+// Starting level 40, assert final == 60.
+// Solver must pick fill twice (40 + 10 + 10 = 60).
+
+def tank = stock{
+    level: 40,
+};
+
+def ops = flow{
+    t: new tank,
+    fill: func{
+        t.level <- 10;
+    },
+    drain: func{
+        t.level -> 10;
+    },
+};
+
+assume tank.level == 60 eventually;
+
+run init{ inst = new ops; } {
+    __;
+    __;
+};

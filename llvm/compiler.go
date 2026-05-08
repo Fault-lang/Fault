@@ -174,6 +174,9 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		if _, ok := n.(*ast.ForStatement); ok {
 			return
 		}
+		if _, ok := n.(*ast.RunStatement); ok {
+			return
+		}
 		if _, ok := n.(*ast.StartStatement); ok {
 			return
 		}
@@ -401,6 +404,10 @@ func (c *Compiler) compile(node ast.Node) {
 		c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 		c.compileBlock(v.Inits)
 		c.RunRound = c.RunRound + 1
+
+		// All flows declared in the init block are in scope for synthesis.
+		// Pre-compile their functions so synthesis slots can enumerate them.
+		c.precompileAllFlowFunctions()
 
 		for _, step := range v.Steps {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
@@ -776,6 +783,40 @@ func (c *Compiler) synthStepMarker() *ir.Global {
 		c.markers = append(c.markers, g)
 	}
 	return c.markers[3]
+}
+
+// precompileAllFlowFunctions registers every flow function from the current spec
+// as a named IR function. Flow functions are only compiled lazily on explicit calls
+// by default, but synthesis slots need all candidates in the IR before they run.
+// Uses c.structPropOrder (populated from compileInstance) so only actually-instantiated
+// structs are considered — template-level definitions are not compiled here.
+func (c *Compiler) precompileAllFlowFunctions() {
+	spec := c.specStructs[c.currentSpec]
+	prefix := c.currentSpec + "_"
+	for key := range c.structPropOrder {
+		if !strings.HasPrefix(key, prefix) {
+			continue
+		}
+		// Skip template definitions — they have no allocated variables.
+		// Templates are identified by c.instances[key][0] == key (self-referential).
+		// Actual instances have their parent template as c.instances[key][0].
+		if inst, ok := c.instances[key]; ok && len(inst) > 0 && inst[0] == key {
+			continue
+		}
+		name := key[len(prefix):]
+		branches, err := spec.FetchFlow(name)
+		if err != nil {
+			continue // not a flow instance; skip stocks and components
+		}
+		for funcKey, node := range branches {
+			if _, isFunc := node.(*ast.FunctionLiteral); !isFunc {
+				continue
+			}
+			rawId := append([]string{c.currentSpec}, strings.Split(name, "_")...)
+			rawId = append(rawId, funcKey)
+			c.processFunc(rawId, branches, false)
+		}
+	}
 }
 
 func (c *Compiler) compileRunStep(step ast.RunStep) {
@@ -1797,10 +1838,9 @@ func (c *Compiler) generateOrder(pairs map[string]ast.Node) []string {
 }
 
 func (c *Compiler) resetParaState(p []*ir.Param) {
+	s := c.specs[c.currentSpec]
 	for i := 0; i < len(p); i++ {
 		id := p[i].LocalName
-		parts := strings.Split(id, "_")
-		s := c.specs[parts[0]]
 		s.vars.ResetState(id)
 	}
 }

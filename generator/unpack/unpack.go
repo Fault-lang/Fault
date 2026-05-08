@@ -697,6 +697,7 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 
 		var initQue []string
 		for _, l := range candidateRules {
+			u2.InspectRule(l)
 			init, line := u2.unpackRule(l)
 			lines = append(lines, line)
 			initQue = append(initQue, InitsToList(init)...)
@@ -720,8 +721,9 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 	for i, rs := range ruleSet {
 		fname := names[i]
 		selectorName := fmt.Sprintf("%s_%s", slotName, fname)
+		fullSelectorName := fmt.Sprintf("%s_%d", selectorName, slot.Round)
 		inits = append(inits, rules.NewInit(selectorName, "Bool", slot.Round, nil, false, false))
-		selectors = append(selectors, selectorName)
+		selectors = append(selectors, fullSelectorName)
 		selectorRule := u.Log.NewBranchSelector(selectorName, slot.Round, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
 		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
@@ -739,7 +741,7 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 			} else {
 				branchRule = fmt.Sprintf("(and %s)", strings.Join(nonEmpty, "\n"))
 			}
-			branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", selectorName, branchRule))
+			branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", fullSelectorName, branchRule))
 		}
 	}
 

@@ -336,6 +336,14 @@ func (l *Logger) Kill() {
 			continue
 		}
 
+		// Synthesis slot functions (synth_N) are always kept alive — Print() handles
+		// their display via synthChoice, regardless of what their nested candidates do.
+		funcBaseName := strings.TrimRight(fname, "0123456789")
+		funcBaseName = strings.TrimSuffix(funcBaseName, "-")
+		if isSynthSlotName(funcBaseName) {
+			continue
+		}
+
 		entryIdx := indices[0]
 		var exitIdx int
 		if len(indices) >= 2 {
@@ -433,6 +441,20 @@ func (l *Logger) NewBranchSelector(name string, ssa int, cond []string, inits []
 
 func (l *Logger) AddBranchSelector(s *BranchSelector) {
 	l.BranchSelectors = append(l.BranchSelectors, s)
+}
+
+// isSynthSlotName returns true if name is a synthesis slot identifier like "synth_1".
+func isSynthSlotName(name string) bool {
+	if !strings.HasPrefix(name, "synth_") {
+		return false
+	}
+	suffix := name[len("synth_"):]
+	for _, c := range suffix {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(suffix) > 0
 }
 
 func getBase(s string) string {

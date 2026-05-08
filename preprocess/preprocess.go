@@ -563,6 +563,36 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				}
 			}
 			node.Inits.Statements = initStmts
+
+			// The init-block walk above processed function bodies using the template scope
+			// (e.g., "ops"). Re-walk all FLOW functions here so body ParameterCall nodes
+			// get ProcessedNames under the instance scope (e.g., "inst").
+			// This is the same re-walk that explicit ParameterCall processing triggers,
+			// but synthesis steps never produce explicit ParameterCalls.
+			if !p.initialPass {
+				spec := p.getSpec(p.trail.CurrentSpec())
+				for _, entry := range spec.Order {
+					if entry[0] != "FLOW" {
+						continue
+					}
+					branches, ferr := spec.FetchFlow(entry[1])
+					if ferr != nil {
+						continue
+					}
+					for key, nd := range branches {
+						fn, ok := nd.(*ast.FunctionLiteral)
+						if !ok {
+							continue
+						}
+						rawid := []string{p.trail.CurrentSpec(), entry[1], key}
+						proFn, ferr := p.walk(fn)
+						if ferr != nil {
+							return node, ferr
+						}
+						spec.UpdateVar(rawid, "FLOW", proFn.(*ast.FunctionLiteral))
+					}
+				}
+			}
 		}
 		for _, step := range node.Steps {
 			if cs, ok := step.(*ast.CallStep); ok {

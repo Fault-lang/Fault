@@ -1,0 +1,24 @@
+spec synth_pick;
+
+// Two candidate functions: increment and decrement.
+// Assert forces final value > 10, so solver must pick increment.
+
+def counter = stock{
+    value: 10,
+};
+
+def ctrl = flow{
+    c: new counter,
+    increment: func{
+        c.value <- 1;
+    },
+    decrement: func{
+        c.value -> 1;
+    },
+};
+
+assume counter.value > 10 eventually;
+
+run init{ inst = new ctrl; } {
+    __;
+};
