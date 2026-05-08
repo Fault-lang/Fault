@@ -1,7 +1,7 @@
 spec synth_sandwich;
 
 // Explicit call followed by a synthesis slot.
-// deposit runs first (100 -> 150), then solver must pick withdraw to restore 100.
+// deposit runs first (100 -> 150), solver must pick withdraw to restore balance to 100.
 
 def wallet = stock{
     balance: 100,

@@ -1,8 +1,7 @@
 spec synth_sequence;
 
 // Two synthesis slots in sequence.
-// Starting level 40, assert final == 60.
-// Solver must pick fill twice (40 + 10 + 10 = 60).
+// Starting level 40, solver must pick fill twice (40 + 10 + 10 = 60).
 
 def tank = stock{
     level: 40,

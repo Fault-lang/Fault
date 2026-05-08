@@ -1,7 +1,7 @@
 spec synth_pick;
 
 // Two candidate functions: increment and decrement.
-// Assert forces final value > 10, so solver must pick increment.
+// Solver must pick increment to satisfy value > 10.
 
 def counter = stock{
     value: 10,
