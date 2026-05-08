@@ -11,8 +11,9 @@ def bar = flow{
     },
 };
 
-for 2 init{
+run init{
     gee = new bar;
-}run{
+} {
+    gee.fizz;
     gee.fizz;
 };

@@ -92,13 +92,21 @@ func TestRunBlock(t *testing.T) {
 				b: 20,
 			};
 
-			for 5 init{test = new foo;} run{
+			run init{test = new foo;} {
+				test.fizz | test.fizz2;
+				test.fizz3;
+				test.fizz | test.fizz2;
+				test.fizz3;
+				test.fizz | test.fizz2;
+				test.fizz3;
+				test.fizz | test.fizz2;
+				test.fizz3;
 				test.fizz | test.fizz2;
 				test.fizz3;
 			};
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-1:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundsstore[38xi8]c"44b9b452817d4d3ea103f1449105264c_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"44b9b452817d4d3ea103f1449105264c_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei162,i16*@__roundsstore[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei163,i16*@__roundsstore[38xi8]c"cb7fdc02d16d31723661579b54e31084_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"cb7fdc02d16d31723661579b54e31084_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei164,i16*@__roundsstore[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei165,i16*@__roundsstore[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-2:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-3:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-4:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}`
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundsstore[38xi8]c"44b9b452817d4d3ea103f1449105264c_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"44b9b452817d4d3ea103f1449105264c_close",[38xi8]*@__parallelGroupstorei162,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei163,i16*@__roundsstore[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_close",[38xi8]*@__parallelGroupstorei164,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei165,i16*@__roundsstore[38xi8]c"cb7fdc02d16d31723661579b54e31084_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"cb7fdc02d16d31723661579b54e31084_close",[38xi8]*@__parallelGroupstorei166,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei167,i16*@__roundsstore[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_close",[38xi8]*@__parallelGroupstorei168,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei169,i16*@__roundsstore[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_close",[38xi8]*@__parallelGroupstorei1610,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}`
 	//Should fadd have variable names or the values in those variables?
 
 	llvm, err := prepTest(test, true)
@@ -221,7 +229,7 @@ func TestIfCond(t *testing.T) {
 				b: 20,
 			};
 
-			for 1 init{test = new foo;} run{
+			run init{test = new foo;} {
 				test.fizz;
 			};
 	`
@@ -263,7 +271,11 @@ func TestUnknowns(t *testing.T) {
 				 },
 			 };
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -586,7 +598,7 @@ func TestIndexExp(t *testing.T) {
 				a: 10,
 			};
 
-			for 1 init{test = new foo;} run{
+			run init{test = new foo;} {
 				test.fizz;
 			};
 	`

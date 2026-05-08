@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os/exec"
+	"sort"
 	"runtime/debug"
 	"strings"
 
@@ -808,10 +809,14 @@ func (c *Compiler) precompileAllFlowFunctions() {
 		if err != nil {
 			continue // not a flow instance; skip stocks and components
 		}
+		funcKeys := make([]string, 0, len(branches))
 		for funcKey, node := range branches {
-			if _, isFunc := node.(*ast.FunctionLiteral); !isFunc {
-				continue
+			if _, isFunc := node.(*ast.FunctionLiteral); isFunc {
+				funcKeys = append(funcKeys, funcKey)
 			}
+		}
+		sort.Strings(funcKeys)
+		for _, funcKey := range funcKeys {
 			rawId := append([]string{c.currentSpec}, strings.Split(name, "_")...)
 			rawId = append(rawId, funcKey)
 			c.processFunc(rawId, branches, false)

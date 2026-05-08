@@ -17,7 +17,7 @@ def f = flow{
 		tank.x <- tank.x + 1.0;
 	},
 };
-for 1 init { t = new f; } run { t.fill; };
+run init { t = new f; } { t.fill; };
 assert t.tank.x < 20.0;
 `
 

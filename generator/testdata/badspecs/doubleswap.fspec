@@ -7,13 +7,13 @@ def f = flow{
     fn: func{ target.v <- 5; },
 };
 
-for 1 init{
+run init{
     s1 = new s;
     s2 = new s;
     s2.v = 99;
     f1 = new f;
     f1.target = s1;
     f1.target = s2;
-} run {
+} {
     f1.fn;
 }

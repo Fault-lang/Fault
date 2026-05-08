@@ -9,13 +9,15 @@ def s = stock{
 def f = flow{
     data: new s,
     fn: func{
-       data.c <- data.a + data.b; 
+       data.c <- data.a + data.b;
     },
 };
 
 assume s.a > 5;
 assert s.a <= 6;
 
-for 3 init{loop = new f;} run {
-    loop.fn; 
+run init{loop = new f;} {
+    loop.fn;
+    loop.fn;
+    loop.fn;
 }

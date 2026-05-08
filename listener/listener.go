@@ -95,6 +95,15 @@ func (l *FaultListener) validate() {
 				return
 			}
 		}
+
+		if runS, ok := v.(*ast.RunStatement); ok {
+			if runS.Inits != nil && len(runS.Inits.Statements) > 0 {
+				return
+			}
+			if len(runS.Steps) > 0 {
+				return
+			}
+		}
 	}
 
 	panic("Malformed fspec or fsystem file. No model possible.")

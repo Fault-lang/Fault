@@ -569,7 +569,16 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			// get ProcessedNames under the instance scope (e.g., "inst").
 			// This is the same re-walk that explicit ParameterCall processing triggers,
 			// but synthesis steps never produce explicit ParameterCalls.
-			if !p.initialPass {
+			// Only re-walk when the run block has synthesis (SolvableStep) steps —
+			// for regular CallStep blocks the ParameterCall walk below handles everything.
+			hasSolvable := false
+			for _, step := range node.Steps {
+				if _, ok := step.(*ast.SolvableStep); ok {
+					hasSolvable = true
+					break
+				}
+			}
+			if !p.initialPass && hasSolvable {
 				spec := p.getSpec(p.trail.CurrentSpec())
 				for _, entry := range spec.Order {
 					if entry[0] != "FLOW" {

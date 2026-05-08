@@ -35,7 +35,11 @@ func TestEventually(t *testing.T) {
 
 	assume amount.value > 0 eventually;
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -76,7 +80,11 @@ func TestEventuallyAlways(t *testing.T) {
 
 	assume amount.value > 0 eventually-always;
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -115,7 +123,11 @@ func TestEventuallyAlways_Assert(t *testing.T) {
 
 	assert amount.value > 0 eventually-always;
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -151,7 +163,11 @@ func TestTemporal_NMT(t *testing.T) {
 
 	assert amount.value <= 0 nmt 1;
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -191,7 +207,11 @@ func TestTemporal_Mixed(t *testing.T) {
 		assume s.x == 2 nmt 2;
 		assert s.x == 11 eventually;
 
-		for 5 init{t = new test;} run {
+		run init{t = new test;} {
+			t.bar;
+			t.bar;
+			t.bar;
+			t.bar;
 			t.bar;
 		};
 	`
@@ -293,7 +313,7 @@ func TestCrossRoundWhenThen(t *testing.T) {
 			b: on,
 		};
 
-		for 2 run{};
+		run{};
 		`
 
 	g := prepTest("", test, false, false)
@@ -620,11 +640,12 @@ def f1 = flow{
 	},
 };
 
-for 2 init{
+run init{
 	s = new outstock;
 	f = new f1;
 	f.target = s;
-} run {
+} {
+	f.fn;
 	f.fn;
 }
 `
@@ -661,13 +682,14 @@ def f1 = flow{
 	},
 };
 
-for 2 init{
+run init{
 	sa = new stock1;
 	sb = new stock2;
 	f = new f1;
 	f.addtarget = sa;
 	f.subtarget = sb;
-} run {
+} {
+	f.fn1 | f.fn2;
 	f.fn1 | f.fn2;
 }
 `
@@ -697,7 +719,7 @@ func TestUnusedVarElimination(t *testing.T) {
 		},
 	};
 
-	for 1 init{ inst = new f; } run { inst.fn; };
+	run init{ inst = new f; } { inst.fn; };
 	`
 	g := prepTest("", test, true, false)
 	smt := stripAndEscape(g.SMT())
@@ -729,7 +751,7 @@ func TestPhiCompleteness(t *testing.T) {
 		},
 	};
 
-	for 1 init{ inst = new f; } run { inst.fn; };
+	run init{ inst = new f; } { inst.fn; };
 	`
 	g := prepTest("", test, true, false)
 	smt := stripAndEscape(g.SMT())

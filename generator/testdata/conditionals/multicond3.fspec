@@ -8,15 +8,17 @@ def s = stock{
 def f = flow{
     base: new s,
     change: func{
-        if base.cond > 0 {
-            base.value <- 20;
+        if base.cond < 4 {
+            if base.cond > 0 {
+                base.value <- 20;
+            }
+            base.cond <- 1;
         }
-        base.cond <- 1;
     },
 };
 
-for 3 init{t = new f;} run {
-    if t.base.cond < 4 {
-        t.change;
-    }
+run init{t = new f;} {
+    t.change;
+    t.change;
+    t.change;
 };

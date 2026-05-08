@@ -245,7 +245,11 @@ func TestRunInstances(t *testing.T) {
 		},
 	};
 
-	for 5 init{f =  new fl;} run {
+	run init{f =  new fl;} {
+		f.fizz;
+		f.fizz;
+		f.fizz;
+		f.fizz;
 		f.fizz;
 	}
 	`
@@ -263,7 +267,7 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow f returns the wrong number of properties got=%d want=3", len(fl))
 	}
 
-	pc := process.Processed.Statements[3].(*ast.ForStatement).Body.Statements[0].(*ast.ParallelFunctions).Expressions[0].(*ast.ParameterCall)
+	pc := process.Processed.Statements[3].(*ast.RunStatement).Steps[0].(*ast.CallStep).Calls[0]
 	if pc.IdString() != "test1_f_fizz" {
 		t.Fatalf("flow not correctly named in runblock got=%s", pc.IdString())
 	}
@@ -285,7 +289,7 @@ func TestRunInstances(t *testing.T) {
 		t.Fatalf("flow property value not correctly named in runblock got=%s", buzz.Properties["foo"].Value.(ast.Nameable).IdString())
 	}
 
-	run := process.Processed.Statements[3].(*ast.ForStatement).Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
+	run := process.Processed.Statements[3].(*ast.RunStatement).Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.StructInstance)
 
 	for k, v := range run.Properties {
 		if k == "fizz" {
@@ -394,7 +398,11 @@ func TestUnknowns(t *testing.T) {
 		},
 	};
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -492,21 +500,27 @@ func TestAsserts(t *testing.T) {
 func TestCollapseIf(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
-	for 1 run {
+	def st = stock{x: 0,};
+	def fl = flow{
+		s: new st,
+		change: func{
 			if a == 2{
 				if a != 0{
 					3;
 				}
 			}
+		},
 	};
+	run init{t = new fl;} { t.change; };
 	`
 	process := prepTest(test, true)
-	tree := process.Processed
-	spec := tree.Statements
+	vars := process.Specs["test1"]
+	fl, _ := vars.FetchFlow("t")
+	change := fl["change"].(*ast.FunctionLiteral)
 
-	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if1, ok := change.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("statement not an IfExpression got=%T", change.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	cond, _ := if1.Condition.(*ast.InfixExpression)
@@ -528,7 +542,10 @@ func TestCollapseIf(t *testing.T) {
 func TestCollapseIfElse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
-	for 1 run {
+	def st = stock{x: 0,};
+	def fl = flow{
+		s: new st,
+		change: func{
 			if a > 1 {
 				3;
 			}else if a != 0{
@@ -536,15 +553,18 @@ func TestCollapseIfElse(t *testing.T) {
 					3;
 				}
 			}
+		},
 	};
+	run init{t = new fl;} { t.change; };
 	`
 	process := prepTest(test, true)
-	tree := process.Processed
-	spec := tree.Statements
+	vars := process.Specs["test1"]
+	fl, _ := vars.FetchFlow("t")
+	change := fl["change"].(*ast.FunctionLiteral)
 
-	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if1, ok := change.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("statement not an IfExpression got=%T", change.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	cond, _ := if1.Elif.Condition.(*ast.InfixExpression)
@@ -566,7 +586,10 @@ func TestCollapseIfElse(t *testing.T) {
 func TestCollapseElse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
-	for 1 run {
+	def st = stock{x: 0,};
+	def fl = flow{
+		s: new st,
+		change: func{
 			if a > 1 {
 				3;
 			}else{
@@ -574,15 +597,18 @@ func TestCollapseElse(t *testing.T) {
 					3;
 				}
 			}
+		},
 	};
+	run init{t = new fl;} { t.change; };
 	`
 	process := prepTest(test, true)
-	tree := process.Processed
-	spec := tree.Statements
+	vars := process.Specs["test1"]
+	fl, _ := vars.FetchFlow("t")
+	change := fl["change"].(*ast.FunctionLiteral)
 
-	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if1, ok := change.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("statement not an IfExpression got=%T", change.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	cond, _ := if1.Elif.Condition.(*ast.InfixExpression)
@@ -631,7 +657,10 @@ func TestIndexId(t *testing.T) {
 func TestCondCollapse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
-	for 1 run {
+	def st = stock{x: 0,};
+	def fl = flow{
+		s: new st,
+		change: func{
 			if a == 2{
 				if a != 0{
 					3;
@@ -647,15 +676,18 @@ func TestCondCollapse(t *testing.T) {
 					false;
 				}
 			}
+		},
 	};
+	run init{t = new fl;} { t.change; };
 `
 	process := prepTest(test, true)
-	tree := process.Processed
-	spec := tree.Statements
+	vars := process.Specs["test1"]
+	fl, _ := vars.FetchFlow("t")
+	change := fl["change"].(*ast.FunctionLiteral)
 
-	if1, ok := spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
+	if1, ok := change.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
 	if !ok {
-		t.Fatalf("statement not an IfExpression got=%T", spec[2].(*ast.ForStatement).Body.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("statement not an IfExpression got=%T", change.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	cond, _ := if1.Condition.(*ast.InfixExpression)
@@ -984,22 +1016,29 @@ assert bar.x > 0;
 func TestDeadBranchElimTrue(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
-	for 1 run {
-		if 5 > 3 {
-			a + 1;
-		} else {
-			a - 1;
-		}
+	def st = stock{x: 0,};
+	def fl = flow{
+		s: new st,
+		check: func{
+			if 5 > 3 {
+				a + 1;
+			} else {
+				a - 1;
+			}
+		},
 	};
+	run init{t = new fl;} { t.check; };
 	`
 	process := prepTest(test, true)
-	body := process.Processed.Statements[2].(*ast.ForStatement).Body
-	if len(body.Statements) != 1 {
-		t.Fatalf("expected 1 statement after dead branch elimination, got %d", len(body.Statements))
+	vars := process.Specs["test1"]
+	fl, _ := vars.FetchFlow("t")
+	fn := fl["check"].(*ast.FunctionLiteral)
+	if len(fn.Body.Statements) != 1 {
+		t.Fatalf("expected 1 statement after dead branch elimination, got %d", len(fn.Body.Statements))
 	}
-	expr, ok := body.Statements[0].(*ast.ExpressionStatement)
+	expr, ok := fn.Body.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
-		t.Fatalf("expected ExpressionStatement, got %T", body.Statements[0])
+		t.Fatalf("expected ExpressionStatement, got %T", fn.Body.Statements[0])
 	}
 	if _, isIf := expr.Expression.(*ast.IfExpression); isIf {
 		t.Fatal("IfExpression was not eliminated — dead branch (else) should have been pruned")
@@ -1009,22 +1048,29 @@ func TestDeadBranchElimTrue(t *testing.T) {
 func TestDeadBranchElimFalse(t *testing.T) {
 	test := `spec test1;
 	const a = 2;
-	for 1 run {
-		if 3 > 5 {
-			a + 1;
-		} else {
-			a - 1;
-		}
+	def st = stock{x: 0,};
+	def fl = flow{
+		s: new st,
+		check: func{
+			if 3 > 5 {
+				a + 1;
+			} else {
+				a - 1;
+			}
+		},
 	};
+	run init{t = new fl;} { t.check; };
 	`
 	process := prepTest(test, true)
-	body := process.Processed.Statements[2].(*ast.ForStatement).Body
-	if len(body.Statements) != 1 {
-		t.Fatalf("expected 1 statement after dead branch elimination, got %d", len(body.Statements))
+	vars := process.Specs["test1"]
+	fl, _ := vars.FetchFlow("t")
+	fn := fl["check"].(*ast.FunctionLiteral)
+	if len(fn.Body.Statements) != 1 {
+		t.Fatalf("expected 1 statement after dead branch elimination, got %d", len(fn.Body.Statements))
 	}
-	expr, ok := body.Statements[0].(*ast.ExpressionStatement)
+	expr, ok := fn.Body.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
-		t.Fatalf("expected ExpressionStatement, got %T", body.Statements[0])
+		t.Fatalf("expected ExpressionStatement, got %T", fn.Body.Statements[0])
 	}
 	if _, isIf := expr.Expression.(*ast.IfExpression); isIf {
 		t.Fatal("IfExpression was not eliminated — dead branch (if) should have been pruned")

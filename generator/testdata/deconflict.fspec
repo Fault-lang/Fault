@@ -13,6 +13,6 @@ def f = flow{
     }
 };
 
-for 1 init{ t = new f; } run {
+run init{ t = new f; } {
     t.fn;
 }

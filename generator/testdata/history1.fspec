@@ -15,6 +15,9 @@ def counter = flow{
     }
 };
 
-for 4 init{c = new counter;} run{
+run init{c = new counter;} {
+    c.step;
+    c.step;
+    c.step;
     c.step;
 }

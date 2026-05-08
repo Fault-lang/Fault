@@ -18,12 +18,13 @@ def f2 = flow {
     },
 };
 
-for 2 init{ 
+run init{
     f1a = new f1;
     f2a = new f2;
     s2 = new s1;
         f2a.target = s2;
         f1a.target = s2;
-    } run {
+    } {
+   f1a.fn | f2a.fn2;
    f1a.fn | f2a.fn2;
 }
