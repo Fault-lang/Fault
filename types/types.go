@@ -211,27 +211,6 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		return node, err
 
-	case *ast.ForStatement:
-		var st1 []ast.Statement
-		var st2 []ast.Statement
-		for _, v := range node.Inits.Statements {
-			tnode, err = c.typecheck(v)
-			if err != nil {
-				return node, err
-			}
-			st1 = append(st1, tnode.(ast.Statement))
-		}
-		node.Inits.Statements = st1
-
-		for _, v := range node.Body.Statements {
-			tnode, err = c.typecheck(v)
-			if err != nil {
-				return node, err
-			}
-			st2 = append(st2, tnode.(ast.Statement))
-		}
-		node.Body.Statements = st2
-		return node, err
 	case *ast.RunStatement:
 		if node.Inits != nil {
 			var st1 []ast.Statement
@@ -244,8 +223,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			}
 			node.Inits.Statements = st1
 		}
-		// Run steps (CallStep, SolvableStep) are not typechecked here —
-		// ParallelFunctions in ForStatement is also a no-op in the type checker.
+		// Run steps (CallStep, SolvableStep, ParallelFunctions, IfStep) are not typechecked here.
 		return node, err
 	case *ast.StartStatement:
 		return node, err

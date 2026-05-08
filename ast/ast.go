@@ -402,36 +402,6 @@ func (i *InvariantClause) SetType(ty *Type) {
 	//Skip
 }
 
-type ForStatement struct {
-	Token  Token
-	Rounds *IntegerLiteral
-	Body   *BlockStatement
-	Inits  *BlockStatement
-}
-
-func (fs *ForStatement) statementNode()       {}
-func (fs *ForStatement) TokenLiteral() string { return fs.Token.Literal }
-func (fs *ForStatement) Position() []int      { return fs.Token.GetPosition() }
-func (fs *ForStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(fs.TokenLiteral() + " ")
-	out.WriteString(fs.Rounds.String())
-	out.WriteString(fs.Body.String())
-
-	out.WriteString(";")
-	return out.String()
-}
-func (fs *ForStatement) GetToken() Token {
-	return fs.Token
-}
-func (fs *ForStatement) Type() string {
-	return ""
-}
-func (fs *ForStatement) SetType(ty *Type) {
-	//Skip
-}
-
 type RunStep interface {
 	runStepNode()
 	statementNode()
@@ -491,7 +461,22 @@ func (ss *SolvableStep) Type() string         { return "" }
 func (ss *SolvableStep) SetType(ty *Type)     {}
 func (ss *SolvableStep) String() string       { return "__;" }
 
-// RunStatement is the new step-based run block, replacing ForStatement.
+// IfStep represents a conditional guard in a run block step.
+type IfStep struct {
+	Token Token
+	Expr  *IfExpression
+}
+
+func (is *IfStep) runStepNode()         {}
+func (is *IfStep) statementNode()       {}
+func (is *IfStep) TokenLiteral() string { return is.Token.Literal }
+func (is *IfStep) Position() []int      { return is.Token.GetPosition() }
+func (is *IfStep) GetToken() Token      { return is.Token }
+func (is *IfStep) Type() string         { return "" }
+func (is *IfStep) SetType(ty *Type)     {}
+func (is *IfStep) String() string       { return is.Expr.String() }
+
+// RunStatement is the step-based run block.
 // Each element of Steps is either a CallStep or a SolvableStep.
 type RunStatement struct {
 	Token Token
@@ -1289,6 +1274,7 @@ type ParallelFunctions struct {
 	Expressions  []Expression
 }
 
+func (pf *ParallelFunctions) runStepNode()         {}
 func (pf *ParallelFunctions) statementNode()       {}
 func (pf *ParallelFunctions) Position() []int      { return pf.Token.GetPosition() }
 func (pf *ParallelFunctions) TokenLiteral() string { return pf.Token.Literal }

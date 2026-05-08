@@ -240,15 +240,11 @@ func (v *BaseFaultParserVisitor) VisitIfStmtState(ctx *IfStmtStateContext) inter
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseFaultParserVisitor) VisitRunStmt(ctx *RunStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitSysForStmt(ctx *SysForStmtContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitSysRunStmt(ctx *SysRunStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -257,10 +253,6 @@ func (v *BaseFaultParserVisitor) VisitSysRunBlock(ctx *SysRunBlockContext) inter
 }
 
 func (v *BaseFaultParserVisitor) VisitSysRunStepExpr(ctx *SysRunStepExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseFaultParserVisitor) VisitRounds(ctx *RoundsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

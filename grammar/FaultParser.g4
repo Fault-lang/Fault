@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? (forStmt | sysForStmt | runStmt)?
+    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? (sysRunStmt | runStmt)?
     ;
 
 sysClause
@@ -40,7 +40,7 @@ startPair
 */
 
 spec
-    : specClause declaration* (forStmt | runStmt)?
+    : specClause declaration* runStmt?
     ;
 
 specClause
@@ -239,16 +239,12 @@ ifStmtState
     : 'if' (simpleStmt ';')? expression stateBlock ('else' (ifStmtState | stateBlock))?
     ;
 
-forStmt
-    : 'for' rounds ('init' initBlock)? 'run' runBlock eos?
-    ;
-
 runStmt
     : 'run' ('init' initBlock)? runBlock eos?
     ;
 
-sysForStmt
-    : 'for' rounds 'run' sysRunBlock eos?
+sysRunStmt
+    : 'run' sysRunBlock eos?
     ;
 
 sysRunBlock
@@ -257,10 +253,6 @@ sysRunBlock
 
 sysRunStep
     : IDENT ('|' IDENT)* eos    #sysRunStepExpr
-    ;
-
-rounds
-    : integer
     ;
 
 paramCall

@@ -172,9 +172,6 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 
 	for i := len(specfile.Statements) - 1; i >= 0; i-- {
 		n := specfile.Statements[i]
-		if _, ok := n.(*ast.ForStatement); ok {
-			return
-		}
 		if _, ok := n.(*ast.RunStatement); ok {
 			return
 		}
@@ -245,10 +242,10 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 
 		for _, v := range specfile.Statements {
 			switch n := v.(type) {
-			case *ast.ForStatement:
+			case *ast.RunStatement:
 				c.hasRunBlock = true
-				if len(n.Body.Statements) > 0 {
-					if pf, ok := n.Body.Statements[0].(*ast.ParallelFunctions); ok {
+				for _, step := range n.Steps {
+					if pf, ok := step.(*ast.ParallelFunctions); ok {
 						if len(pf.Expressions) > 0 {
 							if _, ok := pf.Expressions[0].(*ast.Identifier); ok {
 								c.hasSysRunBlock = true
@@ -377,26 +374,6 @@ func (c *Compiler) compile(node ast.Node) {
 		} else {
 			c.RawInputs.RawAsserts = append(c.RawInputs.RawAsserts, v)
 		}
-
-	case *ast.ForStatement:
-		c.contextFuncName = "__run"
-
-		for i := int64(0); i < v.Rounds.Value; i++ {
-			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
-			if i == 0 {
-				c.compileBlock(v.Inits)
-				// Separate the initialization from the run body
-				c.RunRound = c.RunRound + 1
-				c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
-			}
-			c.compileBlock(v.Body)
-			if !c.hasSysRunBlock {
-				c.stateCheck()
-			}
-			c.RunRound = c.RunRound + 1
-		}
-
-		c.contextFuncName = ""
 
 	case *ast.RunStatement:
 		c.contextFuncName = "__run"
@@ -769,6 +746,8 @@ func (c *Compiler) compileBlock(node *ast.BlockStatement) value.Value {
 			c.compileRunStep(exp)
 		case *ast.CallStep:
 			c.compileRunStep(exp)
+		case *ast.IfStep:
+			c.compileIf(exp.Expr)
 		case ast.Expression:
 			ret = c.compileFunction(exp)
 		case *ast.ExpressionStatement:
@@ -841,6 +820,10 @@ func (c *Compiler) compileRunStep(step ast.RunStep) {
 			pf.Expressions[i] = call
 		}
 		c.compileParallel(pf)
+	case *ast.ParallelFunctions:
+		c.compileParallel(s)
+	case *ast.IfStep:
+		c.compileIf(s.Expr)
 	}
 }
 
@@ -858,7 +841,7 @@ func (c *Compiler) compileParallel(node *ast.ParallelFunctions) {
 	for i := 0; i < len(node.Expressions); i++ {
 		switch expr := node.Expressions[i].(type) {
 		case *ast.Identifier:
-			// Component name reference from sysForStmt run block
+			// Component name reference from sysRunStmt run block
 			c.stateCheckForComponent(expr.Spec, expr.Value)
 		case *ast.ParameterCall:
 			l := c.compileValue(expr)

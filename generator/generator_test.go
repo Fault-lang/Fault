@@ -553,7 +553,6 @@ func TestBadSpecs(t *testing.T) {
 		{"testdata/badspecs/doubleswap.fspec", true, "swapped more than once"},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},
-		{"testdata/badspecs/zerounds.fspec", true, "zero-round loop"},
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
 		{"testdata/badspecs/aliaschain.fspec", true, "swapped more than once"},
 	}

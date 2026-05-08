@@ -182,23 +182,17 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#ifStmtState.
 	VisitIfStmtState(ctx *IfStmtStateContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#forStmt.
-	VisitForStmt(ctx *ForStmtContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#runStmt.
 	VisitRunStmt(ctx *RunStmtContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#sysForStmt.
-	VisitSysForStmt(ctx *SysForStmtContext) interface{}
+	// Visit a parse tree produced by FaultParser#sysRunStmt.
+	VisitSysRunStmt(ctx *SysRunStmtContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#sysRunBlock.
 	VisitSysRunBlock(ctx *SysRunBlockContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#sysRunStepExpr.
 	VisitSysRunStepExpr(ctx *SysRunStepExprContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#rounds.
-	VisitRounds(ctx *RoundsContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#paramCall.
 	VisitParamCall(ctx *ParamCallContext) interface{}

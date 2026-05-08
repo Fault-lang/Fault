@@ -182,23 +182,17 @@ type FaultParserListener interface {
 	// EnterIfStmtState is called when entering the ifStmtState production.
 	EnterIfStmtState(c *IfStmtStateContext)
 
-	// EnterForStmt is called when entering the forStmt production.
-	EnterForStmt(c *ForStmtContext)
-
 	// EnterRunStmt is called when entering the runStmt production.
 	EnterRunStmt(c *RunStmtContext)
 
-	// EnterSysForStmt is called when entering the sysForStmt production.
-	EnterSysForStmt(c *SysForStmtContext)
+	// EnterSysRunStmt is called when entering the sysRunStmt production.
+	EnterSysRunStmt(c *SysRunStmtContext)
 
 	// EnterSysRunBlock is called when entering the sysRunBlock production.
 	EnterSysRunBlock(c *SysRunBlockContext)
 
 	// EnterSysRunStepExpr is called when entering the sysRunStepExpr production.
 	EnterSysRunStepExpr(c *SysRunStepExprContext)
-
-	// EnterRounds is called when entering the rounds production.
-	EnterRounds(c *RoundsContext)
 
 	// EnterParamCall is called when entering the paramCall production.
 	EnterParamCall(c *ParamCallContext)
@@ -497,23 +491,17 @@ type FaultParserListener interface {
 	// ExitIfStmtState is called when exiting the ifStmtState production.
 	ExitIfStmtState(c *IfStmtStateContext)
 
-	// ExitForStmt is called when exiting the forStmt production.
-	ExitForStmt(c *ForStmtContext)
-
 	// ExitRunStmt is called when exiting the runStmt production.
 	ExitRunStmt(c *RunStmtContext)
 
-	// ExitSysForStmt is called when exiting the sysForStmt production.
-	ExitSysForStmt(c *SysForStmtContext)
+	// ExitSysRunStmt is called when exiting the sysRunStmt production.
+	ExitSysRunStmt(c *SysRunStmtContext)
 
 	// ExitSysRunBlock is called when exiting the sysRunBlock production.
 	ExitSysRunBlock(c *SysRunBlockContext)
 
 	// ExitSysRunStepExpr is called when exiting the sysRunStepExpr production.
 	ExitSysRunStepExpr(c *SysRunStepExprContext)
-
-	// ExitRounds is called when exiting the rounds production.
-	ExitRounds(c *RoundsContext)
 
 	// ExitParamCall is called when exiting the paramCall production.
 	ExitParamCall(c *ParamCallContext)

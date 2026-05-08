@@ -1340,63 +1340,6 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 
 }
 
-func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
-	token := ast.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
-
-	run := l.pop()
-	init := l.pop()
-	var rounds *ast.IntegerLiteral
-	var block2 *ast.BlockStatement
-
-	if run == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
-	}
-
-	block, ok := run.(*ast.BlockStatement)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
-	}
-
-	if init == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
-	}
-
-	switch x := init.(type) {
-	case *ast.BlockStatement:
-		num := l.pop()
-		rounds, ok = num.(*ast.IntegerLiteral)
-		if !ok {
-			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
-		}
-		block2 = x
-
-	case *ast.IntegerLiteral:
-		rounds = x
-		block2 = &ast.BlockStatement{}
-
-	default:
-		panic(fmt.Sprintf("top of stack not a block statement or integer: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
-	}
-
-	if rounds.Value == 0 {
-		panic(fmt.Sprintf("run block on line %d has 0 rounds: a zero-round loop produces no states", c.GetStart().GetLine()))
-	}
-
-	forSt := &ast.ForStatement{
-		Token:  token,
-		Rounds: rounds,
-		Body:   block,
-		Inits:  block2,
-	}
-
-	if rounds.Value > l.MaxRounds {
-		l.MaxRounds = rounds.Value
-	}
-
-	if !l.skipRun {
-		l.push(forSt)
-	}
-}
 
 func (l *FaultListener) ExitRunStmt(c *parser.RunStmtContext) {
 	token := ast.GenerateToken("RUN", "run", c.GetStart(), c.GetStop())
@@ -1455,9 +1398,13 @@ func blockToRunSteps(block *ast.BlockStatement) []ast.RunStep {
 				Operator: "|",
 			})
 		case *ast.ExpressionStatement:
-			step := exprToCallStep(s)
-			if step != nil {
-				steps = append(steps, step)
+			if ie, ok := s.Expression.(*ast.IfExpression); ok {
+				steps = append(steps, &ast.IfStep{Token: s.Token, Expr: ie})
+			} else {
+				step := exprToCallStep(s)
+				if step != nil {
+					steps = append(steps, step)
+				}
 			}
 		}
 	}
@@ -1504,8 +1451,8 @@ func collectParamCalls(e *ast.InfixExpression) []*ast.ParameterCall {
 	return calls
 }
 
-func (l *FaultListener) ExitSysForStmt(c *parser.SysForStmtContext) {
-	token := ast.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
+func (l *FaultListener) ExitSysRunStmt(c *parser.SysRunStmtContext) {
+	token := ast.GenerateToken("RUN", "run", c.GetStart(), c.GetStop())
 
 	run := l.pop()
 	if run == nil {
@@ -1517,26 +1464,20 @@ func (l *FaultListener) ExitSysForStmt(c *parser.SysForStmtContext) {
 		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
 
-	num := l.pop()
-	rounds, ok := num.(*ast.IntegerLiteral)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
+	var steps []ast.RunStep
+	for _, stmt := range block.Statements {
+		if pf, ok := stmt.(*ast.ParallelFunctions); ok {
+			steps = append(steps, pf)
+		}
 	}
 
-	if rounds.Value == 0 {
-		panic(fmt.Sprintf("run block on line %d has 0 rounds: a zero-round loop produces no states", c.GetStart().GetLine()))
+	runSt := &ast.RunStatement{
+		Token: token,
+		Inits: &ast.BlockStatement{},
+		Steps: steps,
 	}
 
-	forSt := &ast.ForStatement{
-		Token:  token,
-		Rounds: rounds,
-		Body:   block,
-		Inits:  &ast.BlockStatement{},
-	}
-
-	l.MaxRounds = rounds.Value
-
-	l.push(forSt)
+	l.push(runSt)
 }
 
 func (l *FaultListener) ExitSysRunBlock(c *parser.SysRunBlockContext) {
@@ -1793,10 +1734,6 @@ func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64,
 
 	for k, v := range l2.StructsPropertyOrder {
 		l1.StructsPropertyOrder[k] = v
-	}
-
-	if !l1.isSysSpec && l2.MaxRounds > l1.MaxRounds {
-		l1.MaxRounds = l2.MaxRounds
 	}
 
 	return l1.Uncertains, l1.Unknowns, l1.StructsPropertyOrder, l1.specs

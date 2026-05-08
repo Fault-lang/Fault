@@ -949,7 +949,8 @@ func TestSysRunBlock(t *testing.T) {
 		b: idle,
 	};
 
-	for 2 run {
+	run {
+		a | b;
 		a | b;
 	}
 	`

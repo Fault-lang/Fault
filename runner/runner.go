@@ -80,21 +80,6 @@ type CompilationOutput struct {
 	Pending       *PendingModelCheck // non-nil when LargeSMTLines > 0 (CLI resume path)
 }
 
-const highRoundThreshold = int64(5)
-
-// checkHighRoundCount warns when any for-loop (including in imported specs)
-// has a round count at or above highRoundThreshold. lstnr.MaxRounds is set
-// during parsing for all for-loops regardless of skipRun.
-func checkHighRoundCount(maxRounds int64, warnings []string) []string {
-	if maxRounds >= highRoundThreshold {
-		warnings = append(warnings, fmt.Sprintf(
-			"'for %d run' generates a large SMT formula — most properties are provable in 3–4 rounds. Consider reducing the round count.",
-			maxRounds,
-		))
-	}
-	return warnings
-}
-
 type Runner struct {
 	config   CompilationConfig
 	progress chan ProgressUpdate
@@ -336,7 +321,6 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
-		output.Warnings = checkHighRoundCount(lstnr.MaxRounds, output.Warnings)
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
 		g := generator.Execute(compiler, generator.GeneratorOptions{
 			Timeout:       r.config.SMTTimeout,

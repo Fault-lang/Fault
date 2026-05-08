@@ -41,7 +41,6 @@ func InitNodes() []Node {
 		//&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Comparison: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		//&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Conjuction: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		&InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}},
-		&ForStatement{Token: token, Rounds: &IntegerLiteral{Token: token, Value: 5}, Body: &BlockStatement{Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "fuzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 24}}}}},
 		&ExpressionStatement{Token: token, Expression: &PrefixExpression{Token: token, Operator: "!", Right: &IntegerLiteral{Token: token, Value: 3}}},
 		&Identifier{InferredType: baseType, Token: token, Value: "foo"},
 		&ParameterCall{Token: token, Value: []string{"foo", "bar"}},
@@ -136,9 +135,6 @@ func TestString(t *testing.T) {
 		case *InvariantClause:
 			got = t.String()
 			want = "testassert 3==3;"
-		case *ForStatement:
-			got = t.String()
-			want = "test 5test fuzz = 24;;"
 		case *Identifier:
 			got = t.String()
 			want = "foo"
@@ -271,9 +267,6 @@ func TestTypes(t *testing.T) {
 		case *InvariantClause:
 			got = t.Type()
 			want = "INT"
-		case *ForStatement:
-			got = t.Type()
-			want = ""
 		case *Identifier:
 			got = t.Type()
 			want = "test"

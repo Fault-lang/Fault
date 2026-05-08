@@ -1671,7 +1671,7 @@ func TestSysSpec(t *testing.T) {
 	}
 }
 
-func TestSysForStmt(t *testing.T) {
+func TestSysRunStmt(t *testing.T) {
 	test := `system test1;
 
 			import "foo.fspec";
@@ -1698,52 +1698,40 @@ func TestSysForStmt(t *testing.T) {
 				B: idle,
 			};
 
-			for 3 run {
+			run {
+				A | B;
+				A | B;
 				A | B;
 			}
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = false
-	l, sys := prepTest(test, flags)
+	_, sys := prepTest(test, flags)
 
 	if sys == nil {
 		t.Fatal("prepTest() returned nil AST")
 	}
 
-	// MaxRounds should be set from sysForStmt, not from any imported fspec
-	if l.MaxRounds != 3 {
-		t.Fatalf("MaxRounds should be 3, got=%d", l.MaxRounds)
-	}
-
-	// isSysSpec should be set
-	if !l.isSysSpec {
-		t.Fatal("isSysSpec should be true for system spec")
-	}
-
-	// ForStatement should be in the AST
-	var forSt *ast.ForStatement
+	// RunStatement should be in the AST
+	var runSt *ast.RunStatement
 	for _, stmt := range sys.Statements {
-		if f, ok := stmt.(*ast.ForStatement); ok {
-			forSt = f
+		if r, ok := stmt.(*ast.RunStatement); ok {
+			runSt = r
 			break
 		}
 	}
-	if forSt == nil {
-		t.Fatal("no ForStatement found in AST")
+	if runSt == nil {
+		t.Fatal("no RunStatement found in AST")
 	}
 
-	if forSt.Rounds.Value != 3 {
-		t.Fatalf("ForStatement rounds should be 3, got=%d", forSt.Rounds.Value)
+	// Steps should contain 3 ParallelFunctions steps
+	if len(runSt.Steps) != 3 {
+		t.Fatalf("RunStatement should have 3 steps, got=%d", len(runSt.Steps))
 	}
 
-	// Body should contain a ParallelFunctions with two Identifier expressions
-	if len(forSt.Body.Statements) != 1 {
-		t.Fatalf("ForStatement body should have 1 statement, got=%d", len(forSt.Body.Statements))
-	}
-
-	pf, ok := forSt.Body.Statements[0].(*ast.ParallelFunctions)
+	pf, ok := runSt.Steps[0].(*ast.ParallelFunctions)
 	if !ok {
-		t.Fatalf("body statement should be ParallelFunctions, got=%T", forSt.Body.Statements[0])
+		t.Fatalf("step 0 should be ParallelFunctions, got=%T", runSt.Steps[0])
 	}
 
 	if len(pf.Expressions) != 2 {
@@ -1761,41 +1749,6 @@ func TestSysForStmt(t *testing.T) {
 	}
 	if ident1.Value != "B" {
 		t.Fatalf("second identifier should be B, got=%s", ident1.Value)
-	}
-}
-
-func TestSysForStmtMaxRoundsIsolation(t *testing.T) {
-	// When a sysSpec imports an fspec with a higher round count,
-	// the sysSpec's own round count should NOT be overwritten by the import.
-	test := `system test1;
-
-			import "foo.fspec";
-
-			global fl = new foo.fl;
-
-			component A = states{
-				on: func{ stay(); },
-			};
-
-			start {
-				A: on,
-			};
-
-			for 2 run {
-				A;
-			}
-			`
-	flags := make(map[string]bool)
-	flags["specType"] = false
-	l, sys := prepTest(test, flags)
-
-	if sys == nil {
-		t.Fatal("prepTest() returned nil AST")
-	}
-
-	// MaxRounds should reflect the sysForStmt's own round count, not any imported fspec
-	if l.MaxRounds != 2 {
-		t.Fatalf("MaxRounds should be 2, got=%d", l.MaxRounds)
 	}
 }
 

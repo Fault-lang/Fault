@@ -369,23 +369,17 @@ func (s *BaseFaultParserListener) EnterIfStmtState(ctx *IfStmtStateContext) {}
 // ExitIfStmtState is called when production ifStmtState is exited.
 func (s *BaseFaultParserListener) ExitIfStmtState(ctx *IfStmtStateContext) {}
 
-// EnterForStmt is called when production forStmt is entered.
-func (s *BaseFaultParserListener) EnterForStmt(ctx *ForStmtContext) {}
-
-// ExitForStmt is called when production forStmt is exited.
-func (s *BaseFaultParserListener) ExitForStmt(ctx *ForStmtContext) {}
-
 // EnterRunStmt is called when production runStmt is entered.
 func (s *BaseFaultParserListener) EnterRunStmt(ctx *RunStmtContext) {}
 
 // ExitRunStmt is called when production runStmt is exited.
 func (s *BaseFaultParserListener) ExitRunStmt(ctx *RunStmtContext) {}
 
-// EnterSysForStmt is called when production sysForStmt is entered.
-func (s *BaseFaultParserListener) EnterSysForStmt(ctx *SysForStmtContext) {}
+// EnterSysRunStmt is called when production sysRunStmt is entered.
+func (s *BaseFaultParserListener) EnterSysRunStmt(ctx *SysRunStmtContext) {}
 
-// ExitSysForStmt is called when production sysForStmt is exited.
-func (s *BaseFaultParserListener) ExitSysForStmt(ctx *SysForStmtContext) {}
+// ExitSysRunStmt is called when production sysRunStmt is exited.
+func (s *BaseFaultParserListener) ExitSysRunStmt(ctx *SysRunStmtContext) {}
 
 // EnterSysRunBlock is called when production sysRunBlock is entered.
 func (s *BaseFaultParserListener) EnterSysRunBlock(ctx *SysRunBlockContext) {}
@@ -398,12 +392,6 @@ func (s *BaseFaultParserListener) EnterSysRunStepExpr(ctx *SysRunStepExprContext
 
 // ExitSysRunStepExpr is called when production sysRunStepExpr is exited.
 func (s *BaseFaultParserListener) ExitSysRunStepExpr(ctx *SysRunStepExprContext) {}
-
-// EnterRounds is called when production rounds is entered.
-func (s *BaseFaultParserListener) EnterRounds(ctx *RoundsContext) {}
-
-// ExitRounds is called when production rounds is exited.
-func (s *BaseFaultParserListener) ExitRounds(ctx *RoundsContext) {}
 
 // EnterParamCall is called when production paramCall is entered.
 func (s *BaseFaultParserListener) EnterParamCall(ctx *ParamCallContext) {}

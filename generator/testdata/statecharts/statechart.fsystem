@@ -24,7 +24,10 @@ start {
     drain: initial,
 };
 
-for 2 run {
+run {
+    if !drain.close{
+        fl.fn;
+    }
     if !drain.close{
         fl.fn;
     }
