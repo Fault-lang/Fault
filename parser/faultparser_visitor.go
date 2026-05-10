@@ -23,12 +23,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#componentDecl.
 	VisitComponentDecl(ctx *ComponentDeclContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#startBlock.
-	VisitStartBlock(ctx *StartBlockContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#startPair.
-	VisitStartPair(ctx *StartPairContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#spec.
 	VisitSpec(ctx *SpecContext) interface{}
 
@@ -185,15 +179,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#runStmt.
 	VisitRunStmt(ctx *RunStmtContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#sysRunStmt.
-	VisitSysRunStmt(ctx *SysRunStmtContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#sysRunBlock.
-	VisitSysRunBlock(ctx *SysRunBlockContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#sysRunStepExpr.
-	VisitSysRunStepExpr(ctx *SysRunStepExprContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#paramCall.
 	VisitParamCall(ctx *ParamCallContext) interface{}
 
@@ -223,6 +208,9 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#runStepExpr.
 	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runStepIdentExpr.
+	VisitRunStepIdentExpr(ctx *RunStepIdentExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#runExpr.
 	VisitRunExpr(ctx *RunExprContext) interface{}

@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? (sysRunStmt | runStmt)?
+    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* runStmt?
     ;
 
 sysClause
@@ -26,14 +26,6 @@ swap
 
 componentDecl
     : 'component' IDENT '=' 'states' '{' ( comProperties (',' comProperties)* ','? )? '}' eos
-    ;
-
-startBlock
-    : 'start' '{' ( startPair (',' startPair)* ','? )? '}' eos
-    ;
-
-startPair
-    : IDENT ':' IDENT
     ;
 /*
     Individual specs of state changes
@@ -243,18 +235,6 @@ runStmt
     : 'run' ('init' initBlock)? runBlock eos?
     ;
 
-sysRunStmt
-    : 'run' sysRunBlock eos?
-    ;
-
-sysRunBlock
-    : '{' sysRunStep* '}'
-    ;
-
-sysRunStep
-    : IDENT ('|' IDENT)* eos    #sysRunStepExpr
-    ;
-
 paramCall
     : (IDENT|THIS) '.' IDENT ('.' IDENT)*
     ;
@@ -284,6 +264,7 @@ initStep
 
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
+    | IDENT ('|' IDENT)* eos                      #runStepIdentExpr
     | simpleStmt eos                              #runExpr
     | ifStmtRun                                   #runIfExpr
     | SYNTH eos                                   #runSolvableExpr

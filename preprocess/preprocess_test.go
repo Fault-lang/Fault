@@ -119,8 +119,8 @@ func TestComponent(t *testing.T) {
 		},
 	};
 
-	start { 
-		foo: initial,
+	run {
+		foo.initial;
 	};`
 
 	process := prepTest(test, false)

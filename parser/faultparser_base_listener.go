@@ -51,18 +51,6 @@ func (s *BaseFaultParserListener) EnterComponentDecl(ctx *ComponentDeclContext) 
 // ExitComponentDecl is called when production componentDecl is exited.
 func (s *BaseFaultParserListener) ExitComponentDecl(ctx *ComponentDeclContext) {}
 
-// EnterStartBlock is called when production startBlock is entered.
-func (s *BaseFaultParserListener) EnterStartBlock(ctx *StartBlockContext) {}
-
-// ExitStartBlock is called when production startBlock is exited.
-func (s *BaseFaultParserListener) ExitStartBlock(ctx *StartBlockContext) {}
-
-// EnterStartPair is called when production startPair is entered.
-func (s *BaseFaultParserListener) EnterStartPair(ctx *StartPairContext) {}
-
-// ExitStartPair is called when production startPair is exited.
-func (s *BaseFaultParserListener) ExitStartPair(ctx *StartPairContext) {}
-
 // EnterSpec is called when production spec is entered.
 func (s *BaseFaultParserListener) EnterSpec(ctx *SpecContext) {}
 
@@ -375,24 +363,6 @@ func (s *BaseFaultParserListener) EnterRunStmt(ctx *RunStmtContext) {}
 // ExitRunStmt is called when production runStmt is exited.
 func (s *BaseFaultParserListener) ExitRunStmt(ctx *RunStmtContext) {}
 
-// EnterSysRunStmt is called when production sysRunStmt is entered.
-func (s *BaseFaultParserListener) EnterSysRunStmt(ctx *SysRunStmtContext) {}
-
-// ExitSysRunStmt is called when production sysRunStmt is exited.
-func (s *BaseFaultParserListener) ExitSysRunStmt(ctx *SysRunStmtContext) {}
-
-// EnterSysRunBlock is called when production sysRunBlock is entered.
-func (s *BaseFaultParserListener) EnterSysRunBlock(ctx *SysRunBlockContext) {}
-
-// ExitSysRunBlock is called when production sysRunBlock is exited.
-func (s *BaseFaultParserListener) ExitSysRunBlock(ctx *SysRunBlockContext) {}
-
-// EnterSysRunStepExpr is called when production sysRunStepExpr is entered.
-func (s *BaseFaultParserListener) EnterSysRunStepExpr(ctx *SysRunStepExprContext) {}
-
-// ExitSysRunStepExpr is called when production sysRunStepExpr is exited.
-func (s *BaseFaultParserListener) ExitSysRunStepExpr(ctx *SysRunStepExprContext) {}
-
 // EnterParamCall is called when production paramCall is entered.
 func (s *BaseFaultParserListener) EnterParamCall(ctx *ParamCallContext) {}
 
@@ -452,6 +422,12 @@ func (s *BaseFaultParserListener) EnterRunStepExpr(ctx *RunStepExprContext) {}
 
 // ExitRunStepExpr is called when production runStepExpr is exited.
 func (s *BaseFaultParserListener) ExitRunStepExpr(ctx *RunStepExprContext) {}
+
+// EnterRunStepIdentExpr is called when production runStepIdentExpr is entered.
+func (s *BaseFaultParserListener) EnterRunStepIdentExpr(ctx *RunStepIdentExprContext) {}
+
+// ExitRunStepIdentExpr is called when production runStepIdentExpr is exited.
+func (s *BaseFaultParserListener) ExitRunStepIdentExpr(ctx *RunStepIdentExprContext) {}
 
 // EnterRunExpr is called when production runExpr is entered.
 func (s *BaseFaultParserListener) EnterRunExpr(ctx *RunExprContext) {}

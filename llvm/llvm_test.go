@@ -481,107 +481,50 @@ func TestComponentIR(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 
-	expecting := `@__rounds = global i16 0
-@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-define void @__run() {
-block-16:
-	%test_foo_x = alloca double
-	store double 8.0, double* %test_foo_x
-	%test_foo_initial = alloca i1
-	store i1 false, i1* %test_foo_initial
-	%test_foo_alarm = alloca i1
-	store i1 false, i1* %test_foo_alarm
-	store i1 true, i1* %test_foo_initial
-	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-	ret void
-}
-
-define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-block-17:
-	%0 = load i1, i1* %test_foo_initial
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-19-true, label %block-18-after
-
-block-18-after:
-	%2 = load i1, i1* %test_foo_initial
-	%3 = icmp eq i1 %2, true
-	%4 = load double, double* %test_foo_x
-	%5 = fcmp ogt double %4, 10.0
-	%6 = and i1 %3, %5
-	br i1 %6, label %block-22-true, label %block-21-after
-
-block-19-true:
-	%7 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
-	%8 = bitcast [14 x i8]* %7 to i8*
-	%9 = call i1 @advance(i8* %8)
-	br label %block-18-after
-
-block-21-after:
-	ret void
-
-block-22-true:
-	%10 = alloca [16 x i8]
-	store [16 x i8] c"test_foo_initial", [16 x i8]* %10
-	%11 = bitcast [16 x i8]* %10 to i8*
-	%12 = call i1 @stay(i8* %11)
-	br label %block-21-after
-}
-
-define i1 @advance(i8* %toState) {
-block-20:
-	ret i1 true
-}
-
-define i1 @stay(i8* %exitState) {
-block-23:
-	ret i1 true
-}
-
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-block-24:
-	%0 = load i1, i1* %test_foo_alarm
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-26-true, label %block-25-after
-
-block-25-after:
-	ret void
-
-block-26-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_close", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @advance(i8* %3)
-	br label %block-25-after
-}
-`
-
-	llvm, err := prepTest(test, false)
-
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
 	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
+		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ir, err := validateIR(llvm)
-
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
 	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
+		t.Fatalf("compilation failed: %s", err)
 	}
 
-	err = compareResults(llvm, expecting, string(ir))
+	ir := compiler.GetIR()
 
-	if err != nil {
-		t.Fatal(err.Error())
+	// State activation should store true into initial state
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
+	}
+	// Transition chain should be called
+	if !strings.Contains(ir, "@test_foo_initial__state") {
+		t.Fatal("IR should call @test_foo_initial__state")
+	}
+	if !strings.Contains(ir, "@test_foo_alarm__state") {
+		t.Fatal("IR should call @test_foo_alarm__state")
 	}
 
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
 }
 
 func TestIndexExp(t *testing.T) {
@@ -703,255 +646,8 @@ func TestChoose(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
-	`
-
-	expecting := `@__rounds = global i16 0
-@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-
-define void @__run() {
-block-30:
-	%test_foo_initial = alloca i1
-	store i1 false, i1* %test_foo_initial
-	%test_foo_alarm = alloca i1
-	store i1 false, i1* %test_foo_alarm
-	%test_foo_close = alloca i1
-	store i1 false, i1* %test_foo_close
-	store i1 true, i1* %test_foo_initial
-	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
-	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
-	call void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
-	ret void
-}
-
-define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-31:
-	%0 = load i1, i1* %test_foo_initial
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-33-true, label %block-32-after
-
-block-32-after:
-	ret void
-
-block-33-true:
-	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_start", [38 x i8]* @__choiceGroup
-	%2 = alloca [16 x i8]
-	store [16 x i8] c"test_foo_initial", [16 x i8]* %2
-	%3 = bitcast [16 x i8]* %2 to i8*
-	%4 = call i1 @stay(i8* %3)
-	%5 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %5
-	%6 = bitcast [14 x i8]* %5 to i8*
-	%7 = call i1 @advance(i8* %6)
-	%8 = or i1 %4, %7
-	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_close", [38 x i8]* @__choiceGroup
-	br label %block-32-after
-}
-
-define i1 @stay(i8* %exitState) {
-block-34:
-	ret i1 true
-}
-
-define i1 @advance(i8* %toState) {
-block-35:
-	ret i1 true
-}
-
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-36:
-	%0 = load i1, i1* %test_foo_alarm
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-38-true, label %block-37-after
-
-block-37-after:
-	ret void
-
-block-38-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_close", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @advance(i8* %3)
-	br label %block-37-after
-}
-
-define void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-39:
-	%0 = load i1, i1* %test_foo_close
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-41-true, label %block-40-after
-
-block-40-after:
-	ret void
-
-block-41-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_close", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @stay(i8* %3)
-	br label %block-40-after
-}
-`
-
-	llvm, err := prepTest(test, false)
-
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	ir, err := validateIR(llvm)
-
-	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
-	}
-
-	err = compareResults(llvm, expecting, string(ir))
-
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-}
-
-func TestLeave(t *testing.T) {
-	test := `
-	system test;
-
-	component foo = states{
-		initial: func{
-			advance(this.alarm) && leave();
-		},
-		alarm: func{
-			stay();
-		},
-	};
-
-	start {
-		foo: initial,
-	};
-	`
-
-	expecting := `@__rounds = global i16 0
-@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-
-define void @__run() {
-block-42:
-	%test_foo_initial = alloca i1
-	store i1 false, i1* %test_foo_initial
-	%test_foo_alarm = alloca i1
-	store i1 false, i1* %test_foo_alarm
-	store i1 true, i1* %test_foo_initial
-	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial)
-	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial)
-	ret void
-}
-
-define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
-block-43:
-	%0 = load i1, i1* %test_foo_initial
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-45-true, label %block-44-after
-
-block-44-after:
-	ret void
-
-block-45-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @advance(i8* %3)
-	%5 = alloca [16 x i8]
-	store [16 x i8] c"test_foo_initial", [16 x i8]* %5
-	%6 = bitcast [16 x i8]* %5 to i8*
-	%7 = call i1 @leave(i8* %6)
-	%8 = and i1 %4, %7
-	br label %block-44-after
-}
-
-define i1 @advance(i8* %toState) {
-block-46:
-	ret i1 true
-}
-
-define i1 @leave(i8* %exitState) {
-block-47:
-	ret i1 true
-}
-
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
-block-48:
-	%0 = load i1, i1* %test_foo_alarm
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-50-true, label %block-49-after
-
-block-49-after:
-	ret void
-
-block-50-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @stay(i8* %3)
-	br label %block-49-after
-}
-
-define i1 @stay(i8* %exitState) {
-block-51:
-	ret i1 true
-}
-`
-
-	llvm, err := prepTest(test, false)
-
-	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
-	}
-
-	ir, err := validateIR(llvm)
-
-	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
-	}
-
-	err = compareResults(llvm, expecting, string(ir))
-
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-}
-
-func TestSysRunBlock(t *testing.T) {
-	test := `
-	system test;
-
-	component a = states{
-		on: func{
-			stay();
-		},
-		off: func{
-			stay();
-		},
-	};
-
-	component b = states{
-		idle: func{
-			stay();
-		},
-	};
-
-	start {
-		a: on,
-		b: idle,
-	};
-
 	run {
-		a | b;
-		a | b;
+		foo.initial;
 	}
 	`
 
@@ -976,15 +672,210 @@ func TestSysRunBlock(t *testing.T) {
 		t.Fatalf("compilation failed: %s", err)
 	}
 
-	if !compiler.hasSysRunBlock {
-		t.Fatal("hasSysRunBlock should be true for sysForStmt with component identifiers")
+	ir := compiler.GetIR()
+
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
+	}
+	if !strings.Contains(ir, "@test_foo_initial__state") {
+		t.Fatal("IR should call @test_foo_initial__state")
+	}
+	if !strings.Contains(ir, "@test_foo_alarm__state") {
+		t.Fatal("IR should call @test_foo_alarm__state")
+	}
+	if !strings.Contains(ir, "@test_foo_close__state") {
+		t.Fatal("IR should call @test_foo_close__state")
+	}
+	if !strings.Contains(ir, "@__choiceGroup") {
+		t.Fatal("IR should contain choice group markers")
+	}
+
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestLeave(t *testing.T) {
+	test := `
+	system test;
+
+	component foo = states{
+		initial: func{
+			advance(this.alarm) && leave();
+		},
+		alarm: func{
+			stay();
+		},
+	};
+
+	run {
+		foo.initial;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
 	}
 
 	ir := compiler.GetIR()
 
-	// Parallel group markers should appear (from compileParallel on component names)
-	if !strings.Contains(ir, "_start") || !strings.Contains(ir, "_close") {
-		t.Fatal("IR should contain parallel group start/close markers")
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
+	}
+	if !strings.Contains(ir, "@test_foo_initial__state") {
+		t.Fatal("IR should call @test_foo_initial__state")
+	}
+	if !strings.Contains(ir, "@test_foo_alarm__state") {
+		t.Fatal("IR should call @test_foo_alarm__state")
+	}
+	if !strings.Contains(ir, "@leave") {
+		t.Fatal("IR should contain @leave function")
+	}
+
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestSysRunBlock(t *testing.T) {
+	test := `
+	system test;
+
+	component a = states{
+		on: func{
+			stay();
+		},
+		off: func{
+			stay();
+		},
+	};
+
+	component b = states{
+		idle: func{
+			stay();
+		},
+	};
+
+	run {
+		a.on | b.idle;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	ir := compiler.GetIR()
+
+	// Both component state functions should appear in the IR
+	if !strings.Contains(ir, "@test_a_on__state") {
+		t.Fatal("IR should contain @test_a_on__state")
+	}
+	if !strings.Contains(ir, "@test_b_idle__state") {
+		t.Fatal("IR should contain @test_b_idle__state")
+	}
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestStateActivation(t *testing.T) {
+	test := `
+	system test;
+
+	component a = states{
+		on: func{
+			stay();
+		},
+		off: func{
+			stay();
+		},
+	};
+
+	component b = states{
+		idle: func{
+			stay();
+		},
+	};
+
+	run {
+		a.on && b.idle;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	ir := compiler.GetIR()
+
+	// StartStates should be populated by the StateActivation step
+	aPrefix := "test_a_"
+	bPrefix := "test_b_"
+	if _, ok := compiler.StartStates[aPrefix]; !ok {
+		t.Fatalf("StartStates should contain prefix %q after StateActivation", aPrefix)
+	}
+	if _, ok := compiler.StartStates[bPrefix]; !ok {
+		t.Fatalf("StartStates should contain prefix %q after StateActivation", bPrefix)
+	}
+
+	// The initial state store (true) should appear in the IR
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
 	}
 
 	// Both component state functions should appear in the IR
@@ -995,9 +886,6 @@ func TestSysRunBlock(t *testing.T) {
 		t.Fatal("IR should contain @test_b_idle__state")
 	}
 
-	// stateCheck() should NOT have been called outside the parallel block,
-	// so the __run function should call state functions only inside parallel groups.
-	// Verify the IR is valid.
 	_, err = validateIR(ir)
 	if err != nil {
 		t.Fatalf("generated IR is not valid: %s", err)

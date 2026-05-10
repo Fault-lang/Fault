@@ -573,15 +573,23 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				}
 			}
 		}
-		for _, step := range node.Steps {
+		for i, step := range node.Steps {
 			switch st := step.(type) {
 			case *ast.CallStep:
-				for i, pc := range st.Calls {
+				for j, pc := range st.Calls {
 					n, err := p.walk(pc)
 					if err != nil {
 						return node, err
 					}
-					st.Calls[i] = n.(*ast.ParameterCall)
+					st.Calls[j] = n.(*ast.ParameterCall)
+				}
+				// If all calls resolve to COMPONENT type, this is a state activation step.
+				if allComponentCalls(st.Calls, p) {
+					node.Steps[i] = &ast.StateActivation{
+						Token:    st.Token,
+						Calls:    st.Calls,
+						Operator: st.Operator,
+					}
 				}
 			case *ast.IfStep:
 				proIf, err := p.walk(st.Expr)
@@ -590,12 +598,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				}
 				st.Expr = proIf.(*ast.IfExpression)
 			case *ast.ParallelFunctions:
-				// ParallelFunctions in sysRunStmt carry Identifier expressions — no param walk needed.
+				// Identifier-based steps (component names) — no param walk needed.
 			}
 		}
 		p.inGlobal = false
-		return node, err
-	case *ast.StartStatement:
 		return node, err
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
@@ -1468,4 +1474,26 @@ func literalToFloat(e ast.Expression) *float64 {
 		return &f
 	}
 	return nil
+}
+
+// allComponentCalls returns true if every call in calls resolves to COMPONENT type
+// in the current spec, indicating a StateActivation step rather than a flow CallStep.
+func allComponentCalls(calls []*ast.ParameterCall, p *Processor) bool {
+	if len(calls) == 0 {
+		return false
+	}
+	spec := p.Specs[p.trail.CurrentSpec()]
+	if spec == nil {
+		return false
+	}
+	for _, pc := range calls {
+		if len(pc.ProcessedName) == 0 {
+			return false
+		}
+		ty, _ := spec.GetStructType(pc.ProcessedName)
+		if ty != "COMPONENT" {
+			return false
+		}
+	}
+	return true
 }

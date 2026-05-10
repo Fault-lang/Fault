@@ -86,7 +86,7 @@ func InitNodes() []Node {
 		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}},
 		&StructInstance{Token: token, Properties: properties},
 		&BuiltIn{Token: token, Parameters: params, Function: "advance"},
-		&StartStatement{Token: token, Pairs: [][]string{{"foo", "bar"}, {"hello", "world"}}},
+		&StateActivation{Token: token, Calls: []*ParameterCall{{Token: token, Value: []string{"foo", "bar"}}}, Operator: ""},
 	}
 }
 
@@ -225,9 +225,9 @@ func TestString(t *testing.T) {
 		case *BuiltIn:
 			got = t.String()
 			want = "advance(foo.bar)"
-		case *StartStatement:
+		case *StateActivation:
 			got = t.String()
-			want = "test {foo : bar, hello : world};"
+			want = "foo.bar;"
 		}
 		if got != want {
 			t.Fatalf("String failed for node type %T. got=%s", n, got)
@@ -348,9 +348,9 @@ func TestTypes(t *testing.T) {
 		case *BuiltIn:
 			got = t.Type()
 			want = "BUILTIN"
-		case *StartStatement:
+		case *StateActivation:
 			got = t.Type()
-			want = "START"
+			want = ""
 		}
 		if got != want {
 			t.Fatalf("Type failed for node type %T. got=%s", n, got)

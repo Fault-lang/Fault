@@ -148,9 +148,8 @@ func CategorizeError(err error, phase runner.ProgressPhase) *EnhancedError {
 	case strings.Contains(errMsg, "Missing run block") || strings.Contains(errMsg, "Missing start block") ||
 		strings.Contains(errMsg, "missing run block") || strings.Contains(errMsg, "missing start block"):
 		enhanced.Category = ErrorLLVM
-		enhanced.Detail = "No run or start block was found in the specification."
-		enhanced.Suggestion = "Add a run block to your .fspec:\n  for <n> run { ... }\n" +
-			"Or a start block to your .fsystem:\n  start { <component>: <state>, };"
+		enhanced.Detail = "No run block was found in the specification."
+		enhanced.Suggestion = "Add a run block to your .fspec or .fsystem:\n  run { ... }"
 
 	case strings.Contains(errMsg, "Internal compiler stacktrace"):
 		enhanced.Category = ErrorInternal

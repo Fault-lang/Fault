@@ -175,9 +175,6 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		if _, ok := n.(*ast.RunStatement); ok {
 			return
 		}
-		if _, ok := n.(*ast.StartStatement); ok {
-			return
-		}
 		if d, ok := n.(*ast.DefStatement); ok {
 			if _, str := d.Value.(*ast.StringLiteral); str {
 				return
@@ -185,7 +182,7 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		}
 	}
 
-	panic("Fault found nothing to run. Missing run block or start block")
+	panic("Fault found nothing to run. Missing run block")
 }
 
 func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
@@ -245,9 +242,10 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			case *ast.RunStatement:
 				c.hasRunBlock = true
 				for _, step := range n.Steps {
-					if pf, ok := step.(*ast.ParallelFunctions); ok {
-						if len(pf.Expressions) > 0 {
-							if _, ok := pf.Expressions[0].(*ast.Identifier); ok {
+					switch st := step.(type) {
+					case *ast.ParallelFunctions:
+						if len(st.Expressions) > 0 {
+							if _, ok := st.Expressions[0].(*ast.Identifier); ok {
 								c.hasSysRunBlock = true
 							}
 						}
@@ -387,49 +385,20 @@ func (c *Compiler) compile(node ast.Node) {
 		// Pre-compile their functions so synthesis slots can enumerate them.
 		c.precompileAllFlowFunctions()
 
-		for _, step := range v.Steps {
+		for i, step := range v.Steps {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			c.compileRunStep(step)
 			if !c.hasSysRunBlock {
-				c.stateCheck()
+				_, isActivation := step.(*ast.StateActivation)
+				isLastStep := i == len(v.Steps)-1
+				if !isActivation || isLastStep {
+					c.stateCheck()
+				}
 			}
 			c.RunRound = c.RunRound + 1
 		}
 
 		c.contextFuncName = ""
-
-	case *ast.StartStatement:
-		for _, p := range v.Pairs {
-			branch, err := c.specStructs[c.currentSpec].FetchComponent(p[0])
-			if err != nil {
-				panic(err)
-			}
-
-			node, ok := branch[p[1]].(*ast.FunctionLiteral)
-			if !ok {
-				panic(fmt.Errorf("component state %s not valid", p))
-			}
-
-			rawid := node.RawId()
-
-			if c.isVarSet(rawid) && c.alloc {
-				r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: rawid})
-				s := c.specs[c.currentSpec]
-				p := s.GetSpecVarPointer(rawid)
-				c.contextBlock.NewStore(r, p)
-			}
-
-			// Record the start state so stateCheck can follow transitions from here
-			componentPrefix := c.currentSpec + "_" + p[0] + "_"
-			startKey := c.currentSpec + "_" + p[0] + "_" + p[1] + "__state"
-			c.StartStates[componentPrefix] = startKey
-		}
-
-		if !c.hasRunBlock { // If no run block,
-			c.contextFuncName = "__run" // execute starting states
-			c.stateCheck()
-			c.contextFuncName = ""
-		}
 
 	default:
 		pos := node.Position()
@@ -820,10 +789,49 @@ func (c *Compiler) compileRunStep(step ast.RunStep) {
 			pf.Expressions[i] = call
 		}
 		c.compileParallel(pf)
+	case *ast.StateActivation:
+		c.compileStateActivation(s)
 	case *ast.ParallelFunctions:
 		c.compileParallel(s)
 	case *ast.IfStep:
 		c.compileIf(s.Expr)
+	}
+}
+
+// compileStateActivation handles a StateActivation step — a run block step whose
+// ParameterCalls all resolve to component states (e.g. "A.on && B.idle;").
+// It mirrors StartStatement: records the starting state for each component and
+// stores true into the state variable so transition chains start correctly.
+func (c *Compiler) compileStateActivation(s *ast.StateActivation) {
+	for _, pc := range s.Calls {
+		if len(pc.ProcessedName) < 3 {
+			continue
+		}
+		specName := pc.ProcessedName[0]
+		componentName := pc.ProcessedName[1]
+		stateName := pc.ProcessedName[2]
+
+		branch, err := c.specStructs[specName].FetchComponent(componentName)
+		if err != nil {
+			panic(err)
+		}
+
+		node, ok := branch[stateName].(*ast.FunctionLiteral)
+		if !ok {
+			panic(fmt.Errorf("component state %s.%s not valid", componentName, stateName))
+		}
+
+		rawid := node.RawId()
+		if c.isVarSet(rawid) && c.alloc {
+			r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: rawid})
+			sp := c.specs[specName]
+			ptr := sp.GetSpecVarPointer(rawid)
+			c.contextBlock.NewStore(r, ptr)
+		}
+
+		componentPrefix := specName + "_" + componentName + "_"
+		startKey := specName + "_" + componentName + "_" + stateName + "__state"
+		c.StartStates[componentPrefix] = startKey
 	}
 }
 

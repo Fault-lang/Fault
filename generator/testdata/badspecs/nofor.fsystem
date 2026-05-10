@@ -15,4 +15,6 @@ component drain = states{
     },
 };
 
-start { drain: initial };
+run {
+    drain.initial;
+}

@@ -225,8 +225,6 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		// Run steps (CallStep, SolvableStep, ParallelFunctions, IfStep) are not typechecked here.
 		return node, err
-	case *ast.StartStatement:
-		return node, err
 	case *ast.Instance:
 		return node, err
 	case *ast.StructInstance:

@@ -257,10 +257,9 @@ func TestTemporalSys(t *testing.T) {
 
 		assert when a.zoo then !b.bar;
 
-		start{
-			b: buzz,
-			a: zoo,
-		};
+		run {
+			b.buzz && a.zoo;
+		}
 		`
 	g := prepTest("", test, false, false)
 	smt := g.SMT()
@@ -549,7 +548,7 @@ func TestBadSpecs(t *testing.T) {
 		expectedErr string // non-empty: expect an error containing this string
 	}
 	specs := []specCase{
-		{"testdata/badspecs/nodefs.fspec", true, "Missing run block or start block"},
+		{"testdata/badspecs/nodefs.fspec", true, "Missing run block"},
 		{"testdata/badspecs/doubleswap.fspec", true, "swapped more than once"},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},

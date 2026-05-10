@@ -48,9 +48,9 @@ func TestCorrect(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 	check, missing := prepTestSys(test)
 
@@ -78,9 +78,9 @@ func TestIncorrect(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 	check, missing := prepTestSys(test)
 
@@ -124,9 +124,9 @@ func TestMultiIncorrect(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 	check, missing := prepTestSys(test)
 
@@ -170,10 +170,9 @@ func TestMultiCorrect(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-		fizz: active,
-	};
+	run {
+		foo.initial && fizz.active;
+	}
 	`
 	check, missing := prepTestSys(test)
 
@@ -204,10 +203,9 @@ func TestMultiPath(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-		bar: initial,
-	};
+	run {
+		foo.initial && bar.initial;
+	}
 	`
 	check, missing := prepTestSys(test)
 

@@ -23,12 +23,6 @@ type FaultParserListener interface {
 	// EnterComponentDecl is called when entering the componentDecl production.
 	EnterComponentDecl(c *ComponentDeclContext)
 
-	// EnterStartBlock is called when entering the startBlock production.
-	EnterStartBlock(c *StartBlockContext)
-
-	// EnterStartPair is called when entering the startPair production.
-	EnterStartPair(c *StartPairContext)
-
 	// EnterSpec is called when entering the spec production.
 	EnterSpec(c *SpecContext)
 
@@ -185,15 +179,6 @@ type FaultParserListener interface {
 	// EnterRunStmt is called when entering the runStmt production.
 	EnterRunStmt(c *RunStmtContext)
 
-	// EnterSysRunStmt is called when entering the sysRunStmt production.
-	EnterSysRunStmt(c *SysRunStmtContext)
-
-	// EnterSysRunBlock is called when entering the sysRunBlock production.
-	EnterSysRunBlock(c *SysRunBlockContext)
-
-	// EnterSysRunStepExpr is called when entering the sysRunStepExpr production.
-	EnterSysRunStepExpr(c *SysRunStepExprContext)
-
 	// EnterParamCall is called when entering the paramCall production.
 	EnterParamCall(c *ParamCallContext)
 
@@ -223,6 +208,9 @@ type FaultParserListener interface {
 
 	// EnterRunStepExpr is called when entering the runStepExpr production.
 	EnterRunStepExpr(c *RunStepExprContext)
+
+	// EnterRunStepIdentExpr is called when entering the runStepIdentExpr production.
+	EnterRunStepIdentExpr(c *RunStepIdentExprContext)
 
 	// EnterRunExpr is called when entering the runExpr production.
 	EnterRunExpr(c *RunExprContext)
@@ -331,12 +319,6 @@ type FaultParserListener interface {
 
 	// ExitComponentDecl is called when exiting the componentDecl production.
 	ExitComponentDecl(c *ComponentDeclContext)
-
-	// ExitStartBlock is called when exiting the startBlock production.
-	ExitStartBlock(c *StartBlockContext)
-
-	// ExitStartPair is called when exiting the startPair production.
-	ExitStartPair(c *StartPairContext)
 
 	// ExitSpec is called when exiting the spec production.
 	ExitSpec(c *SpecContext)
@@ -494,15 +476,6 @@ type FaultParserListener interface {
 	// ExitRunStmt is called when exiting the runStmt production.
 	ExitRunStmt(c *RunStmtContext)
 
-	// ExitSysRunStmt is called when exiting the sysRunStmt production.
-	ExitSysRunStmt(c *SysRunStmtContext)
-
-	// ExitSysRunBlock is called when exiting the sysRunBlock production.
-	ExitSysRunBlock(c *SysRunBlockContext)
-
-	// ExitSysRunStepExpr is called when exiting the sysRunStepExpr production.
-	ExitSysRunStepExpr(c *SysRunStepExprContext)
-
 	// ExitParamCall is called when exiting the paramCall production.
 	ExitParamCall(c *ParamCallContext)
 
@@ -532,6 +505,9 @@ type FaultParserListener interface {
 
 	// ExitRunStepExpr is called when exiting the runStepExpr production.
 	ExitRunStepExpr(c *RunStepExprContext)
+
+	// ExitRunStepIdentExpr is called when exiting the runStepIdentExpr production.
+	ExitRunStepIdentExpr(c *RunStepIdentExprContext)
 
 	// ExitRunExpr is called when exiting the runExpr production.
 	ExitRunExpr(c *RunExprContext)

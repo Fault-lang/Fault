@@ -20,11 +20,8 @@ component drain = states{
     },
 };
 
-start { 
-    drain: initial,
-};
-
 run {
+    drain.initial;
     if !drain.close{
         fl.fn;
     }

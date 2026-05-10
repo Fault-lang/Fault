@@ -1385,18 +1385,29 @@ func blockToRunSteps(block *ast.BlockStatement) []ast.RunStep {
 		case *ast.SolvableStep:
 			steps = append(steps, s)
 		case *ast.ParallelFunctions:
-			// | operator from runStepExpr — each expression is a ParameterCall
-			calls := make([]*ast.ParameterCall, 0, len(s.Expressions))
+			// | operator — expressions are either ParameterCalls (from runStepExpr)
+			// or Identifiers (from runStepIdentExpr, e.g. component names in .fsystem).
+			allParamCalls := true
 			for _, e := range s.Expressions {
-				if pc, ok := e.(*ast.ParameterCall); ok {
-					calls = append(calls, pc)
+				if _, ok := e.(*ast.ParameterCall); !ok {
+					allParamCalls = false
+					break
 				}
 			}
-			steps = append(steps, &ast.CallStep{
-				Token:    s.Token,
-				Calls:    calls,
-				Operator: "|",
-			})
+			if allParamCalls {
+				calls := make([]*ast.ParameterCall, 0, len(s.Expressions))
+				for _, e := range s.Expressions {
+					calls = append(calls, e.(*ast.ParameterCall))
+				}
+				steps = append(steps, &ast.CallStep{
+					Token:    s.Token,
+					Calls:    calls,
+					Operator: "|",
+				})
+			} else {
+				// Identifier-based steps (component names) — keep as ParallelFunctions.
+				steps = append(steps, s)
+			}
 		case *ast.ExpressionStatement:
 			if ie, ok := s.Expression.(*ast.IfExpression); ok {
 				steps = append(steps, &ast.IfStep{Token: s.Token, Expr: ie})
@@ -1451,56 +1462,7 @@ func collectParamCalls(e *ast.InfixExpression) []*ast.ParameterCall {
 	return calls
 }
 
-func (l *FaultListener) ExitSysRunStmt(c *parser.SysRunStmtContext) {
-	token := ast.GenerateToken("RUN", "run", c.GetStart(), c.GetStop())
-
-	run := l.pop()
-	if run == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
-	}
-
-	block, ok := run.(*ast.BlockStatement)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
-	}
-
-	var steps []ast.RunStep
-	for _, stmt := range block.Statements {
-		if pf, ok := stmt.(*ast.ParallelFunctions); ok {
-			steps = append(steps, pf)
-		}
-	}
-
-	runSt := &ast.RunStatement{
-		Token: token,
-		Inits: &ast.BlockStatement{},
-		Steps: steps,
-	}
-
-	l.push(runSt)
-}
-
-func (l *FaultListener) ExitSysRunBlock(c *parser.SysRunBlockContext) {
-	token := ast.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
-
-	sl := &ast.BlockStatement{
-		Token: token,
-	}
-
-	steps := c.AllSysRunStep()
-	for i := len(steps) - 1; i >= 0; i-- {
-		ex := l.pop()
-		switch t := ex.(type) {
-		case *ast.ParallelFunctions:
-			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-		default:
-			panic(fmt.Sprintf("sys run block expected parallel functions, got=%T", t))
-		}
-	}
-	l.push(sl)
-}
-
-func (l *FaultListener) ExitSysRunStepExpr(c *parser.SysRunStepExprContext) {
+func (l *FaultListener) ExitRunStepIdentExpr(c *parser.RunStepIdentExprContext) {
 	token := ast.GenerateToken("PARALLEL", c.GetText(), c.GetStart(), c.GetStop())
 
 	idents := c.AllIDENT()
@@ -2068,28 +2030,6 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 	}
 }
 
-func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
-	idents := c.AllIDENT()
-	start := &ast.InfixExpression{
-		Left:     &ast.StringLiteral{Value: idents[0].GetText()},
-		Operator: ":",
-		Right:    &ast.StringLiteral{Value: idents[1].GetText()},
-	}
-	l.push(start)
-
-}
-
-func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
-	token := ast.GenerateToken("START", "START", c.GetStart(), c.GetStop())
-	var pairs [][]string
-	for i := 0; i < len(c.AllStartPair()); i++ {
-		p := l.pop()
-		pair := p.(*ast.InfixExpression)
-		pairs = append(pairs, []string{pair.Left.String(), pair.Right.String()})
-	}
-
-	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
-}
 
 func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 	switch n := node.(type) {

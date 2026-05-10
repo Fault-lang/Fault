@@ -1693,15 +1693,8 @@ func TestSysRunStmt(t *testing.T) {
 				},
 			};
 
-			start {
-				A: on,
-				B: idle,
-			};
-
 			run {
-				A | B;
-				A | B;
-				A | B;
+				A.on | B.idle;
 			}
 			`
 	flags := make(map[string]bool)
@@ -1724,31 +1717,29 @@ func TestSysRunStmt(t *testing.T) {
 		t.Fatal("no RunStatement found in AST")
 	}
 
-	// Steps should contain 3 ParallelFunctions steps
-	if len(runSt.Steps) != 3 {
-		t.Fatalf("RunStatement should have 3 steps, got=%d", len(runSt.Steps))
+	// Steps should contain 1 CallStep
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("RunStatement should have 1 step, got=%d", len(runSt.Steps))
 	}
 
-	pf, ok := runSt.Steps[0].(*ast.ParallelFunctions)
+	cs, ok := runSt.Steps[0].(*ast.CallStep)
 	if !ok {
-		t.Fatalf("step 0 should be ParallelFunctions, got=%T", runSt.Steps[0])
+		t.Fatalf("step 0 should be CallStep, got=%T", runSt.Steps[0])
 	}
 
-	if len(pf.Expressions) != 2 {
-		t.Fatalf("ParallelFunctions should have 2 expressions, got=%d", len(pf.Expressions))
+	if cs.Operator != "|" {
+		t.Fatalf("CallStep operator should be |, got=%s", cs.Operator)
 	}
 
-	ident0, ok0 := pf.Expressions[0].(*ast.Identifier)
-	ident1, ok1 := pf.Expressions[1].(*ast.Identifier)
-	if !ok0 || !ok1 {
-		t.Fatalf("ParallelFunctions expressions should be Identifiers, got=%T and %T", pf.Expressions[0], pf.Expressions[1])
+	if len(cs.Calls) != 2 {
+		t.Fatalf("CallStep should have 2 calls, got=%d", len(cs.Calls))
 	}
 
-	if ident0.Value != "A" {
-		t.Fatalf("first identifier should be A, got=%s", ident0.Value)
+	if cs.Calls[0].Value[len(cs.Calls[0].Value)-1] != "on" {
+		t.Fatalf("first call should be A.on, got=%s", cs.Calls[0].Value)
 	}
-	if ident1.Value != "B" {
-		t.Fatalf("second identifier should be B, got=%s", ident1.Value)
+	if cs.Calls[1].Value[len(cs.Calls[1].Value)-1] != "idle" {
+		t.Fatalf("second call should be B.idle, got=%s", cs.Calls[1].Value)
 	}
 }
 
@@ -1845,22 +1836,36 @@ func TestSysStart(t *testing.T) {
 				},
 			};
 
-			start {
-				test:idle,
-				test2:active,
+			run {
+				test.idle && test2.active;
 			};
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = false
 	_, sys := prepTest(test, flags)
 
-	starts, ok := sys.Statements[3].(*ast.StartStatement)
-	if !ok {
-		t.Fatalf("sys.Statements[3] is not a StartStatement. got=%T", sys.Statements[3])
+	var runSt *ast.RunStatement
+	for _, s := range sys.Statements {
+		if r, ok := s.(*ast.RunStatement); ok {
+			runSt = r
+			break
+		}
+	}
+	if runSt == nil {
+		t.Fatal("no RunStatement found in AST")
 	}
 
-	if len(starts.Pairs) != 2 {
-		t.Fatalf("start block has the wrong number of expressions. got=%d", len(starts.Pairs))
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("expected 1 run step, got=%d", len(runSt.Steps))
+	}
+
+	cs, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("step 0 should be a CallStep, got=%T", runSt.Steps[0])
+	}
+
+	if len(cs.Calls) != 2 {
+		t.Fatalf("CallStep should have 2 calls, got=%d", len(cs.Calls))
 	}
 
 }
@@ -2068,8 +2073,7 @@ func assertUnderscoreError(t *testing.T, test string, specType bool) {
 
 func TestGlobalDeclUnderscoreError(t *testing.T) {
 	assertUnderscoreError(t, `system test1;
-global foo_bar = 1;
-start {};`, false)
+global foo_bar = 1;`, false)
 }
 
 func TestStructDeclUnderscoreError(t *testing.T) {
@@ -2085,8 +2089,7 @@ component foo_bar = states{
 	idle: func{
 		stay();
 	},
-};
-start { foo_bar: idle, };`, false)
+};`, false)
 }
 
 func TestStringDeclUnderscoreError(t *testing.T) {
@@ -2105,8 +2108,7 @@ component foo = states{
 	foo_state: func{
 		stay();
 	},
-};
-start { foo: foo_state, };`, false)
+};`, false)
 }
 
 func TestPropFuncUnderscoreError(t *testing.T) {
@@ -2214,10 +2216,6 @@ func TestEmptyStateBlockError(t *testing.T) {
 
 component x = states{
 	foo: func{},
-};
-
-start {
-	x: foo,
 };`
 	flags := make(map[string]bool)
 	flags["specType"] = false // fsystem
@@ -2406,9 +2404,9 @@ assert when foo.x > 0 then foo.y > 0;
 
 // --- Multiple components in a system ---
 
-func TestMultipleComponentsInStartBlock(t *testing.T) {
-	// A start block with two component:state pairs should produce a StartStatement
-	// with two entries in Pairs.
+func TestMultipleComponentsStateActivation(t *testing.T) {
+	// A run block with a state activation step for two components should produce
+	// a RunStatement with one CallStep containing two ParameterCalls.
 	test := `system test1;
 
 component foo = states{
@@ -2423,9 +2421,8 @@ component bar = states{
 	},
 };
 
-start {
-	foo: idle,
-	bar: running,
+run {
+	foo.idle && bar.running;
 };
 `
 	flags := map[string]bool{"specType": false}
@@ -2434,30 +2431,25 @@ start {
 		t.Fatal("prepTest() returned nil")
 	}
 
-	// Find the StartStatement (last statement in the spec).
-	var start *ast.StartStatement
+	var runSt *ast.RunStatement
 	for _, s := range spec.Statements {
-		if ss, ok := s.(*ast.StartStatement); ok {
-			start = ss
+		if r, ok := s.(*ast.RunStatement); ok {
+			runSt = r
 			break
 		}
 	}
-	if start == nil {
-		t.Fatal("no StartStatement found in spec")
+	if runSt == nil {
+		t.Fatal("no RunStatement found in spec")
 	}
-	if len(start.Pairs) != 2 {
-		t.Fatalf("expected 2 start pairs, got %d", len(start.Pairs))
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(runSt.Steps))
 	}
-	// Collect pairs into a map for order-independent comparison.
-	got := make(map[string]string)
-	for _, p := range start.Pairs {
-		got[p[0]] = p[1]
+	cs, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("step 0 should be CallStep, got=%T", runSt.Steps[0])
 	}
-	if got["foo"] != "idle" {
-		t.Errorf("expected foo:idle in start block, got foo:%q", got["foo"])
-	}
-	if got["bar"] != "running" {
-		t.Errorf("expected bar:running in start block, got bar:%q", got["bar"])
+	if len(cs.Calls) != 2 {
+		t.Fatalf("expected 2 calls in step, got %d", len(cs.Calls))
 	}
 }
 

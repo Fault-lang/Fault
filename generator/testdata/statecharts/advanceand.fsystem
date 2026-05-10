@@ -15,6 +15,6 @@ component a = states{
     },
 };
 
-start {
-    a: choice,
-};
+run {
+    a.choice;
+}

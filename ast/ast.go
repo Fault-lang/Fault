@@ -447,6 +447,38 @@ func (cs *CallStep) String() string {
 	return out.String()
 }
 
+// StateActivation pins the starting state of one or more components in a run block.
+// It is produced by the preprocessor when a CallStep's ParameterCalls all resolve
+// to COMPONENT type (e.g. "A.on && B.idle;").
+// Operator mirrors CallStep: "", "&&", or "|".
+type StateActivation struct {
+	Token    Token
+	Calls    []*ParameterCall
+	Operator string
+}
+
+func (sa *StateActivation) runStepNode()         {}
+func (sa *StateActivation) statementNode()       {}
+func (sa *StateActivation) TokenLiteral() string { return sa.Token.Literal }
+func (sa *StateActivation) Position() []int      { return sa.Token.GetPosition() }
+func (sa *StateActivation) GetToken() Token      { return sa.Token }
+func (sa *StateActivation) Type() string         { return "" }
+func (sa *StateActivation) SetType(ty *Type)     {}
+func (sa *StateActivation) String() string {
+	var out bytes.Buffer
+	parts := []string{}
+	for _, c := range sa.Calls {
+		parts = append(parts, c.String())
+	}
+	if sa.Operator == "" {
+		out.WriteString(parts[0])
+	} else {
+		out.WriteString(strings.Join(parts, " "+sa.Operator+" "))
+	}
+	out.WriteString(";")
+	return out.String()
+}
+
 // SolvableStep represents a __ placeholder — Fault synthesizes which function runs here.
 type SolvableStep struct {
 	Token Token
@@ -500,39 +532,6 @@ func (rs *RunStatement) String() string {
 	return out.String()
 }
 
-type StartStatement struct {
-	Token Token
-	Pairs [][]string
-}
-
-func (ss *StartStatement) statementNode()       {}
-func (ss *StartStatement) TokenLiteral() string { return ss.Token.Literal }
-func (ss *StartStatement) Position() []int      { return ss.Token.GetPosition() }
-func (ss *StartStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(ss.TokenLiteral() + " ")
-	pairs := []string{}
-	for _, value := range ss.Pairs {
-		pairs = append(pairs, strings.Join(value, " : "))
-	}
-
-	out.WriteString("{")
-	out.WriteString(strings.Join(pairs, ", "))
-	out.WriteString("}")
-
-	out.WriteString(";")
-	return out.String()
-}
-func (ss *StartStatement) GetToken() Token {
-	return ss.Token
-}
-func (ss *StartStatement) Type() string {
-	return "START"
-}
-func (ss *StartStatement) SetType(ty *Type) {
-	//skip
-}
 
 type Identifier struct {
 	Token         Token

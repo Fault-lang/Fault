@@ -74,8 +74,6 @@ func (c *Precompiler) walk(n ast.Node) ast.Node {
 			node.Inits.Statements = st
 		}
 		return node
-	case *ast.StartStatement:
-		return node
 	case *ast.FunctionLiteral:
 		return node
 	case *ast.BlockStatement:
