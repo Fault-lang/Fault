@@ -6,6 +6,8 @@ import (
 	"fault/util"
 	"fmt"
 	"strings"
+
+	deepcopy "github.com/barkimedes/go-deepcopy"
 )
 
 type Processor struct {
@@ -339,6 +341,53 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec := p.getSpec(p.trail.CurrentSpec())
 
 		if p.initialPass {
+			if node.Extends != nil {
+				parentFields, ferr := spec.FetchStock(node.Extends.Value)
+				if ferr == nil {
+					parentKey := strings.Join([]string{p.trail.CurrentSpec(), node.Extends.Value}, "_")
+					parentOrder := p.StructsPropertyOrder[parentKey]
+
+					var inheritedOrder []string
+					for _, fieldName := range parentOrder {
+						excluded := false
+						for _, ex := range node.Excludes {
+							if ex == fieldName {
+								excluded = true
+								break
+							}
+						}
+						if excluded {
+							continue
+						}
+						if node.GetPropertyIdent(fieldName) != nil {
+							continue // child overrides this field
+						}
+						parentVal, ok := parentFields[fieldName]
+						if !ok {
+							continue
+						}
+						cloned, cerr := deepcopy.Anything(parentVal)
+						if cerr != nil {
+							return node, fmt.Errorf("stock %s: failed to clone field %q from parent: %v", p.scope, fieldName, cerr)
+						}
+						newIdent := &ast.Identifier{
+							Token: ast.Token{
+								Type:     "IDENT",
+								Literal:  fieldName,
+								Position: node.Token.Position,
+							},
+							Value: fieldName,
+							Spec:  p.trail.CurrentSpec(),
+						}
+						node.Pairs[newIdent] = cloned.(ast.Expression)
+						inheritedOrder = append(inheritedOrder, fieldName)
+					}
+					node.Order = append(inheritedOrder, node.Order...)
+					childKey := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
+					p.StructsPropertyOrder[childKey] = node.Order
+				}
+			}
+
 			node.Pairs, idx = p.namePairs(node.Pairs)
 			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
 			p.localIdents[local] = idx
@@ -863,9 +912,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.Index("STOCK", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
 
-			if len(order) == 0 { //Sometimes happens if Instance node is referenced before struct is def
-				strkey := strings.Join([]string{node.Value.Spec, node.Value.Value}, "_")
-				order = p.StructsPropertyOrder[strkey]
+			strkey := strings.Join([]string{node.Value.Spec, node.Value.Value}, "_")
+			if spo := p.StructsPropertyOrder[strkey]; len(spo) > len(order) {
+				// StructsPropertyOrder may have been expanded by inheritance flattening;
+				// always use the fuller list so inherited fields are walked.
+				order = spo
+			} else if len(order) == 0 {
+				order = spo
 			}
 
 			pro := &ast.StructInstance{Token: node.Token,

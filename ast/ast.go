@@ -1553,6 +1553,8 @@ type StockLiteral struct {
 	Order         []string
 	Pairs         map[*Identifier]Expression
 	ProcessedName []string
+	Extends       *Identifier
+	Excludes      []string
 }
 
 func (sl *StockLiteral) expressionNode()      {}

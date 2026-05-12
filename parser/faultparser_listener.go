@@ -80,6 +80,12 @@ type FaultParserListener interface {
 	// EnterSfMisc is called when entering the sfMisc production.
 	EnterSfMisc(c *SfMiscContext)
 
+	// EnterPropExtends is called when entering the PropExtends production.
+	EnterPropExtends(c *PropExtendsContext)
+
+	// EnterPropExclude is called when entering the PropExclude production.
+	EnterPropExclude(c *PropExcludeContext)
+
 	// EnterStateFunc is called when entering the StateFunc production.
 	EnterStateFunc(c *StateFuncContext)
 
@@ -376,6 +382,12 @@ type FaultParserListener interface {
 
 	// ExitSfMisc is called when exiting the sfMisc production.
 	ExitSfMisc(c *SfMiscContext)
+
+	// ExitPropExtends is called when exiting the PropExtends production.
+	ExitPropExtends(c *PropExtendsContext)
+
+	// ExitPropExclude is called when exiting the PropExclude production.
+	ExitPropExclude(c *PropExcludeContext)
 
 	// ExitStateFunc is called when exiting the StateFunc production.
 	ExitStateFunc(c *StateFuncContext)

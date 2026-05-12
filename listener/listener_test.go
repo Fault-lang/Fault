@@ -158,6 +158,68 @@ func TestStockDecl(t *testing.T) {
 
 }
 
+func TestStockExtends(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	personDef := spec.Statements[2].(*ast.DefStatement)
+	if personDef.Name.Value != "person" {
+		t.Fatalf("expected def name 'person', got %q", personDef.Name.Value)
+	}
+
+	person := personDef.Value.(*ast.StockLiteral)
+	if person.Extends == nil {
+		t.Fatal("person.Extends is nil, expected *ast.Identifier")
+	}
+	if person.Extends.Value != "generic" {
+		t.Fatalf("person.Extends.Value = %q, want 'generic'", person.Extends.Value)
+	}
+	if len(person.Pairs) != 1 {
+		t.Fatalf("person.Pairs should have 1 own property before type-check, got %d", len(person.Pairs))
+	}
+}
+
+func TestStockExtendsWithExclude(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+	age: "entity age",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+	exclude age,
+};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	person := spec.Statements[2].(*ast.DefStatement).Value.(*ast.StockLiteral)
+	if person.Extends == nil {
+		t.Fatal("person.Extends is nil")
+	}
+	if len(person.Excludes) != 1 || person.Excludes[0] != "age" {
+		t.Fatalf("person.Excludes = %v, want [age]", person.Excludes)
+	}
+}
+
 func TestStockDeclFloat(t *testing.T) {
 	test := `spec test1;
 			 def foo = stock{

@@ -900,6 +900,145 @@ func TestSynthSandwich(t *testing.T) {
 	}
 }
 
+// ---- Stock inheritance SMT integration tests ----
+
+func TestStockInheritanceSMT(t *testing.T) {
+	// Child stock inherits a field from its parent. When the child is used in a
+	// flow and instantiated in a run block, the inherited field must appear as an
+	// SMT variable and carry the parent's initial value.
+	test := `spec test1;
+
+def generic = stock{
+	level: 10,
+};
+
+def child = stock{
+	extends generic,
+	extra: 5,
+};
+
+def f = flow{
+	c: new child,
+	fn: func{
+		if c.extra > 5 {
+			c.level -> 2;
+		}else{
+			c.extra <- 1;
+		}
+	},
+};
+
+assert child.extra < 7;
+
+run init{inst = new f;} {
+	inst.fn;
+	inst.fn;
+};
+`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatal("no SMT generated")
+	}
+	// Inherited field must be declared as an SMT variable for the run-block instance
+	if !strings.Contains(smt, "test1_inst_c_level") {
+		t.Fatalf("SMT missing inherited field test1_inst_c_level.\ngot:\n%s", smt)
+	}
+	// Initial value of the inherited field must match the parent's value (10)
+	if !strings.Contains(smt, "(= test1_inst_c_level_0 10.0)") {
+		t.Fatalf("SMT missing initial value assert for inherited field (want 10.0).\ngot:\n%s", smt)
+	}
+	// Own field of the child must also be present
+	if !strings.Contains(smt, "test1_inst_c_extra") {
+		t.Fatalf("SMT missing child's own field test1_inst_c_extra.\ngot:\n%s", smt)
+	}
+}
+
+func TestStockInheritanceExcludeSMT(t *testing.T) {
+	// Excluded fields must NOT appear in the SMT; non-excluded inherited fields must.
+	test := `spec test1;
+
+def base = stock{
+	keep: 3,
+	drop: 7,
+};
+
+def derived = stock{
+	extends base,
+	exclude drop,
+	own: 1,
+};
+
+def f = flow{
+	d: new derived,
+	fn: func{
+		d.keep -> 1;
+	},
+};
+
+run init{inst = new f;} {
+	inst.fn;
+};
+`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatal("no SMT generated")
+	}
+	if !strings.Contains(smt, "test1_inst_d_keep") {
+		t.Fatalf("SMT missing inherited (non-excluded) field test1_inst_d_keep.\ngot:\n%s", smt)
+	}
+	if strings.Contains(smt, "test1_inst_d_drop") {
+		t.Fatalf("SMT contains excluded field test1_inst_d_drop, should be absent.\ngot:\n%s", smt)
+	}
+}
+
+func TestStockInheritanceAssertPropagationSMT(t *testing.T) {
+	// An assert written against the parent stock must generate SMT constraints
+	// that reference the child's run-block instance variables.
+	test := `spec test1;
+
+def generic = stock{
+	level: 10,
+};
+
+def child = stock{
+	extends generic,
+	extra: 5,
+};
+
+def f = flow{
+	c: new child,
+	fn: func{
+		c.level -> 2;
+	},
+};
+
+assert generic.level > 0;
+
+run init{inst = new f;} {
+	inst.fn;
+	inst.fn;
+};
+`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatal("no SMT generated")
+	}
+	// The assert must produce an SMT assertion referencing the child instance variable
+	if !strings.Contains(smt, "test1_inst_c_level") {
+		t.Fatalf("SMT missing child instance variable test1_inst_c_level.\ngot:\n%s", smt)
+	}
+	// The negated assert (> becomes <=) must appear
+	if !strings.Contains(smt, "(<= test1_inst_c_level_") {
+		t.Fatalf("SMT missing negated assert (<= test1_inst_c_level_N) for child.\ngot:\n%s", smt)
+	}
+}
+
 // ---- Test helpers ----
 
 func compareResults(s string, smt string, expecting string) error {

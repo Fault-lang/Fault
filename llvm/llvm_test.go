@@ -928,6 +928,67 @@ func stripAndEscape(str string) string {
 	return output.String()
 }
 
+func TestStockExtendsAssertPropagation(t *testing.T) {
+	// An assert on parent.field should also constrain child.field when child extends parent.
+	test := `spec test1;
+def generic = stock{
+	id: "primary key",
+};
+def person = stock{
+	extends generic,
+	name: "person name",
+};
+assert generic.id == true;
+`
+	compiler, err := prepTestCompiler(test, true)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	if len(compiler.RawInputs.Asserts) == 0 {
+		t.Fatal("no asserts compiled")
+	}
+
+	assertVar, ok := compiler.RawInputs.Asserts[0].Constraint.Left.(*ast.AssertVar)
+	if !ok {
+		t.Fatalf("assert left is not AssertVar, got %T", compiler.RawInputs.Asserts[0].Constraint.Left)
+	}
+
+	// Should contain both generic_id and person_id
+	found := make(map[string]bool)
+	for _, inst := range assertVar.Instances {
+		found[inst] = true
+	}
+
+	if !found["test1_generic_id"] {
+		t.Errorf("assert did not include test1_generic_id, got %v", assertVar.Instances)
+	}
+	if !found["test1_person_id"] {
+		t.Errorf("assert did not propagate to test1_person_id, got %v", assertVar.Instances)
+	}
+}
+
+func prepTestCompiler(test string, specType bool) (*Compiler, error) {
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		return nil, err
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	return compiler, err
+}
+
 func prepTest(test string, specType bool) (string, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

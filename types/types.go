@@ -132,6 +132,54 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		rawid := node.RawId()
 		spec := c.SpecStructs[rawid[0]]
 		node.InferredType = &ast.Type{Type: "STOCK", Scope: 0, Parameters: nil}
+
+		if node.Extends != nil {
+			parentName := node.Extends.Value
+			parentFields, ferr := spec.FetchStock(parentName)
+			if ferr != nil {
+				return nil, fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())
+			}
+
+			for _, excluded := range node.Excludes {
+				if _, ok := parentFields[excluded]; !ok {
+					return nil, fmt.Errorf("stock %s: cannot exclude field %q - not found in parent stock %q", node.IdString(), excluded, parentName)
+				}
+			}
+
+			parentKey := strings.Join([]string{rawid[0], parentName}, "_")
+			parentOrder := c.Preprocesser.StructsPropertyOrder[parentKey]
+
+			var inheritedOrder []string
+			for _, fieldName := range parentOrder {
+				excluded := false
+				for _, ex := range node.Excludes {
+					if ex == fieldName {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+				if node.GetPropertyIdent(fieldName) != nil {
+					continue
+				}
+				inheritedVal := parentFields[fieldName].(ast.Expression)
+				ident := &ast.Identifier{
+					Token: node.Extends.Token,
+					Value: fieldName,
+					Spec:  rawid[0],
+				}
+				node.Pairs[ident] = inheritedVal
+				inheritedOrder = append(inheritedOrder, fieldName)
+				spec.UpdateVar(append(rawid, fieldName), "STOCK", inheritedVal)
+			}
+			node.Order = append(inheritedOrder, node.Order...)
+
+			childKey := strings.Join(rawid, "_")
+			c.Preprocesser.StructsPropertyOrder[childKey] = node.Order
+		}
+
 		for _, key := range node.Order {
 			propid := node.GetPropertyIdent(key)
 			v := node.Pairs[propid]

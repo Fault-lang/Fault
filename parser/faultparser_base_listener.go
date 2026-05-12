@@ -165,6 +165,18 @@ func (s *BaseFaultParserListener) EnterSfMisc(ctx *SfMiscContext) {}
 // ExitSfMisc is called when production sfMisc is exited.
 func (s *BaseFaultParserListener) ExitSfMisc(ctx *SfMiscContext) {}
 
+// EnterPropExtends is called when production PropExtends is entered.
+func (s *BaseFaultParserListener) EnterPropExtends(ctx *PropExtendsContext) {}
+
+// ExitPropExtends is called when production PropExtends is exited.
+func (s *BaseFaultParserListener) ExitPropExtends(ctx *PropExtendsContext) {}
+
+// EnterPropExclude is called when production PropExclude is entered.
+func (s *BaseFaultParserListener) EnterPropExclude(ctx *PropExcludeContext) {}
+
+// ExitPropExclude is called when production PropExclude is exited.
+func (s *BaseFaultParserListener) ExitPropExclude(ctx *PropExcludeContext) {}
+
 // EnterStateFunc is called when production StateFunc is entered.
 func (s *BaseFaultParserListener) EnterStateFunc(ctx *StateFuncContext) {}
 

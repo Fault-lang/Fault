@@ -80,6 +80,12 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#sfMisc.
 	VisitSfMisc(ctx *SfMiscContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropExtends.
+	VisitPropExtends(ctx *PropExtendsContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#PropExclude.
+	VisitPropExclude(ctx *PropExcludeContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#StateFunc.
 	VisitStateFunc(ctx *StateFuncContext) interface{}
 

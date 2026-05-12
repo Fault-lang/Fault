@@ -1105,6 +1105,142 @@ func TestUnfuncCompoundRequiresInvalidField(t *testing.T) {
 	}
 }
 
+func TestStockInheritance(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+};
+`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed: %s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	personFields, ferr := spec.FetchStock("person")
+	if ferr != nil {
+		t.Fatalf("could not fetch person stock: %s", ferr)
+	}
+
+	if _, ok := personFields["id"]; !ok {
+		t.Fatal("person should have inherited field 'id' from generic")
+	}
+	if _, ok := personFields["name"]; !ok {
+		t.Fatal("person should have inherited field 'name' from generic")
+	}
+	if _, ok := personFields["occupation"]; !ok {
+		t.Fatal("person should have own field 'occupation'")
+	}
+	if len(personFields) != 3 {
+		t.Fatalf("person should have 3 fields, got %d", len(personFields))
+	}
+}
+
+func TestStockInheritanceWithExclude(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+	age: "entity age",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+	exclude age,
+};
+`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed: %s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	personFields, _ := spec.FetchStock("person")
+
+	if _, ok := personFields["age"]; ok {
+		t.Fatal("person should not have excluded field 'age'")
+	}
+	if _, ok := personFields["id"]; !ok {
+		t.Fatal("person should have inherited field 'id'")
+	}
+	if _, ok := personFields["name"]; !ok {
+		t.Fatal("person should have inherited field 'name'")
+	}
+	if len(personFields) != 3 {
+		t.Fatalf("person should have 3 fields (id, name, occupation), got %d", len(personFields))
+	}
+}
+
+func TestStockInheritanceMultiLevel(t *testing.T) {
+	test := `spec test1;
+def grandparent = stock{
+	id: "primary key",
+};
+def parent = stock{
+	extends grandparent,
+	name: "name value",
+};
+def child = stock{
+	extends parent,
+	occupation: "job",
+};
+`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed: %s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	childFields, ferr := spec.FetchStock("child")
+	if ferr != nil {
+		t.Fatalf("could not fetch child stock: %s", ferr)
+	}
+
+	for _, field := range []string{"id", "name", "occupation"} {
+		if _, ok := childFields[field]; !ok {
+			t.Fatalf("child should have field %q", field)
+		}
+	}
+	if len(childFields) != 3 {
+		t.Fatalf("child should have 3 fields, got %d", len(childFields))
+	}
+}
+
+func TestStockExcludeNonInheritedFieldError(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+};
+def person = stock{
+	extends generic,
+	exclude occupation,
+};
+`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("should have errored: excluding a field not in parent")
+	}
+}
+
+func TestStockExtendsUnknownParentError(t *testing.T) {
+	test := `spec test1;
+def person = stock{
+	extends nonexistent,
+	occupation: "the person's job",
+};
+`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("should have errored: extending a nonexistent stock")
+	}
+}
+
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

@@ -441,7 +441,13 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		c.structPropOrder[key] = def.Value.(*ast.FlowLiteral).Order
 	case "STOCK":
 		c.instances[key] = []string{key}
-		c.structPropOrder[key] = def.Value.(*ast.StockLiteral).Order
+		stock := def.Value.(*ast.StockLiteral)
+		c.structPropOrder[key] = stock.Order
+		if stock.Extends != nil {
+			parentKey := fmt.Sprintf("%s_%s", id[0], stock.Extends.Value)
+			c.instances[key] = append(c.instances[key], parentKey)
+			c.instances[parentKey] = append(c.instances[parentKey], key)
+		}
 	case "GLOBAL":
 		c.instances[key] = []string{key}
 		c.structPropOrder[key] = def.Value.(*ast.StructInstance).Order
@@ -1467,9 +1473,23 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		}
 
 		var instas []string
-		if instances, ok := c.instances[fmt.Sprintf("%s_%s", id[0], id[1])]; ok {
-			for _, in := range instances {
-				instas = append(instas, fmt.Sprintf("%s_%s", in, strings.Join(id[2:], "_")))
+		startKey := fmt.Sprintf("%s_%s", id[0], id[1])
+		if _, ok := c.instances[startKey]; ok {
+			// BFS through the c.instances graph to collect all reachable nodes,
+			// including inherited child types and their runtime instances.
+			field := strings.Join(id[2:], "_")
+			visited := map[string]bool{startKey: true}
+			queue := []string{startKey}
+			for len(queue) > 0 {
+				cur := queue[0]
+				queue = queue[1:]
+				instas = append(instas, fmt.Sprintf("%s_%s", cur, field))
+				for _, next := range c.instances[cur] {
+					if !visited[next] {
+						visited[next] = true
+						queue = append(queue, next)
+					}
+				}
 			}
 		} else {
 			instas = c.fetchInstances(id)

@@ -217,16 +217,38 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitStock(c *parser.StockContext) {
-	pairs := c.AllSfProperties()
+	allProps := c.AllSfProperties()
 	token := ast.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
-	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+	var extends *ast.Identifier
+	var excludes []string
+	normalCount := 0
+
+	for _, prop := range allProps {
+		switch p := prop.(type) {
+		case *parser.PropExtendsContext:
+			identToken := ast.GenerateToken("IDENT", p.IDENT().GetText(), p.GetStart(), p.GetStop())
+			extends = &ast.Identifier{
+				Token: identToken,
+				Value: p.IDENT().GetText(),
+				Spec:  l.currSpec,
+			}
+		case *parser.PropExcludeContext:
+			excludes = append(excludes, p.IDENT().GetText())
+		default:
+			normalCount++
+		}
+	}
+
+	p, order := l.getPairs(normalCount, []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 
 	l.push(
 		&ast.StockLiteral{
-			Token: token,
-			Order: order,
-			Pairs: p,
+			Token:    token,
+			Order:    order,
+			Pairs:    p,
+			Extends:  extends,
+			Excludes: excludes,
 		})
 }
 

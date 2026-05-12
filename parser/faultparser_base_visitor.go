@@ -104,6 +104,14 @@ func (v *BaseFaultParserVisitor) VisitSfMisc(ctx *SfMiscContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitPropExtends(ctx *PropExtendsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitPropExclude(ctx *PropExcludeContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitStateFunc(ctx *StateFuncContext) interface{} {
 	return v.VisitChildren(ctx)
 }

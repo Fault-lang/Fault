@@ -56,6 +56,8 @@ STAY: 'stay';
 UNFUNC: 'unfunc';
 REQUIRES: 'requires';
 EMITS: 'emits';
+EXTENDS: 'extends';
+EXCLUDE: 'exclude';
 
 // Types
 

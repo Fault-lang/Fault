@@ -110,6 +110,14 @@ func (l *FaultListener) EnterPropVar(c *parser.PropVarContext) {
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
 }
 
+func (l *FaultListener) EnterPropExtends(c *parser.PropExtendsContext) {
+	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+}
+
+func (l *FaultListener) EnterPropExclude(c *parser.PropExcludeContext) {
+	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+}
+
 func (l *FaultListener) EnterPropSolvable(c *parser.PropSolvableContext) {
 	// Skip the bare IDENT case (reference, not a declaration)
 	if c.GetChildCount() == 1 {

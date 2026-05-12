@@ -114,6 +114,8 @@ structType
 sfProperties
     : IDENT ':' functionLit #PropFunc
     | structProperties      #sfMisc
+    | EXTENDS IDENT         #PropExtends
+    | EXCLUDE IDENT         #PropExclude
     ;
 
 comProperties
