@@ -892,6 +892,141 @@ func TestStateActivation(t *testing.T) {
 	}
 }
 
+func TestUnfuncCompiles(t *testing.T) {
+	test := `
+	system test;
+
+	component fetch = states{
+		id: false,
+		count: false,
+		countVotes: unfunc{
+			requires fetch.id,
+			emits fetch.count,
+		},
+	};
+
+	run {
+		fetch.countVotes;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	ir := compiler.GetIR()
+
+	// Stub function should appear in LLVM IR
+	if !strings.Contains(ir, "@test_fetch_countVotes__state") {
+		t.Fatal("IR should contain @test_fetch_countVotes__state")
+	}
+
+	// ComponentOrder should include the unfunc state
+	found := false
+	for _, k := range compiler.ComponentOrder {
+		if strings.Contains(k, "countVotes") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("ComponentOrder should include countVotes, got %v", compiler.ComponentOrder)
+	}
+
+	// RawInputs.Unfuncs should contain the unfunc info
+	if len(compiler.RawInputs.Unfuncs) == 0 {
+		t.Fatal("RawInputs.Unfuncs should not be empty")
+	}
+	uf := compiler.RawInputs.Unfuncs[0]
+	if uf.Requires == nil {
+		t.Fatal("UnfuncInfo.Requires should not be nil")
+	}
+	if uf.Emits == nil {
+		t.Fatal("UnfuncInfo.Emits should not be nil")
+	}
+
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestUnfuncWithMultipleRequires(t *testing.T) {
+	test := `
+	system test;
+
+	component ops = states{
+		id: false,
+		joinId: false,
+		result: false,
+		getWithJoin: unfunc{
+			requires ops.id && ops.joinId,
+			emits ops.result,
+		},
+	};
+
+	run {
+		ops.getWithJoin;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty := types.Execute(pre.Processed, pre)
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	if len(compiler.RawInputs.Unfuncs) == 0 {
+		t.Fatal("RawInputs.Unfuncs should not be empty")
+	}
+
+	uf := compiler.RawInputs.Unfuncs[0]
+	if uf.Requires == nil {
+		t.Fatal("Requires should not be nil for getWithJoin")
+	}
+	// The requires expression should be an InfixExpression (&&)
+	if _, ok := uf.Requires.(*ast.InfixExpression); !ok {
+		t.Fatalf("Requires should be an InfixExpression for &&, got %T", uf.Requires)
+	}
+
+	_, err = validateIR(compiler.GetIR())
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
 func compareResults(llvm string, expecting string, ir string) error {
 	if !strings.Contains(ir, "source_filename = \"<stdin>\"") {
 		return fmt.Errorf("optimized ir not valid. \ngot=%s", ir)

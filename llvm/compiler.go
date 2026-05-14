@@ -33,6 +33,14 @@ type RawInputs struct {
 	Assumes    []*ast.AssertionStatement
 	Uncertains map[string][]float64
 	Unknowns   []string
+	Unfuncs    []*UnfuncInfo
+}
+
+// UnfuncInfo stores the requires/emits expression trees for an unfunc state.
+type UnfuncInfo struct {
+	StateKey string
+	Requires ast.Expression
+	Emits    ast.Expression
 }
 
 func NewRawInputs() *RawInputs {
@@ -43,6 +51,7 @@ func NewRawInputs() *RawInputs {
 		Assumes:    []*ast.AssertionStatement{},
 		Uncertains: make(map[string][]float64),
 		Unknowns:   []string{},
+		Unfuncs:    []*UnfuncInfo{},
 	}
 }
 
@@ -611,6 +620,41 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 			c.contextFuncName = "__run"
 			c.contextFunc = nil
 
+		case *ast.UnfuncLiteral:
+			// Unfunc states are treated as booleans (initialized to false)
+			rawid := v.RawId()
+			c.componentBool(rawid)
+
+			parentID := node.IdString()
+			c.structPropOrder[childId] = c.structPropOrder[parentID]
+
+			params := []*ir.Param{}
+			params = c.includeGlobalParams(params)
+			s := c.specs[id[0]]
+			funcId := append(p.(ast.Nameable).Id(), "__state")
+			for _, par := range params {
+				s.vars.AddParam(funcId, par)
+			}
+			c.resetParaState(params)
+			// Create a stub function with no logic body
+			f := c.module.NewFunc(childId, irtypes.Void, params...)
+			stubBlock := f.NewBlock(name.Block())
+			stubBlock.NewRet(nil)
+
+			c.States[v.IdString()] = true
+			c.Components[childId] = &StateFunc{Id: v.Id(), Func: f}
+			c.ComponentOrder = append(c.ComponentOrder, childId)
+
+			c.RawInputs.Unfuncs = append(c.RawInputs.Unfuncs, &UnfuncInfo{
+				StateKey: childId,
+				Requires: v.Requires,
+				Emits:    v.Emits,
+			})
+
+			c.contextBlock = oldBlock
+			c.contextFuncName = "__run"
+			c.contextFunc = nil
+
 		default:
 			val := c.compileValue(v)
 
@@ -822,12 +866,16 @@ func (c *Compiler) compileStateActivation(s *ast.StateActivation) {
 			panic(err)
 		}
 
-		node, ok := branch[stateName].(*ast.FunctionLiteral)
-		if !ok {
+		var rawid []string
+		switch node := branch[stateName].(type) {
+		case *ast.FunctionLiteral:
+			rawid = node.RawId()
+		case *ast.UnfuncLiteral:
+			rawid = node.RawId()
+		default:
 			panic(fmt.Errorf("component state %s.%s not valid", componentName, stateName))
 		}
 
-		rawid := node.RawId()
 		if c.isVarSet(rawid) && c.alloc {
 			r := c.compileValue(&ast.Boolean{Value: true, ProcessedName: rawid})
 			sp := c.specs[specName]

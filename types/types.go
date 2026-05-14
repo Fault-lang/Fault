@@ -1319,7 +1319,7 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	if len(pc.Value) != 2 {
 		return fmt.Errorf("unfunc %s: expected stock.field reference, got %q", clause, pc.String())
 	}
-	stockName := pc.Value[0]
+	typeName := pc.Value[0]
 	fieldName := pc.Value[1]
 
 	spec, ok := c.SpecStructs[pc.Spec]
@@ -1327,13 +1327,18 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 		return fmt.Errorf("unfunc %s: spec %q not found", clause, pc.Spec)
 	}
 
-	fields, err := spec.FetchStock(stockName)
+	// Try stock first, then component (for system specs where component
+	// properties are referenced in requires/emits).
+	fields, err := spec.FetchStock(typeName)
 	if err != nil {
-		return fmt.Errorf("unfunc %s: stock %q not found", clause, stockName)
+		fields, err = spec.FetchComponent(typeName)
+		if err != nil {
+			return fmt.Errorf("unfunc %s: stock or component %q not found", clause, typeName)
+		}
 	}
 
 	if fields[fieldName] == nil {
-		return fmt.Errorf("unfunc %s: stock %q has no field %q", clause, stockName, fieldName)
+		return fmt.Errorf("unfunc %s: %q has no field %q", clause, typeName, fieldName)
 	}
 
 	return nil

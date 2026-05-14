@@ -114,6 +114,9 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.AppendSMT(assertSMT)
 	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens)
 	g.AppendSMT(assumeSMT)
+
+	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound)
+	g.AppendSMT(unfuncSMT)
 }
 
 func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) []string {
@@ -136,6 +139,107 @@ func (g *Generator) sortFuncs(funcs []*ir.Func) {
 		// Get function name.
 		g.functions[util.FormatIdent(f.Ident())] = f
 		continue
+	}
+}
+
+// ProcessUnfuncs generates SMT constraints for unfunc states.
+// For each unfunc, it emits:
+//   - a declare-fun for the uninterpreted function
+//   - per-step activation variables
+//   - activation guards (active => requires)
+//   - write effects (active => emitted field = true at next version)
+//   - frame conditions (not active => emitted field unchanged)
+func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []string {
+	if len(unfuncs) == 0 {
+		return nil
+	}
+	// Bound the trace to at least the number of unfunc states so the solver
+	// has enough steps to find a plan even when the run block has no explicit
+	// rounds.
+	steps := rounds
+	if steps < len(unfuncs) {
+		steps = len(unfuncs)
+	}
+
+	var smt []string
+	for _, uf := range unfuncs {
+		stateId := util.FormatIdent(uf.StateKey)
+		// Declare the uninterpreted function
+		smt = append(smt, fmt.Sprintf("(declare-fun %s (Bool) Bool)", stateId))
+
+		for n := 0; n < steps; n++ {
+			activeVar := fmt.Sprintf("%s_%d_active", stateId, n)
+			smt = append(smt, fmt.Sprintf("(declare-fun %s () Bool)", activeVar))
+
+			// Activation guard: if active, requires must hold at step n
+			if uf.Requires != nil {
+				reqSMT := unfuncExprToSMT(uf.Requires, n)
+				smt = append(smt, fmt.Sprintf("(assert (=> %s %s))", activeVar, reqSMT))
+			}
+
+			// Write effects and frame conditions for emitted fields
+			if uf.Emits != nil {
+				for _, fieldBase := range collectUnfuncFields(uf.Emits) {
+					next := fmt.Sprintf("%s_%d", fieldBase, n+1)
+					curr := fmt.Sprintf("%s_%d", fieldBase, n)
+					smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s true)))", activeVar, next))
+					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
+				}
+			}
+		}
+	}
+	return smt
+}
+
+// unfuncVarBase returns the SMT base variable name for a ParameterCall,
+// using ProcessedName when available, falling back to Spec+Value.
+func unfuncVarBase(pc *ast.ParameterCall) string {
+	if len(pc.ProcessedName) > 0 {
+		return strings.Join(pc.ProcessedName, "_")
+	}
+	parts := append([]string{pc.Spec}, pc.Value...)
+	return strings.Join(parts, "_")
+}
+
+// unfuncExprToSMT converts an unfunc requires/emits expression to an SMT
+// string, versioning ParameterCall leaves with the given step index.
+func unfuncExprToSMT(expr ast.Expression, step int) string {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return fmt.Sprintf("%s_%d", unfuncVarBase(e), step)
+	case *ast.InfixExpression:
+		left := unfuncExprToSMT(e.Left, step)
+		right := unfuncExprToSMT(e.Right, step)
+		switch e.Operator {
+		case "&&":
+			return fmt.Sprintf("(and %s %s)", left, right)
+		case "||":
+			return fmt.Sprintf("(or %s %s)", left, right)
+		default:
+			return fmt.Sprintf("(%s %s %s)", e.Operator, left, right)
+		}
+	case *ast.PrefixExpression:
+		inner := unfuncExprToSMT(e.Right, step)
+		return fmt.Sprintf("(not %s)", inner)
+	default:
+		return ""
+	}
+}
+
+// collectUnfuncFields returns the base SMT variable names (without version
+// suffix) for all ParameterCall leaves in an emits expression.
+func collectUnfuncFields(expr ast.Expression) []string {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return []string{unfuncVarBase(e)}
+	case *ast.InfixExpression:
+		left := collectUnfuncFields(e.Left)
+		right := collectUnfuncFields(e.Right)
+		return append(left, right...)
+	case *ast.PrefixExpression:
+		return collectUnfuncFields(e.Right)
+	default:
+		return nil
 	}
 }
 

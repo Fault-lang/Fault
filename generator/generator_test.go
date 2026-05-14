@@ -1039,6 +1039,145 @@ run init{inst = new f;} {
 	}
 }
 
+// ---- Unfunc SMT generation tests ----
+
+func TestUnfuncGeneratesDeclare(t *testing.T) {
+	test := `
+	system test;
+
+	component fetch = states{
+		id: false,
+		count: false,
+		countVotes: unfunc{
+			requires fetch.id,
+			emits fetch.count,
+		},
+	};
+
+	run {
+		fetch.countVotes;
+	}
+	`
+
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatalf("SMT missing declare-fun. got=%s", smt)
+	}
+	// Uninterpreted function declaration for the unfunc state
+	if !strings.Contains(smt, "test_fetch_countVotes__state") {
+		t.Fatalf("SMT missing unfunc state identifier. got=%s", smt)
+	}
+	// Activation variable declaration
+	if !strings.Contains(smt, "_active") {
+		t.Fatalf("SMT missing activation variable. got=%s", smt)
+	}
+	// Activation guard implication
+	if !strings.Contains(smt, "(assert (=>") {
+		t.Fatalf("SMT missing activation guard. got=%s", smt)
+	}
+}
+
+func TestUnfuncActivationGuard(t *testing.T) {
+	test := `
+	system test;
+
+	component fetch = states{
+		id: false,
+		count: false,
+		countVotes: unfunc{
+			requires fetch.id,
+			emits fetch.count,
+		},
+	};
+
+	run {
+		fetch.countVotes;
+	}
+	`
+
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+
+	// Requires field should appear in the activation guard
+	if !strings.Contains(smt, "test_fetch_id") {
+		t.Fatalf("SMT missing requires variable test_fetch_id. got=%s", smt)
+	}
+	// Emits field should appear in write-effect assertions
+	if !strings.Contains(smt, "test_fetch_count") {
+		t.Fatalf("SMT missing emits variable test_fetch_count. got=%s", smt)
+	}
+}
+
+func TestUnfuncConjunctiveRequires(t *testing.T) {
+	test := `
+	system test;
+
+	component ops = states{
+		id: false,
+		joinId: false,
+		result: false,
+		getWithJoin: unfunc{
+			requires ops.id && ops.joinId,
+			emits ops.result,
+		},
+	};
+
+	run {
+		ops.getWithJoin;
+	}
+	`
+
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "(declare-fun") {
+		t.Fatalf("SMT missing declare-fun. got=%s", smt)
+	}
+	// Conjunctive requires should produce (and ...) in SMT
+	if !strings.Contains(smt, "(and") {
+		t.Fatalf("SMT missing (and ...) for conjunctive requires. got=%s", smt)
+	}
+	if !strings.Contains(smt, "test_ops_id") {
+		t.Fatalf("SMT missing test_ops_id. got=%s", smt)
+	}
+	if !strings.Contains(smt, "test_ops_joinId") {
+		t.Fatalf("SMT missing test_ops_joinId. got=%s", smt)
+	}
+}
+
+func TestUnfuncFrameCondition(t *testing.T) {
+	test := `
+	system test;
+
+	component repo = states{
+		key: false,
+		value: false,
+		lookup: unfunc{
+			requires repo.key,
+			emits repo.value,
+		},
+	};
+
+	run {
+		repo.lookup;
+	}
+	`
+
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+
+	// Frame condition: (assert (=> (not active) (= field_N+1 field_N)))
+	if !strings.Contains(smt, "(not") {
+		t.Fatalf("SMT missing negation for frame condition. got=%s", smt)
+	}
+	// Write effect: (assert (=> active (= emitted true)))
+	if !strings.Contains(smt, "true") {
+		t.Fatalf("SMT missing 'true' in write effect. got=%s", smt)
+	}
+}
+
 // ---- Test helpers ----
 
 func compareResults(s string, smt string, expecting string) error {
