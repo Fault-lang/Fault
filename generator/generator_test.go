@@ -1077,6 +1077,10 @@ func TestUnfuncGeneratesDeclare(t *testing.T) {
 	if !strings.Contains(smt, "(assert (=>") {
 		t.Fatalf("SMT missing activation guard. got=%s", smt)
 	}
+	// Shadow availability variable declarations
+	if !strings.Contains(smt, "_available_") {
+		t.Fatalf("SMT missing _available shadow variable declarations. got=%s", smt)
+	}
 }
 
 func TestUnfuncActivationGuard(t *testing.T) {
@@ -1100,13 +1104,13 @@ func TestUnfuncActivationGuard(t *testing.T) {
 	g := prepTest("", test, false, false)
 	smt := g.SMT()
 
-	// Requires field should appear in the activation guard
-	if !strings.Contains(smt, "test_fetch_id") {
-		t.Fatalf("SMT missing requires variable test_fetch_id. got=%s", smt)
+	// Requires guard must use the _available shadow variable
+	if !strings.Contains(smt, "test_fetch_id_available_") {
+		t.Fatalf("SMT missing requires shadow variable test_fetch_id_available_. got=%s", smt)
 	}
-	// Emits field should appear in write-effect assertions
-	if !strings.Contains(smt, "test_fetch_count") {
-		t.Fatalf("SMT missing emits variable test_fetch_count. got=%s", smt)
+	// Write effect must use the _available shadow variable (not the numeric field)
+	if !strings.Contains(smt, "test_fetch_count_available_") {
+		t.Fatalf("SMT missing emits shadow variable test_fetch_count_available_. got=%s", smt)
 	}
 }
 
@@ -1139,11 +1143,11 @@ func TestUnfuncConjunctiveRequires(t *testing.T) {
 	if !strings.Contains(smt, "(and") {
 		t.Fatalf("SMT missing (and ...) for conjunctive requires. got=%s", smt)
 	}
-	if !strings.Contains(smt, "test_ops_id") {
-		t.Fatalf("SMT missing test_ops_id. got=%s", smt)
+	if !strings.Contains(smt, "test_ops_id_available_") {
+		t.Fatalf("SMT missing test_ops_id_available_. got=%s", smt)
 	}
-	if !strings.Contains(smt, "test_ops_joinId") {
-		t.Fatalf("SMT missing test_ops_joinId. got=%s", smt)
+	if !strings.Contains(smt, "test_ops_joinId_available_") {
+		t.Fatalf("SMT missing test_ops_joinId_available_. got=%s", smt)
 	}
 }
 
@@ -1168,13 +1172,17 @@ func TestUnfuncFrameCondition(t *testing.T) {
 	g := prepTest("", test, false, false)
 	smt := g.SMT()
 
-	// Frame condition: (assert (=> (not active) (= field_N+1 field_N)))
+	// Frame condition: (assert (=> (not active) (= field_available_N+1 field_available_N)))
 	if !strings.Contains(smt, "(not") {
 		t.Fatalf("SMT missing negation for frame condition. got=%s", smt)
 	}
-	// Write effect: (assert (=> active (= emitted true)))
+	// Write effect: (assert (=> active (= field_available_N+1 true)))
 	if !strings.Contains(smt, "true") {
 		t.Fatalf("SMT missing 'true' in write effect. got=%s", smt)
+	}
+	// Shadow variable must be present for the emitted field
+	if !strings.Contains(smt, "test_repo_value_available_") {
+		t.Fatalf("SMT missing _available shadow variable for repo.value. got=%s", smt)
 	}
 }
 

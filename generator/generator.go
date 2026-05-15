@@ -143,12 +143,18 @@ func (g *Generator) sortFuncs(funcs []*ir.Func) {
 }
 
 // ProcessUnfuncs generates SMT constraints for unfunc states.
+//
+// Each field referenced in any unfunc's requires or emits gets an auto-generated
+// shadow Bool variable named <field>_available_N. The numeric field itself is
+// left free for the solver; only the shadow is constrained here.
+//
 // For each unfunc, it emits:
+//   - shadow Bool declarations for every unique field across all unfuncs
 //   - a declare-fun for the uninterpreted function
 //   - per-step activation variables
-//   - activation guards (active => requires)
-//   - write effects (active => emitted field = true at next version)
-//   - frame conditions (not active => emitted field unchanged)
+//   - activation guards (active => requires_available_N)
+//   - write effects on the shadow (active => field_available_N+1 = true)
+//   - frame conditions on the shadow (not active => field_available_N+1 = field_available_N)
 func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []string {
 	if len(unfuncs) == 0 {
 		return nil
@@ -162,26 +168,35 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []str
 	}
 
 	var smt []string
+
+	// Declare _available shadow Bool variables for every unique field across all
+	// unfuncs. Steps 0..steps inclusive because write effects reference n+1 where
+	// n goes up to steps-1.
+	for _, fieldBase := range collectAllUnfuncFields(unfuncs) {
+		for n := 0; n <= steps; n++ {
+			smt = append(smt, fmt.Sprintf("(declare-fun %s_available_%d () Bool)", fieldBase, n))
+		}
+	}
+
 	for _, uf := range unfuncs {
 		stateId := util.FormatIdent(uf.StateKey)
-		// Declare the uninterpreted function
 		smt = append(smt, fmt.Sprintf("(declare-fun %s (Bool) Bool)", stateId))
 
 		for n := 0; n < steps; n++ {
 			activeVar := fmt.Sprintf("%s_%d_active", stateId, n)
 			smt = append(smt, fmt.Sprintf("(declare-fun %s () Bool)", activeVar))
 
-			// Activation guard: if active, requires must hold at step n
+			// Activation guard: if active, required fields must be available
 			if uf.Requires != nil {
-				reqSMT := unfuncExprToSMT(uf.Requires, n)
+				reqSMT := unfuncExprToSMTAvail(uf.Requires, n)
 				smt = append(smt, fmt.Sprintf("(assert (=> %s %s))", activeVar, reqSMT))
 			}
 
-			// Write effects and frame conditions for emitted fields
+			// Write effects and frame conditions on _available shadow variables
 			if uf.Emits != nil {
 				for _, fieldBase := range collectUnfuncFields(uf.Emits) {
-					next := fmt.Sprintf("%s_%d", fieldBase, n+1)
-					curr := fmt.Sprintf("%s_%d", fieldBase, n)
+					next := fmt.Sprintf("%s_available_%d", fieldBase, n+1)
+					curr := fmt.Sprintf("%s_available_%d", fieldBase, n)
 					smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s true)))", activeVar, next))
 					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
 				}
@@ -226,6 +241,32 @@ func unfuncExprToSMT(expr ast.Expression, step int) string {
 	}
 }
 
+// unfuncExprToSMTAvail converts an unfunc expression to an SMT string
+// referencing the _available shadow Bool variable (e.g. field_available_N).
+// Used for requires guards so activation depends on availability, not value.
+func unfuncExprToSMTAvail(expr ast.Expression, step int) string {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return fmt.Sprintf("%s_available_%d", unfuncVarBase(e), step)
+	case *ast.InfixExpression:
+		left := unfuncExprToSMTAvail(e.Left, step)
+		right := unfuncExprToSMTAvail(e.Right, step)
+		switch e.Operator {
+		case "&&":
+			return fmt.Sprintf("(and %s %s)", left, right)
+		case "||":
+			return fmt.Sprintf("(or %s %s)", left, right)
+		default:
+			return fmt.Sprintf("(%s %s %s)", e.Operator, left, right)
+		}
+	case *ast.PrefixExpression:
+		inner := unfuncExprToSMTAvail(e.Right, step)
+		return fmt.Sprintf("(not %s)", inner)
+	default:
+		return ""
+	}
+}
+
 // collectUnfuncFields returns the base SMT variable names (without version
 // suffix) for all ParameterCall leaves in an emits expression.
 func collectUnfuncFields(expr ast.Expression) []string {
@@ -241,6 +282,29 @@ func collectUnfuncFields(expr ast.Expression) []string {
 	default:
 		return nil
 	}
+}
+
+// collectAllUnfuncFields collects all unique field base names from the Requires
+// and Emits expressions of every UnfuncInfo. Deduplication ensures each shadow
+// variable is declared exactly once even if the same field appears in multiple
+// unfuncs.
+func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, uf := range unfuncs {
+		for _, expr := range []ast.Expression{uf.Requires, uf.Emits} {
+			if expr == nil {
+				continue
+			}
+			for _, fieldBase := range collectUnfuncFields(expr) {
+				if !seen[fieldBase] {
+					seen[fieldBase] = true
+					result = append(result, fieldBase)
+				}
+			}
+		}
+	}
+	return result
 }
 
 func (g *Generator) SMT() string {
