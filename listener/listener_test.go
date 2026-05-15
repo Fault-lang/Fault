@@ -2831,3 +2831,88 @@ component fetch = states{
 		t.Errorf("expected 1 UnfuncLiteral, got %d", unfuncCount)
 	}
 }
+
+func TestUnfuncAssumeClause(t *testing.T) {
+	// assume clause: a single postcondition arithmetic constraint.
+	test := `system test1;
+
+component calc = states{
+	multiply: unfunc{
+		requires calc.a && calc.b,
+		emits calc.product,
+		assume calc.product = calc.a * calc.b,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Assumes) != 1 {
+		t.Fatalf("expected 1 assume clause, got %d", len(uf.Assumes))
+	}
+
+	assume, ok := uf.Assumes[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("assume is not an InfixExpression, got %T", uf.Assumes[0])
+	}
+	if assume.Operator != "=" {
+		t.Errorf("assume operator = %q, want =", assume.Operator)
+	}
+
+	lhs, ok := assume.Left.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("assume LHS is not a ParameterCall, got %T", assume.Left)
+	}
+	if strings.Join(lhs.Value, ".") != "calc.product" {
+		t.Errorf("assume LHS = %v, want calc.product", lhs.Value)
+	}
+
+	rhs, ok := assume.Right.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("assume RHS is not an InfixExpression, got %T", assume.Right)
+	}
+	if rhs.Operator != "*" {
+		t.Errorf("assume RHS operator = %q, want *", rhs.Operator)
+	}
+}
+
+func TestUnfuncMultipleAssumeClauses(t *testing.T) {
+	// Multiple assume clauses in one unfunc.
+	test := `system test1;
+
+component calc = states{
+	multiply: unfunc{
+		requires calc.a && calc.b,
+		emits calc.product,
+		assume calc.product = calc.a * calc.b,
+		assume calc.product = calc.a + calc.b,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Assumes) != 2 {
+		t.Fatalf("expected 2 assume clauses, got %d", len(uf.Assumes))
+	}
+
+	for i, a := range uf.Assumes {
+		infix, ok := a.(*ast.InfixExpression)
+		if !ok {
+			t.Fatalf("assume[%d] is not an InfixExpression, got %T", i, a)
+		}
+		if infix.Operator != "=" {
+			t.Errorf("assume[%d] operator = %q, want =", i, infix.Operator)
+		}
+	}
+}

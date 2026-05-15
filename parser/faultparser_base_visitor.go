@@ -404,7 +404,19 @@ func (v *BaseFaultParserVisitor) VisitEmitsClause(ctx *EmitsClauseContext) inter
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitAssumeClause(ctx *AssumeClauseContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitUnfuncExpr(ctx *UnfuncExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitUnfuncArithExpr(ctx *UnfuncArithExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

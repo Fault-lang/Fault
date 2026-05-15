@@ -201,6 +201,17 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []str
 					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
 				}
 			}
+
+			// Assume constraints: when active, postcondition arithmetic holds
+			for _, assume := range uf.Assumes {
+				infix, ok := assume.(*ast.InfixExpression)
+				if !ok {
+					continue
+				}
+				lhsSMT := unfuncArithExprToSMT(infix.Left, n+1)
+				rhsSMT := unfuncArithExprToSMT(infix.Right, n)
+				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsSMT, rhsSMT))
+			}
 		}
 	}
 	return smt
@@ -262,6 +273,36 @@ func unfuncExprToSMTAvail(expr ast.Expression, step int) string {
 	case *ast.PrefixExpression:
 		inner := unfuncExprToSMTAvail(e.Right, step)
 		return fmt.Sprintf("(not %s)", inner)
+	default:
+		return ""
+	}
+}
+
+// unfuncArithExprToSMT converts an unfunc arithmetic expression (from an assume
+// clause) to an SMT string, versioning ParameterCall leaves with the given step.
+func unfuncArithExprToSMT(expr ast.Expression, step int) string {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return fmt.Sprintf("%s_%d", unfuncVarBase(e), step)
+	case *ast.IntegerLiteral:
+		return fmt.Sprintf("%d", e.Value)
+	case *ast.FloatLiteral:
+		return fmt.Sprintf("%g", e.Value)
+	case *ast.InfixExpression:
+		left := unfuncArithExprToSMT(e.Left, step)
+		right := unfuncArithExprToSMT(e.Right, step)
+		switch e.Operator {
+		case "+":
+			return fmt.Sprintf("(+ %s %s)", left, right)
+		case "-":
+			return fmt.Sprintf("(- %s %s)", left, right)
+		case "*":
+			return fmt.Sprintf("(* %s %s)", left, right)
+		case "/":
+			return fmt.Sprintf("(/ %s %s)", left, right)
+		default:
+			return fmt.Sprintf("(%s %s %s)", e.Operator, left, right)
+		}
 	default:
 		return ""
 	}

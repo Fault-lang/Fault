@@ -615,11 +615,29 @@ func (s *BaseFaultParserListener) EnterEmitsClause(ctx *EmitsClauseContext) {}
 // ExitEmitsClause is called when production emitsClause is exited.
 func (s *BaseFaultParserListener) ExitEmitsClause(ctx *EmitsClauseContext) {}
 
+// EnterAssumeClause is called when production assumeClause is entered.
+func (s *BaseFaultParserListener) EnterAssumeClause(ctx *AssumeClauseContext) {}
+
+// ExitAssumeClause is called when production assumeClause is exited.
+func (s *BaseFaultParserListener) ExitAssumeClause(ctx *AssumeClauseContext) {}
+
 // EnterUnfuncExpr is called when production unfuncExpr is entered.
 func (s *BaseFaultParserListener) EnterUnfuncExpr(ctx *UnfuncExprContext) {}
 
 // ExitUnfuncExpr is called when production unfuncExpr is exited.
 func (s *BaseFaultParserListener) ExitUnfuncExpr(ctx *UnfuncExprContext) {}
+
+// EnterUnfuncAssumeExpr is called when production unfuncAssumeExpr is entered.
+func (s *BaseFaultParserListener) EnterUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) {}
+
+// ExitUnfuncAssumeExpr is called when production unfuncAssumeExpr is exited.
+func (s *BaseFaultParserListener) ExitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) {}
+
+// EnterUnfuncArithExpr is called when production unfuncArithExpr is entered.
+func (s *BaseFaultParserListener) EnterUnfuncArithExpr(ctx *UnfuncArithExprContext) {}
+
+// ExitUnfuncArithExpr is called when production unfuncArithExpr is exited.
+func (s *BaseFaultParserListener) ExitUnfuncArithExpr(ctx *UnfuncArithExprContext) {}
 
 // EnterEos is called when production eos is entered.
 func (s *BaseFaultParserListener) EnterEos(ctx *EosContext) {}

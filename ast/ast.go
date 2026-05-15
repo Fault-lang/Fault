@@ -1715,11 +1715,12 @@ func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
 }
 
 // UnfuncLiteral represents an unfunc{} state block — an uninterpreted function
-// declared only by its requires and emits clauses.
+// declared only by its requires, emits, and optional assume clauses.
 type UnfuncLiteral struct {
 	Token         Token
-	Requires      Expression // expression tree preserving &&, ||, ! operators
+	Requires      Expression   // expression tree preserving &&, ||, ! operators
 	Emits         Expression
+	Assumes       []Expression // each is an InfixExpression: paramCall = arithExpr
 	ProcessedName []string
 }
 
@@ -1735,6 +1736,10 @@ func (ul *UnfuncLiteral) String() string {
 	out.WriteString(", emits ")
 	if ul.Emits != nil {
 		out.WriteString(ul.Emits.String())
+	}
+	for _, a := range ul.Assumes {
+		out.WriteString(", assume ")
+		out.WriteString(a.String())
 	}
 	out.WriteString("}")
 	return out.String()

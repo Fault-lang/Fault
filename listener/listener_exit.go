@@ -429,10 +429,47 @@ func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
 			uf.Requires = expr
 		case *parser.EmitsClauseContext:
 			uf.Emits = expr
+		case *parser.AssumeClauseContext:
+			uf.Assumes = append(uf.Assumes, expr)
 		}
 	}
 
 	l.push(uf)
+}
+
+func (l *FaultListener) ExitUnfuncArithExpr(c *parser.UnfuncArithExprContext) {
+	// base cases: paramCall or numeric — already pushed by their own exit hooks
+	if c.ParamCall() != nil || c.Numeric() != nil {
+		return
+	}
+	// parenthesised expression — inner already on stack
+	if c.LPAREN() != nil {
+		return
+	}
+	// binary op: unfuncArithExpr op unfuncArithExpr
+	op := c.GetChild(1).(antlr.TerminalNode).GetText()
+	token := ast.GenerateToken(string(ast.OPS[op]), op, c.GetStart(), c.GetStop())
+	rght := l.pop()
+	lft := l.pop()
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: op,
+		Right:    rght.(ast.Expression),
+	})
+}
+
+func (l *FaultListener) ExitUnfuncAssumeExpr(c *parser.UnfuncAssumeExprContext) {
+	// paramCall '=' unfuncArithExpr — rhs on top, lhs below
+	rhs := l.pop()
+	lhs := l.pop()
+	token := ast.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lhs.(ast.Expression),
+		Operator: "=",
+		Right:    rhs.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitUnfuncExpr(c *parser.UnfuncExprContext) {

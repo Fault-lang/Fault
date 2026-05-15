@@ -374,8 +374,9 @@ unfuncBlock
     ;
 
 unfuncClause
-    : REQUIRES unfuncExpr  #requiresClause
-    | EMITS unfuncExpr     #emitsClause
+    : REQUIRES unfuncExpr      #requiresClause
+    | EMITS unfuncExpr         #emitsClause
+    | ASSUME unfuncAssumeExpr  #assumeClause
     ;
 
 unfuncExpr
@@ -384,6 +385,18 @@ unfuncExpr
     | '!' unfuncExpr
     | '(' unfuncExpr ')'
     | paramCall
+    ;
+
+unfuncAssumeExpr
+    : paramCall '=' unfuncArithExpr
+    ;
+
+unfuncArithExpr
+    : unfuncArithExpr ('*' | '/') unfuncArithExpr
+    | unfuncArithExpr ('+' | '-') unfuncArithExpr
+    | '(' unfuncArithExpr ')'
+    | paramCall
+    | numeric
     ;
 
 eos

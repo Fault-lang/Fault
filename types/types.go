@@ -247,6 +247,11 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		if err = c.checkUnfuncExpr(node.Emits, "emits"); err != nil {
 			return node, err
 		}
+		for _, assume := range node.Assumes {
+			if err = c.checkUnfuncArithExpr(assume, "assume"); err != nil {
+				return node, err
+			}
+		}
 		return node, nil
 	case *ast.AssertionStatement:
 		n, err := c.inferFunction(node.Constraint)
@@ -1342,6 +1347,26 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	}
 
 	return nil
+}
+
+// checkUnfuncArithExpr validates an assume clause expression tree.
+// The top-level must be an InfixExpression with operator "=" whose LHS is a
+// ParameterCall (the produced field). RHS may contain ParameterCalls and
+// numeric literals connected by arithmetic operators.
+func (c *Checker) checkUnfuncArithExpr(expr ast.Expression, clause string) error {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return c.checkUnfuncFieldRef(e, clause)
+	case *ast.IntegerLiteral, *ast.FloatLiteral:
+		return nil
+	case *ast.InfixExpression:
+		if err := c.checkUnfuncArithExpr(e.Left, clause); err != nil {
+			return err
+		}
+		return c.checkUnfuncArithExpr(e.Right, clause)
+	default:
+		return fmt.Errorf("unfunc %s: unsupported expression type %T", clause, expr)
+	}
 }
 
 func typeable(node ast.Node) *ast.Type {

@@ -1274,3 +1274,40 @@ func notStrictlyOrdered(want string, got string) bool {
 	}
 	return true
 }
+
+func TestUnfuncAssumeConstraint(t *testing.T) {
+	test := `
+	system test;
+
+	component calc = states{
+		a: false,
+		b: false,
+		product: false,
+		multiply: unfunc{
+			requires calc.a && calc.b,
+			emits calc.product,
+			assume calc.product = calc.a * calc.b,
+		},
+	};
+
+	run {
+		calc.multiply;
+	}
+	`
+
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+
+	// Should contain an implication for the assume constraint when active
+	if !strings.Contains(smt, "=>") {
+		t.Fatalf("SMT missing implication for assume constraint. got=%s", smt)
+	}
+	// Multiplication operator
+	if !strings.Contains(smt, "(*") {
+		t.Fatalf("SMT missing multiplication in assume constraint. got=%s", smt)
+	}
+	// Shadow availability variable for the emitted field
+	if !strings.Contains(smt, "test_calc_product_available_") {
+		t.Fatalf("SMT missing _available shadow variable for calc.product. got=%s", smt)
+	}
+}

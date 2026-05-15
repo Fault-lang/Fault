@@ -36,11 +36,12 @@ type RawInputs struct {
 	Unfuncs    []*UnfuncInfo
 }
 
-// UnfuncInfo stores the requires/emits expression trees for an unfunc state.
+// UnfuncInfo stores the requires/emits/assumes expression trees for an unfunc state.
 type UnfuncInfo struct {
 	StateKey string
 	Requires ast.Expression
 	Emits    ast.Expression
+	Assumes  []ast.Expression
 }
 
 func NewRawInputs() *RawInputs {
@@ -649,6 +650,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 				StateKey: childId,
 				Requires: v.Requires,
 				Emits:    v.Emits,
+				Assumes:  v.Assumes,
 			})
 
 			c.contextBlock = oldBlock
