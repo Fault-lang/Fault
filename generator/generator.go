@@ -115,7 +115,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens)
 	g.AppendSMT(assumeSMT)
 
-	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound)
+	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound, p.Registry)
 	g.AppendSMT(unfuncSMT)
 }
 
@@ -155,7 +155,7 @@ func (g *Generator) sortFuncs(funcs []*ir.Func) {
 //   - activation guards (active => requires_available_N)
 //   - write effects on the shadow (active => field_available_N+1 = true)
 //   - frame conditions on the shadow (not active => field_available_N+1 = field_available_N)
-func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []string {
+func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, registry map[string][][]string) []string {
 	if len(unfuncs) == 0 {
 		return nil
 	}
@@ -175,6 +175,16 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []str
 	for _, fieldBase := range collectAllUnfuncFields(unfuncs) {
 		for n := 0; n <= steps; n++ {
 			smt = append(smt, fmt.Sprintf("(declare-fun %s_available_%d () Bool)", fieldBase, n))
+		}
+	}
+
+	// For each unique LHS field in assume clauses, declare new versioned variables
+	// for steps 1..steps. These represent the output field's value immediately after
+	// the unfunc fires. Step 0 (the initial value) already exists in the main formula.
+	assumeLHSTypes := collectAssumeLHSTypes(unfuncs, g.Env.VarTypes)
+	for lhsBase, lhsType := range assumeLHSTypes {
+		for n := 1; n <= steps; n++ {
+			smt = append(smt, fmt.Sprintf("(declare-fun %s_%d () %s)", lhsBase, n, lhsType))
 		}
 	}
 
@@ -202,15 +212,40 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int) []str
 				}
 			}
 
-			// Assume constraints: when active, postcondition arithmetic holds
+			// Assume constraints: postcondition arithmetic scoped to this exact firing.
+			//
+			// LHS is the output field at n+1 — the value it takes on after the unfunc
+			// fires. RHS uses the registry to resolve the actual SSA names of input
+			// fields at round n, so constraints reference the variables that already
+			// exist in the main formula rather than hypothetical step-indexed names.
+			//
+			// Frame condition: when the unfunc does NOT fire at step n, the output
+			// field is unchanged (carries its previous value forward).
 			for _, assume := range uf.Assumes {
 				infix, ok := assume.(*ast.InfixExpression)
 				if !ok {
 					continue
 				}
-				lhsSMT := unfuncArithExprToSMT(infix.Left, n+1)
-				rhsSMT := unfuncArithExprToSMT(infix.Right, n)
-				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsSMT, rhsSMT))
+				lhsPC, ok := infix.Left.(*ast.ParameterCall)
+				if !ok {
+					continue
+				}
+				lhsBase := unfuncVarBase(lhsPC)
+				lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
+
+				// "curr" for the frame condition:
+				//   - at step 0, use the version declared in the main formula
+				//   - at step n>0, use the version we declared at the prior step
+				var lhsCurr string
+				if n == 0 {
+					lhsCurr = registryBestVersion(registry, lhsBase, 0)
+				} else {
+					lhsCurr = fmt.Sprintf("%s_%d", lhsBase, n)
+				}
+
+				rhsSMT := unfuncArithExprToSMT(infix.Right, n, registry)
+				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
+				smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
 			}
 		}
 	}
@@ -225,6 +260,62 @@ func unfuncVarBase(pc *ast.ParameterCall) string {
 	}
 	parts := append([]string{pc.Spec}, pc.Value...)
 	return strings.Join(parts, "_")
+}
+
+// registryBestVersion finds the full SSA variable name for baseName at the most
+// recent round at or before maxRound. Registry keys have the form "round-N_blockId".
+// Falls back to baseName_0 if nothing is found.
+func registryBestVersion(registry map[string][][]string, baseName string, maxRound int) string {
+	best := ""
+	bestRound := -1
+	for key, vars := range registry {
+		var round int
+		if _, err := fmt.Sscanf(key, "round-%d_", &round); err != nil {
+			continue
+		}
+		if round > maxRound {
+			continue
+		}
+		for _, varSSA := range vars {
+			if varSSA[0] == baseName && round >= bestRound {
+				bestRound = round
+				best = strings.Join(varSSA, "_")
+			}
+		}
+	}
+	if best != "" {
+		return best
+	}
+	return fmt.Sprintf("%s_0", baseName)
+}
+
+// collectAssumeLHSTypes returns a map from base variable name to SMT type for
+// every unique LHS ParameterCall across all unfunc assume clauses. Used to
+// declare the new versioned output variables in ProcessUnfuncs.
+func collectAssumeLHSTypes(unfuncs []*llvm.UnfuncInfo, varTypes map[string]string) map[string]string {
+	result := make(map[string]string)
+	for _, uf := range unfuncs {
+		for _, assume := range uf.Assumes {
+			infix, ok := assume.(*ast.InfixExpression)
+			if !ok {
+				continue
+			}
+			lhsPC, ok := infix.Left.(*ast.ParameterCall)
+			if !ok {
+				continue
+			}
+			base := unfuncVarBase(lhsPC)
+			if _, seen := result[base]; seen {
+				continue
+			}
+			ty := varTypes[base]
+			if ty == "" {
+				ty = "Real"
+			}
+			result[base] = ty
+		}
+	}
+	return result
 }
 
 // unfuncExprToSMT converts an unfunc requires/emits expression to an SMT
@@ -279,18 +370,21 @@ func unfuncExprToSMTAvail(expr ast.Expression, step int) string {
 }
 
 // unfuncArithExprToSMT converts an unfunc arithmetic expression (from an assume
-// clause) to an SMT string, versioning ParameterCall leaves with the given step.
-func unfuncArithExprToSMT(expr ast.Expression, step int) string {
+// clause RHS) to an SMT string. ParameterCall leaves are resolved to their actual
+// SSA names at round n using the registry, so the constraint references variables
+// that genuinely exist in the main formula.
+func unfuncArithExprToSMT(expr ast.Expression, round int, registry map[string][][]string) string {
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
-		return fmt.Sprintf("%s_%d", unfuncVarBase(e), step)
+		base := unfuncVarBase(e)
+		return registryBestVersion(registry, base, round)
 	case *ast.IntegerLiteral:
 		return fmt.Sprintf("%d", e.Value)
 	case *ast.FloatLiteral:
 		return fmt.Sprintf("%g", e.Value)
 	case *ast.InfixExpression:
-		left := unfuncArithExprToSMT(e.Left, step)
-		right := unfuncArithExprToSMT(e.Right, step)
+		left := unfuncArithExprToSMT(e.Left, round, registry)
+		right := unfuncArithExprToSMT(e.Right, round, registry)
 		switch e.Operator {
 		case "+":
 			return fmt.Sprintf("(+ %s %s)", left, right)
