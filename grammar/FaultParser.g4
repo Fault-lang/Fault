@@ -204,6 +204,7 @@ assumption
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
     | ('nmt' | 'nft') integer
+    | 'available'
     ;
 
 invariant

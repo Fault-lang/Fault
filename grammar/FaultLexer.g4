@@ -38,6 +38,7 @@ EVENTUALLYALWAYS: 'eventually-always';
 ALWAYS: 'always';
 NMT: 'nmt';
 NFT: 'nft';
+AVAILABLE: 'available';
 
 NIL: 'nil';
 TRUE: 'true';

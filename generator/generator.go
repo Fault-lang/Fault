@@ -110,24 +110,52 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.ResultLog = p.Log
 
+	// ProcessUnfuncs first: it declares _available_N shadow variables that
+	// assume/assert statements (e.g. "assume x available") may reference.
+	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound, p.Registry)
+	g.AppendSMT(unfuncSMT)
+
 	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry, p.Whens)
 	g.AppendSMT(assertSMT)
 	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens)
 	g.AppendSMT(assumeSMT)
-
-	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound, p.Registry)
-	g.AppendSMT(unfuncSMT)
 }
 
 func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) []string {
 	var rules []string
 
 	for _, as := range assertList {
-		if !asserts.IsRelevant(g.Env.VarTypes, as.Constraint){ //If the assert is on a variable that is not used, drop the assert
-			continue;
+		// "assume/assert x available" pins the initial availability of a field.
+		// The _available_0 shadow variable is declared by ProcessUnfuncs (which
+		// runs first), so we can safely assert against it here.
+		if as.Temporal == "available" {
+			rules = append(rules, availabilityAssertions(as)...)
+			continue
+		}
+		if !asserts.IsRelevant(g.Env.VarTypes, as.Constraint) { //If the assert is on a variable that is not used, drop the assert
+			continue
 		}
 		c := asserts.NewConstraint(as, rounds, registry, whens)
 		rules = append(rules, c.Parse()...)
+	}
+	return rules
+}
+
+// availabilityAssertions generates SMT for "assume/assert x available".
+// For each instance in the constraint's AssertVar, it emits an assertion that
+// the field's _available_0 shadow variable is true (assume) or false (assert).
+func availabilityAssertions(as *ast.AssertionStatement) []string {
+	assertVar, ok := as.Constraint.Left.(*ast.AssertVar)
+	if !ok {
+		return nil
+	}
+	val := "true"
+	if !as.Assume {
+		val = "false"
+	}
+	var rules []string
+	for _, inst := range assertVar.Instances {
+		rules = append(rules, fmt.Sprintf("(assert (= %s_available_0 %s))", inst, val))
 	}
 	return rules
 }
@@ -192,10 +220,15 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 
 	for _, uf := range unfuncs {
 		stateId := util.FormatIdent(uf.StateKey)
+		// The registry uses the bare state variable name (without __state suffix).
+		stateVarBase := strings.TrimSuffix(stateId, "__state")
 
 		for n := 0; n < steps; n++ {
-			activeVar := fmt.Sprintf("%s_%d_active", stateId, n)
-			smt = append(smt, fmt.Sprintf("(declare-fun %s () Bool)", activeVar))
+			// The activation variable IS the state's Bool variable at round n+1
+			// (declared and constrained by the run block in the main formula).
+			// Using it directly connects unfunc constraints to the run block
+			// rather than inventing a free variable the solver can ignore.
+			activeVar := registryBestVersion(registry, stateVarBase, n+1)
 
 			// Activation guard: if active, required fields must be available
 			if uf.Requires != nil {

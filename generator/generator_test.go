@@ -1065,15 +1065,11 @@ func TestUnfuncGeneratesDeclare(t *testing.T) {
 	if !strings.Contains(smt, "(declare-fun") {
 		t.Fatalf("SMT missing declare-fun. got=%s", smt)
 	}
-	// Uninterpreted function declaration for the unfunc state
-	if !strings.Contains(smt, "test_fetch_countVotes__state") {
+	// The run block's Bool state variable drives activation (no separate _active var)
+	if !strings.Contains(smt, "test_fetch_countVotes") {
 		t.Fatalf("SMT missing unfunc state identifier. got=%s", smt)
 	}
-	// Activation variable declaration
-	if !strings.Contains(smt, "_active") {
-		t.Fatalf("SMT missing activation variable. got=%s", smt)
-	}
-	// Activation guard implication
+	// Activation guard implication uses the run block's state variable directly
 	if !strings.Contains(smt, "(assert (=>") {
 		t.Fatalf("SMT missing activation guard. got=%s", smt)
 	}
@@ -1302,12 +1298,12 @@ func TestUnfuncAssumeConstraint(t *testing.T) {
 	if !strings.Contains(smt, "(declare-fun test_calc_product_1 ()") {
 		t.Fatalf("SMT missing declaration of output field at step+1. got=%s", smt)
 	}
-	// Assume constraint: active => output_n+1 = arith(inputs_n), using registry SSA names.
-	if !strings.Contains(smt, "(=> test_calc_multiply__state_0_active (= test_calc_product_1 (* test_calc_a_0 test_calc_b_0)))") {
+	// Assume constraint: run-block state var drives activation (no separate _active).
+	if !strings.Contains(smt, "(=> test_calc_multiply_1 (= test_calc_product_1 (* test_calc_a_0 test_calc_b_0)))") {
 		t.Fatalf("SMT assume constraint missing or wrong. got=%s", smt)
 	}
 	// Frame condition: not active => output_n+1 = output_n (value unchanged when unfunc doesn't fire).
-	if !strings.Contains(smt, "(=> (not test_calc_multiply__state_0_active) (= test_calc_product_1 test_calc_product_0))") {
+	if !strings.Contains(smt, "(=> (not test_calc_multiply_1) (= test_calc_product_1 test_calc_product_0))") {
 		t.Fatalf("SMT missing frame condition for output field. got=%s", smt)
 	}
 	// _available shadow for the emitted field still present.
