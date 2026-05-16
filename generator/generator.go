@@ -94,7 +94,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
 	g.sortFuncs(m.Funcs)
 
-	g.Env.WhensThens = unroll.WhenThen(g.Env.RawInputs.Asserts)
+	g.Env.WhensThens = unroll.WhenThen(append(g.RawInputs.Asserts, g.RawInputs.Assumes...))
 
 	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()

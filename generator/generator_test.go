@@ -1311,3 +1311,37 @@ func TestUnfuncAssumeConstraint(t *testing.T) {
 		t.Fatalf("SMT missing _available shadow variable for calc.product. got=%s", smt)
 	}
 }
+
+func TestStockInitWithWhenThen(t *testing.T) {
+	test := `
+spec test_stock;
+
+def square = stock{
+    value,
+};
+
+def row = stock{
+    pos1: new square,
+    pos2: new square,
+};
+
+assume when row.pos1.value == 1 then row.pos2.value != 1;
+
+run init{r1 = new row;} {
+}
+`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	if !strings.Contains(smt, "(declare-fun test_stock_r1_pos1_value_0 () Real)") {
+		t.Fatalf("SMT missing declare-fun for r1_pos1_value. got=%s", smt)
+	}
+	if !strings.Contains(smt, "(declare-fun test_stock_r1_pos2_value_0 () Real)") {
+		t.Fatalf("SMT missing declare-fun for r1_pos2_value. got=%s", smt)
+	}
+	if strings.Contains(smt, "test_stock_row_pos1_value") {
+		t.Fatalf("SMT should not contain template variable name test_stock_row_pos1_value. got=%s", smt)
+	}
+	if !strings.Contains(smt, "test_stock_r1_pos1_value_0") || !strings.Contains(smt, "test_stock_r1_pos2_value_0") {
+		t.Fatalf("SMT constraint should use instance variable names. got=%s", smt)
+	}
+}

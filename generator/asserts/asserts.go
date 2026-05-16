@@ -267,11 +267,20 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 }
 
 func (c *Constraint) applyWhen() string {
+	whens := c.Whens
+	if len(whens) == 0 {
+		// No flow steps ran — generate a static round-0 constraint for each real instance.
+		whens = c.buildStaticWhens()
+	}
+
 	var ru []string
 	var op string
-	for _, w := range c.Whens {
+	for _, w := range whens {
 		l := c.parseWhenThen(c.Raw.Left, w)
 		r := c.parseWhenThen(c.Raw.Right, w)
+		if l == "" || r == "" {
+			continue
+		}
 		var rule string
 		if c.Assume {
 			op = "and"
@@ -283,7 +292,74 @@ func (c *Constraint) applyWhen() string {
 
 		ru = append(ru, rule)
 	}
+	if len(ru) == 0 {
+		return ""
+	}
 	return fmt.Sprintf("(%s %s)", op, strings.Join(ru, " "))
+}
+
+// collectAssertVarNodes returns all *ast.AssertVar nodes in an expression tree.
+func collectAssertVarNodes(node ast.Expression) []*ast.AssertVar {
+	switch e := node.(type) {
+	case *ast.AssertVar:
+		return []*ast.AssertVar{e}
+	case *ast.InfixExpression:
+		return append(collectAssertVarNodes(e.Left), collectAssertVarNodes(e.Right)...)
+	case *ast.PrefixExpression:
+		return collectAssertVarNodes(e.Right)
+	default:
+		return nil
+	}
+}
+
+// hasRound0Entry reports whether base appears in the round-0 registry.
+func (c *Constraint) hasRound0Entry(base string) bool {
+	for key, vars := range c.Registry {
+		var round int
+		if _, err := fmt.Sscanf(key, "round-%d_", &round); err != nil || round != 0 {
+			continue
+		}
+		for _, v := range vars {
+			if v[0] == base {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// buildStaticWhens generates synthetic when/then maps for specs with no active rounds
+// (c.Whens is empty because no flow functions ran). All AssertVar nodes in the
+// constraint share the same BFS-expanded Instances slice, so Instances[i] on the
+// left corresponds to Instances[i] on the right. For each positional index where
+// the instance has a round-0 registry entry, one map is produced covering every
+// AssertVar at that index.
+func (c *Constraint) buildStaticWhens() []map[string]string {
+	allNodes := append(collectAssertVarNodes(c.Raw.Left), collectAssertVarNodes(c.Raw.Right)...)
+	if len(allNodes) == 0 {
+		return nil
+	}
+
+	nInstances := len(allNodes[0].Instances)
+	var result []map[string]string
+	for i := 0; i < nInstances; i++ {
+		w := make(map[string]string)
+		hasReal := false
+		for _, av := range allNodes {
+			if i >= len(av.Instances) {
+				continue
+			}
+			base := av.Instances[i]
+			if c.hasRound0Entry(base) {
+				w[base] = fmt.Sprintf("%s_0", base)
+				hasReal = true
+			}
+		}
+		if hasReal {
+			result = append(result, w)
+		}
+	}
+	return result
 }
 
 func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) string {
@@ -318,7 +394,22 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 	case *ast.StringLiteral:
 		return e.Value
 	case *ast.AssertVar:
-		return w[e.Instances[0]]
+		// Prefer instances that have a real declaration in the registry (concrete
+		// instantiations) over template-level names that appear first in the BFS
+		// but have no corresponding LLVM variable.
+		for _, inst := range e.Instances {
+			if v, ok := w[inst]; ok && v != "" && c.hasRound0Entry(inst) {
+				return v
+			}
+		}
+		// Fallback: return the first match without registry check (covers constants
+		// and other cases not tracked in the round-0 registry).
+		for _, inst := range e.Instances {
+			if v, ok := w[inst]; ok && v != "" {
+				return v
+			}
+		}
+		return ""
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
