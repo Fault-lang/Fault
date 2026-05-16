@@ -75,6 +75,7 @@ type Compiler struct {
 	specs            map[string]*spec
 	instances        map[string][]string
 	instanceChildren map[string]string
+	instanceChildOf  map[string][]string // directed: parent -> []children (only downward edges)
 	structPropOrder  map[string][]string
 	RawInputs        *RawInputs
 
@@ -116,6 +117,7 @@ func NewCompiler() *Compiler {
 		contextCondAfter: make([]*ir.Block, 0),
 		instances:        make(map[string][]string),
 		instanceChildren: make(map[string]string),
+		instanceChildOf:  make(map[string][]string),
 		structPropOrder:  make(map[string][]string),
 		RawInputs:        NewRawInputs(),
 
@@ -278,6 +280,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 
 					c.instances[key] = append(c.instances[key], parent)
 					c.instances[parent] = append(c.instances[parent], key)
+					c.instanceChildOf[parent] = append(c.instanceChildOf[parent], key)
 					children, err := s.FetchInstanceStrMap(name, d.Parent[1], ty)
 					if err != nil {
 						panic(err)
@@ -460,6 +463,7 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 			parentKey := fmt.Sprintf("%s_%s", id[0], stock.Extends.Value)
 			c.instances[key] = append(c.instances[key], parentKey)
 			c.instances[parentKey] = append(c.instances[parentKey], key)
+			c.instanceChildOf[parentKey] = append(c.instanceChildOf[parentKey], key)
 		}
 	case "GLOBAL":
 		c.instances[key] = []string{key}
@@ -565,6 +569,7 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	c.structPropOrder[key] = node.Order
 	c.instances[key] = append(c.instances[key], parent)
 	c.instances[parent] = append(c.instances[parent], key)
+	c.instanceChildOf[parent] = append(c.instanceChildOf[parent], key)
 	c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 
 	c.contextFuncName = parentFunction
@@ -1530,8 +1535,9 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		var instas []string
 		startKey := fmt.Sprintf("%s_%s", id[0], id[1])
 		if _, ok := c.instances[startKey]; ok {
-			// BFS through the c.instances graph to collect all reachable nodes,
-			// including inherited child types and their runtime instances.
+			// BFS through the c.instanceChildOf graph (directed, parent→child only)
+			// to collect all concrete run instances reachable from this template.
+			// This avoids traversing back up to parent templates or sideways to siblings.
 			field := strings.Join(id[2:], "_")
 			visited := map[string]bool{startKey: true}
 			queue := []string{startKey}
@@ -1539,7 +1545,7 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 				cur := queue[0]
 				queue = queue[1:]
 				instas = append(instas, fmt.Sprintf("%s_%s", cur, field))
-				for _, next := range c.instances[cur] {
+				for _, next := range c.instanceChildOf[cur] {
 					if !visited[next] {
 						visited[next] = true
 						queue = append(queue, next)

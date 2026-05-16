@@ -617,29 +617,84 @@ func WhenThen(aw []*ast.AssertionStatement) map[string]map[string][]string {
 	//variables are on the right side (then) for every variable on the left side (when)
 	//this allows us to build out asserts later and capture overlapping SSA transitions
 	//Example: a1 is true, b1 must be true. b1 becomes b2 before a1 becomes a2 so b2 must still be true
+	//
+	// When AssertVars have multiple instances (from BFS expansion over template stocks and their
+	// concrete run instances), we pair variables by positional index within the Instances slices.
+	// This ensures r1_pos1 is only linked to r1_pos2/r1_pos3 and r2_pos1 only to r2_pos2/r2_pos3,
+	// rather than cross-linking all instances together (which collapses to one combo due to dedup).
 	var whenThens = make(map[string]map[string][]string)
 	for _, a := range aw {
 		if a.Constraint.Operator == "then" {
-			when := extractVariables(a.Constraint.Left)
-			then := extractVariables(a.Constraint.Right)
-			for _, w := range when {
-				left := util.RemoveFromStringSlice(when, w)
-				if whenThens[w] == nil {
-					whenThens[w] = make(map[string][]string)
+			whenAssertVars := collectAssertVarNodes(a.Constraint.Left)
+			thenAssertVars := collectAssertVarNodes(a.Constraint.Right)
+
+			if len(whenAssertVars) == 0 {
+				// No AssertVars — fall back to flat extraction (e.g. Identifier-only asserts)
+				when := extractVariables(a.Constraint.Left)
+				then := extractVariables(a.Constraint.Right)
+				for _, w := range when {
+					left := util.RemoveFromStringSlice(when, w)
+					if whenThens[w] == nil {
+						whenThens[w] = make(map[string][]string)
+					}
+					whenThens[w][a.String()] = append(left, then...)
 				}
-				whenThens[w][a.String()] = append(left, then...)
+				for _, t := range then {
+					right := util.RemoveFromStringSlice(then, t)
+					if whenThens[t] == nil {
+						whenThens[t] = make(map[string][]string)
+					}
+					whenThens[t][a.String()] = append(when, right...)
+				}
+				continue
 			}
 
-			for _, t := range then {
-				right := util.RemoveFromStringSlice(then, t)
-				if whenThens[t] == nil {
-					whenThens[t] = make(map[string][]string)
+			nInstances := len(whenAssertVars[0].Instances)
+			for i := 0; i < nInstances; i++ {
+				var whenI []string
+				for _, wv := range whenAssertVars {
+					if i < len(wv.Instances) {
+						whenI = append(whenI, wv.Instances[i])
+					}
 				}
-				whenThens[t][a.String()] = append(when, right...)
+				var thenI []string
+				for _, tv := range thenAssertVars {
+					if i < len(tv.Instances) {
+						thenI = append(thenI, tv.Instances[i])
+					}
+				}
+				for _, w := range whenI {
+					left := util.RemoveFromStringSlice(whenI, w)
+					if whenThens[w] == nil {
+						whenThens[w] = make(map[string][]string)
+					}
+					whenThens[w][a.String()] = append(left, thenI...)
+				}
+				for _, t := range thenI {
+					right := util.RemoveFromStringSlice(thenI, t)
+					if whenThens[t] == nil {
+						whenThens[t] = make(map[string][]string)
+					}
+					whenThens[t][a.String()] = append(whenI, right...)
+				}
 			}
 		}
 	}
 	return whenThens
+}
+
+// collectAssertVarNodes walks an expression tree and returns all *ast.AssertVar nodes found.
+func collectAssertVarNodes(e ast.Node) []*ast.AssertVar {
+	switch v := e.(type) {
+	case *ast.AssertVar:
+		return []*ast.AssertVar{v}
+	case *ast.InfixExpression:
+		return append(collectAssertVarNodes(v.Left), collectAssertVarNodes(v.Right)...)
+	case *ast.PrefixExpression:
+		return collectAssertVarNodes(v.Right)
+	default:
+		return nil
+	}
 }
 
 func extractVariables(e ast.Node) []string {
