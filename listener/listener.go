@@ -24,6 +24,7 @@ type FaultListener struct {
 	testing              bool   // bypass imports when we're running unit tests
 	Uncertains           map[string][]float64
 	Unknowns             []string
+	Wholes               []string
 	StructsPropertyOrder map[string][]string
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node

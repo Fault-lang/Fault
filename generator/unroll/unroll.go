@@ -669,6 +669,10 @@ func extractVariables(e ast.Node) []string {
 		return vars
 	case *ast.Unknown:
 		vars = append(vars, v.Name.IdString())
+	case *ast.Whole:
+		if v.Name != nil {
+			vars = append(vars, v.Name.IdString())
+		}
 	case *ast.Nil:
 		return vars
 	case *ast.IndexExpression:
@@ -710,7 +714,9 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 		return declareVar(id, ty, &rules.Wrap{Value: val.String()}, false)
 	case *constant.Float:
 		ty := LookupType(id, val)
-		if isASolvable(id, RawInputs) {
+		if isAWhole(id, RawInputs) {
+			return rules.NewWholeInit(id, ty, -1)
+		} else if isASolvable(id, RawInputs) {
 			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, true)
 		} else {
 			v := val.X.String()

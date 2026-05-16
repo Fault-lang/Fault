@@ -213,6 +213,7 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 	wid := rules.NewWrap(id, ty, true, file, line, true, xIs)
 	wid.SetOmit(b.Env.CurrentFunction)
 	wid.SetWhensThens(b.Env.WhensThens)
+	wid.SetWhole(b.Env.RawInputs.Wholes)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {

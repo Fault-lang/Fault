@@ -56,6 +56,7 @@ var TYPES = map[string]int{ //Convertible Types
 	"INT":       4,
 	"UNCERTAIN": 5,
 	"UNKNOWN":   6,
+	"WHOLE":     7,
 }
 
 type Type struct {
@@ -1030,6 +1031,41 @@ func (u *Unknown) RawId() []string {
 }
 
 func (u *Unknown) Position() []int { return u.Token.GetPosition() }
+
+type Whole struct {
+	Token         Token
+	InferredType  *Type
+	Name          *Identifier
+	ProcessedName []string
+}
+
+func (w *Whole) expressionNode()      {}
+func (w *Whole) TokenLiteral() string { return w.Token.Literal }
+func (w *Whole) String() string {
+	var out bytes.Buffer
+	out.WriteString("whole(")
+	if w.Name != nil {
+		out.WriteString(w.Name.Value)
+	}
+	out.WriteString(")")
+	return out.String()
+}
+func (w *Whole) GetToken() Token { return w.Token }
+func (w *Whole) Type() string {
+	t := w.InferredType
+	if t != nil {
+		return t.Type
+	}
+	return "WHOLE"
+}
+func (w *Whole) SetType(ty *Type) { w.InferredType = ty }
+func (w *Whole) Id() []string {
+	return []string{w.ProcessedName[0], strings.Join(w.ProcessedName[1:], "_")}
+}
+func (w *Whole) SetId(id []string)  { w.ProcessedName = id }
+func (w *Whole) IdString() string   { return strings.Join(w.ProcessedName, "_") }
+func (w *Whole) RawId() []string    { return w.ProcessedName }
+func (w *Whole) Position() []int    { return w.Token.GetPosition() }
 
 type PrefixExpression struct {
 	Token         Token

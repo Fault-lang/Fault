@@ -69,6 +69,7 @@ TY_FLOAT: 'float';
 TY_NATURAL: 'natural';
 TY_UNCERTAIN: 'uncertain';
 TY_UNKNOWN: 'unknown';
+TY_WHOLE: 'whole';
 
 SYNTH: '__';
 

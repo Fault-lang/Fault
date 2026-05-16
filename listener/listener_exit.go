@@ -158,6 +158,10 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, ident.Value}, "_"))
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+		case *ast.Whole:
+			inst.Name = ident
+			val = inst
+			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, ident.Value}, "_"))
 		}
 		var temp []ast.Node
 		temp = append(temp, &ast.ConstantStatement{
@@ -622,6 +626,12 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+		case *ast.Whole:
+			if inst.Name == nil {
+				inst.Name = ident
+				right = inst
+			}
+			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		}
 
 		assign = &ast.InfixExpression{
@@ -1036,6 +1046,11 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 		l.push(&ast.Unknown{
 			Token: token,
 			Name:  ident,
+		})
+	case "whole":
+		token := ast.GenerateToken("WHOLE", "WHOLE", c.GetStart(), c.GetStop())
+		l.push(&ast.Whole{
+			Token: token,
 		})
 	default:
 		log.Fatalf("Unimplemented: %s", c.FaultType().GetText())
@@ -1786,6 +1801,10 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+		case *ast.Whole:
+			inst.Name = ident
+			right = inst
+			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		}
 		order = append([]string{ident.Value}, order...)
 		pairs[ident] = right.(ast.Expression)

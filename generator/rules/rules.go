@@ -137,6 +137,7 @@ type Init struct {
 	Type           string
 	Value          Rule
 	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
+	Whole          bool //If true, emit (assert (is_int id)) after declare-fun
 	Indexed        bool
 	OmitFromOutput bool
 	Log            *scenario.Logger
@@ -178,6 +179,8 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else if i.Whole {
+		rule = fmt.Sprintf("%s\n(assert (is_int %s))\n", d, id)
 	} else {
 		rule = d
 	}
@@ -231,6 +234,16 @@ func NewInit(name string, t string, ssa int, val Rule, solvable bool, indexed bo
 		Value:    val,
 		Solvable: solvable,
 		Indexed:  indexed,
+	}
+}
+
+func NewWholeInit(name string, t string, ssa int) *Init {
+	return &Init{
+		Ident:    name,
+		SSA:      fmt.Sprintf("%d", ssa),
+		Type:     t,
+		Solvable: true,
+		Whole:    true,
 	}
 }
 
@@ -909,6 +922,7 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	HaveSeen       map[string]bool
 	OnEntry        map[string][]int16
 	Whens          map[string][]string //map of when asserts this variable is involved in
+	Whole          bool                //If true, emit (assert (is_int id)) after declare-fun
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -945,6 +959,15 @@ func (w *Wrap) SetWhensThens(whens map[string]map[string][]string) {
 
 func (w *Wrap) SetOmit(current_function string) {
 	w.OmitFromOutput = current_function == "__run"
+}
+
+func (w *Wrap) SetWhole(wholes []string) {
+	for _, v := range wholes {
+		if v == w.Value {
+			w.Whole = true
+			return
+		}
+	}
 }
 
 func (w *Wrap) SetRound(r int) {
@@ -985,6 +1008,7 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
 			//default_value := DefaultValue(w.Type)
 			i := NewInit(w.Value, w.Type, int(ssa.Get(w.Value)), nil, false, false)
+			i.Whole = w.Whole
 			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}

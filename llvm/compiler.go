@@ -33,6 +33,7 @@ type RawInputs struct {
 	Assumes    []*ast.AssertionStatement
 	Uncertains map[string][]float64
 	Unknowns   []string
+	Wholes     []string
 	Unfuncs    []*UnfuncInfo
 }
 
@@ -52,6 +53,7 @@ func NewRawInputs() *RawInputs {
 		Assumes:    []*ast.AssertionStatement{},
 		Uncertains: make(map[string][]float64),
 		Unknowns:   []string{},
+		Wholes:     []string{},
 		Unfuncs:    []*UnfuncInfo{},
 	}
 }
@@ -134,9 +136,9 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, testing bool) (*Compiler, error) {
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, aliases map[string]string, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
-	compiler.LoadMeta(specRec, uncertains, unknowns, aliases, testing)
+	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, aliases, testing)
 
 	err := compiler.Compile(tree)
 	if err != nil {
@@ -145,11 +147,12 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 	return compiler, nil
 }
 
-func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, aliases map[string]string, test bool) {
+func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, aliases map[string]string, test bool) {
 
 	c.specStructs = structs
 	c.RawInputs.Unknowns = unknowns
 	c.RawInputs.Uncertains = uncertains
+	c.RawInputs.Wholes = wholes
 	c.isTesting = test
 	c.Alias = aliases
 }
@@ -503,6 +506,8 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Unknown:
+		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	case *ast.Whole:
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Nil:
 		return constant.NewNull(&irtypes.PointerType{})
@@ -1571,6 +1576,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.Unknown:
 		return e
+	case *ast.Whole:
+		return e
 	case *ast.PrefixExpression:
 		e.Right = c.convertAssertVariables(e.Right)
 		return e
@@ -1658,6 +1665,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 	for _, k := range keys {
 		var isUncertain []float64
 		var isUnknown bool
+		var isWhole bool
 		var id []string
 
 		switch pv := tree[k].Value.(type) {
@@ -1680,6 +1688,9 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 				isUnknown = true
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
+			} else if _, ok3 := pv.(*ast.Whole); ok3 {
+				isUnknown = true // whole is a free variable like unknown
+				isWhole = true
 			}
 
 			id = pv.(ast.Nameable).Id()
@@ -1705,6 +1716,9 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		}
 		if isUncertain != nil {
 			c.RawInputs.Uncertains[vname] = isUncertain
+		}
+		if isWhole {
+			c.RawInputs.Wholes = append(c.RawInputs.Wholes, vname)
 		}
 		children[vname] = node.Parent[1]
 	}

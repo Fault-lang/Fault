@@ -203,7 +203,7 @@ func prepAssertTest(test string) (*Compiler, error) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		return nil, err

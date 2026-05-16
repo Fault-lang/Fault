@@ -281,6 +281,7 @@ faultType
     | TY_NATURAL
     | TY_UNCERTAIN
     | TY_UNKNOWN
+    | TY_WHOLE
     ;
 
 solvable

@@ -594,7 +594,7 @@ func TestBadSpecs(t *testing.T) {
 				ty := types.Execute(pre.Processed, pre)
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)
-				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, false)
+				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, false)
 				if err != nil {
 					pipelineErr = fmt.Errorf("llvm: %w", err)
 					return
@@ -1243,7 +1243,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 	ty := types.Execute(pre.Processed, pre)
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
 	if err != nil {
 		panic(err)
 	}

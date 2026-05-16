@@ -122,6 +122,15 @@ func isASolvable(id string, RawInputs *llvm.RawInputs) bool {
 	return false
 }
 
+func isAWhole(id string, RawInputs *llvm.RawInputs) bool {
+	for _, v := range RawInputs.Wholes {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
+
 func FormatValue(val value.Value) string {
 	v := strings.Split(val.String(), " ")
 	return v[1]
