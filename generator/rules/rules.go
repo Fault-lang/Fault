@@ -137,7 +137,8 @@ type Init struct {
 	Type           string
 	Value          Rule
 	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
-	Whole          bool //If true, emit (assert (is_int id)) after declare-fun
+	Whole          bool //If true, whole-number variable (affects sort and is_int behaviour)
+	IntegerMode    bool //If true, declare whole vars as Int sort and suppress is_int assertions
 	Indexed        bool
 	OmitFromOutput bool
 	Log            *scenario.Logger
@@ -173,13 +174,17 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		i.Log.UpdateVariable(id, i.OmitFromOutput)
 	}
 
-	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
+	sort := i.Type
+	if i.Whole && i.IntegerMode {
+		sort = "Int"
+	}
+	d = fmt.Sprintf("(declare-fun %s () %s)", id, sort)
 
 	if i.Value != nil && i.Global && !i.Solvable {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
-	} else if i.Whole {
+	} else if i.Whole && !i.IntegerMode {
 		rule = fmt.Sprintf("%s\n(assert (is_int %s))\n", d, id)
 	} else {
 		rule = d
@@ -237,13 +242,14 @@ func NewInit(name string, t string, ssa int, val Rule, solvable bool, indexed bo
 	}
 }
 
-func NewWholeInit(name string, t string, ssa int) *Init {
+func NewWholeInit(name string, t string, ssa int, integerMode bool) *Init {
 	return &Init{
-		Ident:    name,
-		SSA:      fmt.Sprintf("%d", ssa),
-		Type:     t,
-		Solvable: true,
-		Whole:    true,
+		Ident:       name,
+		SSA:         fmt.Sprintf("%d", ssa),
+		Type:        t,
+		Solvable:    true,
+		Whole:       true,
+		IntegerMode: integerMode,
 	}
 }
 
@@ -922,7 +928,8 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	HaveSeen       map[string]bool
 	OnEntry        map[string][]int16
 	Whens          map[string][]string //map of when asserts this variable is involved in
-	Whole          bool                //If true, emit (assert (is_int id)) after declare-fun
+	Whole          bool                //If true, whole-number variable
+	IntegerMode    bool                //If true, declare as Int sort and suppress is_int
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -970,6 +977,10 @@ func (w *Wrap) SetWhole(wholes []string) {
 	}
 }
 
+func (w *Wrap) SetIntegerMode(on bool) {
+	w.IntegerMode = on
+}
+
 func (w *Wrap) SetRound(r int) {
 	w.Round = r
 }
@@ -1009,6 +1020,7 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 			//default_value := DefaultValue(w.Type)
 			i := NewInit(w.Value, w.Type, int(ssa.Get(w.Value)), nil, false, false)
 			i.Whole = w.Whole
+			i.IntegerMode = w.IntegerMode
 			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}

@@ -770,7 +770,7 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	case *constant.Float:
 		ty := LookupType(id, val)
 		if isAWhole(id, RawInputs) {
-			return rules.NewWholeInit(id, ty, -1)
+			return rules.NewWholeInit(id, ty, -1, RawInputs.IntegerMode)
 		} else if isASolvable(id, RawInputs) {
 			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, true)
 		} else {

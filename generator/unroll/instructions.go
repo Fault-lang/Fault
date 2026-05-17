@@ -214,6 +214,7 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 	wid.SetOmit(b.Env.CurrentFunction)
 	wid.SetWhensThens(b.Env.WhensThens)
 	wid.SetWhole(b.Env.RawInputs.Wholes)
+	wid.SetIntegerMode(b.Env.RawInputs.IntegerMode)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {

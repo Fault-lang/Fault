@@ -49,6 +49,34 @@ type Generator struct {
 }
 
 func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, opts GeneratorOptions) *Generator {
+	// Optimization pass: if every free numeric variable is whole(), declare them as
+	// Int-sorted and use QF_NIA (standard, cross-compatible). This avoids is_int
+	// assertions and the QF_NRA + is_int combination that is Z3-specific.
+	// Note: whole vars are also tracked in Unknowns (they are free variables), so
+	// the condition is simply: no non-whole free variables present.
+	if len(ri.Wholes) > 0 && len(ri.Uncertains) == 0 {
+		// Check that every entry in Unknowns is also in Wholes (i.e. all unknowns are whole)
+		wholeSet := make(map[string]bool, len(ri.Wholes))
+		for _, w := range ri.Wholes {
+			wholeSet[w] = true
+		}
+		allWhole := true
+		for _, u := range ri.Unknowns {
+			if !wholeSet[u] {
+				allWhole = false
+				break
+			}
+		}
+		if allWhole {
+			ri.IntegerMode = true
+		}
+	}
+
+	logic := "QF_NRA"
+	if ri.IntegerMode {
+		logic = "QF_NIA"
+	}
+
 	var preamble []string
 	if opts.Timeout > 0 {
 		preamble = append(preamble, fmt.Sprintf("(set-option :timeout %d)", opts.Timeout))
@@ -56,7 +84,7 @@ func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, 
 	if opts.MemoryMaxSize > 0 {
 		preamble = append(preamble, fmt.Sprintf("(set-option :memory_max_size %d)", opts.MemoryMaxSize))
 	}
-	preamble = append(preamble, "(set-logic QF_NRA)")
+	preamble = append(preamble, fmt.Sprintf("(set-logic %s)", logic))
 	return &Generator{
 		functions:   make(map[string]*ir.Func),
 		Env:         unroll.NewEnv(ri),

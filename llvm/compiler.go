@@ -35,6 +35,17 @@ type RawInputs struct {
 	Unknowns   []string
 	Wholes     []string
 	Unfuncs    []*UnfuncInfo
+	// IntegerMode is set by the generator optimization pass when every free numeric
+	// variable is whole(). In that mode the SMT logic switches to QF_NIA, whole vars
+	// are declared with Int sort, and is_int assertions are suppressed entirely.
+	// TODO: when the model mixes whole() with unknown()/uncertain() there is no
+	// standard nonlinear mixed-integer/real logic (QF_NIRA is Z3-only). Current
+	// behaviour falls back to QF_NRA + is_int, which is also a Z3 extension.
+	// A strategy is needed to remain cross-compatible with other SMT solvers in the
+	// mixed case — options include: pure-Real encoding without is_int (loses the
+	// integer constraint), warning the user that non-Z3 solvers may reject the output,
+	// or emitting both sorts and letting the solver decide.
+	IntegerMode bool
 }
 
 // UnfuncInfo stores the requires/emits/assumes expression trees for an unfunc state.

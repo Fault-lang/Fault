@@ -1345,3 +1345,23 @@ run init{r1 = new row;} {
 		t.Fatalf("SMT constraint should use instance variable names. got=%s", smt)
 	}
 }
+
+func TestIntegerModeDetection(t *testing.T) {
+	test := `spec testwhole;
+def square = stock{
+    value: whole(),
+};
+run init{r1 = new square;} {
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	if !strings.Contains(smt, "(set-logic QF_NIA)") {
+		t.Fatalf("expected QF_NIA, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(declare-fun testwhole_r1_value_0 () Int)") {
+		t.Fatalf("expected Int sort, got:\n%s", smt)
+	}
+	if strings.Contains(smt, "is_int") {
+		t.Fatalf("expected no is_int in integer mode, got:\n%s", smt)
+	}
+}
