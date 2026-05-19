@@ -601,6 +601,16 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 
 	spec := c.SpecStructs[rawid[0]]
 	ty, _ := spec.GetStructType(rawid)
+	// [spec, field] with ty==NIL: try expanding to [spec, spec, field] for cases
+	// where the spec name matches the struct definition name (e.g. "mySpec.myField"
+	// where mySpec is both the spec and a top-level stock/flow name).
+	if ty == "NIL" && len(rawid) == 2 {
+		expanded := []string{rawid[0], rawid[0], rawid[1]}
+		if ety, _ := spec.GetStructType(expanded); ety != "NIL" {
+			rawid = expanded
+			ty = ety
+		}
+	}
 	v, err := spec.FetchVar(rawid, ty)
 	if err != nil {
 		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
@@ -1093,6 +1103,16 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		rawid := b.RawId()
 		spec := c.SpecStructs[rawid[0]]
 		ty, _ := spec.GetStructType(rawid)
+		// When rawid is [spec, field] and resolves to NIL, the identifier was
+		// created from a dotted path like "specName.field" where specName is both
+		// the spec and a struct definition. Expand to [spec, spec, field].
+		if ty == "NIL" && len(rawid) == 2 {
+			expanded := []string{rawid[0], rawid[0], rawid[1]}
+			if ety, _ := spec.GetStructType(expanded); ety != "NIL" {
+				rawid = expanded
+				ty = ety
+			}
+		}
 		p, err := spec.FetchVar(rawid, ty)
 
 		if p == nil {
@@ -1300,6 +1320,8 @@ func IsNumeric(t *ast.Type) bool {
 	case "INT":
 		return true
 	case "FLOAT":
+		return true
+	case "WHOLE":
 		return true
 	case "UNKNOWN":
 		return true

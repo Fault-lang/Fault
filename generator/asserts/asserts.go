@@ -32,11 +32,12 @@ type Constraint struct {
 	Whens    []map[string]string
 }
 
-func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) *Constraint {
+func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) (*Constraint, error) {
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
 	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
-		panic("cannot mix temporal logic with when/then assertions")
+		pos := a.Position()
+		return nil, fmt.Errorf("cannot mix temporal logic with when/then assertions (line %d col %d)", pos[0], pos[1])
 	}
 
 	operator = smtlibOperators(a.Constraint.Operator)
@@ -69,7 +70,7 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 		Rounds:   rounds,
 		Registry: registry,
 		Whens:    whens[a.String()],
-	}
+	}, nil
 }
 
 func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {

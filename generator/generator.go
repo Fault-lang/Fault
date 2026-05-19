@@ -163,7 +163,10 @@ func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds 
 		if !asserts.IsRelevant(g.Env.VarTypes, as.Constraint) { //If the assert is on a variable that is not used, drop the assert
 			continue
 		}
-		c := asserts.NewConstraint(as, rounds, registry, whens)
+		c, err := asserts.NewConstraint(as, rounds, registry, whens)
+		if err != nil {
+			panic(err.Error())
+		}
 		rules = append(rules, c.Parse()...)
 	}
 	return rules

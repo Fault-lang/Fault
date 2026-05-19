@@ -7,6 +7,7 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -780,6 +781,9 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 				return rules.NewUncertainInit(id, ty, -1, params[0], params[1], k)
 			}
 			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, true)
+		} else if RawInputs.IntegerMode {
+			v := floatLitToInt(val.X.String())
+			return declareVar(id, "Int", &rules.Wrap{Value: v}, false)
 		} else {
 			v := val.X.String()
 			if strings.Contains(v, ".") {
@@ -820,6 +824,15 @@ func isBuiltIn(c string) bool {
 	return false
 }
 
+// floatLitToInt converts a float literal string like "1.0" to an integer string "1".
+// Used when generating SMT in QF_NIA (integer) mode.
+func floatLitToInt(s string) string {
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return strconv.FormatInt(int64(f), 10)
+	}
+	return s
+}
+
 func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
@@ -831,6 +844,10 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 			case *constant.Float, *constant.Int:
 				litStr := extractLiteral(c.(constant.Constant))
 				ty := LookupType(refname, v)
+				if e.RawInputs.IntegerMode && ty == "Real" {
+					litStr = floatLitToInt(litStr)
+					ty = "Int"
+				}
 				return litStr, ty, false
 			}
 			ty := LookupType(refname, v)
@@ -848,6 +865,9 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 	}
 
 	if IsNumeric(x) {
+		if e.RawInputs.IntegerMode {
+			return floatLitToInt(x), "Int", false
+		}
 		return x, "Real", false
 	}
 
@@ -869,24 +889,44 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 	_, file, line, _ := runtime.Caller(1)
 
 	var xr, yr rules.Rule
-	if strings.HasPrefix(x, "__hist_") {
-		offset, histBase := parseHistSentinel(x)
-		xr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyX}
-	} else {
-		wx := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
-		wx.SetWhensThens(b.Env.WhensThens)
-		wx.SetOmit(b.Env.CurrentFunction)
-		xr = wx
+
+	// If x or y is still a raw temp (e.g. %2), look it up in irRefs and
+	// substitute the stored sub-expression rule directly.
+	if IsTemp(x) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, x)
+		if ref, ok := b.irRefs[refname]; ok {
+			xr = ref
+		}
+	}
+	if IsTemp(y) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, y)
+		if ref, ok := b.irRefs[refname]; ok {
+			yr = ref
+		}
 	}
 
-	if strings.HasPrefix(y, "__hist_") {
-		offset, histBase := parseHistSentinel(y)
-		yr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyY}
-	} else {
-		wy := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
-		wy.SetWhensThens(b.Env.WhensThens)
-		wy.SetOmit(b.Env.CurrentFunction)
-		yr = wy
+	if xr == nil {
+		if strings.HasPrefix(x, "__hist_") {
+			offset, histBase := parseHistSentinel(x)
+			xr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyX}
+		} else {
+			wx := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
+			wx.SetWhensThens(b.Env.WhensThens)
+			wx.SetOmit(b.Env.CurrentFunction)
+			xr = wx
+		}
+	}
+
+	if yr == nil {
+		if strings.HasPrefix(y, "__hist_") {
+			offset, histBase := parseHistSentinel(y)
+			yr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyY}
+		} else {
+			wy := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
+			wy.SetWhensThens(b.Env.WhensThens)
+			wy.SetOmit(b.Env.CurrentFunction)
+			yr = wy
+		}
 	}
 
 	return &rules.Infix{

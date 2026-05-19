@@ -135,7 +135,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		base := util.FormatIdent(inst.Dst.Ident())
 		// Skip initial stores to local allocas that are never loaded or stored
 		// by any flow function — they would produce orphaned SMT declarations.
-		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] {
+		// However, always keep solvable (whole/unknown/uncertain) variables so
+		// that assume/assert constraints referencing them remain satisfiable.
+		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) {
 			return nil
 		}
 		if IsTemp(inst.Src.Ident()) {
@@ -164,23 +166,30 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					wid := rules.NewWrap(base, "", true, file, line, true, xIs)
 					wid.SetOmit(b.Env.CurrentFunction)
 					wid.SetWhensThens(b.Env.WhensThens)
+					wid.SetWhole(b.Env.RawInputs.Wholes)
+					wid.SetIntegerMode(b.Env.RawInputs.IntegerMode)
 
 					if IsStaticValue(r.X.String()) {
 						wid.Variable = false
+					}
+
+					numTy := "Real"
+					if wid.Whole && wid.IntegerMode {
+						numTy = "Int"
 					}
 
 					if IsBoolean(r.Y.String()) {
 						wid.Type = "Bool"
 						ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
 					} else if IsNumeric(r.Y.String()) {
-						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+						wid.Type = numTy
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
 					} else if isASolvable(r.X.String(), b.Env.RawInputs) {
-						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+						wid.Type = numTy
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
 					} else {
-						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+						wid.Type = numTy
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
 					}
 					b.Env.VarTypes[base] = wid.Type
 				default:
@@ -225,7 +234,15 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 		wval.SetWhensThens(b.Env.WhensThens)
 	} else if IsNumeric(val) {
 		_, file, line, _ := runtime.Caller(1)
-		wval = rules.NewWrap(val, ty, false, file, line, false, false)
+		numVal := val
+		numTy := ty
+		if b.Env.RawInputs.IntegerMode && !IsBoolean(val) {
+			numVal = floatLitToInt(val)
+			if numTy == "Real" {
+				numTy = "Int"
+			}
+		}
+		wval = rules.NewWrap(numVal, numTy, false, file, line, false, false)
 		wval.SetOmit(b.Env.CurrentFunction)
 		wval.SetWhensThens(b.Env.WhensThens)
 	} else {

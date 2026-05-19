@@ -117,7 +117,7 @@ func TestSmtlibOperators(t *testing.T) {
 
 func TestNewConstraint_AssertPolarity(t *testing.T) {
 	stmt := assertStmt([]string{"spec_s_v"}, "==", 10, false, "", "")
-	c := NewConstraint(stmt, 1, registry("spec_s_v", 2), map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, registry("spec_s_v", 2), map[string][]map[string]string{})
 	if c.On != "and" {
 		t.Errorf("assert: On = %q, want %q", c.On, "and")
 	}
@@ -131,7 +131,7 @@ func TestNewConstraint_AssertPolarity(t *testing.T) {
 
 func TestNewConstraint_AssumePolarity(t *testing.T) {
 	stmt := assertStmt([]string{"spec_s_v"}, "==", 10, true, "", "")
-	c := NewConstraint(stmt, 1, registry("spec_s_v", 2), map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, registry("spec_s_v", 2), map[string][]map[string]string{})
 	if c.On != "or" {
 		t.Errorf("assume: On = %q, want %q", c.On, "or")
 	}
@@ -145,7 +145,7 @@ func TestNewConstraint_AssumePolarity(t *testing.T) {
 
 func TestNewConstraint_OperatorMapped(t *testing.T) {
 	stmt := assertStmt([]string{"spec_s_v"}, "==", 10, false, "", "")
-	c := NewConstraint(stmt, 1, registry("spec_s_v", 2), map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, registry("spec_s_v", 2), map[string][]map[string]string{})
 	if c.Op != "=" {
 		t.Errorf("Op = %q, want %q", c.Op, "=")
 	}
@@ -337,7 +337,7 @@ func TestParse_AssumeEventually_Equality(t *testing.T) {
 	// → (assert (or (= spec_s_value_0 60) (= spec_s_value_1 60) (= spec_s_value_2 60)))
 	stmt := assertStmt([]string{"spec_s_value"}, "==", 60, true, "eventually", "")
 	reg := registry("spec_s_value", 2)
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))
@@ -359,7 +359,7 @@ func TestParse_AssumeAlways_Equality(t *testing.T) {
 	// → (assert (and (= spec_s_value_0 60) (= spec_s_value_1 60) ...))
 	stmt := assertStmt([]string{"spec_s_value"}, "==", 60, true, "always", "")
 	reg := registry("spec_s_value", 2)
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))
@@ -375,7 +375,7 @@ func TestParse_AssumeEventually_GreaterThan(t *testing.T) {
 	// → (assert (or (> spec_c_value_0 10) (> spec_c_value_1 10)))
 	stmt := assertStmt([]string{"spec_c_value"}, ">", 10, true, "eventually", "")
 	reg := registry("spec_c_value", 1)
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))
@@ -395,7 +395,7 @@ func TestParse_AssertNoTemporal_NegatedEquality(t *testing.T) {
 	// → (assert (or (not (= spec_s_value_0 60)) (not (= spec_s_value_1 60)) ...))
 	stmt := assertStmt([]string{"spec_s_value"}, "!=", 60, false, "", "")
 	reg := registry("spec_s_value", 2)
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))
@@ -415,7 +415,7 @@ func TestParse_AssumeNoTemporal_Equality(t *testing.T) {
 	// Off="and" for assume, no temporal → uses Off
 	stmt := assertStmt([]string{"spec_s_value"}, "==", 60, true, "", "")
 	reg := registry("spec_s_value", 2)
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))
@@ -431,7 +431,7 @@ func TestParse_AssumeEventuallyAlways(t *testing.T) {
 	// → (assert (or v2 (and v1 v2) (and v0 v1 v2)))
 	stmt := assertStmt([]string{"spec_s_value"}, "==", 5, true, "eventually-always", "")
 	reg := registry("spec_s_value", 2)
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))
@@ -466,7 +466,7 @@ func TestParse_MultipleInstances(t *testing.T) {
 		Assume:   true,
 		Temporal: "eventually",
 	}
-	c := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
+	c, _ := NewConstraint(stmt, 1, reg, map[string][]map[string]string{})
 	results := c.Parse()
 	if len(results) != 1 {
 		t.Fatalf("expected 1 assertion, got %d", len(results))

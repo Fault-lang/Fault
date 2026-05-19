@@ -1515,6 +1515,15 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	case *ast.Identifier:
 		id := c.AliasToBaseRaw(e.RawId())
 		pos := e.Position()
+		// Identifiers parsed from "specName.field" (where specName is also a struct
+		// definition) arrive as [spec, field]. Expand to [spec, spec, field] so that
+		// the normal 3-element lookup path applies.
+		if len(id) == 2 && !c.isVarSetAssert(id) {
+			expanded := []string{id[0], id[0], id[1]}
+			if c.isVarSetAssert(expanded) {
+				id = expanded
+			}
+		}
 		vname := strings.Join(id, "_")
 
 		if !c.isVarSetAssert(id) {
