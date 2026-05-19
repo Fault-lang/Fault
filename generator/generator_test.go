@@ -1365,3 +1365,41 @@ run init{r1 = new square;} {
 		t.Fatalf("expected no is_int in integer mode, got:\n%s", smt)
 	}
 }
+
+func TestUncertainBoundsDefault(t *testing.T) {
+	// uncertain(mean, sigma) with no k should emit bounds using default k=3.0
+	test := `spec testuncertain;
+def box = stock{
+    temp: uncertain(10.0, 2.0),
+};
+run init{r1 = new box;} {
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	// default k=3.0: lower=4.0, upper=16.0
+	if !strings.Contains(smt, "(assert (>= testuncertain_r1_temp_0 4.000000))") {
+		t.Fatalf("expected lower bound assert, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(assert (<= testuncertain_r1_temp_0 16.000000))") {
+		t.Fatalf("expected upper bound assert, got:\n%s", smt)
+	}
+}
+
+func TestUncertainBoundsCustomK(t *testing.T) {
+	// uncertain(mean, sigma, k) should use the provided k
+	test := `spec testuncertaink;
+def box = stock{
+    temp: uncertain(10.0, 2.0, 1.0),
+};
+run init{r1 = new box;} {
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	// k=1.0: lower=8.0, upper=12.0
+	if !strings.Contains(smt, "(assert (>= testuncertaink_r1_temp_0 8.000000))") {
+		t.Fatalf("expected lower bound assert with k=1, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(assert (<= testuncertaink_r1_temp_0 12.000000))") {
+		t.Fatalf("expected upper bound assert with k=1, got:\n%s", smt)
+	}
+}

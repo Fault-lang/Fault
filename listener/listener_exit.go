@@ -157,7 +157,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 			val = inst
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, ident.Value}, "_"))
 		case *ast.Uncertain:
-			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
 		case *ast.Whole:
 			inst.Name = ident
 			val = inst
@@ -625,7 +625,7 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 			}
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
-			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
 		case *ast.Whole:
 			if inst.Name == nil {
 				inst.Name = ident
@@ -1019,6 +1019,16 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 	case "uncertain":
 		token := ast.GenerateToken("UNCERTAIN", "UNCERTAIN", c.GetStart(), c.GetStop())
 
+		var k float64
+		if c.GetChildCount() > 6 {
+			vk := l.pop()
+			kv, err := l.intOrFloatOk(vk)
+			if err != nil {
+				panic(fmt.Sprintf("Invalid value for k of type uncertain. got=%T at: line %d col %d", vk, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+			}
+			k = kv
+		}
+
 		v1 := l.pop()
 		sigma, err := l.intOrFloatOk(v1)
 		if err != nil {
@@ -1035,6 +1045,7 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 			Token: token,
 			Mean:  mean,
 			Sigma: sigma,
+			K:     k,
 		})
 	case "unknown":
 		token := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
@@ -1791,7 +1802,7 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 			right = inst
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
-			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
 		case *ast.Whole:
 			inst.Name = ident
 			right = inst

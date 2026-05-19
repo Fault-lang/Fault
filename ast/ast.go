@@ -939,6 +939,7 @@ type Uncertain struct {
 	InferredType  *Type
 	Mean          float64
 	Sigma         float64
+	K             float64 // sigma multiplier for SMT bounds (default 3.0); 0 means unset
 	ProcessedName []string
 }
 

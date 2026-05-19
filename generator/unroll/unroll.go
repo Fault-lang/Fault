@@ -772,6 +772,13 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 		if isAWhole(id, RawInputs) {
 			return rules.NewWholeInit(id, ty, -1, RawInputs.IntegerMode)
 		} else if isASolvable(id, RawInputs) {
+			if params, ok := RawInputs.Uncertains[id]; ok && len(params) >= 2 && params[1] != 0 {
+				var k float64
+				if len(params) >= 3 {
+					k = params[2]
+				}
+				return rules.NewUncertainInit(id, ty, -1, params[0], params[1], k)
+			}
 			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, true)
 		} else {
 			v := val.X.String()

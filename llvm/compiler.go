@@ -1704,7 +1704,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			if _, ok := pv.(*ast.Unknown); ok {
 				isUnknown = true
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
-				isUncertain = []float64{uncertain.Mean, uncertain.Sigma}
+				isUncertain = []float64{uncertain.Mean, uncertain.Sigma, uncertain.K}
 			} else if _, ok3 := pv.(*ast.Whole); ok3 {
 				isUnknown = true // whole is a free variable like unknown
 				isWhole = true

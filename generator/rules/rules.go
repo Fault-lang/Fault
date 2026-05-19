@@ -141,6 +141,9 @@ type Init struct {
 	IntegerMode    bool //If true, declare whole vars as Int sort and suppress is_int assertions
 	Indexed        bool
 	OmitFromOutput bool
+	Mean           float64 // uncertain() mean — used to generate SMT bounds
+	Sigma          float64 // uncertain() sigma — used to generate SMT bounds
+	K              float64 // sigma multiplier for SMT bounds (default 3.0)
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -186,6 +189,14 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
 	} else if i.Whole && !i.IntegerMode {
 		rule = fmt.Sprintf("%s\n(assert (is_int %s))\n", d, id)
+	} else if i.Sigma != 0 {
+		k := i.K
+		if k == 0 {
+			k = 3.0
+		}
+		lower := i.Mean - k*i.Sigma
+		upper := i.Mean + k*i.Sigma
+		rule = fmt.Sprintf("%s\n(assert (>= %s %.6f))\n(assert (<= %s %.6f))\n", d, id, lower, id, upper)
 	} else {
 		rule = d
 	}
@@ -239,6 +250,18 @@ func NewInit(name string, t string, ssa int, val Rule, solvable bool, indexed bo
 		Value:    val,
 		Solvable: solvable,
 		Indexed:  indexed,
+	}
+}
+
+func NewUncertainInit(name string, t string, ssa int, mean float64, sigma float64, k float64) *Init {
+	return &Init{
+		Ident:    name,
+		SSA:      fmt.Sprintf("%d", ssa),
+		Type:     t,
+		Solvable: true,
+		Mean:     mean,
+		Sigma:    sigma,
+		K:        k,
 	}
 }
 
@@ -930,6 +953,9 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	Whens          map[string][]string //map of when asserts this variable is involved in
 	Whole          bool                //If true, whole-number variable
 	IntegerMode    bool                //If true, declare as Int sort and suppress is_int
+	Mean           float64             // uncertain() mean for SMT bounds
+	Sigma          float64             // uncertain() sigma for SMT bounds
+	K              float64             // uncertain() k multiplier (0 = use default 3.0)
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -973,6 +999,16 @@ func (w *Wrap) SetWhole(wholes []string) {
 		if v == w.Value {
 			w.Whole = true
 			return
+		}
+	}
+}
+
+func (w *Wrap) SetUncertain(uncertains map[string][]float64) {
+	if params, ok := uncertains[w.Value]; ok && len(params) >= 2 && params[1] != 0 {
+		w.Mean = params[0]
+		w.Sigma = params[1]
+		if len(params) >= 3 {
+			w.K = params[2]
 		}
 	}
 }
@@ -1021,6 +1057,9 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 			i := NewInit(w.Value, w.Type, int(ssa.Get(w.Value)), nil, false, false)
 			i.Whole = w.Whole
 			i.IntegerMode = w.IntegerMode
+			i.Mean = w.Mean
+			i.Sigma = w.Sigma
+			i.K = w.K
 			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}
