@@ -174,7 +174,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					}
 
 					numTy := "Real"
-					if wid.Whole && wid.IntegerMode {
+					if wid.IntegerMode {
 						numTy = "Int"
 					}
 
@@ -207,6 +207,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 			}
 		} else {
 			ty := LookupType(base, inst.Src)
+			if b.Env.RawInputs.IntegerMode && ty == "Real" {
+				ty = "Int"
+			}
 			b.Env.VarTypes[base] = ty
 
 			ru = append(ru, b.createRule(base, inst.Src.Ident(), ty, "="))

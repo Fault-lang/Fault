@@ -1312,6 +1312,11 @@ func isConvertible(t1 *ast.Type, t2 *ast.Type) bool {
 	if IsNumeric(t1) && IsNumeric(t2) {
 		return true
 	}
+	// unknown() is a free-variable placeholder compatible with any type —
+	// flow functions may assign booleans or numerics to unknown() fields.
+	if t1.Type == "UNKNOWN" || t2.Type == "UNKNOWN" {
+		return true
+	}
 	return false
 }
 

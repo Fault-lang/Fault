@@ -30,9 +30,10 @@ type Constraint struct {
 	Rounds   int
 	Registry map[string][][]string
 	Whens    []map[string]string
+	VarTypes map[string]string // SMT sort for each base variable name
 }
 
-func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) (*Constraint, error) {
+func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string, varTypes map[string]string) (*Constraint, error) {
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
 	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
@@ -70,6 +71,7 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 		Rounds:   rounds,
 		Registry: registry,
 		Whens:    whens[a.String()],
+		VarTypes: varTypes,
 	}, nil
 }
 
@@ -465,6 +467,26 @@ func (c *Constraint) merge(left *rules.VarSets, right *rules.VarSets, operator s
 	return merged
 }
 
+// varSMTType returns the SMT sort for an SSA-versioned variable name,
+// stripping the trailing numeric suffix to look up the base name in VarTypes.
+func (c *Constraint) varSMTType(ssaName string) string {
+	if c.VarTypes == nil {
+		return ""
+	}
+	if ty, ok := c.VarTypes[ssaName]; ok {
+		return ty
+	}
+	// Strip trailing _N SSA suffix
+	parts := strings.Split(ssaName, "_")
+	if len(parts) > 1 {
+		if _, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+			base := strings.Join(parts[:len(parts)-1], "_")
+			return c.VarTypes[base]
+		}
+	}
+	return ""
+}
+
 func (c *Constraint) Package(x [][]string, op string) *util.StringSet {
 	product := util.NewStrSet()
 	for _, a := range x {
@@ -473,18 +495,53 @@ func (c *Constraint) Package(x [][]string, op string) *util.StringSet {
 		} else {
 			var s string
 			if op == "not" && a[0] == "false" {
-
-				s = fmt.Sprintf("(%s %s)", op, a[1])
-
+				// pair is [false, varName]: negation of (var == false) → var is not false
+				if c.varSMTType(a[1]) == "Real" {
+					s = fmt.Sprintf("(not (= %s 0.0))", a[1])
+				} else {
+					s = fmt.Sprintf("(%s %s)", op, a[1])
+				}
 			} else if op == "not" && a[1] == "false" {
-				s = fmt.Sprintf("(%s %s)", op, a[0])
-
+				// pair is [varName, false]: negation of (var == false) → var is not false
+				if c.varSMTType(a[0]) == "Real" {
+					s = fmt.Sprintf("(not (= %s 0.0))", a[0])
+				} else {
+					s = fmt.Sprintf("(%s %s)", op, a[0])
+				}
 			} else if op == "not" {
-				s = fmt.Sprintf("(%s (= %s %s))", op, a[0], a[1])
-
+				// negation of (var == something): replace bool literals with numerics for Real vars
+				lhs, rhs := a[0], a[1]
+				if c.varSMTType(lhs) == "Real" {
+					if rhs == "true" {
+						rhs = "1.0"
+					} else if rhs == "false" {
+						rhs = "0.0"
+					}
+				} else if c.varSMTType(rhs) == "Real" {
+					if lhs == "true" {
+						lhs = "1.0"
+					} else if lhs == "false" {
+						lhs = "0.0"
+					}
+				}
+				s = fmt.Sprintf("(%s (= %s %s))", op, lhs, rhs)
 			} else {
-
-				s = fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
+				// plain comparison: replace bool literals with numerics for Real vars
+				lhs, rhs := a[0], a[1]
+				if c.varSMTType(lhs) == "Real" {
+					if rhs == "true" {
+						rhs = "1.0"
+					} else if rhs == "false" {
+						rhs = "0.0"
+					}
+				} else if c.varSMTType(rhs) == "Real" {
+					if lhs == "true" {
+						lhs = "1.0"
+					} else if lhs == "false" {
+						lhs = "0.0"
+					}
+				}
+				s = fmt.Sprintf("(%s %s %s)", op, lhs, rhs)
 			}
 			product.Add(s)
 		}

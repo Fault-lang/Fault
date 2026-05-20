@@ -1117,7 +1117,16 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 
 			if c.isVarSet(id) && c.alloc {
 				p := s.GetSpecVarPointer(id)
-				c.contextBlock.NewStore(r, p)
+				rVal := r
+				// Coerce bool (i1) → double when storing into an unknown() field
+				if r.Type() == irtypes.I1 && p.ElemType == irtypes.Double {
+					if r == constant.NewInt(irtypes.I1, 0) {
+						rVal = constant.NewFloat(irtypes.Double, 0.0)
+					} else {
+						rVal = constant.NewFloat(irtypes.Double, 1.0)
+					}
+				}
+				c.contextBlock.NewStore(rVal, p)
 				return nil
 			}
 
@@ -1261,7 +1270,16 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		l := c.compileInfixNode(node.Left)
 		r := c.compileInfixNode(node.Right)
 
-		if node.Right.Type() == "BOOL" {
+		if node.Right.Type() == "BOOL" && node.Left.Type() == "UNKNOWN" {
+			// unknown() fields are stored as double; compare against 0.0 or 1.0
+			var rDouble value.Value
+			if r == constant.NewInt(irtypes.I1, 0) {
+				rDouble = constant.NewFloat(irtypes.Double, 0.0)
+			} else {
+				rDouble = constant.NewFloat(irtypes.Double, 1.0)
+			}
+			return c.contextBlock.NewFCmp(enum.FPredOEQ, l, rDouble)
+		} else if node.Right.Type() == "BOOL" {
 			return c.contextBlock.NewICmp(enum.IPredEQ, l, r)
 		} else {
 			return c.contextBlock.NewFCmp(enum.FPredOEQ, l, r)
@@ -1274,7 +1292,16 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		l := c.compileInfixNode(node.Left)
 		r := c.compileInfixNode(node.Right)
 
-		if node.Right.Type() == "BOOL" {
+		if node.Right.Type() == "BOOL" && node.Left.Type() == "UNKNOWN" {
+			// unknown() fields are stored as double; compare against 0.0 or 1.0
+			var rDouble value.Value
+			if r == constant.NewInt(irtypes.I1, 0) {
+				rDouble = constant.NewFloat(irtypes.Double, 0.0)
+			} else {
+				rDouble = constant.NewFloat(irtypes.Double, 1.0)
+			}
+			return c.contextBlock.NewFCmp(enum.FPredONE, l, rDouble)
+		} else if node.Right.Type() == "BOOL" {
 			return c.contextBlock.NewICmp(enum.IPredNE, l, r)
 		} else {
 			return c.contextBlock.NewFCmp(enum.FPredONE, l, r)
