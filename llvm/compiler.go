@@ -1345,7 +1345,7 @@ func (c *Compiler) compileInfixNode(node ast.Node) value.Value {
 			//Return a boolean as a placeholder
 			return c.componentBool(v.RawId())
 		}
-		panic(fmt.Sprintf("infix node %s is invalid", v.String()))
+		panic(Panic(fmt.Sprintf("infix node %s is invalid: variable not declared in run init block", v.String())))
 	case *ast.This:
 		id := v.Id()
 		return c.lookupIdent(id, node.Position())

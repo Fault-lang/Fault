@@ -492,16 +492,15 @@ func FindMutableVars(funcs []*ir.Func) map[string]bool {
 func FindUsedVars(funcs []*ir.Func) map[string]bool {
 	used := make(map[string]bool)
 	for _, f := range funcs {
-		if util.FormatIdent(f.Ident()) == "__run" {
-			continue
-		}
 		for _, block := range f.Blocks {
 			for _, inst := range block.Insts {
 				switch v := inst.(type) {
 				case *ir.InstLoad:
 					used[util.FormatIdent(v.Src.Ident())] = true
 				case *ir.InstStore:
-					used[util.FormatIdent(v.Dst.Ident())] = true
+					if util.FormatIdent(f.Ident()) != "__run" {
+						used[util.FormatIdent(v.Dst.Ident())] = true
+					}
 				}
 			}
 		}
