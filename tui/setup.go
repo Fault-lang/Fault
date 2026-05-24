@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type SetupModel struct {
@@ -45,7 +45,7 @@ func NewSetupModel() SetupModel {
 	ti.Placeholder = "path/to/file.fspec"
 	ti.Focus()
 	ti.CharLimit = 256
-	ti.Width = 50
+	ti.SetWidth(50)
 
 	solverAvailable := os.Getenv("SOLVERCMD") != "" && os.Getenv("SOLVERARG") != ""
 	defaultMode := "smt"
@@ -79,7 +79,7 @@ func (m SetupModel) Update(msg tea.Msg) (SetupModel, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
@@ -116,7 +116,7 @@ func (m SetupModel) Update(msg tea.Msg) (SetupModel, tea.Cmd) {
 }
 
 // updateFileStep handles all key input for step 0.
-func (m SetupModel) updateFileStep(msg tea.KeyMsg) (SetupModel, tea.Cmd) {
+func (m SetupModel) updateFileStep(msg tea.KeyPressMsg) (SetupModel, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
 		if m.browseMode {

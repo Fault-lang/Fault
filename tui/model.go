@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type ViewState int
@@ -37,6 +38,10 @@ type Model struct {
 	errorPhase   runner.ProgressPhase
 	errorCursor  int // For error view actions
 	darkMode     bool // Theme toggle
+
+	// Error view scrollable body
+	errorViewport viewport.Model
+	errorReady    bool
 
 	// Large SMT confirmation state
 	largeSMT LargeSMTWarningMsg
@@ -72,11 +77,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.progress.height = msg.Height
 		case ViewResults:
 			m.results, cmd = m.results.Update(msg)
+		case ViewError:
+			m = m.initErrorViewport(msg.Width, msg.Height)
 		}
 
 		return m, cmd
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
@@ -173,6 +180,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.enhancedErr = CategorizeError(msg.Error, msg.Phase)
 		m.state = ViewError
 		m.errorCursor = 0 // Default to "Retry"
+		w, h := m.width, m.height
+		if w == 0 {
+			w = 80
+		}
+		if h == 0 {
+			h = 24
+		}
+		m = m.initErrorViewport(w, h)
 		return m, nil
 
 	case ValidationErrorMsg:
@@ -182,6 +197,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.enhancedErr = CategorizeError(msg.Error, runner.PhaseParsing)
 		m.state = ViewError
 		m.errorCursor = 1 // Default to "Back to Setup"
+		w, h := m.width, m.height
+		if w == 0 {
+			w = 80
+		}
+		if h == 0 {
+			h = 24
+		}
+		m = m.initErrorViewport(w, h)
 		return m, nil
 
 	case RetryCompilationMsg:
@@ -218,7 +241,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ViewResults:
 		m.results, cmd = m.results.Update(msg)
 	case ViewConfirmLargeSMT:
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "up", "k":
 				if m.largeSMTCursor > 0 {
@@ -255,7 +278,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case ViewError:
 		// Handle error view navigation
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "up", "k":
 				m.errorCursor--
@@ -282,6 +305,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return BackToSetupMsg{} }
 			case "q":
 				return m, tea.Quit
+			default:
+				// Forward page/scroll keys to the error body viewport
+				if m.errorReady {
+					m.errorViewport, _ = m.errorViewport.Update(keyMsg)
+				}
 			}
 		}
 	}
@@ -289,20 +317,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	var content string
 	switch m.state {
 	case ViewSetup:
-		return m.setup.View()
+		content = m.setup.View()
 	case ViewProgress:
-		return m.progress.View()
+		content = m.progress.View()
 	case ViewResults:
-		return m.results.View()
+		content = m.results.View()
 	case ViewError:
-		return m.errorView()
+		content = m.errorView()
 	case ViewConfirmLargeSMT:
-		return m.confirmLargeSMTView()
+		content = m.confirmLargeSMTView()
 	}
-	return ""
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
 }
 
 func (m Model) confirmLargeSMTView() string {
@@ -339,6 +370,53 @@ func (m Model) confirmLargeSMTView() string {
 		Render(b.String())
 }
 
+// initErrorViewport (re)initialises the error body viewport for the given
+// terminal dimensions. It is called on WindowSizeMsg and whenever a new error
+// is set (so the content is always fresh).
+func (m Model) initErrorViewport(w, h int) Model {
+	// Build the scrollable body: error details + phase progress.
+	var body strings.Builder
+	if m.enhancedErr != nil {
+		body.WriteString(ErrorStyle.Render("Error:"))
+		body.WriteString(" ")
+		body.WriteString(m.enhancedErr.Message)
+		body.WriteString("\n\n")
+		if m.enhancedErr.Detail != "" {
+			body.WriteString(InfoStyle.Render("Details: "))
+			body.WriteString(m.enhancedErr.Detail)
+			body.WriteString("\n\n")
+		}
+		if m.enhancedErr.Suggestion != "" {
+			body.WriteString(SubtitleStyle.Render("💡 Suggestion:"))
+			body.WriteString("\n")
+			body.WriteString(m.enhancedErr.Suggestion)
+			body.WriteString("\n\n")
+		}
+	} else if m.err != nil {
+		body.WriteString(ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		body.WriteString("\n\n")
+	}
+	body.WriteString(RenderPhaseProgress(m.errorPhase))
+
+	// Reserve lines for: outer border(2) + outer padding(4) + title(1) + blank(1)
+	// + actions header(1) + blank(1) + 3 actions(3) + blank(1) + help(1) = 15
+	const fixedLines = 15
+	vpH := h - fixedLines
+	if vpH < 3 {
+		vpH = 3
+	}
+	vpW := w - 8 // account for border + padding
+	if vpW < 20 {
+		vpW = 20
+	}
+
+	vp := viewport.New(viewport.WithWidth(vpW), viewport.WithHeight(vpH))
+	vp.SetContent(body.String())
+	m.errorViewport = vp
+	m.errorReady = true
+	return m
+}
+
 func (m Model) errorView() string {
 	var b strings.Builder
 
@@ -348,34 +426,18 @@ func (m Model) errorView() string {
 	b.WriteString(title)
 	b.WriteString("\n\n")
 
-	// Error message
-	if m.enhancedErr != nil {
-		b.WriteString(ErrorStyle.Render("Error:"))
-		b.WriteString(" ")
-		b.WriteString(m.enhancedErr.Message)
-		b.WriteString("\n\n")
-
-		// Additional detail if available
-		if m.enhancedErr.Detail != "" {
-			b.WriteString(InfoStyle.Render("Details: "))
-			b.WriteString(m.enhancedErr.Detail)
-			b.WriteString("\n\n")
-		}
-
-		// Suggestion
-		if m.enhancedErr.Suggestion != "" {
-			b.WriteString(SubtitleStyle.Render("💡 Suggestion:"))
-			b.WriteString("\n")
-			b.WriteString(m.enhancedErr.Suggestion)
-			b.WriteString("\n\n")
-		}
+	// Scrollable error body
+	if m.errorReady {
+		b.WriteString(m.errorViewport.View())
 	} else {
-		b.WriteString(ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
-		b.WriteString("\n\n")
+		// Fallback before first WindowSizeMsg
+		if m.enhancedErr != nil {
+			b.WriteString(ErrorStyle.Render("Error: "))
+			b.WriteString(m.enhancedErr.Message)
+		} else if m.err != nil {
+			b.WriteString(ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		}
 	}
-
-	// Phase progress visualization
-	b.WriteString(RenderPhaseProgress(m.errorPhase))
 	b.WriteString("\n\n")
 
 	// Action buttons
@@ -388,7 +450,6 @@ func (m Model) errorView() string {
 		if i == m.errorCursor {
 			cursor = "❯ "
 		}
-
 		if i == m.errorCursor {
 			b.WriteString(SelectedStyle.Render(cursor + action))
 		} else {
@@ -398,7 +459,7 @@ func (m Model) errorView() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(InfoStyle.Render("↑/↓ or j/k to navigate • Enter to select • [R]etry • [B]ack • [Q]uit"))
+	b.WriteString(InfoStyle.Render("↑/↓/j/k: menu • pgup/pgdn/u/d: scroll error • Enter to select • [R]etry • [B]ack • [Q]uit"))
 
 	return lipgloss.NewStyle().
 		Padding(2).

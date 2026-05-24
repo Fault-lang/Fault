@@ -1,6 +1,10 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+)
 
 // Initialize with adaptive theme
 func init() {
@@ -69,9 +73,9 @@ var (
 			Padding(1, 2)
 
 	// Progress bar colors
-	GradientStart = "#FF00FF" // Magenta
-	GradientMid   = "#9F00FF" // Purple
-	GradientEnd   = "#00FFFF" // Cyan
+	GradientStart color.Color = lipgloss.Color("#FF00FF") // Magenta
+	GradientMid   color.Color = lipgloss.Color("#9F00FF") // Purple
+	GradientEnd   color.Color = lipgloss.Color("#00FFFF") // Cyan
 
 	// Success message
 	SuccessStyle = lipgloss.NewStyle().
@@ -79,17 +83,17 @@ var (
 			Bold(true)
 
 	// Border colors (will be set by ApplyTheme)
-	SetupBorderColor    lipgloss.AdaptiveColor
-	ProgressBorderColor lipgloss.AdaptiveColor
-	ResultsBorderColor  lipgloss.AdaptiveColor
-	ErrorBorderColor    lipgloss.AdaptiveColor
-	ThemeBorder         lipgloss.AdaptiveColor
+	SetupBorderColor    color.Color
+	ProgressBorderColor color.Color
+	ResultsBorderColor  color.Color
+	ErrorBorderColor    color.Color
+	ThemeBorder         color.Color
 
 	// Divider style
 	DividerStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#444444"))
 
 	// File browser styles (set by ApplyTheme)
-	BrowserDirStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#87bfc1")).PaddingLeft(2)
+	BrowserDirStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("#87bfc1")).PaddingLeft(2)
 	BrowserFaultFileStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#b5d569")).PaddingLeft(2)
 )
