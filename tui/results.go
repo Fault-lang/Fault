@@ -64,10 +64,11 @@ func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 
 			m.viewport = viewport.New(viewport.WithWidth(viewportWidth), viewport.WithHeight(viewportHeight))
 			m.viewport.YPosition = headerHeight
+			m.viewport.SoftWrap = true
 
 			// Set content based on mode (only once)
 			content := m.getContent()
-			m.content = lipgloss.NewStyle().Width(viewportWidth).Render(content)
+			m.content = content
 			m.viewport.SetContent(m.content)
 
 			m.ready = true

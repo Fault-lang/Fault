@@ -9,6 +9,12 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+const issuesURL = "https://github.com/fault-lang/fault/issues"
+
+func issueLink() string {
+	return lipgloss.NewStyle().Hyperlink(issuesURL).Render(issuesURL)
+}
+
 type ErrorCategory int
 
 const (
@@ -156,7 +162,7 @@ func CategorizeError(err error, phase runner.ProgressPhase) *EnhancedError {
 		enhanced.Detail = errMsg
 		enhanced.Message = "An internal compiler error occurred."
 		enhanced.Suggestion = "This is likely a bug in Fault. Please report it at\n" +
-			"https://github.com/fault-lang/fault/issues with the full error message."
+			issueLink() + " with the full error message."
 
 	case phase == runner.PhaseLLVM:
 		enhanced.Category = ErrorLLVM
@@ -191,7 +197,7 @@ func CategorizeError(err error, phase runner.ProgressPhase) *EnhancedError {
 	default:
 		enhanced.Category = ErrorInternal
 		enhanced.Suggestion = "This is an unexpected error. Try again, or report it at\n" +
-			"https://github.com/fault-lang/fault/issues"
+			issueLink()
 	}
 
 	return enhanced

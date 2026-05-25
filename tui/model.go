@@ -52,12 +52,12 @@ func NewModel() Model {
 	return Model{
 		state:    ViewSetup,
 		setup:    NewSetupModel(),
-		darkMode: true, // Start in dark mode
+		darkMode: true, // Overridden by BackgroundColorMsg on first frame
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.setup.Init()
+	return tea.Batch(m.setup.Init(), func() tea.Msg { return tea.RequestBackgroundColor() })
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -83,12 +83,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 
+	case tea.BackgroundColorMsg:
+		m.darkMode = msg.IsDark()
+		if m.darkMode {
+			ApplyTheme(DarkTheme())
+		} else {
+			ApplyTheme(LightTheme())
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
 		case "ctrl+t":
-			// Toggle theme
+			// Manual override
 			m.darkMode = !m.darkMode
 			if m.darkMode {
 				ApplyTheme(DarkTheme())
