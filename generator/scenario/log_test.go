@@ -321,6 +321,99 @@ func TestKill_NoBranchSelectors(t *testing.T) {
 	}
 }
 
+// ---- synthChoice: multiple true candidates ----
+
+func TestSynthChoice_MultipleTrueCandidates(t *testing.T) {
+	// When more than one candidate selector is true the function must return
+	// one of the true candidates without panicking.
+	l := NewLogger()
+	l.Results["synth_1_fill_1"] = "true"
+	l.Results["synth_1_drain_1"] = "true"
+	got := l.synthChoice("synth_1")
+	if got != "fill" && got != "drain" {
+		t.Errorf("synthChoice with multiple true candidates = %q, want fill or drain", got)
+	}
+}
+
+// ---- Kill: empty Results map ----
+
+func TestKill_EmptyResults(t *testing.T) {
+	// Kill must not panic when Results is empty.
+	l := NewLogger()
+	l.EnterFunction("foo", 0)
+	l.UpdateVariable("var_x_0", false)
+	l.ExitFunction("foo", 0)
+
+	sel := l.NewBranchSelector("blockABC", 0, []string{"(= phi var_x_0)"}, []string{"var_x_0"})
+	l.AddBranchSelector(sel)
+	// Results is empty — selector value is missing, treated as not-true.
+
+	l.Trace()
+	l.Kill() // must not panic
+}
+
+// ---- IsNegated / _neg suffix rendering in String() ----
+
+func TestIsNegated_Positive(t *testing.T) {
+	l := NewLogger()
+	base, negated := l.IsNegated("spec_x_neg")
+	if !negated {
+		t.Error("expected negated=true for 'spec_x_neg'")
+	}
+	if base != "spec_x" {
+		t.Errorf("expected base %q, got %q", "spec_x", base)
+	}
+}
+
+func TestIsNegated_Negative(t *testing.T) {
+	l := NewLogger()
+	base, negated := l.IsNegated("spec_x")
+	if negated {
+		t.Error("expected negated=false for 'spec_x'")
+	}
+	if base != "spec_x" {
+		t.Errorf("expected base unchanged %q, got %q", "spec_x", base)
+	}
+}
+
+func TestString_NegatedVariableInOutput(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("foo", 1)
+	// Variable name encodes negation via _neg suffix.
+	l.UpdateVariable("spec_x_neg_1", false)
+	l.ExitFunction("foo", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_x_neg_1"] = "true"
+	l.StringRules["spec_x"] = "x"
+	l.IsStringRule["spec_x"] = true
+
+	l.Trace()
+	out := l.String()
+	if !strings.Contains(out, "not x") {
+		t.Errorf("String() should contain 'not x' for negated variable, got:\n%s", out)
+	}
+}
+
+// ---- Trace: nested function scopes ----
+
+func TestTrace_NestedFunctionScopes(t *testing.T) {
+	// Ensure Trace() completes without panic for two levels of nesting.
+	l := NewLogger()
+	l.EnterFunction("@__run", 2)
+	l.EnterFunction("outer", 2)
+	l.EnterFunction("inner", 2)
+	l.UpdateVariable("spec_y_1", false)
+	l.ExitFunction("inner", 2)
+	l.ExitFunction("outer", 2)
+	l.ExitFunction("@__run", 2)
+
+	l.Results["spec_y_1"] = "42"
+	l.Trace() // must not panic
+}
+
 // ---- String(): synthesis choice appears in output ----
 
 func TestString_SynthChoiceInOutput(t *testing.T) {

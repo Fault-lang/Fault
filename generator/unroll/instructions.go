@@ -150,6 +150,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				if !IsBoolean(v) && !IsNumeric(v) {
 					v = util.FormatIdent(v)
 				}
+				if strings.Contains(base, "divertedCurrent") {
+					fmt.Printf("DEBUG parseStore VarLoads: base=%s refname=%s v=%s ty=%s ParentFunction=%s CurrentFunction=%s\n", base, refname, v, ty, b.ParentFunction, b.Env.CurrentFunction)
+				}
 				if strings.HasPrefix(v, "__hist_") {
 					offset, histBase := parseHistSentinel(v)
 					ru = append(ru, b.createHistoryRule(base, histBase, offset, ty))
@@ -275,6 +278,9 @@ func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 		b.Env.VarLoads[refname] = inst.Src
 	}
 	b.Env.VarTypes[refname] = inst.Src.Type().String()
+	if strings.Contains(inst.Src.Ident(), "isStopped") && strings.Contains(b.Env.CurrentFunction, "Regen") {
+		fmt.Printf("DEBUG parseLoad: refname=%s src=%s CurrentFunction=%s\n", refname, inst.Src.Ident(), b.Env.CurrentFunction)
+	}
 	return []rules.Rule{}
 }
 

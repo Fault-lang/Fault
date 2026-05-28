@@ -207,7 +207,9 @@ func (f *LLFunc) GenerateCallstack(callstack []string) []rules.Rule {
 		v, ok = f.functions[fname]
 		if !ok {
 			v = NewLLFunc(f.Env, f.rawFunctions, f.rawFunctions[fname])
+			savedCurrentFunction := f.Env.CurrentFunction
 			v.Unroll()
+			f.Env.CurrentFunction = savedCurrentFunction
 		}
 
 		if len(callstack) == 1 {
@@ -408,8 +410,9 @@ func (b *LLBlock) GenerateCallstack(callstack []string) []rules.Rule {
 		v, ok = b.functions[fname]
 		if !ok {
 			v = NewLLFunc(b.Env, b.rawFunctions, b.rawFunctions[fname])
+			savedCurrentFunction := b.Env.CurrentFunction
 			v.Unroll()
-
+			b.Env.CurrentFunction = savedCurrentFunction
 		}
 		if len(callstack) == 1 {
 			return v.GetAllRules(enter, exit)

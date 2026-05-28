@@ -77,9 +77,11 @@ func (mc *ModelChecker) LoadModel(smt string, uncertains map[string][]float64, u
 }
 
 func (mc *ModelChecker) run(command string, actions []string) (string, error) {
+	smtInput := fmt.Sprint(mc.SMT, strings.Join(actions, "\n"))
+	os.WriteFile("/tmp/fault_debug.smt2", []byte(smtInput), 0644)
 	cmd := exec.Command(mc.solver[command].Command,
 		mc.solver[command].Arguments...)
-	cmd.Stdin = strings.NewReader(fmt.Sprint(mc.SMT, strings.Join(actions, "\n")))
+	cmd.Stdin = strings.NewReader(smtInput)
 
 	var out bytes.Buffer
 	var stderr bytes.Buffer

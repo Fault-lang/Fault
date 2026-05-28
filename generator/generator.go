@@ -10,6 +10,7 @@ import (
 	"fault/llvm"
 	"fault/util"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/llir/llvm/asm"
@@ -106,6 +107,7 @@ func (g *Generator) AppendSMT(new_smt []string) {
 }
 
 func (g *Generator) Run(llopt string) {
+	os.WriteFile("/tmp/fault_debug.ll", []byte(llopt), 0644)
 	m, err := asm.ParseString("", llopt) //"" because ParseString has a path variable
 	if err != nil {
 		panic(err)

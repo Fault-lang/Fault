@@ -732,7 +732,11 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
+	result := fmt.Sprintf("(%s %s %s)", i.Op, x, y)
+	if strings.Contains(x, "divertedCurrent") && strings.Contains(y, "isStopped") {
+		fmt.Printf("DEBUG BAD INFIX: %s\nX-rule=%T(%s) Y-rule=%T(%s)\n", result, i.X, i.X.String(), i.Y, i.Y.String())
+	}
+	return init, result, ssa
 }
 
 func (i *Infix) Assertless() string {
