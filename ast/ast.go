@@ -301,6 +301,7 @@ func (ds *DefStatement) SetType(ty *Type) {
 type AssertionStatement struct {
 	Token          Token
 	Constraint     *InvariantClause
+	Original       *InvariantClause // pre-negation form with resolved variables, for display
 	Assume         bool
 	Temporal       string
 	TemporalFilter string
@@ -336,18 +337,31 @@ func (as *AssertionStatement) EvLogString(negate bool) string {
 
 	if as.Assume {
 		out.WriteString("assume ")
+		out.WriteString(as.Constraint.Left.String())
+		out.WriteString(" ")
+		out.WriteString(as.Constraint.Operator)
+		out.WriteString(" ")
+		out.WriteString(as.Constraint.Right.String())
+	} else if negate && as.Original != nil {
+		// Use the pre-negation form so the user sees the original assertion
+		out.WriteString("assert ")
+		out.WriteString(as.Original.Left.String())
+		out.WriteString(" ")
+		out.WriteString(as.Original.Operator)
+		out.WriteString(" ")
+		out.WriteString(as.Original.Right.String())
 	} else {
 		out.WriteString("assert ")
+		out.WriteString(as.Constraint.Left.String())
+		out.WriteString(" ")
+		if negate {
+			out.WriteString(util.OP_NEGATE[as.Constraint.Operator])
+		} else {
+			out.WriteString(as.Constraint.Operator)
+		}
+		out.WriteString(" ")
+		out.WriteString(as.Constraint.Right.String())
 	}
-	out.WriteString(as.Constraint.Left.String())
-	out.WriteString(" ")
-	if !as.Assume && negate {
-		out.WriteString(util.OP_NEGATE[as.Constraint.Operator])
-	} else {
-		out.WriteString(as.Constraint.Operator)
-	}
-	out.WriteString(" ")
-	out.WriteString(as.Constraint.Right.String())
 	if as.TemporalFilter != "" {
 		out.WriteString(" ")
 		out.WriteString(as.TemporalFilter)
@@ -1159,7 +1173,12 @@ type Boolean struct {
 func (b *Boolean) expressionNode()      {}
 func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
 func (b *Boolean) Position() []int      { return b.Token.GetPosition() }
-func (b *Boolean) String() string       { return b.Token.Literal }
+func (b *Boolean) String() string {
+	if b.Token.Literal == "" {
+		return fmt.Sprintf("%v", b.Value)
+	}
+	return b.Token.Literal
+}
 func (b *Boolean) Type() string {
 	ty := b.InferredType
 	if ty != nil {

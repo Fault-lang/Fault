@@ -1512,6 +1512,18 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 		return
 	}
 
+	// Deep-copy the operands before negate() mutates the expression tree in place,
+	// so we can store the original form for human-readable display.
+	origLeft, err := deepcopy.Anything(a.Constraint.Left)
+	if err != nil {
+		panic(err)
+	}
+	origRight, err := deepcopy.Anything(a.Constraint.Right)
+	if err != nil {
+		panic(err)
+	}
+	origOp := a.Constraint.Operator
+
 	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
 		booleanVar := a.Constraint.Operator == "&&" || a.Constraint.Operator == "||"
 		l = negate(a.Constraint.Left, booleanVar)
@@ -1528,6 +1540,14 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	}
 	a.Constraint.Left = c.convertAssertVariables(l)
 	a.Constraint.Right = c.convertAssertVariables(r)
+
+	a.Original = &ast.InvariantClause{
+		Token:    a.Constraint.Token,
+		Left:     c.convertAssertVariables(origLeft.(ast.Expression)),
+		Right:    c.convertAssertVariables(origRight.(ast.Expression)),
+		Operator: origOp,
+	}
+
 	c.RawInputs.Asserts = append(c.RawInputs.Asserts, a)
 
 }
