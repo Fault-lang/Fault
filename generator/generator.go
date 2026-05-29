@@ -547,16 +547,24 @@ func (g *Generator) SMT() string {
 }
 
 // inferBoolVarNames scans assume/assert constraints and returns a set of
-// variable base names that should be declared as Bool in SMT. This covers
-// variables used directly as operands of ||, &&, or !, and variables compared
-// to boolean expressions via == or !=.
+// variable base names that should be declared as Bool in SMT. This covers:
+//   - variables used directly as operands of ||, &&, or !
+//   - variables in when/then positions (always Bool)
+//   - variables compared to boolean expressions via == or !=
 func inferBoolVarNames(stmts []*ast.AssertionStatement) map[string]bool {
 	bools := make(map[string]bool)
 
-	// Pass 1: mark direct operands of ||, &&, !
+	// Pass 1: mark direct operands of ||, &&, ! and both sides of when/then
 	for _, a := range stmts {
-		collectBoolOperands(a.Constraint.Left, false, bools)
-		collectBoolOperands(a.Constraint.Right, false, bools)
+		op := a.Constraint.Operator
+		if op == "then" {
+			// Both the when-condition and the then-consequent are Bool
+			collectBoolOperands(a.Constraint.Left, true, bools)
+			collectBoolOperands(a.Constraint.Right, true, bools)
+		} else {
+			collectBoolOperands(a.Constraint.Left, false, bools)
+			collectBoolOperands(a.Constraint.Right, false, bools)
+		}
 	}
 
 	// Pass 2: propagate Bool through == / != comparisons (fixed-point)
