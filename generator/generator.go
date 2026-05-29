@@ -135,6 +135,18 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	p.VarTypes = g.Env.VarTypes
 	smt := p.Unpack(g.constants, g.RunBlock)
+
+	// Upgrade Real-typed Inits to Bool for variables used in boolean contexts
+	// in assume/assert statements (e.g. unknown() fields used with ||/&&/!).
+	allStmts := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
+	boolVars := inferBoolVarNames(allStmts)
+	for _, init := range p.Inits {
+		if boolVars[init.Ident] && init.Type == "Real" {
+			init.Type = "Bool"
+			g.Env.VarTypes[init.Ident] = "Bool"
+		}
+	}
+
 	g.AppendSMT(p.InitVars())
 	g.AppendSMT(smt)
 
@@ -532,4 +544,113 @@ func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
 
 func (g *Generator) SMT() string {
 	return strings.Join(g.smt, "\n")
+}
+
+// inferBoolVarNames scans assume/assert constraints and returns a set of
+// variable base names that should be declared as Bool in SMT. This covers
+// variables used directly as operands of ||, &&, or !, and variables compared
+// to boolean expressions via == or !=.
+func inferBoolVarNames(stmts []*ast.AssertionStatement) map[string]bool {
+	bools := make(map[string]bool)
+
+	// Pass 1: mark direct operands of ||, &&, !
+	for _, a := range stmts {
+		collectBoolOperands(a.Constraint.Left, false, bools)
+		collectBoolOperands(a.Constraint.Right, false, bools)
+	}
+
+	// Pass 2: propagate Bool through == / != comparisons (fixed-point)
+	changed := true
+	for changed {
+		changed = false
+		for _, a := range stmts {
+			op := a.Constraint.Operator
+			if op != "==" && op != "!=" {
+				continue
+			}
+			if exprIsBool(a.Constraint.Right, bools) {
+				if markBoolVars(a.Constraint.Left, bools) {
+					changed = true
+				}
+			}
+			if exprIsBool(a.Constraint.Left, bools) {
+				if markBoolVars(a.Constraint.Right, bools) {
+					changed = true
+				}
+			}
+		}
+	}
+
+	return bools
+}
+
+func collectBoolOperands(expr ast.Expression, inBoolCtx bool, bools map[string]bool) {
+	switch e := expr.(type) {
+	case *ast.InfixExpression:
+		nextBool := e.Operator == "||" || e.Operator == "&&"
+		collectBoolOperands(e.Left, nextBool, bools)
+		collectBoolOperands(e.Right, nextBool, bools)
+	case *ast.PrefixExpression:
+		collectBoolOperands(e.Right, e.Operator == "!", bools)
+	case *ast.AssertVar:
+		if inBoolCtx {
+			for _, inst := range e.Instances {
+				bools[inst] = true
+			}
+		}
+	}
+}
+
+// exprIsBool reports whether expr is a boolean expression given the current
+// set of known-bool variables.
+func exprIsBool(expr ast.Expression, bools map[string]bool) bool {
+	switch e := expr.(type) {
+	case *ast.InfixExpression:
+		if e.Operator == "||" || e.Operator == "&&" {
+			return true
+		}
+		return exprIsBool(e.Left, bools) && exprIsBool(e.Right, bools)
+	case *ast.PrefixExpression:
+		if e.Operator == "!" {
+			return true
+		}
+		return exprIsBool(e.Right, bools)
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			if !bools[inst] {
+				return false
+			}
+		}
+		return len(e.Instances) > 0
+	case *ast.Boolean:
+		return true
+	}
+	return false
+}
+
+// markBoolVars marks all AssertVar instances in expr as Bool. Returns true if
+// any new variables were added.
+func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
+	changed := false
+	switch e := expr.(type) {
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			if !bools[inst] {
+				bools[inst] = true
+				changed = true
+			}
+		}
+	case *ast.InfixExpression:
+		if markBoolVars(e.Left, bools) {
+			changed = true
+		}
+		if markBoolVars(e.Right, bools) {
+			changed = true
+		}
+	case *ast.PrefixExpression:
+		if markBoolVars(e.Right, bools) {
+			changed = true
+		}
+	}
+	return changed
 }
