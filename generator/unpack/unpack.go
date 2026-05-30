@@ -485,7 +485,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 		}
 		if len(rule_set) == 1 {
 			caps = append(caps, rule_set...)
-		} else {
+		} else if len(rule_set) > 1 {
 			caps = append(caps, fmt.Sprintf("(and %s)", strings.Join(rule_set, " ")))
 		}
 
@@ -876,21 +876,42 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 
 	// Build the ite assertion that sets block selectors and enforces phis
 	var tPhiRules, fPhiRules string
-	if len(tEnds.Cond) == 1 {
+	if len(tEnds.Cond) == 0 {
+		tPhiRules = ""
+	} else if len(tEnds.Cond) == 1 {
 		tPhiRules = tEnds.Cond[0]
 	} else {
 		tPhiRules = fmt.Sprintf("(and %s)", strings.Join(tEnds.Cond, "\n"))
 	}
 
-	if len(fEnds.Cond) == 1 {
+	if len(fEnds.Cond) == 0 {
+		fPhiRules = ""
+	} else if len(fEnds.Cond) == 1 {
 		fPhiRules = fEnds.Cond[0]
 	} else {
 		fPhiRules = fmt.Sprintf("(and %s)", strings.Join(fEnds.Cond, "\n"))
 	}
 
-	ifAssert := fmt.Sprintf("(assert (ite %s (and (= %s true) (= %s false) %s) (and (= %s false) (= %s true) %s)))",
-		cond, tEnds.Id(), fEnds.Id(), tPhiRules, tEnds.Id(), fEnds.Id(), fPhiRules)
-	return inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
+	tBranch := fmt.Sprintf("(= %s true) (= %s false)", tEnds.Id(), fEnds.Id())
+	if tPhiRules != "" {
+		tBranch = fmt.Sprintf("%s %s", tBranch, tPhiRules)
+	}
+	fBranch := fmt.Sprintf("(= %s false) (= %s true)", tEnds.Id(), fEnds.Id())
+	if fPhiRules != "" {
+		fBranch = fmt.Sprintf("%s %s", fBranch, fPhiRules)
+	}
+	ifAssert := fmt.Sprintf("(assert (ite %s (and %s) (and %s)))",
+		cond, tBranch, fBranch)
+	var resultParts []string
+	if t := strings.Join(tRules, "\n"); t != "" {
+		resultParts = append(resultParts, t)
+	}
+	if f := strings.Join(fRules, "\n"); f != "" {
+		resultParts = append(resultParts, f)
+	}
+	resultParts = append(resultParts, ifAssert)
+	resultParts = append(resultParts, strings.Join(aRules, "\n"))
+	return inits, strings.Join(resultParts, "\n")
 }
 
 func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
