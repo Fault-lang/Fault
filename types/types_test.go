@@ -1241,6 +1241,88 @@ def person = stock{
 	}
 }
 
+func TestUnknownBoolHintInArithmetic(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(false), };
+		def f = flow{ s: new s,
+			bar: func{ s.x <- 1; },
+		};
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject bool-hinted unknown used in arithmetic")
+	}
+	actual := "invalid expression: got=BOOL + INT"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownIntHintAssignedBool(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(0), };
+		def f = flow{ s: new s,
+			bar: func{ s.x <- true; },
+		};
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject bool assigned to int-hinted unknown")
+	}
+	actual := "invalid expression: got=INT + BOOL"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownRealHintInBoolAssume(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(0.0), };
+		assume s.x && true;
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject real-hinted unknown in boolean assume")
+	}
+	actual := "invalid expression: got=FLOAT && BOOL"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownBoolHintComparedWithNumeric(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(false), };
+		assert s.x > 0 always;
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject bool-hinted unknown compared with numeric")
+	}
+	actual := "invalid expression: got=BOOL > INT"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownTypedHintsValidOK(t *testing.T) {
+	test := `spec test1;
+		def s = stock{
+			amount: unknown(0.0),
+			count: unknown(0),
+			flagged: unknown(false),
+		};
+		assume s.amount >= 0.0;
+		assume s.count >= 0;
+		assume !s.flagged || s.amount > 0.0;
+		assert s.amount >= 0.0 always;
+	`
+	_, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected valid typed-unknown spec. got=%s", err)
+	}
+}
+
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

@@ -791,6 +791,13 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		node.Right = nr.(ast.Expression)
 
 		if COMPARE[node.Operator] {
+			if left != nil && right != nil {
+				if (left.Type == "BOOL" || right.Type == "BOOL") && left.Type != right.Type {
+					if left.Type != "STRING" && right.Type != "STRING" {
+						return nil, fmt.Errorf("invalid expression: got=%s %s %s", left.Type, node.Operator, right.Type)
+					}
+				}
+			}
 			node.InferredType = &ast.Type{Type: "BOOL",
 				Scope:      0,
 				Parameters: nil}
