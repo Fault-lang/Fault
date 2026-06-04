@@ -726,11 +726,8 @@ func extractVariables(e ast.Node) []string {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return vars
 	case *ast.Unknown:
-		vars = append(vars, v.Name.IdString())
+		return vars
 	case *ast.Whole:
-		if v.Name != nil {
-			vars = append(vars, v.Name.IdString())
-		}
 	case *ast.Nil:
 		return vars
 	case *ast.IndexExpression:

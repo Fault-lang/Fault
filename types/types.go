@@ -474,7 +474,16 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 
 	case *ast.Unknown:
 		if node.InferredType == nil {
-			node.InferredType = &ast.Type{Type: "UNKNOWN", Scope: 0, Parameters: nil}
+			ty := "UNKNOWN"
+			switch node.TypeHint {
+			case "INT":
+				ty = "INT"
+			case "REAL":
+				ty = "FLOAT"
+			case "BOOL":
+				ty = "BOOL"
+			}
+			node.InferredType = &ast.Type{Type: ty, Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	case *ast.Whole:

@@ -1001,7 +1001,7 @@ func (u *Uncertain) Position() []int { return u.Token.GetPosition() }
 type Unknown struct {
 	Token         Token
 	InferredType  *Type
-	Name          *Identifier
+	TypeHint      string // "INT", "REAL", "BOOL", or "" (untyped)
 	ProcessedName []string
 }
 
@@ -1010,9 +1010,7 @@ func (u *Unknown) TokenLiteral() string { return u.Token.Literal }
 func (u *Unknown) String() string {
 	var out bytes.Buffer
 	out.WriteString("unknown(")
-	if u.Name != nil { //This sometimes is set further up the tree and might be nil
-		out.WriteString(u.Name.Value)
-	}
+	out.WriteString(u.TypeHint)
 	out.WriteString(")")
 	return out.String()
 }

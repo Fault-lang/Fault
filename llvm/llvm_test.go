@@ -450,7 +450,7 @@ func TestUncertains(t *testing.T) {
 func TestUnknowns2(t *testing.T) {
 	c := NewCompiler()
 	c.specs["test"] = NewCompiledSpec("test")
-	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Unknown{Name: &ast.Identifier{Spec: "test", Value: "bar"}, ProcessedName: []string{"test", "foo", "bar"}}}}}
+	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Unknown{ProcessedName: []string{"test", "foo", "bar"}}}}}
 	c.processStruct(test)
 
 	if len(c.RawInputs.Unknowns) == 0 {

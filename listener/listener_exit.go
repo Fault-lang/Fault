@@ -140,7 +140,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 
 	} else {
 		token2 := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
-		val = &ast.Unknown{Token: token2, Name: nil}
+		val = &ast.Unknown{Token: token2}
 	}
 
 	var itemList []ast.Node
@@ -153,8 +153,6 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 
 		switch inst := val.(type) {
 		case *ast.Unknown:
-			inst.Name = ident
-			val = inst
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, ident.Value}, "_"))
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
@@ -356,16 +354,10 @@ func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
 	l.push(ident)
 
 	if keyValuePair {
-		unknown, ok := val.(*ast.Unknown)
-		if ok {
-			unknown.Name = ident
-			l.push(unknown)
-		} else {
-			l.push(val)
-		}
+		l.push(val)
 	} else {
 		token2 := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
-		unknown := &ast.Unknown{Token: token2, Name: ident}
+		unknown := &ast.Unknown{Token: token2}
 		l.push(unknown)
 	}
 }
@@ -619,10 +611,6 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 			inst.Name = ident.Value
 			right = inst
 		case *ast.Unknown:
-			if inst.Name == nil {
-				inst.Name = ident
-				right = inst
-			}
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
@@ -1050,13 +1038,21 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 	case "unknown":
 		token := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
 
-		var ident *ast.Identifier
+		var typeHint string
 		if c.GetChildCount() > 3 {
-			ident, _ = l.pop().(*ast.Identifier)
+			hint := l.pop()
+			switch hint.(type) {
+			case *ast.IntegerLiteral:
+				typeHint = "INT"
+			case *ast.FloatLiteral:
+				typeHint = "REAL"
+			case *ast.Boolean:
+				typeHint = "BOOL"
+			}
 		}
 		l.push(&ast.Unknown{
-			Token: token,
-			Name:  ident,
+			Token:    token,
+			TypeHint: typeHint,
 		})
 	case "whole":
 		token := ast.GenerateToken("WHOLE", "WHOLE", c.GetStart(), c.GetStop())
@@ -1798,8 +1794,6 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 
 		switch inst := right.(type) {
 		case *ast.Unknown:
-			inst.Name = ident
-			right = inst
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
 			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}

@@ -521,6 +521,9 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Unknown:
+		if v.TypeHint == "BOOL" {
+			return constant.NewInt(irtypes.I1, 0)
+		}
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Whole:
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
@@ -1757,8 +1760,11 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 				continue
 			}
 
-			if _, ok := pv.(*ast.Unknown); ok {
+			if u, ok := pv.(*ast.Unknown); ok {
 				isUnknown = true
+				if u.TypeHint == "INT" {
+					isWhole = true
+				}
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma, uncertain.K}
 			} else if _, ok3 := pv.(*ast.Whole); ok3 {

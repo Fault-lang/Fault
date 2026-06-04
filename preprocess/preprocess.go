@@ -289,6 +289,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		node.Value = pro.(ast.Expression)
 
+		if nm, ok := pro.(ast.Nameable); ok && len(nm.RawId()) == 0 {
+			nm.SetId(node.Name.RawId())
+		}
+
 		spec.AddConstant(node.Name.Value, pro)
 		spec.Index(node.Name.Value, "CONSTANT")
 		p.Specs[p.trail.CurrentSpec()] = spec
@@ -1259,17 +1263,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.Unknown:
-		if !p.initialPass {
-			return node, err
-		}
-
-		spec := p.getSpec(p.trail.CurrentSpec())
-		rawid := p.buildIdContext(spec.Id())
-
-		if node.Name != nil {
-			rawid = append(rawid, node.Name.Value)
-			node.ProcessedName = rawid
-		}
 		return node, err
 
 	case *ast.ParameterCall:

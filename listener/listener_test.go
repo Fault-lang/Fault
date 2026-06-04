@@ -1474,10 +1474,10 @@ func TestUnknown(t *testing.T) {
 
 			 def f = flow{
 				foo,
-				buzz: unknown(),
+				buzz: unknown(0),
+				baz: unknown(0.0),
 				bizz: func{
-					x = unknown();
-					z = x + unknown(y);
+					x = unknown(false);
 				},
 			 };
 
@@ -1496,16 +1496,8 @@ func TestUnknown(t *testing.T) {
 		t.Fatalf("Constant is not an Unknown. got=%T", con.Value)
 	}
 
-	if unkn.Name == nil {
-		t.Fatal("Unknown identifier Name is nil.")
-	}
-
-	if unkn.Name.Value != "a" {
-		t.Fatalf("Unknown identifier is not correctly set. got=%s", unkn.Name.Value)
-	}
-
-	if unkn.Name.Spec != "test1" {
-		t.Fatalf("Unknown spec is not correctly set. got=%s", unkn.Name.Spec)
+	if unkn.TypeHint != "" {
+		t.Fatalf("untyped unknown() should have empty TypeHint. got=%s", unkn.TypeHint)
 	}
 
 	df, ok := spec.Statements[2].(*ast.DefStatement)
@@ -1522,21 +1514,9 @@ func TestUnknown(t *testing.T) {
 	for ident, v := range fl.Pairs {
 
 		if ident.Value == "foo" {
-			val, ok := v.(*ast.Unknown)
+			_, ok := v.(*ast.Unknown)
 			if !ok {
 				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
-			}
-
-			if val.Name == nil {
-				t.Fatal("Unknown foo identifier Name is nil.")
-			}
-
-			if val.Name.Value != ident.Value {
-				t.Fatalf("Unknown has wrong identifier. got=%s", val.Name.Value)
-			}
-
-			if val.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", val.Name.Spec)
 			}
 			pass++
 		} else if ident.Value == "buzz" {
@@ -1544,17 +1524,17 @@ func TestUnknown(t *testing.T) {
 			if !ok {
 				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
 			}
-
-			if val.Name == nil {
-				t.Fatal("Unknown buzz identifier Name is nil.")
+			if val.TypeHint != "INT" {
+				t.Fatalf("unknown(0) should have TypeHint INT. got=%s", val.TypeHint)
 			}
-
-			if val.Name.Value != ident.Value {
-				t.Fatalf("Unknown has wrong identifier. got=%s", val.Name.Value)
+			pass++
+		} else if ident.Value == "baz" {
+			val, ok := v.(*ast.Unknown)
+			if !ok {
+				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
 			}
-
-			if val.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", val.Name.Spec)
+			if val.TypeHint != "REAL" {
+				t.Fatalf("unknown(0.0) should have TypeHint REAL. got=%s", val.TypeHint)
 			}
 			pass++
 		} else if ident.Value == "bizz" {
@@ -1568,58 +1548,13 @@ func TestUnknown(t *testing.T) {
 				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 			}
 
-			id1, ok := infix1.Left.(*ast.Identifier)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.Identifier got=%T", infix1.Left)
-			}
-
 			un1, ok := infix1.Right.(*ast.Unknown)
 			if !ok {
 				t.Fatalf("Incorrect function statement want=*ast.Unknown got=%T", infix1.Right)
 			}
 
-			if un1.Name == nil {
-				t.Fatal("Unknown x identifier Name is nil.")
-			}
-
-			if un1.Name.Value != id1.Value {
-				t.Fatalf("Unknown has wrong identifier. got=%s", un1.Name.Value)
-			}
-
-			if un1.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", un1.Name.Spec)
-			}
-
-			infix2, ok := val.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[1].(*ast.ExpressionStatement).Expression)
-			}
-
-			_, ok = infix2.Left.(*ast.Identifier)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.Identifier got=%T", infix2.Left)
-			}
-
-			infix3, ok := infix2.Right.(*ast.InfixExpression)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[1].(*ast.ExpressionStatement).Expression)
-			}
-
-			un2, ok := infix3.Right.(*ast.Unknown)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.Unknown got=%T", infix3.Right)
-			}
-
-			if un2.Name == nil {
-				t.Fatal("Unknown y identifier Name is nil.")
-			}
-
-			if un2.Name.Value != "y" {
-				t.Fatalf("Unknown has wrong identifier. got=%s", un1.Name.Value)
-			}
-
-			if un2.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", un1.Name.Spec)
+			if un1.TypeHint != "BOOL" {
+				t.Fatalf("unknown(false) should have TypeHint BOOL. got=%s", un1.TypeHint)
 			}
 
 			pass++
@@ -1627,8 +1562,8 @@ func TestUnknown(t *testing.T) {
 			t.Fatalf("Flow has extra property. got=%s", ident.Value)
 		}
 	}
-	if pass != 3 {
-		t.Fatalf("Flow is missing property. want=3 got=%d", pass)
+	if pass != 4 {
+		t.Fatalf("Flow is missing property. want=4 got=%d", pass)
 	}
 
 	con2, ok := spec.Statements[3].(*ast.ConstantStatement)
@@ -1636,21 +1571,13 @@ func TestUnknown(t *testing.T) {
 		t.Fatalf("spec.Statements[3] is not a ConstantStatement. got=%T", spec.Statements[3])
 	}
 
-	unk2, ok := con2.Value.(*ast.Unknown)
+	_, ok = con2.Value.(*ast.Unknown)
 	if !ok {
 		t.Fatalf("Constant is not an Unknown. got=%T", con2.Value)
 	}
 
-	if unk2.Name.Value != "b" {
-		t.Fatalf("Unknown identifier is not correctly set. got=%s", unk2.Name.Value)
-	}
-
-	if unk2.Name.Spec != "test1" {
-		t.Fatalf("Unknown spec is not correctly set. got=%s", unk2.Name.Spec)
-	}
-
-	if len(l.Unknowns) != 5 {
-		t.Fatalf("missing an unknown want=5 got=%d", len(l.Unknowns))
+	if len(l.Unknowns) != 6 {
+		t.Fatalf("missing an unknown want=6 got=%d", len(l.Unknowns))
 	}
 
 }

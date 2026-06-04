@@ -83,7 +83,7 @@ func InitNodes() []Node {
 		&StockLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&FlowLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&ComponentLiteral{Token: token, Pairs: pairs, Order: pairOrder},
-		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}},
+		&Unknown{Token: token, TypeHint: "INT"},
 		&StructInstance{Token: token, Properties: properties},
 		&BuiltIn{Token: token, Parameters: params, Function: "advance"},
 		&StateActivation{Token: token, Calls: []*ParameterCall{{Token: token, Value: []string{"foo", "bar"}}}, Operator: ""},
@@ -218,7 +218,7 @@ func TestString(t *testing.T) {
 			want = "{foo:3, bar:5, bash:-4}"
 		case *Unknown:
 			got = t.String()
-			want = "unknown(foo)"
+			want = "unknown(INT)"
 		case *StructInstance:
 			got = t.String()
 			want = "__foo:3"
