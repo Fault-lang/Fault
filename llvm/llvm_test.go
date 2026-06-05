@@ -497,7 +497,10 @@ func TestComponentIR(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -662,7 +665,10 @@ func TestChoose(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -725,7 +731,10 @@ func TestLeave(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -791,7 +800,10 @@ func TestSysRunBlock(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -851,7 +863,10 @@ func TestStateActivation(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -921,7 +936,10 @@ func TestUnfuncCompiles(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -998,7 +1016,10 @@ func TestUnfuncWithMultipleRequires(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -1115,7 +1136,10 @@ func prepTestCompiler(test string, specType bool) (*Compiler, error) {
 		return nil, err
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		return nil, err
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
@@ -1136,7 +1160,10 @@ func prepTest(test string, specType bool) (string, error) {
 		return "", err
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		return "", err
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()

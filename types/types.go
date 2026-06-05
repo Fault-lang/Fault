@@ -40,14 +40,14 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	}
 }
 
-func Execute(tree *ast.Spec, processor *preprocess.Processor) *Checker {
+func Execute(tree *ast.Spec, processor *preprocess.Processor) (*Checker, error) {
 	ty := NewTypeChecker(processor)
 	tree, err := ty.Check(tree)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	ty.Checked = tree
-	return ty
+	return ty, nil
 }
 
 func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {

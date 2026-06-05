@@ -141,7 +141,10 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	r.sendProgress(PhasePreprocessing, "Preprocessing complete", 0.28, true)
 
 	r.sendProgress(PhaseTypeChecking, "Type checking...", 0.28, false)
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 	r.sendProgress(PhaseTypeChecking, "Type checking complete", 0.42, true)
 
 	sw := swaps.NewPrecompiler(ty)

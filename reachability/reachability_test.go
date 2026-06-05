@@ -227,7 +227,10 @@ func prepTestSys(test string) (bool, []string) {
 	if err != nil {
 		panic(err)
 	}
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		panic(err)
+	}
 	tracer := NewTracer()
 	tracer.walk(ty.Checked)
 	return tracer.check()

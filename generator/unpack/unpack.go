@@ -728,20 +728,16 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 		u.Log.AddBranchSelector(selectorRule)
 		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
 
-		var nonEmpty []string
 		for _, r := range rs {
-			if r != "" {
-				nonEmpty = append(nonEmpty, r)
+			if r == "" {
+				continue
 			}
-		}
-		if len(nonEmpty) > 0 {
-			var branchRule string
-			if len(nonEmpty) == 1 {
-				branchRule = nonEmpty[0]
-			} else {
-				branchRule = fmt.Sprintf("(and %s)", strings.Join(nonEmpty, "\n"))
+			// r may be a single expression or a multi-line block of (assert ...) statements
+			// (e.g. from an Ite). Split into individual assert lines and wrap each in
+			// an implication, since (assert (=> sel (assert ...))) is invalid SMT.
+			for _, line := range splitAsserts(r) {
+				branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", fullSelectorName, line))
 			}
-			branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", fullSelectorName, branchRule))
 		}
 	}
 
@@ -928,6 +924,46 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 	}
 
 	return fmt.Sprintf("(assert %s)", rule)
+}
+
+// splitAsserts takes a string that may contain one or more top-level (assert X)
+// statements and returns the inner expressions X without the assert wrapper.
+// If the input is not assert-wrapped, it is returned as-is in a single-element slice.
+func splitAsserts(s string) []string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "(assert ") {
+		return []string{s}
+	}
+	var results []string
+	for len(s) > 0 {
+		s = strings.TrimSpace(s)
+		if !strings.HasPrefix(s, "(assert ") {
+			break
+		}
+		// Find the matching closing paren for this (assert ...) by tracking depth
+		depth := 0
+		end := -1
+		for i, ch := range s {
+			if ch == '(' {
+				depth++
+			} else if ch == ')' {
+				depth--
+				if depth == 0 {
+					end = i
+					break
+				}
+			}
+		}
+		if end == -1 {
+			// malformed — return remainder as-is
+			results = append(results, s)
+			break
+		}
+		inner := strings.TrimSpace(s[len("(assert ") : end])
+		results = append(results, inner)
+		s = s[end+1:]
+	}
+	return results
 }
 
 func strictOr(rules []string) string {
