@@ -129,7 +129,24 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 	// variable is relevant
 
 	subset := make(map[string]*util.StringSet)
+
+	// First pass: find constant_value across all scopes before populating,
+	// so map iteration order doesn't cause empty strings for earlier keys.
 	constant_value := ""
+	if constant {
+		for _, vars := range c.Registry {
+			for _, var_ssa := range vars {
+				if var_ssa[0] == v {
+					constant_value = strings.Join(var_ssa, "_")
+					break
+				}
+			}
+			if constant_value != "" {
+				break
+			}
+		}
+	}
+
 	for k, vars := range c.Registry {
 		if _, ok := subset[k]; !ok {
 			subset[k] = util.NewStrSet()
@@ -137,10 +154,6 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 
 		for _, var_ssa := range vars {
 			full_ssa := strings.Join(var_ssa, "_")
-
-			if constant && (var_ssa[0] == v) && (constant_value == "") {
-				constant_value = full_ssa
-			}
 
 			if !all && full_ssa == v {
 				//If not all values of variable, return only the round+scope with the exact SSA value
@@ -154,7 +167,7 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 
 		}
 
-		if constant {
+		if constant && constant_value != "" {
 			//If var is constant, populate every round+scope with the correct SSA value
 			subset[k].Add(constant_value)
 		}
@@ -554,6 +567,9 @@ func (c *Constraint) applyTemporal() string {
 	switch c.Temporal.Type {
 	case "eventually": // At least one state is true
 		m := c.merge(c.Left, c.Right, c.Op)
+		if len(m.List()) == 0 {
+			return ""
+		}
 		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
 	case "always": // Every state is true
 		m := c.merge(c.Left, c.Right, c.Op)
