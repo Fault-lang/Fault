@@ -103,7 +103,11 @@ func Execute(compiler *llvm.Compiler, opts GeneratorOptions) *Generator {
 }
 
 func (g *Generator) AppendSMT(new_smt []string) {
-	g.smt = append(g.smt, new_smt...)
+	for _, s := range new_smt {
+		if s != "" {
+			g.smt = append(g.smt, s)
+		}
+	}
 }
 
 func (g *Generator) Run(llopt string) {
