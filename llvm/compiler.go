@@ -1521,6 +1521,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	if a.Assume {
 		a.Constraint.Left = c.convertAssertVariables(a.Constraint.Left)
 		a.Constraint.Right = c.convertAssertVariables(a.Constraint.Right)
+		c.annotateAssertParam(a.Constraint.Left, a.Constraint.Right)
 		c.RawInputs.Assumes = append(c.RawInputs.Assumes, a)
 		return
 	}
@@ -1568,9 +1569,11 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	switch e := ex.(type) {
 	case *ast.InfixExpression:
-
 		e.Left = c.convertAssertVariables(e.Left)
 		e.Right = c.convertAssertVariables(e.Right)
+		// Annotate Param nodes with the opposing AssertVar instance name so
+		// the generator can emit the correct __PARAM_name__ placeholder.
+		c.annotateAssertParam(e.Left, e.Right)
 		return e
 	case *ast.Identifier:
 		id := c.AliasToBaseRaw(e.RawId())
@@ -1664,6 +1667,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.Whole:
 		return e
+	case *ast.Param:
+		return e
 	case *ast.PrefixExpression:
 		e.Right = c.convertAssertVariables(e.Right)
 		return e
@@ -1675,6 +1680,50 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+	}
+}
+
+// annotateAssertParam looks for Param nodes directly paired with an AssertVar
+// (either side of a constraint) and stamps ProcessedName onto the Param so
+// the SMT generator can emit the right __PARAM_name__ placeholder. It also
+// registers the param in RawInputs.Params/ParamTypes if not already present.
+func (c *Compiler) annotateAssertParam(left, right ast.Expression) {
+	annotate := func(p *ast.Param, av *ast.AssertVar) {
+		if len(p.ProcessedName) > 0 || len(av.Instances) == 0 {
+			return
+		}
+		base := av.Instances[0]
+		p.ProcessedName = strings.Split(base, "_")
+		sort := "Real"
+		switch p.TypeHint {
+		case "INT":
+			sort = "Int"
+		case "BOOL":
+			sort = "Bool"
+		}
+		// Register in RawInputs so ParamManifest() includes it.
+		// If already present (from a field declaration), update the type if we
+		// now have a more specific hint from the inline param() expression.
+		for _, existing := range c.RawInputs.Params {
+			if existing == base {
+				if sort != "Real" {
+					c.RawInputs.ParamTypes[base] = sort
+				}
+				return
+			}
+		}
+		c.RawInputs.Params = append(c.RawInputs.Params, base)
+		c.RawInputs.ParamTypes[base] = sort
+	}
+	if p, ok := right.(*ast.Param); ok {
+		if av, ok := left.(*ast.AssertVar); ok {
+			annotate(p, av)
+		}
+	}
+	if p, ok := left.(*ast.Param); ok {
+		if av, ok := right.(*ast.AssertVar); ok {
+			annotate(p, av)
+		}
 	}
 }
 

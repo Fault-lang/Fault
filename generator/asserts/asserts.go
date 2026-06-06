@@ -275,6 +275,14 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 			merged = util.MergeStringSets(merged, subset)
 		}
 		return rules.NewVarSets(merged)
+	case *ast.Param:
+		if len(e.ProcessedName) > 0 {
+			placeholder := fmt.Sprintf("__PARAM_%s__", strings.Join(e.ProcessedName, "_"))
+			reg := c.RegistryConstant(placeholder)
+			return rules.NewVarSets(reg)
+		}
+		pos := e.Position()
+		panic(fmt.Sprintf("param() in assume/assert must be directly compared to a variable: line: %d, col: %d", pos[0], pos[1]))
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
@@ -426,6 +434,12 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 			}
 		}
 		return ""
+	case *ast.Param:
+		if len(e.ProcessedName) > 0 {
+			return fmt.Sprintf("__PARAM_%s__", strings.Join(e.ProcessedName, "_"))
+		}
+		pos := e.Position()
+		panic(fmt.Sprintf("param() in assume/assert must be directly compared to a variable: line: %d, col: %d", pos[0], pos[1]))
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))

@@ -48,6 +48,8 @@ func (l *FaultListener) EnterStructDecl(c *parser.StructDeclContext) {
 
 func (l *FaultListener) EnterComponentDecl(c *parser.ComponentDeclContext) {
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+	l.scope = c.IDENT().GetText()
+	l.structscope = l.scope
 }
 
 func (l *FaultListener) EnterStringDecl(c *parser.StringDeclContext) {

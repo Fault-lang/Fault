@@ -308,6 +308,14 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
+		if filetype == "fsystem" && len(lstnr.Params) > 0 {
+			err := fmt.Errorf("param() is not supported in system files; param() fields only work in spec files (.fspec) with stock and flow definitions")
+			r.sendError(PhaseParsing, err)
+			output.Error = err
+			output.ErrorPhase = PhaseParsing
+			return output
+		}
+
 		r.sendProgress(PhaseLLVM, "Generating LLVM IR...", 0.42, false)
 		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, alias, false)
 		if err != nil {

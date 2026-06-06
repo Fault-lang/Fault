@@ -2035,6 +2035,8 @@ func (l *FaultListener) ExitComponentDecl(c *parser.ComponentDeclContext) {
 			Name:  ident,
 			Value: val,
 		})
+	l.scope = ""
+	l.structscope = ""
 }
 
 func (l *FaultListener) ExitBuiltins(c *parser.BuiltinsContext) {
