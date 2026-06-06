@@ -82,6 +82,15 @@ func (l *FaultListener) EnterFunctionLit(c *parser.FunctionLitContext) {
 	if c.Block().GetChildCount() < 3 {
 		panic(fmt.Sprintf("Malformed fspec or fsystem file. A function cannot be empty: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
+	l.inFuncBody++
+}
+
+func (l *FaultListener) EnterStateLit(c *parser.StateLitContext) {
+	l.inFuncBody++
+}
+
+func (l *FaultListener) EnterUnfuncLit(c *parser.UnfuncLitContext) {
+	l.inFuncBody++
 }
 
 func (l *FaultListener) EnterStateBlock(c *parser.StateBlockContext) {

@@ -383,6 +383,7 @@ func (l *FaultListener) ExitStateFunc(c *parser.StateFuncContext) {
 }
 
 func (l *FaultListener) ExitStateLit(c *parser.StateLitContext) {
+	l.inFuncBody--
 	token := ast.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
 	b := l.pop()
@@ -410,6 +411,7 @@ func (l *FaultListener) ExitUnfuncState(c *parser.UnfuncStateContext) {
 }
 
 func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
+	l.inFuncBody--
 	token := ast.GenerateToken("UNFUNC", "unfunc", c.GetStart(), c.GetStop())
 
 	clauses := c.UnfuncBlock().AllUnfuncClause()
@@ -522,6 +524,7 @@ func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
 }
 
 func (l *FaultListener) ExitFunctionLit(c *parser.FunctionLitContext) {
+	l.inFuncBody--
 	token := ast.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
 
 	b := l.pop()
@@ -1066,6 +1069,9 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 			Token: token,
 		})
 	case "param":
+		if l.inFuncBody > 0 {
+			panic(fmt.Sprintf("param() is not allowed inside func or unfunc bodies: line %d col %d — use param() in stock/flow property initializers or top-level constants to set starting inputs", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		}
 		token := ast.GenerateToken("PARAM", "PARAM", c.GetStart(), c.GetStop())
 		var typeHint string
 		if c.GetChildCount() > 3 {

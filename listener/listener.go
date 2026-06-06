@@ -26,6 +26,7 @@ type FaultListener struct {
 	Unknowns             []string
 	Wholes               []string
 	Params               []string
+	inFuncBody           int
 	StructsPropertyOrder map[string][]string
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node
