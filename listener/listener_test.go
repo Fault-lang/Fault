@@ -1582,6 +1582,73 @@ func TestUnknown(t *testing.T) {
 
 }
 
+func TestParam(t *testing.T) {
+	// param() uses a literal to hint the type, same convention as unknown().
+	// param(0.0) → REAL, param(0) → INT, param(false) → BOOL.
+	test := `spec test1;
+			 def f = flow{
+				amount: param(0.0),
+				count: param(0),
+				flagged: param(false),
+			 };
+			`
+	flags := make(map[string]bool)
+	flags["specType"] = true
+	l, spec := prepTest(test, flags)
+
+	df, ok := spec.Statements[1].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not a DefStatement. got=%T", spec.Statements[1])
+	}
+
+	fl, ok := df.Value.(*ast.FlowLiteral)
+	if !ok {
+		t.Fatalf("Def block not a flow. got=%T", df.Value)
+	}
+
+	var pass int
+	for ident, v := range fl.Pairs {
+		switch ident.Value {
+		case "amount":
+			val, ok := v.(*ast.Param)
+			if !ok {
+				t.Fatalf("amount: expected *ast.Param, got=%T", v)
+			}
+			if val.TypeHint != "REAL" {
+				t.Fatalf("param(0.0) should have TypeHint REAL. got=%s", val.TypeHint)
+			}
+			pass++
+		case "count":
+			val, ok := v.(*ast.Param)
+			if !ok {
+				t.Fatalf("count: expected *ast.Param, got=%T", v)
+			}
+			if val.TypeHint != "INT" {
+				t.Fatalf("param(0) should have TypeHint INT. got=%s", val.TypeHint)
+			}
+			pass++
+		case "flagged":
+			val, ok := v.(*ast.Param)
+			if !ok {
+				t.Fatalf("flagged: expected *ast.Param, got=%T", v)
+			}
+			if val.TypeHint != "BOOL" {
+				t.Fatalf("param(false) should have TypeHint BOOL. got=%s", val.TypeHint)
+			}
+			pass++
+		default:
+			t.Fatalf("Flow has unexpected property: %s", ident.Value)
+		}
+	}
+	if pass != 3 {
+		t.Fatalf("Expected 3 param properties, got=%d", pass)
+	}
+
+	if len(l.Params) != 3 {
+		t.Fatalf("Expected 3 entries in l.Params, got=%d: %v", len(l.Params), l.Params)
+	}
+}
+
 func TestSysSpec(t *testing.T) {
 	test := `system test1;
 

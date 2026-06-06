@@ -131,6 +131,15 @@ func isAWhole(id string, RawInputs *llvm.RawInputs) bool {
 	return false
 }
 
+func isAParam(id string, RawInputs *llvm.RawInputs) bool {
+	for _, v := range RawInputs.Params {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
+
 func FormatValue(val value.Value) string {
 	v := strings.Split(val.String(), " ")
 	return v[1]

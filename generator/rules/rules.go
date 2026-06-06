@@ -139,6 +139,7 @@ type Init struct {
 	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
 	Whole          bool //If true, whole-number variable (affects sort and is_int behaviour)
 	IntegerMode    bool //If true, declare whole vars as Int sort and suppress is_int assertions
+	IsParam        bool //If true, emit a __PARAM_name__ placeholder assertion instead of a concrete value
 	Indexed        bool
 	OmitFromOutput bool
 	Mean           float64 // uncertain() mean — used to generate SMT bounds
@@ -183,7 +184,10 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	}
 	d = fmt.Sprintf("(declare-fun %s () %s)", id, sort)
 
-	if i.Value != nil && i.Global && !i.Solvable {
+	if i.IsParam {
+		val = fmt.Sprintf("(assert (= %s __PARAM_%s__))", id, i.Ident)
+		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else if i.Value != nil && i.Global && !i.Solvable {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
@@ -273,6 +277,15 @@ func NewWholeInit(name string, t string, ssa int, integerMode bool) *Init {
 		Solvable:    true,
 		Whole:       true,
 		IntegerMode: integerMode,
+	}
+}
+
+func NewParamInit(name string, t string, ssa int) *Init {
+	return &Init{
+		Ident:   name,
+		SSA:     fmt.Sprintf("%d", ssa),
+		Type:    t,
+		IsParam: true,
 	}
 }
 

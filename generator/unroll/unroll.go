@@ -771,6 +771,8 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 		ty := LookupType(id, val)
 		if isAWhole(id, RawInputs) {
 			return rules.NewWholeInit(id, ty, -1, RawInputs.IntegerMode)
+		} else if isAParam(id, RawInputs) {
+			return rules.NewParamInit(id, ty, -1)
 		} else if isASolvable(id, RawInputs) {
 			if params, ok := RawInputs.Uncertains[id]; ok && len(params) >= 2 && params[1] != 0 {
 				var k float64

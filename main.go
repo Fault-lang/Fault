@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fault/generator"
 	"fault/runner"
 	"fault/tui"
@@ -50,6 +51,7 @@ func main() {
 		case "ast":
 		case "ir":
 		case "smt":
+		case "template":
 		case "model":
 		default:
 			fmt.Printf("%s is not a valid mode\n", mode)
@@ -156,6 +158,28 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThr
 		fmt.Println(result.IR)
 	case "smt":
 		fmt.Println(result.SMT)
+	case "template":
+		// Write <filepath>.smt2.tmpl
+		tmplPath := strings.TrimSuffix(filepath, ".fspec")
+		tmplPath = strings.TrimSuffix(tmplPath, ".fsystem") + ".smt2.tmpl"
+		if err := os.WriteFile(tmplPath, []byte(result.SMT), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing template: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Template written to %s\n", tmplPath)
+
+		// Write <filepath>.params.json
+		manifestPath := strings.TrimSuffix(tmplPath, ".smt2.tmpl") + ".params.json"
+		manifestBytes, err := json.MarshalIndent(result.ParamManifest, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error marshaling param manifest: %v\n", err)
+			os.Exit(1)
+		}
+		if err := os.WriteFile(manifestPath, manifestBytes, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing param manifest: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Param manifest written to %s\n", manifestPath)
 	case "model":
 		if result.ResultLog != nil {
 			result.ResultLog.Print()

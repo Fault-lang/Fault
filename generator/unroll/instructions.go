@@ -135,10 +135,19 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		base := util.FormatIdent(inst.Dst.Ident())
 		// Skip initial stores to local allocas that are never loaded or stored
 		// by any flow function — they would produce orphaned SMT declarations.
-		// However, always keep solvable (whole/unknown/uncertain) variables so
-		// that assume/assert constraints referencing them remain satisfiable.
-		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) {
+		// However, always keep solvable (whole/unknown/uncertain) and param
+		// variables so that constraints referencing them remain satisfiable.
+		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) && !isAParam(base, b.Env.RawInputs) {
 			return nil
+		}
+		// For param fields, emit a __PARAM_...__ placeholder assertion.
+		if isAParam(base, b.Env.RawInputs) {
+			ty := b.Env.RawInputs.ParamTypes[base]
+			if ty == "" {
+				ty = LookupType(base, inst.Src)
+			}
+			b.Env.VarTypes[base] = ty
+			return []rules.Rule{rules.NewParamInit(base, ty, b.Env.CurrentRound)}
 		}
 		if IsTemp(inst.Src.Ident()) {
 			refname := fmt.Sprintf("%s-%s", b.ParentFunction, inst.Src.Ident())

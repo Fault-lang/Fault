@@ -127,7 +127,7 @@ func TestFullSuite(t *testing.T) {
 
 		sw := swaps.NewPrecompiler(ty)
 		tree := sw.Swap(ty.Checked)
-		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, sw.Alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, sw.Alias, false)
 		if err != nil {
 			return err
 		}

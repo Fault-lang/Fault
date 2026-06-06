@@ -550,6 +550,29 @@ func (g *Generator) SMT() string {
 	return strings.Join(g.smt, "\n")
 }
 
+// ParamManifest returns a map of __PARAM_name__ token → SMT sort (Real, Int, Bool)
+// for every param() field declared in the spec. Used alongside SMT() in template mode
+// so the caller knows which tokens exist and their expected types.
+func (g *Generator) ParamManifest() map[string]string {
+	manifest := make(map[string]string)
+	for _, name := range g.RawInputs.Params {
+		sort := "Real"
+		// Prefer the TypeHint-derived type stored at compile time.
+		if ty, ok := g.RawInputs.ParamTypes[name]; ok && ty != "" {
+			sort = ty
+		} else if ty, ok := g.Env.VarTypes[name]; ok {
+			switch ty {
+			case "i32", "i64", "Int":
+				sort = "Int"
+			case "i1", "Bool":
+				sort = "Bool"
+			}
+		}
+		manifest[name] = sort
+	}
+	return manifest
+}
+
 // inferBoolVarNames scans assume/assert constraints and returns a set of
 // variable base names that should be declared as Bool in SMT. This covers:
 //   - variables used directly as operands of ||, &&, or !

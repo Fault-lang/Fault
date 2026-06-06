@@ -1323,6 +1323,44 @@ func TestUnknownTypedHintsValidOK(t *testing.T) {
 	}
 }
 
+func TestParamTypeHints(t *testing.T) {
+	test := `spec test1;
+		def s = stock{
+			amount: param(0.0),
+			count: param(0),
+			flagged: param(false),
+		};
+		assert s.amount >= 0.0 always;
+	`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected valid param spec. got=%s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	testv, _ := spec.FetchStock("s")
+
+	cases := []struct {
+		field    string
+		wantType string
+	}{
+		{"amount", "FLOAT"},
+		{"count", "INT"},
+		{"flagged", "BOOL"},
+	}
+
+	for _, tc := range cases {
+		node := testv[tc.field]
+		p, ok := node.(*ast.Param)
+		if !ok {
+			t.Fatalf("field %s: expected *ast.Param, got %T", tc.field, node)
+		}
+		if p.InferredType.Type != tc.wantType {
+			t.Fatalf("field %s: expected InferredType %s, got %s", tc.field, tc.wantType, p.InferredType.Type)
+		}
+	}
+}
+
 func prepTest(test string, specType bool) (*Checker, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType

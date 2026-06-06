@@ -47,7 +47,7 @@ type ProgressUpdate struct {
 
 type CompilationConfig struct {
 	Filepath             string
-	Mode                 string // ast, ir, smt, model
+	Mode                 string // ast, ir, smt, template, model
 	Input                string // fault, ll, smt2
 	Output               string // text, smt
 	Reach                bool
@@ -72,6 +72,7 @@ type CompilationOutput struct {
 	Warnings      []string
 	Message       string
 	SMT           string
+	ParamManifest map[string]string // non-nil when Mode == "template"
 	AST           *ast.Spec
 	IR            string
 	Error         error
@@ -308,7 +309,7 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 
 		r.sendProgress(PhaseLLVM, "Generating LLVM IR...", 0.42, false)
-		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, alias, false)
 		if err != nil {
 			r.sendError(PhaseLLVM, err)
 			output.Error = err
@@ -333,6 +334,12 @@ func (r *Runner) Run() *CompilationOutput {
 
 		if r.config.Mode == "smt" {
 			output.SMT = g.SMT()
+			return output
+		}
+
+		if r.config.Mode == "template" {
+			output.SMT = g.SMT()
+			output.ParamManifest = g.ParamManifest()
 			return output
 		}
 

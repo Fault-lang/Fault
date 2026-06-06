@@ -352,6 +352,8 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return c.infer(node)
 	case *ast.Whole:
 		return c.infer(node)
+	case *ast.Param:
+		return c.infer(node)
 	case *ast.PrefixExpression:
 		return c.inferFunction(node)
 	case *ast.InfixExpression:
@@ -414,6 +416,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.Whole:
 		return true
+	case *ast.Param:
+		return true
 	case *ast.Nil:
 		return true
 	case *ast.StockLiteral:
@@ -475,6 +479,20 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	case *ast.Unknown:
 		if node.InferredType == nil {
 			ty := "UNKNOWN"
+			switch node.TypeHint {
+			case "INT":
+				ty = "INT"
+			case "REAL":
+				ty = "FLOAT"
+			case "BOOL":
+				ty = "BOOL"
+			}
+			node.InferredType = &ast.Type{Type: ty, Scope: 0, Parameters: nil}
+		}
+		return node, nil
+	case *ast.Param:
+		if node.InferredType == nil {
+			ty := "PARAM"
 			switch node.TypeHint {
 			case "INT":
 				ty = "INT"
@@ -1446,6 +1464,8 @@ func typeable(node ast.Node) *ast.Type {
 	case *ast.Unknown:
 		return n.InferredType
 	case *ast.Whole:
+		return n.InferredType
+	case *ast.Param:
 		return n.InferredType
 	case *ast.PrefixExpression:
 		return n.InferredType

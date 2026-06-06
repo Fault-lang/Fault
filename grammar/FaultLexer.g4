@@ -70,6 +70,7 @@ TY_NATURAL: 'natural';
 TY_UNCERTAIN: 'uncertain';
 TY_UNKNOWN: 'unknown';
 TY_WHOLE: 'whole';
+TY_PARAM: 'param';
 
 SYNTH: '__';
 

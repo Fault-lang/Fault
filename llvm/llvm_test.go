@@ -305,7 +305,7 @@ func TestUnknowns(t *testing.T) {
 func TestParamReset(t *testing.T) {
 	structs := make(map[string]*preprocess.SpecRecord)
 	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{}, []string{}, make(map[string]string), true)
+	c.LoadMeta(structs, make(map[string][]float64), []string{}, []string{}, []string{}, make(map[string]string), true)
 	s := NewCompiledSpec("test")
 	c.currentSpec = "test"
 	c.specs["test"] = s
@@ -463,6 +463,32 @@ func TestUnknowns2(t *testing.T) {
 
 }
 
+func TestParamStored(t *testing.T) {
+	c := NewCompiler()
+	c.specs["test"] = NewCompiledSpec("test")
+	test := &ast.StructInstance{
+		Spec: "test", Name: "req", Parent: []string{"test", "zoo"},
+		Order:         []string{"amount"},
+		ProcessedName: []string{"test", "req"},
+		Properties: map[string]*ast.StructProperty{
+			"amount": {
+				Spec: "test", Name: "amount",
+				ProcessedName: []string{"test", "req", "amount"},
+				Value:         &ast.Param{ProcessedName: []string{"test", "req", "amount"}, TypeHint: "REAL"},
+			},
+		},
+	}
+	c.processStruct(test)
+
+	if len(c.RawInputs.Params) == 0 {
+		t.Fatal("param value not stored in RawInputs.Params")
+	}
+
+	if c.RawInputs.Params[0] != "test_req_amount" {
+		t.Fatalf("params stored value is incorrect, got=%s", c.RawInputs.Params[0])
+	}
+}
+
 func TestComponentIR(t *testing.T) {
 	test := `
 	system test;
@@ -504,7 +530,7 @@ func TestComponentIR(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -672,7 +698,7 @@ func TestChoose(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -738,7 +764,7 @@ func TestLeave(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -807,7 +833,7 @@ func TestSysRunBlock(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -870,7 +896,7 @@ func TestStateActivation(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -943,7 +969,7 @@ func TestUnfuncCompiles(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -1023,7 +1049,7 @@ func TestUnfuncWithMultipleRequires(t *testing.T) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
@@ -1143,7 +1169,7 @@ func prepTestCompiler(test string, specType bool) (*Compiler, error) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 	return compiler, err
 }
@@ -1167,7 +1193,7 @@ func prepTest(test string, specType bool) (string, error) {
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	err = compiler.Compile(tree)
 
 	if err != nil {

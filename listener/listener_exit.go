@@ -160,6 +160,9 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 			inst.Name = ident
 			val = inst
 			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, ident.Value}, "_"))
+		case *ast.Param:
+			l.Params = append(l.Params, strings.Join([]string{l.currSpec, ident.Value}, "_"))
+			_ = inst
 		}
 		var temp []ast.Node
 		temp = append(temp, &ast.ConstantStatement{
@@ -620,6 +623,9 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 				right = inst
 			}
 			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
+		case *ast.Param:
+			l.Params = append(l.Params, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
+			_ = inst
 		}
 
 		assign = &ast.InfixExpression{
@@ -1058,6 +1064,24 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 		token := ast.GenerateToken("WHOLE", "WHOLE", c.GetStart(), c.GetStop())
 		l.push(&ast.Whole{
 			Token: token,
+		})
+	case "param":
+		token := ast.GenerateToken("PARAM", "PARAM", c.GetStart(), c.GetStop())
+		var typeHint string
+		if c.GetChildCount() > 3 {
+			hint := l.pop()
+			switch hint.(type) {
+			case *ast.IntegerLiteral:
+				typeHint = "INT"
+			case *ast.FloatLiteral:
+				typeHint = "REAL"
+			case *ast.Boolean:
+				typeHint = "BOOL"
+			}
+		}
+		l.push(&ast.Param{
+			Token:    token,
+			TypeHint: typeHint,
 		})
 	default:
 		log.Fatalf("Unimplemented: %s", c.FaultType().GetText())
@@ -1764,6 +1788,7 @@ func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64,
 	}
 
 	l1.Unknowns = append(l1.Unknowns, l2.Unknowns...)
+	l1.Params = append(l1.Params, l2.Params...)
 	l1.specs = append(l1.specs, l2.specs...)
 
 	for k, v := range l2.StructsPropertyOrder {
@@ -1801,6 +1826,9 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 			inst.Name = ident
 			right = inst
 			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
+		case *ast.Param:
+			l.Params = append(l.Params, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
+			_ = inst
 		}
 		order = append([]string{ident.Value}, order...)
 		pairs[ident] = right.(ast.Expression)

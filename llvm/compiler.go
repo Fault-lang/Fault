@@ -34,6 +34,8 @@ type RawInputs struct {
 	Uncertains map[string][]float64
 	Unknowns   []string
 	Wholes     []string
+	Params     []string
+	ParamTypes map[string]string // base name → SMT sort ("Real", "Int", "Bool")
 	Unfuncs    []*UnfuncInfo
 	// IntegerMode is set by the generator optimization pass when every free numeric
 	// variable is whole(). In that mode the SMT logic switches to QF_NIA, whole vars
@@ -65,6 +67,8 @@ func NewRawInputs() *RawInputs {
 		Uncertains: make(map[string][]float64),
 		Unknowns:   []string{},
 		Wholes:     []string{},
+		Params:     []string{},
+		ParamTypes: make(map[string]string),
 		Unfuncs:    []*UnfuncInfo{},
 	}
 }
@@ -149,9 +153,9 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, aliases map[string]string, testing bool) (*Compiler, error) {
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
-	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, aliases, testing)
+	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, params, aliases, testing)
 
 	err := compiler.Compile(tree)
 	if err != nil {
@@ -160,12 +164,13 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 	return compiler, nil
 }
 
-func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, aliases map[string]string, test bool) {
+func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, test bool) {
 
 	c.specStructs = structs
 	c.RawInputs.Unknowns = unknowns
 	c.RawInputs.Uncertains = uncertains
 	c.RawInputs.Wholes = wholes
+	c.RawInputs.Params = params
 	c.isTesting = test
 	c.Alias = aliases
 }
@@ -521,6 +526,11 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Unknown:
+		if v.TypeHint == "BOOL" {
+			return constant.NewInt(irtypes.I1, 0)
+		}
+		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	case *ast.Param:
 		if v.TypeHint == "BOOL" {
 			return constant.NewInt(irtypes.I1, 0)
 		}
@@ -1742,6 +1752,8 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		var isUncertain []float64
 		var isUnknown bool
 		var isWhole bool
+		var isParam bool
+		var paramSort string
 		var id []string
 
 		switch pv := tree[k].Value.(type) {
@@ -1770,6 +1782,16 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			} else if _, ok3 := pv.(*ast.Whole); ok3 {
 				isUnknown = true // whole is a free variable like unknown
 				isWhole = true
+			} else if p, ok4 := pv.(*ast.Param); ok4 {
+				isParam = true
+				switch p.TypeHint {
+				case "INT":
+					paramSort = "Int"
+				case "BOOL":
+					paramSort = "Bool"
+				default:
+					paramSort = "Real"
+				}
 			}
 
 			id = pv.(ast.Nameable).Id()
@@ -1798,6 +1820,10 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		}
 		if isWhole {
 			c.RawInputs.Wholes = append(c.RawInputs.Wholes, vname)
+		}
+		if isParam {
+			c.RawInputs.Params = append(c.RawInputs.Params, vname)
+			c.RawInputs.ParamTypes[vname] = paramSort
 		}
 		children[vname] = node.Parent[1]
 	}

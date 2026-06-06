@@ -597,7 +597,7 @@ func TestBadSpecs(t *testing.T) {
 	}
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)
-				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, false)
+				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, false)
 				if err != nil {
 					pipelineErr = fmt.Errorf("llvm: %w", err)
 					return
@@ -1249,7 +1249,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	if err != nil {
 		panic(err)
 	}
@@ -1407,5 +1407,41 @@ run init{r1 = new box;} {
 	}
 	if !strings.Contains(smt, "(assert (<= testuncertaink_r1_temp_0 12.000000))") {
 		t.Fatalf("expected upper bound assert with k=1, got:\n%s", smt)
+	}
+}
+
+func TestParamPlaceholder(t *testing.T) {
+	test := `spec testreq;
+def request = stock{
+    amount: param(0.0),
+    count: param(0),
+    flagged: param(false),
+};
+run init{r1 = new request;} {
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Each param field should produce a __PARAM_baseName__ placeholder assertion.
+	// The declare-fun uses the SSA-versioned name (_0); the placeholder uses the base name.
+	if !strings.Contains(smt, "__PARAM_testreq_r1_amount__") {
+		t.Fatalf("expected __PARAM_testreq_r1_amount__ in SMT, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "__PARAM_testreq_r1_count__") {
+		t.Fatalf("expected __PARAM_testreq_r1_count__ in SMT, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "__PARAM_testreq_r1_flagged__") {
+		t.Fatalf("expected __PARAM_testreq_r1_flagged__ in SMT, got:\n%s", smt)
+	}
+
+	manifest := g.ParamManifest()
+	if manifest["testreq_r1_amount"] != "Real" {
+		t.Fatalf("expected manifest[testreq_r1_amount]=Real, got=%s", manifest["testreq_r1_amount"])
+	}
+	if manifest["testreq_r1_count"] != "Int" {
+		t.Fatalf("expected manifest[testreq_r1_count]=Int, got=%s", manifest["testreq_r1_count"])
+	}
+	if manifest["testreq_r1_flagged"] != "Bool" {
+		t.Fatalf("expected manifest[testreq_r1_flagged]=Bool, got=%s", manifest["testreq_r1_flagged"])
 	}
 }

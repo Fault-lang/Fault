@@ -1045,6 +1045,39 @@ func (u *Unknown) RawId() []string {
 
 func (u *Unknown) Position() []int { return u.Token.GetPosition() }
 
+type Param struct {
+	Token         Token
+	InferredType  *Type
+	TypeHint      string // "INT", "REAL", "BOOL", or "" (untyped)
+	ProcessedName []string
+}
+
+func (p *Param) expressionNode()      {}
+func (p *Param) TokenLiteral() string { return p.Token.Literal }
+func (p *Param) String() string {
+	var out bytes.Buffer
+	out.WriteString("param(")
+	out.WriteString(p.TypeHint)
+	out.WriteString(")")
+	return out.String()
+}
+func (p *Param) GetToken() Token { return p.Token }
+func (p *Param) Type() string {
+	t := p.InferredType
+	if t != nil {
+		return t.Type
+	}
+	return "PARAM"
+}
+func (p *Param) SetType(ty *Type) { p.InferredType = ty }
+func (p *Param) Id() []string {
+	return []string{p.ProcessedName[0], strings.Join(p.ProcessedName[1:], "_")}
+}
+func (p *Param) SetId(id []string)  { p.ProcessedName = id }
+func (p *Param) IdString() string   { return strings.Join(p.ProcessedName, "_") }
+func (p *Param) RawId() []string    { return p.ProcessedName }
+func (p *Param) Position() []int    { return p.Token.GetPosition() }
+
 type Whole struct {
 	Token         Token
 	InferredType  *Type

@@ -282,6 +282,7 @@ faultType
     | TY_UNCERTAIN
     | TY_UNKNOWN
     | TY_WHOLE
+    | TY_PARAM
     ;
 
 solvable
