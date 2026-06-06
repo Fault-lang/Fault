@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // faultFileExts are extensions highlighted as fault-related files
@@ -73,7 +73,7 @@ func (m *FileBrowserModel) loadDir(dir string) {
 
 func (m FileBrowserModel) Update(msg tea.Msg) (FileBrowserModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "j", "down":
 			m.cursor++

@@ -6,6 +6,8 @@ import (
 	"fault/util"
 	"fmt"
 	"strings"
+
+	deepcopy "github.com/barkimedes/go-deepcopy"
 )
 
 type Processor struct {
@@ -287,6 +289,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		node.Value = pro.(ast.Expression)
 
+		if nm, ok := pro.(ast.Nameable); ok && len(nm.RawId()) == 0 {
+			nm.SetId(node.Name.RawId())
+		}
+
 		spec.AddConstant(node.Name.Value, pro)
 		spec.Index(node.Name.Value, "CONSTANT")
 		p.Specs[p.trail.CurrentSpec()] = spec
@@ -339,6 +345,53 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		spec := p.getSpec(p.trail.CurrentSpec())
 
 		if p.initialPass {
+			if node.Extends != nil {
+				parentFields, ferr := spec.FetchStock(node.Extends.Value)
+				if ferr == nil {
+					parentKey := strings.Join([]string{p.trail.CurrentSpec(), node.Extends.Value}, "_")
+					parentOrder := p.StructsPropertyOrder[parentKey]
+
+					var inheritedOrder []string
+					for _, fieldName := range parentOrder {
+						excluded := false
+						for _, ex := range node.Excludes {
+							if ex == fieldName {
+								excluded = true
+								break
+							}
+						}
+						if excluded {
+							continue
+						}
+						if node.GetPropertyIdent(fieldName) != nil {
+							continue // child overrides this field
+						}
+						parentVal, ok := parentFields[fieldName]
+						if !ok {
+							continue
+						}
+						cloned, cerr := deepcopy.Anything(parentVal)
+						if cerr != nil {
+							return node, fmt.Errorf("stock %s: failed to clone field %q from parent: %v", p.scope, fieldName, cerr)
+						}
+						newIdent := &ast.Identifier{
+							Token: ast.Token{
+								Type:     "IDENT",
+								Literal:  fieldName,
+								Position: node.Token.Position,
+							},
+							Value: fieldName,
+							Spec:  p.trail.CurrentSpec(),
+						}
+						node.Pairs[newIdent] = cloned.(ast.Expression)
+						inheritedOrder = append(inheritedOrder, fieldName)
+					}
+					node.Order = append(inheritedOrder, node.Order...)
+					childKey := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
+					p.StructsPropertyOrder[childKey] = node.Order
+				}
+			}
+
 			node.Pairs, idx = p.namePairs(node.Pairs)
 			local := strings.Join([]string{p.trail.CurrentSpec(), p.scope}, "_")
 			p.localIdents[local] = idx
@@ -517,37 +570,91 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		}
 		node.Expression = pro.(ast.Expression)
 		return node, err
-	case *ast.ForStatement:
+	case *ast.RunStatement:
 		p.inGlobal = true
-		var initStmts []ast.Statement
-		for _, v := range node.Inits.Statements {
-			pro, err = p.walk(v)
-			if err != nil {
-				return node, err
+		if node.Inits != nil {
+			var initStmts []ast.Statement
+			for _, v := range node.Inits.Statements {
+				pro, err = p.walk(v)
+				if err != nil {
+					return node, err
+				}
+				if block, ok := pro.(*ast.BlockStatement); ok {
+					initStmts = append(initStmts, block.Statements...)
+				} else {
+					initStmts = append(initStmts, pro.(ast.Statement))
+				}
 			}
-			if block, ok := pro.(*ast.BlockStatement); ok {
-				initStmts = append(initStmts, block.Statements...)
-			} else {
-				initStmts = append(initStmts, pro.(ast.Statement))
+			node.Inits.Statements = initStmts
+
+			// The init-block walk above processed function bodies using the template scope
+			// (e.g., "ops"). Re-walk all FLOW functions here so body ParameterCall nodes
+			// get ProcessedNames under the instance scope (e.g., "inst").
+			// This is the same re-walk that explicit ParameterCall processing triggers,
+			// but synthesis steps never produce explicit ParameterCalls.
+			// Only re-walk when the run block has synthesis (SolvableStep) steps —
+			// for regular CallStep blocks the ParameterCall walk below handles everything.
+			hasSolvable := false
+			for _, step := range node.Steps {
+				if _, ok := step.(*ast.SolvableStep); ok {
+					hasSolvable = true
+					break
+				}
+			}
+			if !p.initialPass && hasSolvable {
+				spec := p.getSpec(p.trail.CurrentSpec())
+				for _, entry := range spec.Order {
+					if entry[0] != "FLOW" {
+						continue
+					}
+					branches, ferr := spec.FetchFlow(entry[1])
+					if ferr != nil {
+						continue
+					}
+					for key, nd := range branches {
+						fn, ok := nd.(*ast.FunctionLiteral)
+						if !ok {
+							continue
+						}
+						rawid := []string{p.trail.CurrentSpec(), entry[1], key}
+						proFn, ferr := p.walk(fn)
+						if ferr != nil {
+							return node, ferr
+						}
+						spec.UpdateVar(rawid, "FLOW", proFn.(*ast.FunctionLiteral))
+					}
+				}
 			}
 		}
-		node.Inits.Statements = initStmts
-		var bodyStmts []ast.Statement
-		for _, v := range node.Body.Statements {
-			pro, err = p.walk(v)
-			if err != nil {
-				return node, err
-			}
-			if block, ok := pro.(*ast.BlockStatement); ok {
-				bodyStmts = append(bodyStmts, block.Statements...)
-			} else {
-				bodyStmts = append(bodyStmts, pro.(ast.Statement))
+		for i, step := range node.Steps {
+			switch st := step.(type) {
+			case *ast.CallStep:
+				for j, pc := range st.Calls {
+					n, err := p.walk(pc)
+					if err != nil {
+						return node, err
+					}
+					st.Calls[j] = n.(*ast.ParameterCall)
+				}
+				// If all calls resolve to COMPONENT type, this is a state activation step.
+				if allComponentCalls(st.Calls, p) {
+					node.Steps[i] = &ast.StateActivation{
+						Token:    st.Token,
+						Calls:    st.Calls,
+						Operator: st.Operator,
+					}
+				}
+			case *ast.IfStep:
+				proIf, err := p.walk(st.Expr)
+				if err != nil {
+					return node, err
+				}
+				st.Expr = proIf.(*ast.IfExpression)
+			case *ast.ParallelFunctions:
+				// Identifier-based steps (component names) — no param walk needed.
 			}
 		}
-		node.Body.Statements = bodyStmts
 		p.inGlobal = false
-		return node, err
-	case *ast.StartStatement:
 		return node, err
 	case *ast.FunctionLiteral:
 		oldStruct := p.inStruct
@@ -809,9 +916,13 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			spec.Index("STOCK", key)
 			p.Specs[p.trail.CurrentSpec()] = spec
 
-			if len(order) == 0 { //Sometimes happens if Instance node is referenced before struct is def
-				strkey := strings.Join([]string{node.Value.Spec, node.Value.Value}, "_")
-				order = p.StructsPropertyOrder[strkey]
+			strkey := strings.Join([]string{node.Value.Spec, node.Value.Value}, "_")
+			if spo := p.StructsPropertyOrder[strkey]; len(spo) > len(order) {
+				// StructsPropertyOrder may have been expanded by inheritance flattening;
+				// always use the fuller list so inherited fields are walked.
+				order = spo
+			} else if len(order) == 0 {
+				order = spo
 			}
 
 			pro := &ast.StructInstance{Token: node.Token,
@@ -1152,17 +1263,6 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		return node, err
 
 	case *ast.Unknown:
-		if !p.initialPass {
-			return node, err
-		}
-
-		spec := p.getSpec(p.trail.CurrentSpec())
-		rawid := p.buildIdContext(spec.Id())
-
-		if node.Name != nil {
-			rawid = append(rawid, node.Name.Value)
-			node.ProcessedName = rawid
-		}
 		return node, err
 
 	case *ast.ParameterCall:
@@ -1420,4 +1520,26 @@ func literalToFloat(e ast.Expression) *float64 {
 		return &f
 	}
 	return nil
+}
+
+// allComponentCalls returns true if every call in calls resolves to COMPONENT type
+// in the current spec, indicating a StateActivation step rather than a flow CallStep.
+func allComponentCalls(calls []*ast.ParameterCall, p *Processor) bool {
+	if len(calls) == 0 {
+		return false
+	}
+	spec := p.Specs[p.trail.CurrentSpec()]
+	if spec == nil {
+		return false
+	}
+	for _, pc := range calls {
+		if len(pc.ProcessedName) == 0 {
+			return false
+		}
+		ty, _ := spec.GetStructType(pc.ProcessedName)
+		if ty != "COMPONENT" {
+			return false
+		}
+	}
+	return true
 }

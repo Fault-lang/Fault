@@ -1,1 +1,65 @@
-(set-logicQF_NRA)(declare-funchoose1_a_choice_0()Bool)(declare-funchoose1_a_option1_0()Bool)(declare-funchoose1_a_option2_0()Bool)(declare-funchoose1_a_choice_1()Bool)(declare-funchoose1_a_option1_1()Bool)(declare-funchoose1_a_option2_1()Bool)(declare-funchoose1_a_option1_2()Bool)(declare-funchoose1_a_option2_2()Bool)(declare-funchoose1_a_option1_3()Bool)(declare-funchoose1_a_option2_3()Bool)(declare-funchoose1_a_choice__state-%8_0()Bool)(declare-funchoose1_a_choice__state-%8_1()Bool)(declare-funchoose1_a_option2_4()Bool)(declare-funchoose1_a_option1_4()Bool)(declare-funblock162true_0()Bool)(declare-funblock162false_0()Bool)(declare-funchoose1_a_option1_5()Bool)(declare-funchoose1_a_option1_6()Bool)(declare-funblock166true_0()Bool)(declare-funblock166false_0()Bool)(declare-funchoose1_a_option2_5()Bool)(declare-funchoose1_a_option2_6()Bool)(declare-funblock170true_0()Bool)(declare-funblock170false_0()Bool)(assert(=choose1_a_choice_0false))(assert(=choose1_a_option1_0false))(assert(=choose1_a_option2_0false))(assert(=choose1_a_choice_1true))(assert(=>choose1_a_choice__state-%8_0(and(=choose1_a_option1_1true)(not(=choose1_a_option2_1true)))))(assert(=>choose1_a_choice__state-%8_1(and(not(=choose1_a_option1_2true))(=choose1_a_option2_2true))))(assert(=choose1_a_choice__state-%8_0(and(=choose1_a_option1_3choose1_a_option1_1)(=choose1_a_option2_3choose1_a_option2_1))))(assert(=choose1_a_choice__state-%8_1(and(=choose1_a_option2_3choose1_a_option2_2)(=choose1_a_option1_3choose1_a_option1_2))))(assert(or(andchoose1_a_choice__state-%8_0(notchoose1_a_choice__state-%8_1))(and(notchoose1_a_choice__state-%8_0)choose1_a_choice__state-%8_1)))(assert(ite(=choose1_a_choice_1true)(and(=block162true_0true)(=block162false_0false)(and(=choose1_a_option2_4choose1_a_option2_3)(=choose1_a_option1_4choose1_a_option1_3)))(and(=block162true_0false)(=block162false_0true)(and(=choose1_a_option2_4choose1_a_option2_0)(=choose1_a_option1_4choose1_a_option1_0)))))(assert(or(andblock162true_0(notblock162false_0))(and(notblock162true_0)block162false_0)))(assert(=choose1_a_option1_5true))(assert(ite(=choose1_a_option1_4true)(and(=block166true_0true)(=block166false_0false)(=choose1_a_option1_6choose1_a_option1_5))(and(=block166true_0false)(=block166false_0true)(=choose1_a_option1_6choose1_a_option1_4))))(assert(or(andblock166true_0(notblock166false_0))(and(notblock166true_0)block166false_0)))(assert(=choose1_a_option2_5true))(assert(ite(=choose1_a_option2_4true)(and(=block170true_0true)(=block170false_0false)(=choose1_a_option2_6choose1_a_option2_5))(and(=block170true_0false)(=block170false_0true)(=choose1_a_option2_6choose1_a_option2_4))))(assert(or(andblock170true_0(notblock170false_0))(and(notblock170true_0)block170false_0)))
+(set-logic QF_NRA)
+(declare-fun choose1_a_choice_0 () Bool)
+(declare-fun choose1_a_option1_0 () Bool)
+(declare-fun choose1_a_option2_0 () Bool)
+(declare-fun choose1_a_choice_1 () Bool)
+(declare-fun choose1_a_option1_1 () Bool)
+(declare-fun choose1_a_option2_1 () Bool)
+(declare-fun choose1_a_option1_2 () Bool)
+(declare-fun choose1_a_option2_2 () Bool)
+(declare-fun choose1_a_option1_3 () Bool)
+(declare-fun choose1_a_option2_3 () Bool)
+(declare-fun choose1_a_choice__state-%8_0 () Bool)
+(declare-fun choose1_a_choice__state-%8_1 () Bool)
+(declare-fun choose1_a_option1_4 () Bool)
+(declare-fun choose1_a_option2_4 () Bool)
+(declare-fun block102true_1 () Bool)
+(declare-fun block102false_1 () Bool)
+(declare-fun choose1_a_option1_5 () Bool)
+(declare-fun choose1_a_option1_6 () Bool)
+(declare-fun block106true_1 () Bool)
+(declare-fun block106false_1 () Bool)
+(declare-fun choose1_a_option2_5 () Bool)
+(declare-fun choose1_a_option2_6 () Bool)
+(declare-fun block110true_1 () Bool)
+(declare-fun block110false_1 () Bool)
+(assert (= choose1_a_choice_0 false))
+(assert (= choose1_a_option1_0 false))
+(assert (= choose1_a_option2_0 false))
+(assert (= choose1_a_choice_1 true))
+
+(assert (=> choose1_a_choice__state-%8_0 (and (= choose1_a_option1_1 true) (not (= choose1_a_option2_1 true)))))
+(assert (=> choose1_a_choice__state-%8_1 (and (not (= choose1_a_option1_2 true)) (= choose1_a_option2_2 true))))
+(assert (= choose1_a_choice__state-%8_0 (and (= choose1_a_option1_3 choose1_a_option1_1)
+(= choose1_a_option2_3 choose1_a_option2_1))))
+(assert (= choose1_a_choice__state-%8_1 (and (= choose1_a_option1_3 choose1_a_option1_2)
+(= choose1_a_option2_3 choose1_a_option2_2))))
+(assert (or (and choose1_a_choice__state-%8_0
+(not choose1_a_choice__state-%8_1))
+(and (not choose1_a_choice__state-%8_0)
+choose1_a_choice__state-%8_1)))
+
+(assert (ite (= choose1_a_choice_1 true) (and (= block102true_1 true) (= block102false_1 false) (and (= choose1_a_option1_4 choose1_a_option1_3) (= choose1_a_option2_4 choose1_a_option2_3))) (and (= block102true_1 false) (= block102false_1 true) (and (= choose1_a_option1_4 choose1_a_option1_0)
+(= choose1_a_option2_4 choose1_a_option2_0)))))
+(assert (or (and block102true_1
+(not block102false_1))
+(and (not block102true_1)
+block102false_1)))
+
+
+(assert (= choose1_a_option1_5 true))
+
+(assert (ite (= choose1_a_option1_4 true) (and (= block106true_1 true) (= block106false_1 false) (= choose1_a_option1_6 choose1_a_option1_5)) (and (= block106true_1 false) (= block106false_1 true) (= choose1_a_option1_6 choose1_a_option1_4))))
+(assert (or (and block106true_1
+(not block106false_1))
+(and (not block106true_1)
+block106false_1)))
+
+
+(assert (= choose1_a_option2_5 true))
+
+(assert (ite (= choose1_a_option2_4 true) (and (= block110true_1 true) (= block110false_1 false) (= choose1_a_option2_6 choose1_a_option2_5)) (and (= block110true_1 false) (= block110false_1 true) (= choose1_a_option2_6 choose1_a_option2_4))))
+(assert (or (and block110true_1
+(not block110false_1))
+(and (not block110true_1)
+block110false_1)))

@@ -15,6 +15,10 @@ def fib = flow{
     }
 };
 
-for 5 init{f = new fib;} run{
+run init{f = new fib;} {
+    f.step;
+    f.step;
+    f.step;
+    f.step;
     f.step;
 }

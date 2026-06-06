@@ -23,12 +23,6 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#componentDecl.
 	VisitComponentDecl(ctx *ComponentDeclContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#startBlock.
-	VisitStartBlock(ctx *StartBlockContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#startPair.
-	VisitStartPair(ctx *StartPairContext) interface{}
-
 	// Visit a parse tree produced by FaultParser#spec.
 	VisitSpec(ctx *SpecContext) interface{}
 
@@ -86,8 +80,17 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#sfMisc.
 	VisitSfMisc(ctx *SfMiscContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropExtends.
+	VisitPropExtends(ctx *PropExtendsContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#PropExclude.
+	VisitPropExclude(ctx *PropExcludeContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#StateFunc.
 	VisitStateFunc(ctx *StateFuncContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#UnfuncState.
+	VisitUnfuncState(ctx *UnfuncStateContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#compMisc.
 	VisitCompMisc(ctx *CompMiscContext) interface{}
@@ -179,20 +182,8 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#ifStmtState.
 	VisitIfStmtState(ctx *IfStmtStateContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#forStmt.
-	VisitForStmt(ctx *ForStmtContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#sysForStmt.
-	VisitSysForStmt(ctx *SysForStmtContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#sysRunBlock.
-	VisitSysRunBlock(ctx *SysRunBlockContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#sysRunStepExpr.
-	VisitSysRunStepExpr(ctx *SysRunStepExprContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#rounds.
-	VisitRounds(ctx *RoundsContext) interface{}
+	// Visit a parse tree produced by FaultParser#runStmt.
+	VisitRunStmt(ctx *RunStmtContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#paramCall.
 	VisitParamCall(ctx *ParamCallContext) interface{}
@@ -224,11 +215,17 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#runStepExpr.
 	VisitRunStepExpr(ctx *RunStepExprContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#runStepIdentExpr.
+	VisitRunStepIdentExpr(ctx *RunStepIdentExprContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#runExpr.
 	VisitRunExpr(ctx *RunExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#runIfExpr.
 	VisitRunIfExpr(ctx *RunIfExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#runSolvableExpr.
+	VisitRunSolvableExpr(ctx *RunSolvableExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#faultType.
 	VisitFaultType(ctx *FaultTypeContext) interface{}
@@ -295,6 +292,30 @@ type FaultParserVisitor interface {
 
 	// Visit a parse tree produced by FaultParser#stateLit.
 	VisitStateLit(ctx *StateLitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncLit.
+	VisitUnfuncLit(ctx *UnfuncLitContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncBlock.
+	VisitUnfuncBlock(ctx *UnfuncBlockContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#requiresClause.
+	VisitRequiresClause(ctx *RequiresClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#emitsClause.
+	VisitEmitsClause(ctx *EmitsClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#assumeClause.
+	VisitAssumeClause(ctx *AssumeClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncExpr.
+	VisitUnfuncExpr(ctx *UnfuncExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncAssumeExpr.
+	VisitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#unfuncArithExpr.
+	VisitUnfuncArithExpr(ctx *UnfuncArithExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#eos.
 	VisitEos(ctx *EosContext) interface{}

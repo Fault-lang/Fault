@@ -6,6 +6,7 @@ import (
 	"fault/generator/unroll"
 	"fault/util"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -278,6 +279,8 @@ func (u *Unpacker) unpackRule(r rules.Rule) ([]*rules.Init, string) {
 		inits, rule, u.SSA = ru.WriteRule(u.SSA)
 	case *rules.Stay:
 		u.Log.AddMessage("Stay in current state", u.Round)
+	case *rules.SynthSlot:
+		inits, rule = u.unpackSynthSlot(ru)
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
@@ -352,6 +355,8 @@ func (u *Unpacker) unpackWhenThen(r rules.Rule, whens map[string][]map[string]st
 		// Nothing to do
 	case *rules.Stay:
 		// Nothing to do
+	case *rules.SynthSlot:
+		// Nothing to do — candidates' when/then will be handled when they unpack
 	default:
 		panic(fmt.Sprintf("Unknown rule type %T", ru))
 	}
@@ -480,7 +485,7 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 		}
 		if len(rule_set) == 1 {
 			caps = append(caps, rule_set...)
-		} else {
+		} else if len(rule_set) > 1 {
 			caps = append(caps, fmt.Sprintf("(and %s)", strings.Join(rule_set, " ")))
 		}
 
@@ -654,6 +659,96 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
+// unpackSynthSlot handles a synthesis step (__).
+// It mirrors unpackOrs: one branch per candidate function, exactly-one selector constraint,
+// conditional transitions, and phi merges for changed variables (frame conditions are
+// provided automatically by the phi mechanism — unchanged vars get identity phis).
+func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string) {
+	if len(slot.Candidates) == 0 {
+		return nil, ""
+	}
+
+	// Sort candidate names for deterministic SMT output.
+	names := make([]string, 0, len(slot.Candidates))
+	for n := range slot.Candidates {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	var ruleSet [][]string
+	var ret []string
+	var hasPhi map[string]bool
+	var inits []*rules.Init
+	var queue [][]string
+	var caps [][]string
+	var branches []map[string][]int16
+
+	slotName := fmt.Sprintf("synth_%d", slot.Round)
+	u.NewLevel()
+	u.SetEntries(u.SSA)
+	u.Log.EnterFunction(slotName, slot.Round)
+
+	for _, fname := range names {
+		candidateRules := slot.Candidates[fname]
+		var lines []string
+
+		u2 := NewUnpacker(fmt.Sprintf("%s_%s", slotName, fname))
+		u2.Inherits(u)
+
+		var initQue []string
+		for _, l := range candidateRules {
+			u2.InspectRule(l)
+			init, line := u2.unpackRule(l)
+			lines = append(lines, line)
+			initQue = append(initQue, InitsToList(init)...)
+			u.AddInit(init)
+			u.Register(init)
+		}
+		ruleSet = append(ruleSet, lines)
+		phiClone := u.GetPhis(u.SSA, u2.SSA)
+		branches = append(branches, phiClone)
+		u.SSA = u2.SSA.Clone()
+
+		queue = append(queue, initQue)
+		u.AddInit(u2.Inits)
+		u.UpdateRegistry(u2.Registry)
+	}
+
+	inits, caps, hasPhi = u.buildPhisOrs(branches, hasPhi)
+	var selectors []string
+	var branchAssertions []string
+
+	for i, rs := range ruleSet {
+		fname := names[i]
+		selectorName := fmt.Sprintf("%s_%s", slotName, fname)
+		fullSelectorName := fmt.Sprintf("%s_%d", selectorName, slot.Round)
+		inits = append(inits, rules.NewInit(selectorName, "Bool", slot.Round, nil, false, false))
+		selectors = append(selectors, fullSelectorName)
+		selectorRule := u.Log.NewBranchSelector(selectorName, slot.Round, caps[i], queue[i])
+		u.Log.AddBranchSelector(selectorRule)
+		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+
+		for _, r := range rs {
+			if r == "" {
+				continue
+			}
+			// r may be a single expression or a multi-line block of (assert ...) statements
+			// (e.g. from an Ite). Split into individual assert lines and wrap each in
+			// an implication, since (assert (=> sel (assert ...))) is invalid SMT.
+			for _, line := range splitAsserts(r) {
+				branchAssertions = append(branchAssertions, fmt.Sprintf("(assert (=> %s %s))", fullSelectorName, line))
+			}
+		}
+	}
+
+	u.AddInit(inits)
+	u.PopEntries()
+	u.Log.ExitFunction(slotName, slot.Round)
+
+	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
+	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
+}
+
 func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 	var rule_set []string
 	var phis []map[string][]int16
@@ -777,21 +872,42 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 
 	// Build the ite assertion that sets block selectors and enforces phis
 	var tPhiRules, fPhiRules string
-	if len(tEnds.Cond) == 1 {
+	if len(tEnds.Cond) == 0 {
+		tPhiRules = ""
+	} else if len(tEnds.Cond) == 1 {
 		tPhiRules = tEnds.Cond[0]
 	} else {
 		tPhiRules = fmt.Sprintf("(and %s)", strings.Join(tEnds.Cond, "\n"))
 	}
 
-	if len(fEnds.Cond) == 1 {
+	if len(fEnds.Cond) == 0 {
+		fPhiRules = ""
+	} else if len(fEnds.Cond) == 1 {
 		fPhiRules = fEnds.Cond[0]
 	} else {
 		fPhiRules = fmt.Sprintf("(and %s)", strings.Join(fEnds.Cond, "\n"))
 	}
 
-	ifAssert := fmt.Sprintf("(assert (ite %s (and (= %s true) (= %s false) %s) (and (= %s false) (= %s true) %s)))",
-		cond, tEnds.Id(), fEnds.Id(), tPhiRules, tEnds.Id(), fEnds.Id(), fPhiRules)
-	return inits, fmt.Sprintf("%s\n%s\n%s\n%s", strings.Join(tRules, "\n"), strings.Join(fRules, "\n"), ifAssert, strings.Join(aRules, "\n"))
+	tBranch := fmt.Sprintf("(= %s true) (= %s false)", tEnds.Id(), fEnds.Id())
+	if tPhiRules != "" {
+		tBranch = fmt.Sprintf("%s %s", tBranch, tPhiRules)
+	}
+	fBranch := fmt.Sprintf("(= %s false) (= %s true)", tEnds.Id(), fEnds.Id())
+	if fPhiRules != "" {
+		fBranch = fmt.Sprintf("%s %s", fBranch, fPhiRules)
+	}
+	ifAssert := fmt.Sprintf("(assert (ite %s (and %s) (and %s)))",
+		cond, tBranch, fBranch)
+	var resultParts []string
+	if t := strings.Join(tRules, "\n"); t != "" {
+		resultParts = append(resultParts, t)
+	}
+	if f := strings.Join(fRules, "\n"); f != "" {
+		resultParts = append(resultParts, f)
+	}
+	resultParts = append(resultParts, ifAssert)
+	resultParts = append(resultParts, strings.Join(aRules, "\n"))
+	return inits, strings.Join(resultParts, "\n")
 }
 
 func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
@@ -808,6 +924,46 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 	}
 
 	return fmt.Sprintf("(assert %s)", rule)
+}
+
+// splitAsserts takes a string that may contain one or more top-level (assert X)
+// statements and returns the inner expressions X without the assert wrapper.
+// If the input is not assert-wrapped, it is returned as-is in a single-element slice.
+func splitAsserts(s string) []string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "(assert ") {
+		return []string{s}
+	}
+	var results []string
+	for len(s) > 0 {
+		s = strings.TrimSpace(s)
+		if !strings.HasPrefix(s, "(assert ") {
+			break
+		}
+		// Find the matching closing paren for this (assert ...) by tracking depth
+		depth := 0
+		end := -1
+		for i, ch := range s {
+			if ch == '(' {
+				depth++
+			} else if ch == ')' {
+				depth--
+				if depth == 0 {
+					end = i
+					break
+				}
+			}
+		}
+		if end == -1 {
+			// malformed — return remainder as-is
+			results = append(results, s)
+			break
+		}
+		inner := strings.TrimSpace(s[len("(assert ") : end])
+		results = append(results, inner)
+		s = s[end+1:]
+	}
+	return results
 }
 
 func strictOr(rules []string) string {

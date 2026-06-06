@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	_ "github.com/olekukonko/tablewriter"
 )
 
@@ -173,11 +173,7 @@ func printAST(spec interface{}) {
 }
 
 func runInteractiveMode() {
-	p := tea.NewProgram(
-		tui.NewModel(),
-		tea.WithAltScreen(),       // Full-screen TUI
-		tea.WithMouseCellMotion(), // Enable mouse support
-	)
+	p := tea.NewProgram(tui.NewModel())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running TUI: %v\n", err)

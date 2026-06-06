@@ -12,12 +12,16 @@ def dec = flow{
     fn: func{ target.v <- target.v - 1; },
 };
 
-for 5 init{
+run init{
     shared = new s;
     a = new inc;
     b = new dec;
     a.target = shared;
     b.target = shared;
-} run {
+} {
+    a.fn | b.fn;
+    a.fn | b.fn;
+    a.fn | b.fn;
+    a.fn | b.fn;
     a.fn | b.fn;
 }

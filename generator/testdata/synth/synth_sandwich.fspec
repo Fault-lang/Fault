@@ -1,0 +1,25 @@
+spec synth_sandwich;
+
+// Explicit call followed by a synthesis slot.
+// deposit runs first (100 -> 150), solver must pick withdraw to restore balance to 100.
+
+def wallet = stock{
+    balance: 100,
+};
+
+def account = flow{
+    w: new wallet,
+    deposit: func{
+        w.balance <- 50;
+    },
+    withdraw: func{
+        w.balance -> 50;
+    },
+};
+
+assume wallet.balance == 100 eventually;
+
+run init{ inst = new account; } {
+    inst.deposit;
+    __;
+};

@@ -24,10 +24,10 @@ type FaultListener struct {
 	testing              bool   // bypass imports when we're running unit tests
 	Uncertains           map[string][]float64
 	Unknowns             []string
+	Wholes               []string
 	StructsPropertyOrder map[string][]string
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node
-	MaxRounds            int64 // highest for-loop round count seen (including imports)
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
@@ -90,8 +90,11 @@ func (l *FaultListener) validate() {
 			return
 		}
 
-		if forS, ok := v.(*ast.ForStatement); ok {
-			if len(forS.Inits.Statements) > 0 {
+		if runS, ok := v.(*ast.RunStatement); ok {
+			if runS.Inits != nil && len(runS.Inits.Statements) > 0 {
+				return
+			}
+			if len(runS.Steps) > 0 {
 				return
 			}
 		}

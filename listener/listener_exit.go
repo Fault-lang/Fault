@@ -140,7 +140,7 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 
 	} else {
 		token2 := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
-		val = &ast.Unknown{Token: token2, Name: nil}
+		val = &ast.Unknown{Token: token2}
 	}
 
 	var itemList []ast.Node
@@ -153,11 +153,13 @@ func (l *FaultListener) ExitConstSpec(c *parser.ConstSpecContext) {
 
 		switch inst := val.(type) {
 		case *ast.Unknown:
-			inst.Name = ident
-			val = inst
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, ident.Value}, "_"))
 		case *ast.Uncertain:
-			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+			l.Uncertains[strings.Join([]string{l.currSpec, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
+		case *ast.Whole:
+			inst.Name = ident
+			val = inst
+			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, ident.Value}, "_"))
 		}
 		var temp []ast.Node
 		temp = append(temp, &ast.ConstantStatement{
@@ -217,16 +219,38 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitStock(c *parser.StockContext) {
-	pairs := c.AllSfProperties()
+	allProps := c.AllSfProperties()
 	token := ast.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
 
-	p, order := l.getPairs(len(pairs), []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
+	var extends *ast.Identifier
+	var excludes []string
+	normalCount := 0
+
+	for _, prop := range allProps {
+		switch p := prop.(type) {
+		case *parser.PropExtendsContext:
+			identToken := ast.GenerateToken("IDENT", p.IDENT().GetText(), p.GetStart(), p.GetStop())
+			extends = &ast.Identifier{
+				Token: identToken,
+				Value: p.IDENT().GetText(),
+				Spec:  l.currSpec,
+			}
+		case *parser.PropExcludeContext:
+			excludes = append(excludes, p.IDENT().GetText())
+		default:
+			normalCount++
+		}
+	}
+
+	p, order := l.getPairs(normalCount, []int{c.GetStart().GetLine(), c.GetStart().GetColumn()})
 
 	l.push(
 		&ast.StockLiteral{
-			Token: token,
-			Order: order,
-			Pairs: p,
+			Token:    token,
+			Order:    order,
+			Pairs:    p,
+			Extends:  extends,
+			Excludes: excludes,
 		})
 }
 
@@ -330,16 +354,10 @@ func (l *FaultListener) ExitPropSolvable(c *parser.PropSolvableContext) {
 	l.push(ident)
 
 	if keyValuePair {
-		unknown, ok := val.(*ast.Unknown)
-		if ok {
-			unknown.Name = ident
-			l.push(unknown)
-		} else {
-			l.push(val)
-		}
+		l.push(val)
 	} else {
 		token2 := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
-		unknown := &ast.Unknown{Token: token2, Name: ident}
+		unknown := &ast.Unknown{Token: token2}
 		l.push(unknown)
 	}
 }
@@ -371,6 +389,116 @@ func (l *FaultListener) ExitStateLit(c *parser.StateLitContext) {
 		Body:  b.(*ast.BlockStatement),
 	}
 	l.push(f)
+}
+
+func (l *FaultListener) ExitUnfuncState(c *parser.UnfuncStateContext) {
+	val := l.pop()
+	token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	l.push(&ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	})
+	l.push(val)
+
+	scope := strings.Split(l.scope, ".")
+	l.scope = strings.Join(scope[0:len(scope)-1], ".")
+}
+
+func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
+	token := ast.GenerateToken("UNFUNC", "unfunc", c.GetStart(), c.GetStop())
+
+	clauses := c.UnfuncBlock().AllUnfuncClause()
+
+	// Pop one expression per clause (in stack order: last clause on top)
+	exprs := make([]ast.Node, len(clauses))
+	for i := len(clauses) - 1; i >= 0; i-- {
+		exprs[i] = l.pop()
+	}
+
+	uf := &ast.UnfuncLiteral{Token: token}
+	for i, clause := range clauses {
+		expr := exprs[i].(ast.Expression)
+		switch clause.(type) {
+		case *parser.RequiresClauseContext:
+			uf.Requires = expr
+		case *parser.EmitsClauseContext:
+			uf.Emits = expr
+		case *parser.AssumeClauseContext:
+			uf.Assumes = append(uf.Assumes, expr)
+		}
+	}
+
+	l.push(uf)
+}
+
+func (l *FaultListener) ExitUnfuncArithExpr(c *parser.UnfuncArithExprContext) {
+	// base cases: paramCall or numeric — already pushed by their own exit hooks
+	if c.ParamCall() != nil || c.Numeric() != nil {
+		return
+	}
+	// parenthesised expression — inner already on stack
+	if c.LPAREN() != nil {
+		return
+	}
+	// binary op: unfuncArithExpr op unfuncArithExpr
+	op := c.GetChild(1).(antlr.TerminalNode).GetText()
+	token := ast.GenerateToken(string(ast.OPS[op]), op, c.GetStart(), c.GetStop())
+	rght := l.pop()
+	lft := l.pop()
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: op,
+		Right:    rght.(ast.Expression),
+	})
+}
+
+func (l *FaultListener) ExitUnfuncAssumeExpr(c *parser.UnfuncAssumeExprContext) {
+	// paramCall '=' unfuncArithExpr — rhs on top, lhs below
+	rhs := l.pop()
+	lhs := l.pop()
+	token := ast.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lhs.(ast.Expression),
+		Operator: "=",
+		Right:    rhs.(ast.Expression),
+	})
+}
+
+func (l *FaultListener) ExitUnfuncExpr(c *parser.UnfuncExprContext) {
+	// base case: paramCall — already pushed by ExitParamCall
+	if c.ParamCall() != nil {
+		return
+	}
+	// parenthesised expression — inner already on stack
+	if c.LPAREN() != nil {
+		return
+	}
+	// '!' unfuncExpr
+	if c.BANG() != nil {
+		token := ast.GenerateToken("BANG", "!", c.GetStart(), c.GetStop())
+		rght := l.pop()
+		l.push(&ast.PrefixExpression{
+			Token:    token,
+			Operator: "!",
+			Right:    rght.(ast.Expression),
+		})
+		return
+	}
+	// unfuncExpr ('&&' | '||') unfuncExpr
+	op := c.GetChild(1).(antlr.TerminalNode).GetText()
+	token := ast.GenerateToken(string(ast.OPS[op]), op, c.GetStart(), c.GetStop())
+	rght := l.pop()
+	lft := l.pop()
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lft.(ast.Expression),
+		Operator: op,
+		Right:    rght.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
@@ -483,13 +611,15 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 			inst.Name = ident.Value
 			right = inst
 		case *ast.Unknown:
+			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
+		case *ast.Uncertain:
+			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
+		case *ast.Whole:
 			if inst.Name == nil {
 				inst.Name = ident
 				right = inst
 			}
-			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
-		case *ast.Uncertain:
-			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		}
 
 		assign = &ast.InfixExpression{
@@ -640,6 +770,8 @@ func (l *FaultListener) ExitRunBlock(c *parser.RunBlockContext) {
 			n := l.packageCallsAsRunSteps(t)
 			t = n.(*ast.ExpressionStatement)
 			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
+		case *ast.SolvableStep:
+			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
 		default:
 			panic(fmt.Sprintf("Neither statement nor expression got=%T", ex))
 		}
@@ -767,6 +899,11 @@ func (l *FaultListener) ExitRunStepExpr(c *parser.RunStepExprContext) {
 	l.push(e)
 }
 
+func (l *FaultListener) ExitRunSolvableExpr(c *parser.RunSolvableExprContext) {
+	token := ast.GenerateToken("SYNTH", "__", c.GetStart(), c.GetStop())
+	l.push(&ast.SolvableStep{Token: token})
+}
+
 func (l *FaultListener) ExitStateStepExpr(c *parser.StateStepExprContext) {
 	token := ast.GenerateToken("PARALLEL", c.GetText(), c.GetStart(), c.GetStop())
 
@@ -870,6 +1007,16 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 	case "uncertain":
 		token := ast.GenerateToken("UNCERTAIN", "UNCERTAIN", c.GetStart(), c.GetStop())
 
+		var k float64
+		if c.GetChildCount() > 6 {
+			vk := l.pop()
+			kv, err := l.intOrFloatOk(vk)
+			if err != nil {
+				panic(fmt.Sprintf("Invalid value for k of type uncertain. got=%T at: line %d col %d", vk, c.GetStart().GetLine(), c.GetStart().GetColumn()))
+			}
+			k = kv
+		}
+
 		v1 := l.pop()
 		sigma, err := l.intOrFloatOk(v1)
 		if err != nil {
@@ -886,17 +1033,31 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 			Token: token,
 			Mean:  mean,
 			Sigma: sigma,
+			K:     k,
 		})
 	case "unknown":
 		token := ast.GenerateToken("UNKNOWN", "UNKNOWN", c.GetStart(), c.GetStop())
 
-		var ident *ast.Identifier
+		var typeHint string
 		if c.GetChildCount() > 3 {
-			ident, _ = l.pop().(*ast.Identifier)
+			hint := l.pop()
+			switch hint.(type) {
+			case *ast.IntegerLiteral:
+				typeHint = "INT"
+			case *ast.FloatLiteral:
+				typeHint = "REAL"
+			case *ast.Boolean:
+				typeHint = "BOOL"
+			}
 		}
 		l.push(&ast.Unknown{
+			Token:    token,
+			TypeHint: typeHint,
+		})
+	case "whole":
+		token := ast.GenerateToken("WHOLE", "WHOLE", c.GetStart(), c.GetStop())
+		l.push(&ast.Whole{
 			Token: token,
-			Name:  ident,
 		})
 	default:
 		log.Fatalf("Unimplemented: %s", c.FaultType().GetText())
@@ -1260,14 +1421,11 @@ func (l *FaultListener) ExitInitDecl(c *parser.InitDeclContext) {
 
 }
 
-func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
-	token := ast.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
+
+func (l *FaultListener) ExitRunStmt(c *parser.RunStmtContext) {
+	token := ast.GenerateToken("RUN", "run", c.GetStart(), c.GetStop())
 
 	run := l.pop()
-	init := l.pop()
-	var rounds *ast.IntegerLiteral
-	var block2 *ast.BlockStatement
-
 	if run == nil {
 		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
@@ -1277,103 +1435,115 @@ func (l *FaultListener) ExitForStmt(c *parser.ForStmtContext) {
 		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
 	}
 
-	if init == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
-	}
-
-	switch x := init.(type) {
-	case *ast.BlockStatement:
-		num := l.pop()
-		rounds, ok = num.(*ast.IntegerLiteral)
+	var inits *ast.BlockStatement
+	if c.InitBlock() != nil {
+		initVal := l.pop()
+		inits, ok = initVal.(*ast.BlockStatement)
 		if !ok {
-			panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
+			panic(fmt.Sprintf("top of stack not a block statement for init: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), initVal))
 		}
-		block2 = x
-
-	case *ast.IntegerLiteral:
-		rounds = x
-		block2 = &ast.BlockStatement{}
-
-	default:
-		panic(fmt.Sprintf("top of stack not a block statement or integer: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), init))
+	} else {
+		inits = &ast.BlockStatement{}
 	}
 
-	if rounds.Value == 0 {
-		panic(fmt.Sprintf("run block on line %d has 0 rounds: a zero-round loop produces no states", c.GetStart().GetLine()))
-	}
-
-	forSt := &ast.ForStatement{
-		Token:  token,
-		Rounds: rounds,
-		Body:   block,
-		Inits:  block2,
-	}
-
-	if rounds.Value > l.MaxRounds {
-		l.MaxRounds = rounds.Value
+	runSt := &ast.RunStatement{
+		Token: token,
+		Inits: inits,
+		Steps: blockToRunSteps(block),
 	}
 
 	if !l.skipRun {
-		l.push(forSt)
+		l.push(runSt)
 	}
 }
 
-func (l *FaultListener) ExitSysForStmt(c *parser.SysForStmtContext) {
-	token := ast.GenerateToken("FOR", "for", c.GetStart(), c.GetStop())
-
-	run := l.pop()
-	if run == nil {
-		panic(fmt.Sprintf("top of stack not an expression: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
-	}
-
-	block, ok := run.(*ast.BlockStatement)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not a block statement: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), run))
-	}
-
-	num := l.pop()
-	rounds, ok := num.(*ast.IntegerLiteral)
-	if !ok {
-		panic(fmt.Sprintf("top of stack not an integer literal: line %d col %d type %T", c.GetStart().GetLine(), c.GetStart().GetColumn(), num))
-	}
-
-	if rounds.Value == 0 {
-		panic(fmt.Sprintf("run block on line %d has 0 rounds: a zero-round loop produces no states", c.GetStart().GetLine()))
-	}
-
-	forSt := &ast.ForStatement{
-		Token:  token,
-		Rounds: rounds,
-		Body:   block,
-		Inits:  &ast.BlockStatement{},
-	}
-
-	l.MaxRounds = rounds.Value
-
-	l.push(forSt)
-}
-
-func (l *FaultListener) ExitSysRunBlock(c *parser.SysRunBlockContext) {
-	token := ast.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())
-
-	sl := &ast.BlockStatement{
-		Token: token,
-	}
-
-	steps := c.AllSysRunStep()
-	for i := len(steps) - 1; i >= 0; i-- {
-		ex := l.pop()
-		switch t := ex.(type) {
+// blockToRunSteps converts the BlockStatement produced by ExitRunBlock into
+// typed RunStep values for RunStatement.Steps.
+func blockToRunSteps(block *ast.BlockStatement) []ast.RunStep {
+	var steps []ast.RunStep
+	for _, stmt := range block.Statements {
+		switch s := stmt.(type) {
+		case *ast.SolvableStep:
+			steps = append(steps, s)
 		case *ast.ParallelFunctions:
-			sl.Statements = append([]ast.Statement{t}, sl.Statements...)
-		default:
-			panic(fmt.Sprintf("sys run block expected parallel functions, got=%T", t))
+			// | operator — expressions are either ParameterCalls (from runStepExpr)
+			// or Identifiers (from runStepIdentExpr, e.g. component names in .fsystem).
+			allParamCalls := true
+			for _, e := range s.Expressions {
+				if _, ok := e.(*ast.ParameterCall); !ok {
+					allParamCalls = false
+					break
+				}
+			}
+			if allParamCalls {
+				calls := make([]*ast.ParameterCall, 0, len(s.Expressions))
+				for _, e := range s.Expressions {
+					calls = append(calls, e.(*ast.ParameterCall))
+				}
+				steps = append(steps, &ast.CallStep{
+					Token:    s.Token,
+					Calls:    calls,
+					Operator: "|",
+				})
+			} else {
+				// Identifier-based steps (component names) — keep as ParallelFunctions.
+				steps = append(steps, s)
+			}
+		case *ast.ExpressionStatement:
+			if ie, ok := s.Expression.(*ast.IfExpression); ok {
+				steps = append(steps, &ast.IfStep{Token: s.Token, Expr: ie})
+			} else {
+				step := exprToCallStep(s)
+				if step != nil {
+					steps = append(steps, step)
+				}
+			}
 		}
 	}
-	l.push(sl)
+	return steps
 }
 
-func (l *FaultListener) ExitSysRunStepExpr(c *parser.SysRunStepExprContext) {
+// exprToCallStep converts an ExpressionStatement from the run block into a CallStep.
+func exprToCallStep(stmt *ast.ExpressionStatement) *ast.CallStep {
+	switch e := stmt.Expression.(type) {
+	case *ast.ParameterCall:
+		return &ast.CallStep{
+			Token:    e.Token,
+			Calls:    []*ast.ParameterCall{e},
+			Operator: "",
+		}
+	case *ast.InfixExpression:
+		if e.Operator == "&&" || e.Operator == "||" || e.Operator == "|" {
+			calls := collectParamCalls(e)
+			if len(calls) > 0 {
+				return &ast.CallStep{
+					Token:    e.Token,
+					Calls:    calls,
+					Operator: e.Operator,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// collectParamCalls recursively extracts ParameterCall leaves from an infix tree.
+func collectParamCalls(e *ast.InfixExpression) []*ast.ParameterCall {
+	var calls []*ast.ParameterCall
+	if pc, ok := e.Left.(*ast.ParameterCall); ok {
+		calls = append(calls, pc)
+	} else if inf, ok := e.Left.(*ast.InfixExpression); ok {
+		calls = append(calls, collectParamCalls(inf)...)
+	}
+	if pc, ok := e.Right.(*ast.ParameterCall); ok {
+		calls = append(calls, pc)
+	} else if inf, ok := e.Right.(*ast.InfixExpression); ok {
+		calls = append(calls, collectParamCalls(inf)...)
+	}
+	return calls
+}
+
+func (l *FaultListener) ExitRunStepIdentExpr(c *parser.RunStepIdentExprContext) {
 	token := ast.GenerateToken("PARALLEL", c.GetText(), c.GetStart(), c.GetStop())
 
 	idents := c.AllIDENT()
@@ -1547,20 +1717,11 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 			panic("illegal prefix operator in assumption")
 		}
 	case *ast.InfixExpression:
-		if e.Operator == "!=" {
-			con = &ast.InvariantClause{
-				Token:    e.Token,
-				Left:     &ast.Boolean{Value: true},
-				Operator: "!=",
-				Right:    e,
-			}
-		} else {
-			con = &ast.InvariantClause{
-				Token:    e.Token,
-				Left:     e.Left,
-				Operator: e.Operator,
-				Right:    e.Right,
-			}
+		con = &ast.InvariantClause{
+			Token:    e.Token,
+			Left:     e.Left,
+			Operator: e.Operator,
+			Right:    e.Right,
 		}
 	case *ast.InvariantClause:
 		con = e
@@ -1609,10 +1770,6 @@ func mergeListeners(l1 *FaultListener, l2 *FaultListener) (map[string][]float64,
 		l1.StructsPropertyOrder[k] = v
 	}
 
-	if !l1.isSysSpec && l2.MaxRounds > l1.MaxRounds {
-		l1.MaxRounds = l2.MaxRounds
-	}
-
 	return l1.Uncertains, l1.Unknowns, l1.StructsPropertyOrder, l1.specs
 }
 
@@ -1637,11 +1794,13 @@ func (l *FaultListener) getPairs(p int, pos []int) (map[*ast.Identifier]ast.Expr
 
 		switch inst := right.(type) {
 		case *ast.Unknown:
-			inst.Name = ident
-			right = inst
 			l.Unknowns = append(l.Unknowns, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		case *ast.Uncertain:
-			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma}
+			l.Uncertains[strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_")] = []float64{inst.Mean, inst.Sigma, inst.K}
+		case *ast.Whole:
+			inst.Name = ident
+			right = inst
+			l.Wholes = append(l.Wholes, strings.Join([]string{l.currSpec, l.scope, ident.Value}, "_"))
 		}
 		order = append([]string{ident.Value}, order...)
 		pairs[ident] = right.(ast.Expression)
@@ -1945,28 +2104,6 @@ func (l *FaultListener) ExitBuiltinInfix(c *parser.BuiltinInfixContext) {
 	}
 }
 
-func (l *FaultListener) ExitStartPair(c *parser.StartPairContext) {
-	idents := c.AllIDENT()
-	start := &ast.InfixExpression{
-		Left:     &ast.StringLiteral{Value: idents[0].GetText()},
-		Operator: ":",
-		Right:    &ast.StringLiteral{Value: idents[1].GetText()},
-	}
-	l.push(start)
-
-}
-
-func (l *FaultListener) ExitStartBlock(c *parser.StartBlockContext) {
-	token := ast.GenerateToken("START", "START", c.GetStart(), c.GetStop())
-	var pairs [][]string
-	for i := 0; i < len(c.AllStartPair()); i++ {
-		p := l.pop()
-		pair := p.(*ast.InfixExpression)
-		pairs = append(pairs, []string{pair.Left.String(), pair.Right.String()})
-	}
-
-	l.push(&ast.StartStatement{Token: token, Pairs: pairs})
-}
 
 func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 	switch n := node.(type) {

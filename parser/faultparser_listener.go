@@ -23,12 +23,6 @@ type FaultParserListener interface {
 	// EnterComponentDecl is called when entering the componentDecl production.
 	EnterComponentDecl(c *ComponentDeclContext)
 
-	// EnterStartBlock is called when entering the startBlock production.
-	EnterStartBlock(c *StartBlockContext)
-
-	// EnterStartPair is called when entering the startPair production.
-	EnterStartPair(c *StartPairContext)
-
 	// EnterSpec is called when entering the spec production.
 	EnterSpec(c *SpecContext)
 
@@ -86,8 +80,17 @@ type FaultParserListener interface {
 	// EnterSfMisc is called when entering the sfMisc production.
 	EnterSfMisc(c *SfMiscContext)
 
+	// EnterPropExtends is called when entering the PropExtends production.
+	EnterPropExtends(c *PropExtendsContext)
+
+	// EnterPropExclude is called when entering the PropExclude production.
+	EnterPropExclude(c *PropExcludeContext)
+
 	// EnterStateFunc is called when entering the StateFunc production.
 	EnterStateFunc(c *StateFuncContext)
+
+	// EnterUnfuncState is called when entering the UnfuncState production.
+	EnterUnfuncState(c *UnfuncStateContext)
 
 	// EnterCompMisc is called when entering the compMisc production.
 	EnterCompMisc(c *CompMiscContext)
@@ -179,20 +182,8 @@ type FaultParserListener interface {
 	// EnterIfStmtState is called when entering the ifStmtState production.
 	EnterIfStmtState(c *IfStmtStateContext)
 
-	// EnterForStmt is called when entering the forStmt production.
-	EnterForStmt(c *ForStmtContext)
-
-	// EnterSysForStmt is called when entering the sysForStmt production.
-	EnterSysForStmt(c *SysForStmtContext)
-
-	// EnterSysRunBlock is called when entering the sysRunBlock production.
-	EnterSysRunBlock(c *SysRunBlockContext)
-
-	// EnterSysRunStepExpr is called when entering the sysRunStepExpr production.
-	EnterSysRunStepExpr(c *SysRunStepExprContext)
-
-	// EnterRounds is called when entering the rounds production.
-	EnterRounds(c *RoundsContext)
+	// EnterRunStmt is called when entering the runStmt production.
+	EnterRunStmt(c *RunStmtContext)
 
 	// EnterParamCall is called when entering the paramCall production.
 	EnterParamCall(c *ParamCallContext)
@@ -224,11 +215,17 @@ type FaultParserListener interface {
 	// EnterRunStepExpr is called when entering the runStepExpr production.
 	EnterRunStepExpr(c *RunStepExprContext)
 
+	// EnterRunStepIdentExpr is called when entering the runStepIdentExpr production.
+	EnterRunStepIdentExpr(c *RunStepIdentExprContext)
+
 	// EnterRunExpr is called when entering the runExpr production.
 	EnterRunExpr(c *RunExprContext)
 
 	// EnterRunIfExpr is called when entering the runIfExpr production.
 	EnterRunIfExpr(c *RunIfExprContext)
+
+	// EnterRunSolvableExpr is called when entering the runSolvableExpr production.
+	EnterRunSolvableExpr(c *RunSolvableExprContext)
 
 	// EnterFaultType is called when entering the faultType production.
 	EnterFaultType(c *FaultTypeContext)
@@ -296,6 +293,30 @@ type FaultParserListener interface {
 	// EnterStateLit is called when entering the stateLit production.
 	EnterStateLit(c *StateLitContext)
 
+	// EnterUnfuncLit is called when entering the unfuncLit production.
+	EnterUnfuncLit(c *UnfuncLitContext)
+
+	// EnterUnfuncBlock is called when entering the unfuncBlock production.
+	EnterUnfuncBlock(c *UnfuncBlockContext)
+
+	// EnterRequiresClause is called when entering the requiresClause production.
+	EnterRequiresClause(c *RequiresClauseContext)
+
+	// EnterEmitsClause is called when entering the emitsClause production.
+	EnterEmitsClause(c *EmitsClauseContext)
+
+	// EnterAssumeClause is called when entering the assumeClause production.
+	EnterAssumeClause(c *AssumeClauseContext)
+
+	// EnterUnfuncExpr is called when entering the unfuncExpr production.
+	EnterUnfuncExpr(c *UnfuncExprContext)
+
+	// EnterUnfuncAssumeExpr is called when entering the unfuncAssumeExpr production.
+	EnterUnfuncAssumeExpr(c *UnfuncAssumeExprContext)
+
+	// EnterUnfuncArithExpr is called when entering the unfuncArithExpr production.
+	EnterUnfuncArithExpr(c *UnfuncArithExprContext)
+
 	// EnterEos is called when entering the eos production.
 	EnterEos(c *EosContext)
 
@@ -313,12 +334,6 @@ type FaultParserListener interface {
 
 	// ExitComponentDecl is called when exiting the componentDecl production.
 	ExitComponentDecl(c *ComponentDeclContext)
-
-	// ExitStartBlock is called when exiting the startBlock production.
-	ExitStartBlock(c *StartBlockContext)
-
-	// ExitStartPair is called when exiting the startPair production.
-	ExitStartPair(c *StartPairContext)
 
 	// ExitSpec is called when exiting the spec production.
 	ExitSpec(c *SpecContext)
@@ -377,8 +392,17 @@ type FaultParserListener interface {
 	// ExitSfMisc is called when exiting the sfMisc production.
 	ExitSfMisc(c *SfMiscContext)
 
+	// ExitPropExtends is called when exiting the PropExtends production.
+	ExitPropExtends(c *PropExtendsContext)
+
+	// ExitPropExclude is called when exiting the PropExclude production.
+	ExitPropExclude(c *PropExcludeContext)
+
 	// ExitStateFunc is called when exiting the StateFunc production.
 	ExitStateFunc(c *StateFuncContext)
+
+	// ExitUnfuncState is called when exiting the UnfuncState production.
+	ExitUnfuncState(c *UnfuncStateContext)
 
 	// ExitCompMisc is called when exiting the compMisc production.
 	ExitCompMisc(c *CompMiscContext)
@@ -470,20 +494,8 @@ type FaultParserListener interface {
 	// ExitIfStmtState is called when exiting the ifStmtState production.
 	ExitIfStmtState(c *IfStmtStateContext)
 
-	// ExitForStmt is called when exiting the forStmt production.
-	ExitForStmt(c *ForStmtContext)
-
-	// ExitSysForStmt is called when exiting the sysForStmt production.
-	ExitSysForStmt(c *SysForStmtContext)
-
-	// ExitSysRunBlock is called when exiting the sysRunBlock production.
-	ExitSysRunBlock(c *SysRunBlockContext)
-
-	// ExitSysRunStepExpr is called when exiting the sysRunStepExpr production.
-	ExitSysRunStepExpr(c *SysRunStepExprContext)
-
-	// ExitRounds is called when exiting the rounds production.
-	ExitRounds(c *RoundsContext)
+	// ExitRunStmt is called when exiting the runStmt production.
+	ExitRunStmt(c *RunStmtContext)
 
 	// ExitParamCall is called when exiting the paramCall production.
 	ExitParamCall(c *ParamCallContext)
@@ -515,11 +527,17 @@ type FaultParserListener interface {
 	// ExitRunStepExpr is called when exiting the runStepExpr production.
 	ExitRunStepExpr(c *RunStepExprContext)
 
+	// ExitRunStepIdentExpr is called when exiting the runStepIdentExpr production.
+	ExitRunStepIdentExpr(c *RunStepIdentExprContext)
+
 	// ExitRunExpr is called when exiting the runExpr production.
 	ExitRunExpr(c *RunExprContext)
 
 	// ExitRunIfExpr is called when exiting the runIfExpr production.
 	ExitRunIfExpr(c *RunIfExprContext)
+
+	// ExitRunSolvableExpr is called when exiting the runSolvableExpr production.
+	ExitRunSolvableExpr(c *RunSolvableExprContext)
 
 	// ExitFaultType is called when exiting the faultType production.
 	ExitFaultType(c *FaultTypeContext)
@@ -586,6 +604,30 @@ type FaultParserListener interface {
 
 	// ExitStateLit is called when exiting the stateLit production.
 	ExitStateLit(c *StateLitContext)
+
+	// ExitUnfuncLit is called when exiting the unfuncLit production.
+	ExitUnfuncLit(c *UnfuncLitContext)
+
+	// ExitUnfuncBlock is called when exiting the unfuncBlock production.
+	ExitUnfuncBlock(c *UnfuncBlockContext)
+
+	// ExitRequiresClause is called when exiting the requiresClause production.
+	ExitRequiresClause(c *RequiresClauseContext)
+
+	// ExitEmitsClause is called when exiting the emitsClause production.
+	ExitEmitsClause(c *EmitsClauseContext)
+
+	// ExitAssumeClause is called when exiting the assumeClause production.
+	ExitAssumeClause(c *AssumeClauseContext)
+
+	// ExitUnfuncExpr is called when exiting the unfuncExpr production.
+	ExitUnfuncExpr(c *UnfuncExprContext)
+
+	// ExitUnfuncAssumeExpr is called when exiting the unfuncAssumeExpr production.
+	ExitUnfuncAssumeExpr(c *UnfuncAssumeExprContext)
+
+	// ExitUnfuncArithExpr is called when exiting the unfuncArithExpr production.
+	ExitUnfuncArithExpr(c *UnfuncArithExprContext)
 
 	// ExitEos is called when exiting the eos production.
 	ExitEos(c *EosContext)

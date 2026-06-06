@@ -70,6 +70,12 @@ func (l *FaultListener) EnterStateFunc(c *parser.StateFuncContext) {
 	l.scope = fmt.Sprint(l.scope, ".", varname)
 }
 
+func (l *FaultListener) EnterUnfuncState(c *parser.UnfuncStateContext) {
+	varname := c.IDENT().GetText()
+	assertValidVarName(varname, c.GetStart())
+	l.scope = fmt.Sprint(l.scope, ".", varname)
+}
+
 func (l *FaultListener) EnterFunctionLit(c *parser.FunctionLitContext) {
 	if c.Block().GetChildCount() < 3 {
 		panic(fmt.Sprintf("Malformed fspec or fsystem file. A function cannot be empty: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
@@ -101,6 +107,14 @@ func (l *FaultListener) EnterPropBool(c *parser.PropBoolContext) {
 }
 
 func (l *FaultListener) EnterPropVar(c *parser.PropVarContext) {
+	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+}
+
+func (l *FaultListener) EnterPropExtends(c *parser.PropExtendsContext) {
+	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+}
+
+func (l *FaultListener) EnterPropExclude(c *parser.PropExcludeContext) {
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
 }
 

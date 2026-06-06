@@ -910,9 +910,9 @@ func TestSwapError(t *testing.T) {
 		},
 	};
 
-	for 1 init{f2 = new f1;
+	run init{f2 = new f1;
 		f2.x = 2.3;
-		} run {}
+		} {}
 	`
 
 	_, err := prepTest(test, true)
@@ -941,9 +941,9 @@ func TestSwapError2(t *testing.T) {
 		},
 	};
 
-	for 1 init{f2 = new f1;
+	run init{f2 = new f1;
 		f2.x = new s2;
-		} run {	}
+		} {	}
 	`
 
 	_, err := prepTest(test, true)
@@ -972,9 +972,9 @@ func TestSwapError3(t *testing.T) {
 		},
 	};
 
-	for 1 init{f2 = new f1;
+	run init{f2 = new f1;
 		s = new s2;
-		f2.x = s;} run {
+		f2.x = s;} {
 	}
 	`
 
@@ -999,6 +999,327 @@ func TestIndexError(t *testing.T) {
 
 	if err == nil || err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
+	}
+}
+
+// --- unfunc type checker tests ---
+//
+// Stocks and components live in separate file types (fspec vs fsystem), so the
+// full parse pipeline can't combine them in tests. These tests construct the
+// Checker and SpecRecord directly.
+
+// makeUnfuncChecker builds a Checker pre-loaded with a "test1" spec whose
+// "generic" stock has the given fields.
+func makeUnfuncChecker(fields ...string) *Checker {
+	sr := preprocess.NewSpecRecord()
+	sr.SpecName = "test1"
+	stockFields := make(map[string]ast.Node)
+	for _, f := range fields {
+		stockFields[f] = &ast.StringLiteral{Value: `"` + f + `"`}
+	}
+	sr.AddStock("generic", stockFields)
+
+	return &Checker{
+		SpecStructs: map[string]*preprocess.SpecRecord{"test1": sr},
+		Instances:   make(map[string]*ast.StructInstance),
+		temps:       make(map[string]*ast.Type),
+	}
+}
+
+// paramCall builds a ParameterCall with Spec="test1" and Value=[stock, field].
+func paramCall(stock, field string) *ast.ParameterCall {
+	return &ast.ParameterCall{
+		Value: []string{stock, field},
+		Spec:  "test1",
+	}
+}
+
+func TestUnfuncValidFields(t *testing.T) {
+	c := makeUnfuncChecker("name", "id")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "name"),
+		Emits:    paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on valid unfunc. got=%s", err)
+	}
+}
+
+func TestUnfuncUnknownStock(t *testing.T) {
+	c := makeUnfuncChecker("name", "id")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("doesNotExist", "name"),
+		Emits:    paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught reference to nonexistent stock")
+	}
+}
+
+func TestUnfuncUnknownField(t *testing.T) {
+	c := makeUnfuncChecker("name", "id")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "name"),
+		Emits:    paramCall("generic", "nonexistent"),
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught reference to nonexistent field")
+	}
+}
+
+func TestUnfuncCompoundRequiresValid(t *testing.T) {
+	c := makeUnfuncChecker("id", "joinId")
+	uf := &ast.UnfuncLiteral{
+		Requires: &ast.InfixExpression{
+			Token:    ast.Token{Type: "AND", Literal: "&&"},
+			Left:     paramCall("generic", "id"),
+			Operator: "&&",
+			Right:    paramCall("generic", "joinId"),
+		},
+		Emits: paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on valid compound unfunc. got=%s", err)
+	}
+}
+
+func TestUnfuncCompoundRequiresInvalidField(t *testing.T) {
+	// "joinId" is not in the stock — only "id" is.
+	c := makeUnfuncChecker("id")
+	uf := &ast.UnfuncLiteral{
+		Requires: &ast.InfixExpression{
+			Token:    ast.Token{Type: "AND", Literal: "&&"},
+			Left:     paramCall("generic", "id"),
+			Operator: "&&",
+			Right:    paramCall("generic", "joinId"),
+		},
+		Emits: paramCall("generic", "id"),
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught missing field in compound requires")
+	}
+}
+
+func TestStockInheritance(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+};
+`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed: %s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	personFields, ferr := spec.FetchStock("person")
+	if ferr != nil {
+		t.Fatalf("could not fetch person stock: %s", ferr)
+	}
+
+	if _, ok := personFields["id"]; !ok {
+		t.Fatal("person should have inherited field 'id' from generic")
+	}
+	if _, ok := personFields["name"]; !ok {
+		t.Fatal("person should have inherited field 'name' from generic")
+	}
+	if _, ok := personFields["occupation"]; !ok {
+		t.Fatal("person should have own field 'occupation'")
+	}
+	if len(personFields) != 3 {
+		t.Fatalf("person should have 3 fields, got %d", len(personFields))
+	}
+}
+
+func TestStockInheritanceWithExclude(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+	age: "entity age",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+	exclude age,
+};
+`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed: %s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	personFields, _ := spec.FetchStock("person")
+
+	if _, ok := personFields["age"]; ok {
+		t.Fatal("person should not have excluded field 'age'")
+	}
+	if _, ok := personFields["id"]; !ok {
+		t.Fatal("person should have inherited field 'id'")
+	}
+	if _, ok := personFields["name"]; !ok {
+		t.Fatal("person should have inherited field 'name'")
+	}
+	if len(personFields) != 3 {
+		t.Fatalf("person should have 3 fields (id, name, occupation), got %d", len(personFields))
+	}
+}
+
+func TestStockInheritanceMultiLevel(t *testing.T) {
+	test := `spec test1;
+def grandparent = stock{
+	id: "primary key",
+};
+def parent = stock{
+	extends grandparent,
+	name: "name value",
+};
+def child = stock{
+	extends parent,
+	occupation: "job",
+};
+`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed: %s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	childFields, ferr := spec.FetchStock("child")
+	if ferr != nil {
+		t.Fatalf("could not fetch child stock: %s", ferr)
+	}
+
+	for _, field := range []string{"id", "name", "occupation"} {
+		if _, ok := childFields[field]; !ok {
+			t.Fatalf("child should have field %q", field)
+		}
+	}
+	if len(childFields) != 3 {
+		t.Fatalf("child should have 3 fields, got %d", len(childFields))
+	}
+}
+
+func TestStockExcludeNonInheritedFieldError(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+};
+def person = stock{
+	extends generic,
+	exclude occupation,
+};
+`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("should have errored: excluding a field not in parent")
+	}
+}
+
+func TestStockExtendsUnknownParentError(t *testing.T) {
+	test := `spec test1;
+def person = stock{
+	extends nonexistent,
+	occupation: "the person's job",
+};
+`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("should have errored: extending a nonexistent stock")
+	}
+}
+
+func TestUnknownBoolHintInArithmetic(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(false), };
+		def f = flow{ s: new s,
+			bar: func{ s.x <- 1; },
+		};
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject bool-hinted unknown used in arithmetic")
+	}
+	actual := "invalid expression: got=BOOL + INT"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownIntHintAssignedBool(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(0), };
+		def f = flow{ s: new s,
+			bar: func{ s.x <- true; },
+		};
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject bool assigned to int-hinted unknown")
+	}
+	actual := "invalid expression: got=INT + BOOL"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownRealHintInBoolAssume(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(0.0), };
+		assume s.x && true;
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject real-hinted unknown in boolean assume")
+	}
+	actual := "invalid expression: got=FLOAT && BOOL"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownBoolHintComparedWithNumeric(t *testing.T) {
+	test := `spec test1;
+		def s = stock{ x: unknown(false), };
+		assert s.x > 0 always;
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("type checker should reject bool-hinted unknown compared with numeric")
+	}
+	actual := "invalid expression: got=BOOL > INT"
+	if err.Error() != actual {
+		t.Fatalf("wrong error message. got=%s", err)
+	}
+}
+
+func TestUnknownTypedHintsValidOK(t *testing.T) {
+	test := `spec test1;
+		def s = stock{
+			amount: unknown(0.0),
+			count: unknown(0),
+			flagged: unknown(false),
+		};
+		assume s.amount >= 0.0;
+		assume s.count >= 0;
+		assume !s.flagged || s.amount > 0.0;
+		assert s.amount >= 0.0 always;
+	`
+	_, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected valid typed-unknown spec. got=%s", err)
 	}
 }
 

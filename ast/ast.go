@@ -56,6 +56,7 @@ var TYPES = map[string]int{ //Convertible Types
 	"INT":       4,
 	"UNCERTAIN": 5,
 	"UNKNOWN":   6,
+	"WHOLE":     7,
 }
 
 type Type struct {
@@ -300,6 +301,7 @@ func (ds *DefStatement) SetType(ty *Type) {
 type AssertionStatement struct {
 	Token          Token
 	Constraint     *InvariantClause
+	Original       *InvariantClause // pre-negation form with resolved variables, for display
 	Assume         bool
 	Temporal       string
 	TemporalFilter string
@@ -335,18 +337,31 @@ func (as *AssertionStatement) EvLogString(negate bool) string {
 
 	if as.Assume {
 		out.WriteString("assume ")
+		out.WriteString(as.Constraint.Left.String())
+		out.WriteString(" ")
+		out.WriteString(as.Constraint.Operator)
+		out.WriteString(" ")
+		out.WriteString(as.Constraint.Right.String())
+	} else if negate && as.Original != nil {
+		// Use the pre-negation form so the user sees the original assertion
+		out.WriteString("assert ")
+		out.WriteString(as.Original.Left.String())
+		out.WriteString(" ")
+		out.WriteString(as.Original.Operator)
+		out.WriteString(" ")
+		out.WriteString(as.Original.Right.String())
 	} else {
 		out.WriteString("assert ")
+		out.WriteString(as.Constraint.Left.String())
+		out.WriteString(" ")
+		if negate {
+			out.WriteString(util.OP_NEGATE[as.Constraint.Operator])
+		} else {
+			out.WriteString(as.Constraint.Operator)
+		}
+		out.WriteString(" ")
+		out.WriteString(as.Constraint.Right.String())
 	}
-	out.WriteString(as.Constraint.Left.String())
-	out.WriteString(" ")
-	if !as.Assume && negate {
-		out.WriteString(util.OP_NEGATE[as.Constraint.Operator])
-	} else {
-		out.WriteString(as.Constraint.Operator)
-	}
-	out.WriteString(" ")
-	out.WriteString(as.Constraint.Right.String())
 	if as.TemporalFilter != "" {
 		out.WriteString(" ")
 		out.WriteString(as.TemporalFilter)
@@ -402,69 +417,136 @@ func (i *InvariantClause) SetType(ty *Type) {
 	//Skip
 }
 
-type ForStatement struct {
-	Token  Token
-	Rounds *IntegerLiteral
-	Body   *BlockStatement
-	Inits  *BlockStatement
+type RunStep interface {
+	runStepNode()
+	statementNode()
+	TokenLiteral() string
+	Position() []int
+	String() string
+	GetToken() Token
+	Type() string
+	SetType(*Type)
 }
 
-func (fs *ForStatement) statementNode()       {}
-func (fs *ForStatement) TokenLiteral() string { return fs.Token.Literal }
-func (fs *ForStatement) Position() []int      { return fs.Token.GetPosition() }
-func (fs *ForStatement) String() string {
+// CallStep represents one step in a run block that calls one or more functions.
+// Operator is "", "&&", "|", or "||":
+//   - "":   single explicit call (e.g. foo.fn1)
+//   - "&&": simultaneous calls — all fire in the same step (e.g. foo.fn1 && foo.fn2)
+//   - "|":  choice — Fault picks whichever satisfies constraints (e.g. foo.fn1 | foo.fn2)
+//   - "||": same semantics as "|" from the expression path
+type CallStep struct {
+	Token    Token
+	Calls    []*ParameterCall
+	Operator string
+}
+
+func (cs *CallStep) runStepNode()          {}
+func (cs *CallStep) statementNode()        {}
+func (cs *CallStep) TokenLiteral() string  { return cs.Token.Literal }
+func (cs *CallStep) Position() []int       { return cs.Token.GetPosition() }
+func (cs *CallStep) GetToken() Token       { return cs.Token }
+func (cs *CallStep) Type() string          { return "" }
+func (cs *CallStep) SetType(ty *Type)      {}
+func (cs *CallStep) String() string {
 	var out bytes.Buffer
-
-	out.WriteString(fs.TokenLiteral() + " ")
-	out.WriteString(fs.Rounds.String())
-	out.WriteString(fs.Body.String())
-
-	out.WriteString(";")
-	return out.String()
-}
-func (fs *ForStatement) GetToken() Token {
-	return fs.Token
-}
-func (fs *ForStatement) Type() string {
-	return ""
-}
-func (fs *ForStatement) SetType(ty *Type) {
-	//Skip
-}
-
-type StartStatement struct {
-	Token Token
-	Pairs [][]string
-}
-
-func (ss *StartStatement) statementNode()       {}
-func (ss *StartStatement) TokenLiteral() string { return ss.Token.Literal }
-func (ss *StartStatement) Position() []int      { return ss.Token.GetPosition() }
-func (ss *StartStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(ss.TokenLiteral() + " ")
-	pairs := []string{}
-	for _, value := range ss.Pairs {
-		pairs = append(pairs, strings.Join(value, " : "))
+	parts := []string{}
+	for _, c := range cs.Calls {
+		parts = append(parts, c.String())
 	}
-
-	out.WriteString("{")
-	out.WriteString(strings.Join(pairs, ", "))
-	out.WriteString("}")
-
+	if cs.Operator == "" {
+		out.WriteString(parts[0])
+	} else {
+		out.WriteString(strings.Join(parts, " "+cs.Operator+" "))
+	}
 	out.WriteString(";")
 	return out.String()
 }
-func (ss *StartStatement) GetToken() Token {
-	return ss.Token
+
+// StateActivation pins the starting state of one or more components in a run block.
+// It is produced by the preprocessor when a CallStep's ParameterCalls all resolve
+// to COMPONENT type (e.g. "A.on && B.idle;").
+// Operator mirrors CallStep: "", "&&", or "|".
+type StateActivation struct {
+	Token    Token
+	Calls    []*ParameterCall
+	Operator string
 }
-func (ss *StartStatement) Type() string {
-	return "START"
+
+func (sa *StateActivation) runStepNode()         {}
+func (sa *StateActivation) statementNode()       {}
+func (sa *StateActivation) TokenLiteral() string { return sa.Token.Literal }
+func (sa *StateActivation) Position() []int      { return sa.Token.GetPosition() }
+func (sa *StateActivation) GetToken() Token      { return sa.Token }
+func (sa *StateActivation) Type() string         { return "" }
+func (sa *StateActivation) SetType(ty *Type)     {}
+func (sa *StateActivation) String() string {
+	var out bytes.Buffer
+	parts := []string{}
+	for _, c := range sa.Calls {
+		parts = append(parts, c.String())
+	}
+	if sa.Operator == "" {
+		out.WriteString(parts[0])
+	} else {
+		out.WriteString(strings.Join(parts, " "+sa.Operator+" "))
+	}
+	out.WriteString(";")
+	return out.String()
 }
-func (ss *StartStatement) SetType(ty *Type) {
-	//skip
+
+// SolvableStep represents a __ placeholder — Fault synthesizes which function runs here.
+type SolvableStep struct {
+	Token Token
 }
+
+func (ss *SolvableStep) runStepNode()         {}
+func (ss *SolvableStep) statementNode()       {}
+func (ss *SolvableStep) TokenLiteral() string { return ss.Token.Literal }
+func (ss *SolvableStep) Position() []int      { return ss.Token.GetPosition() }
+func (ss *SolvableStep) GetToken() Token      { return ss.Token }
+func (ss *SolvableStep) Type() string         { return "" }
+func (ss *SolvableStep) SetType(ty *Type)     {}
+func (ss *SolvableStep) String() string       { return "__;" }
+
+// IfStep represents a conditional guard in a run block step.
+type IfStep struct {
+	Token Token
+	Expr  *IfExpression
+}
+
+func (is *IfStep) runStepNode()         {}
+func (is *IfStep) statementNode()       {}
+func (is *IfStep) TokenLiteral() string { return is.Token.Literal }
+func (is *IfStep) Position() []int      { return is.Token.GetPosition() }
+func (is *IfStep) GetToken() Token      { return is.Token }
+func (is *IfStep) Type() string         { return "" }
+func (is *IfStep) SetType(ty *Type)     {}
+func (is *IfStep) String() string       { return is.Expr.String() }
+
+// RunStatement is the step-based run block.
+// Each element of Steps is either a CallStep or a SolvableStep.
+type RunStatement struct {
+	Token Token
+	Inits *BlockStatement
+	Steps []RunStep
+}
+
+func (rs *RunStatement) statementNode()       {}
+func (rs *RunStatement) TokenLiteral() string { return rs.Token.Literal }
+func (rs *RunStatement) Position() []int      { return rs.Token.GetPosition() }
+func (rs *RunStatement) GetToken() Token      { return rs.Token }
+func (rs *RunStatement) Type() string         { return "" }
+func (rs *RunStatement) SetType(ty *Type)     {}
+func (rs *RunStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("run {")
+	for _, s := range rs.Steps {
+		out.WriteString(s.String())
+	}
+	out.WriteString("}")
+	return out.String()
+}
+
 
 type Identifier struct {
 	Token         Token
@@ -871,6 +953,7 @@ type Uncertain struct {
 	InferredType  *Type
 	Mean          float64
 	Sigma         float64
+	K             float64 // sigma multiplier for SMT bounds (default 3.0); 0 means unset
 	ProcessedName []string
 }
 
@@ -918,7 +1001,7 @@ func (u *Uncertain) Position() []int { return u.Token.GetPosition() }
 type Unknown struct {
 	Token         Token
 	InferredType  *Type
-	Name          *Identifier
+	TypeHint      string // "INT", "REAL", "BOOL", or "" (untyped)
 	ProcessedName []string
 }
 
@@ -927,9 +1010,7 @@ func (u *Unknown) TokenLiteral() string { return u.Token.Literal }
 func (u *Unknown) String() string {
 	var out bytes.Buffer
 	out.WriteString("unknown(")
-	if u.Name != nil { //This sometimes is set further up the tree and might be nil
-		out.WriteString(u.Name.Value)
-	}
+	out.WriteString(u.TypeHint)
 	out.WriteString(")")
 	return out.String()
 }
@@ -963,6 +1044,41 @@ func (u *Unknown) RawId() []string {
 }
 
 func (u *Unknown) Position() []int { return u.Token.GetPosition() }
+
+type Whole struct {
+	Token         Token
+	InferredType  *Type
+	Name          *Identifier
+	ProcessedName []string
+}
+
+func (w *Whole) expressionNode()      {}
+func (w *Whole) TokenLiteral() string { return w.Token.Literal }
+func (w *Whole) String() string {
+	var out bytes.Buffer
+	out.WriteString("whole(")
+	if w.Name != nil {
+		out.WriteString(w.Name.Value)
+	}
+	out.WriteString(")")
+	return out.String()
+}
+func (w *Whole) GetToken() Token { return w.Token }
+func (w *Whole) Type() string {
+	t := w.InferredType
+	if t != nil {
+		return t.Type
+	}
+	return "WHOLE"
+}
+func (w *Whole) SetType(ty *Type) { w.InferredType = ty }
+func (w *Whole) Id() []string {
+	return []string{w.ProcessedName[0], strings.Join(w.ProcessedName[1:], "_")}
+}
+func (w *Whole) SetId(id []string)  { w.ProcessedName = id }
+func (w *Whole) IdString() string   { return strings.Join(w.ProcessedName, "_") }
+func (w *Whole) RawId() []string    { return w.ProcessedName }
+func (w *Whole) Position() []int    { return w.Token.GetPosition() }
 
 type PrefixExpression struct {
 	Token         Token
@@ -1055,7 +1171,12 @@ type Boolean struct {
 func (b *Boolean) expressionNode()      {}
 func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
 func (b *Boolean) Position() []int      { return b.Token.GetPosition() }
-func (b *Boolean) String() string       { return b.Token.Literal }
+func (b *Boolean) String() string {
+	if b.Token.Literal == "" {
+		return fmt.Sprintf("%v", b.Value)
+	}
+	return b.Token.Literal
+}
 func (b *Boolean) Type() string {
 	ty := b.InferredType
 	if ty != nil {
@@ -1206,6 +1327,7 @@ type ParallelFunctions struct {
 	Expressions  []Expression
 }
 
+func (pf *ParallelFunctions) runStepNode()         {}
 func (pf *ParallelFunctions) statementNode()       {}
 func (pf *ParallelFunctions) Position() []int      { return pf.Token.GetPosition() }
 func (pf *ParallelFunctions) TokenLiteral() string { return pf.Token.Literal }
@@ -1485,6 +1607,8 @@ type StockLiteral struct {
 	Order         []string
 	Pairs         map[*Identifier]Expression
 	ProcessedName []string
+	Extends       *Identifier
+	Excludes      []string
 }
 
 func (sl *StockLiteral) expressionNode()      {}
@@ -1642,4 +1766,52 @@ func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
 		}
 	}
 	return nil
+}
+
+// UnfuncLiteral represents an unfunc{} state block — an uninterpreted function
+// declared only by its requires, emits, and optional assume clauses.
+type UnfuncLiteral struct {
+	Token         Token
+	Requires      Expression   // expression tree preserving &&, ||, ! operators
+	Emits         Expression
+	Assumes       []Expression // each is an InfixExpression: paramCall = arithExpr
+	ProcessedName []string
+}
+
+func (ul *UnfuncLiteral) expressionNode()      {}
+func (ul *UnfuncLiteral) TokenLiteral() string { return ul.Token.Literal }
+func (ul *UnfuncLiteral) Position() []int      { return ul.Token.GetPosition() }
+func (ul *UnfuncLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("unfunc{requires ")
+	if ul.Requires != nil {
+		out.WriteString(ul.Requires.String())
+	}
+	out.WriteString(", emits ")
+	if ul.Emits != nil {
+		out.WriteString(ul.Emits.String())
+	}
+	for _, a := range ul.Assumes {
+		out.WriteString(", assume ")
+		out.WriteString(a.String())
+	}
+	out.WriteString("}")
+	return out.String()
+}
+func (ul *UnfuncLiteral) GetToken() Token { return ul.Token }
+func (ul *UnfuncLiteral) Type() string    { return "UNFUNC" }
+func (ul *UnfuncLiteral) SetType(ty *Type) {
+	// skip
+}
+func (ul *UnfuncLiteral) Id() []string {
+	return []string{ul.ProcessedName[0], strings.Join(ul.ProcessedName[1:], "_")}
+}
+func (ul *UnfuncLiteral) SetId(id []string) {
+	ul.ProcessedName = id
+}
+func (ul *UnfuncLiteral) IdString() string {
+	return strings.Join(ul.ProcessedName, "_")
+}
+func (ul *UnfuncLiteral) RawId() []string {
+	return ul.ProcessedName
 }

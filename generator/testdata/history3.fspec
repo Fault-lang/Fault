@@ -15,6 +15,12 @@ def seq = flow{
     }
 };
 
-for 7 init{s = new seq;} run{
+run init{s = new seq;} {
+    s.step;
+    s.step;
+    s.step;
+    s.step;
+    s.step;
+    s.step;
     s.step;
 }

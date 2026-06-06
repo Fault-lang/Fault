@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type PhaseStatus struct {
@@ -32,8 +32,7 @@ func NewProgressModel(filepath string) ProgressModel {
 	s.Spinner = spinner.Dot
 	s.Style = PhaseActiveStyle
 
-	p := progress.New(progress.WithGradient(GradientStart, GradientEnd))
-	p.Width = 40
+	p := progress.New(progress.WithColors(GradientStart, GradientEnd), progress.WithWidth(40))
 
 	return ProgressModel{
 		phases: [7]PhaseStatus{
@@ -61,7 +60,7 @@ func (m ProgressModel) Update(msg tea.Msg) (ProgressModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.overallBar.Width = min(60, msg.Width-20)
+		m.overallBar.SetWidth(min(60, msg.Width-20))
 		return m, nil
 
 	case spinner.TickMsg:

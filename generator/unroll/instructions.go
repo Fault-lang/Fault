@@ -98,6 +98,35 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		return ru
 	}
 
+	if vname == "@__synthStep" {
+		group := strings.Split(inst.Src.Ident(), "_")
+		marker := group[len(group)-1]
+		if marker == "start\"" {
+			// Nothing to do on start — the slot has no IR calls inside it.
+			return ru
+		}
+		// On close: build a SynthSlot with all candidate flow functions.
+		candidates := make(map[string][]rules.Rule)
+		for fname, rawF := range b.rawFunctions {
+			if fname == "__run" || isBuiltIn(fname) || strings.HasSuffix(fname, "__state") {
+				continue
+			}
+			enter := rules.NewFuncCall(fname, "Enter", b.Env.CurrentRound)
+			exit := rules.NewFuncCall(fname, "Exit", b.Env.CurrentRound)
+			v := NewLLFunc(b.Env, b.rawFunctions, rawF)
+			v.Unroll()
+			candidates[fname] = v.GetAllRules(enter, exit)
+		}
+		if len(candidates) > 0 {
+			slot := &rules.SynthSlot{
+				Round:      b.Env.CurrentRound,
+				Candidates: candidates,
+			}
+			ru = append(ru, slot)
+		}
+		return ru
+	}
+
 	switch inst.Src.Type().(type) {
 	case *irtypes.ArrayType:
 		refname := fmt.Sprintf("%s-%s", b.ParentFunction, inst.Dst.Ident())
@@ -106,7 +135,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		base := util.FormatIdent(inst.Dst.Ident())
 		// Skip initial stores to local allocas that are never loaded or stored
 		// by any flow function — they would produce orphaned SMT declarations.
-		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] {
+		// However, always keep solvable (whole/unknown/uncertain) variables so
+		// that assume/assert constraints referencing them remain satisfiable.
+		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) {
 			return nil
 		}
 		if IsTemp(inst.Src.Ident()) {
@@ -118,6 +149,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 				v := FormatValue(val)
 				if !IsBoolean(v) && !IsNumeric(v) {
 					v = util.FormatIdent(v)
+				}
+				if strings.Contains(base, "divertedCurrent") {
+					fmt.Printf("DEBUG parseStore VarLoads: base=%s refname=%s v=%s ty=%s ParentFunction=%s CurrentFunction=%s\n", base, refname, v, ty, b.ParentFunction, b.Env.CurrentFunction)
 				}
 				if strings.HasPrefix(v, "__hist_") {
 					offset, histBase := parseHistSentinel(v)
@@ -135,23 +169,30 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					wid := rules.NewWrap(base, "", true, file, line, true, xIs)
 					wid.SetOmit(b.Env.CurrentFunction)
 					wid.SetWhensThens(b.Env.WhensThens)
+					wid.SetWhole(b.Env.RawInputs.Wholes)
+					wid.SetIntegerMode(b.Env.RawInputs.IntegerMode)
 
 					if IsStaticValue(r.X.String()) {
 						wid.Variable = false
+					}
+
+					numTy := "Real"
+					if wid.IntegerMode {
+						numTy = "Int"
 					}
 
 					if IsBoolean(r.Y.String()) {
 						wid.Type = "Bool"
 						ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
 					} else if IsNumeric(r.Y.String()) {
-						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+						wid.Type = numTy
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
 					} else if isASolvable(r.X.String(), b.Env.RawInputs) {
-						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+						wid.Type = numTy
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
 					} else {
-						wid.Type = "Real"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Real", Y: r, Op: "="})
+						wid.Type = numTy
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
 					}
 					b.Env.VarTypes[base] = wid.Type
 				default:
@@ -169,6 +210,9 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 			}
 		} else {
 			ty := LookupType(base, inst.Src)
+			if b.Env.RawInputs.IntegerMode && ty == "Real" {
+				ty = "Int"
+			}
 			b.Env.VarTypes[base] = ty
 
 			ru = append(ru, b.createRule(base, inst.Src.Ident(), ty, "="))
@@ -184,6 +228,9 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 	wid := rules.NewWrap(id, ty, true, file, line, true, xIs)
 	wid.SetOmit(b.Env.CurrentFunction)
 	wid.SetWhensThens(b.Env.WhensThens)
+	wid.SetWhole(b.Env.RawInputs.Wholes)
+	wid.SetIntegerMode(b.Env.RawInputs.IntegerMode)
+	wid.SetUncertain(b.Env.RawInputs.Uncertains)
 	var wval *rules.Wrap
 
 	if IsBoolean(val) {
@@ -193,7 +240,15 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 		wval.SetWhensThens(b.Env.WhensThens)
 	} else if IsNumeric(val) {
 		_, file, line, _ := runtime.Caller(1)
-		wval = rules.NewWrap(val, ty, false, file, line, false, false)
+		numVal := val
+		numTy := ty
+		if b.Env.RawInputs.IntegerMode && !IsBoolean(val) {
+			numVal = floatLitToInt(val)
+			if numTy == "Real" {
+				numTy = "Int"
+			}
+		}
+		wval = rules.NewWrap(numVal, numTy, false, file, line, false, false)
 		wval.SetOmit(b.Env.CurrentFunction)
 		wval.SetWhensThens(b.Env.WhensThens)
 	} else {
@@ -223,6 +278,9 @@ func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 		b.Env.VarLoads[refname] = inst.Src
 	}
 	b.Env.VarTypes[refname] = inst.Src.Type().String()
+	if strings.Contains(inst.Src.Ident(), "isStopped") && strings.Contains(b.Env.CurrentFunction, "Regen") {
+		fmt.Printf("DEBUG parseLoad: refname=%s src=%s CurrentFunction=%s\n", refname, inst.Src.Ident(), b.Env.CurrentFunction)
+	}
 	return []rules.Rule{}
 }
 

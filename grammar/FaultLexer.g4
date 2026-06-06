@@ -38,6 +38,7 @@ EVENTUALLYALWAYS: 'eventually-always';
 ALWAYS: 'always';
 NMT: 'nmt';
 NFT: 'nft';
+AVAILABLE: 'available';
 
 NIL: 'nil';
 TRUE: 'true';
@@ -53,6 +54,11 @@ SYSTEM: 'system';
 START: 'start';
 STATE: 'states';
 STAY: 'stay';
+UNFUNC: 'unfunc';
+REQUIRES: 'requires';
+EMITS: 'emits';
+EXTENDS: 'extends';
+EXCLUDE: 'exclude';
 
 // Types
 
@@ -63,6 +69,9 @@ TY_FLOAT: 'float';
 TY_NATURAL: 'natural';
 TY_UNCERTAIN: 'uncertain';
 TY_UNKNOWN: 'unknown';
+TY_WHOLE: 'whole';
+
+SYNTH: '__';
 
 IDENT: LETTER (LETTER | UNICODE_DIGIT)*;
 

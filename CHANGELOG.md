@@ -1,4 +1,7 @@
-### Current Status (4/24/2026)
+### Current Status (6/5/2026)
+Program synthesis support added: writeset analysis, updated grammar/listener/type checker, SMT generation wired to a runner. Replaced `start` blocks with `run` blocks and removed the `for N run{}` construction. Language additions include `available` as a temporal clause, `assume` replacing `produce`, extendable stocks, whole number constraints, and unknowns that can now be booleans. Separated variable availability from variable value and finished the `unfunc` implementation including assumption handling. On the SMT side: uncertain values now translate directly to SMT rules (weights removed), added a framework for automatically switching solver logic when all variables are integers, and added pure boolean logic model support. Fixed a long list of bugs including ITE unpacking, type issues with booleans and unknowns, sibling rule pollution, and a tricky call stack issue. Upgraded charm/Bubbletea to v2 and fixed associated TUI bugs. Added unit tests for scenarios, unpacker, and asserts.
+
+### (4/24/2026)
 Added invariant analysis and stricter syntax validation that catches more invalid specs at compile time. Fixed a bug in parallel run execution and improved component order handling. The SMT solver configuration now supports timeouts and memory limits, with warnings when solver output is unexpectedly large. Added a configurable threshold flag and an ASCII logo to the TUI.
 
 ### (3/31/2026)

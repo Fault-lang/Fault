@@ -7,6 +7,6 @@ def f = flow{
     fn: func{},
 };
 
-for 1 init{ f1 = new f; } run {
+run init{ f1 = new f; } {
     f1.fn;
 }

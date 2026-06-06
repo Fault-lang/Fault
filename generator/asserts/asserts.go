@@ -30,13 +30,15 @@ type Constraint struct {
 	Rounds   int
 	Registry map[string][][]string
 	Whens    []map[string]string
+	VarTypes map[string]string // SMT sort for each base variable name
 }
 
-func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) *Constraint {
+func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string, varTypes map[string]string) (*Constraint, error) {
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
 	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
-		panic("cannot mix temporal logic with when/then assertions")
+		pos := a.Position()
+		return nil, fmt.Errorf("cannot mix temporal logic with when/then assertions (line %d col %d)", pos[0], pos[1])
 	}
 
 	operator = smtlibOperators(a.Constraint.Operator)
@@ -69,7 +71,8 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 		Rounds:   rounds,
 		Registry: registry,
 		Whens:    whens[a.String()],
-	}
+		VarTypes: varTypes,
+	}, nil
 }
 
 func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {
@@ -126,7 +129,24 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 	// variable is relevant
 
 	subset := make(map[string]*util.StringSet)
+
+	// First pass: find constant_value across all scopes before populating,
+	// so map iteration order doesn't cause empty strings for earlier keys.
 	constant_value := ""
+	if constant {
+		for _, vars := range c.Registry {
+			for _, var_ssa := range vars {
+				if var_ssa[0] == v {
+					constant_value = strings.Join(var_ssa, "_")
+					break
+				}
+			}
+			if constant_value != "" {
+				break
+			}
+		}
+	}
+
 	for k, vars := range c.Registry {
 		if _, ok := subset[k]; !ok {
 			subset[k] = util.NewStrSet()
@@ -134,10 +154,6 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 
 		for _, var_ssa := range vars {
 			full_ssa := strings.Join(var_ssa, "_")
-
-			if constant && (var_ssa[0] == v) && (constant_value == "") {
-				constant_value = full_ssa
-			}
 
 			if !all && full_ssa == v {
 				//If not all values of variable, return only the round+scope with the exact SSA value
@@ -151,7 +167,7 @@ func (c *Constraint) FilterRegistry(v string, constant bool, all bool) map[strin
 
 		}
 
-		if constant {
+		if constant && constant_value != "" {
 			//If var is constant, populate every round+scope with the correct SSA value
 			subset[k].Add(constant_value)
 		}
@@ -267,11 +283,20 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 }
 
 func (c *Constraint) applyWhen() string {
+	whens := c.Whens
+	if len(whens) == 0 {
+		// No flow steps ran — generate a static round-0 constraint for each real instance.
+		whens = c.buildStaticWhens()
+	}
+
 	var ru []string
 	var op string
-	for _, w := range c.Whens {
+	for _, w := range whens {
 		l := c.parseWhenThen(c.Raw.Left, w)
 		r := c.parseWhenThen(c.Raw.Right, w)
+		if l == "" || r == "" {
+			continue
+		}
 		var rule string
 		if c.Assume {
 			op = "and"
@@ -283,7 +308,74 @@ func (c *Constraint) applyWhen() string {
 
 		ru = append(ru, rule)
 	}
+	if len(ru) == 0 {
+		return ""
+	}
 	return fmt.Sprintf("(%s %s)", op, strings.Join(ru, " "))
+}
+
+// collectAssertVarNodes returns all *ast.AssertVar nodes in an expression tree.
+func collectAssertVarNodes(node ast.Expression) []*ast.AssertVar {
+	switch e := node.(type) {
+	case *ast.AssertVar:
+		return []*ast.AssertVar{e}
+	case *ast.InfixExpression:
+		return append(collectAssertVarNodes(e.Left), collectAssertVarNodes(e.Right)...)
+	case *ast.PrefixExpression:
+		return collectAssertVarNodes(e.Right)
+	default:
+		return nil
+	}
+}
+
+// hasRound0Entry reports whether base appears in the round-0 registry.
+func (c *Constraint) hasRound0Entry(base string) bool {
+	for key, vars := range c.Registry {
+		var round int
+		if _, err := fmt.Sscanf(key, "round-%d_", &round); err != nil || round != 0 {
+			continue
+		}
+		for _, v := range vars {
+			if v[0] == base {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// buildStaticWhens generates synthetic when/then maps for specs with no active rounds
+// (c.Whens is empty because no flow functions ran). All AssertVar nodes in the
+// constraint share the same BFS-expanded Instances slice, so Instances[i] on the
+// left corresponds to Instances[i] on the right. For each positional index where
+// the instance has a round-0 registry entry, one map is produced covering every
+// AssertVar at that index.
+func (c *Constraint) buildStaticWhens() []map[string]string {
+	allNodes := append(collectAssertVarNodes(c.Raw.Left), collectAssertVarNodes(c.Raw.Right)...)
+	if len(allNodes) == 0 {
+		return nil
+	}
+
+	nInstances := len(allNodes[0].Instances)
+	var result []map[string]string
+	for i := 0; i < nInstances; i++ {
+		w := make(map[string]string)
+		hasReal := false
+		for _, av := range allNodes {
+			if i >= len(av.Instances) {
+				continue
+			}
+			base := av.Instances[i]
+			if c.hasRound0Entry(base) {
+				w[base] = fmt.Sprintf("%s_0", base)
+				hasReal = true
+			}
+		}
+		if hasReal {
+			result = append(result, w)
+		}
+	}
+	return result
 }
 
 func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) string {
@@ -318,7 +410,22 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 	case *ast.StringLiteral:
 		return e.Value
 	case *ast.AssertVar:
-		return w[e.Instances[0]]
+		// Prefer instances that have a real declaration in the registry (concrete
+		// instantiations) over template-level names that appear first in the BFS
+		// but have no corresponding LLVM variable.
+		for _, inst := range e.Instances {
+			if v, ok := w[inst]; ok && v != "" && c.hasRound0Entry(inst) {
+				return v
+			}
+		}
+		// Fallback: return the first match without registry check (covers constants
+		// and other cases not tracked in the round-0 registry).
+		for _, inst := range e.Instances {
+			if v, ok := w[inst]; ok && v != "" {
+				return v
+			}
+		}
+		return ""
 	default:
 		pos := e.Position()
 		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
@@ -373,6 +480,26 @@ func (c *Constraint) merge(left *rules.VarSets, right *rules.VarSets, operator s
 	return merged
 }
 
+// varSMTType returns the SMT sort for an SSA-versioned variable name,
+// stripping the trailing numeric suffix to look up the base name in VarTypes.
+func (c *Constraint) varSMTType(ssaName string) string {
+	if c.VarTypes == nil {
+		return ""
+	}
+	if ty, ok := c.VarTypes[ssaName]; ok {
+		return ty
+	}
+	// Strip trailing _N SSA suffix
+	parts := strings.Split(ssaName, "_")
+	if len(parts) > 1 {
+		if _, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+			base := strings.Join(parts[:len(parts)-1], "_")
+			return c.VarTypes[base]
+		}
+	}
+	return ""
+}
+
 func (c *Constraint) Package(x [][]string, op string) *util.StringSet {
 	product := util.NewStrSet()
 	for _, a := range x {
@@ -381,18 +508,53 @@ func (c *Constraint) Package(x [][]string, op string) *util.StringSet {
 		} else {
 			var s string
 			if op == "not" && a[0] == "false" {
-
-				s = fmt.Sprintf("(%s %s)", op, a[1])
-
+				// pair is [false, varName]: negation of (var == false) → var is not false
+				if c.varSMTType(a[1]) == "Real" {
+					s = fmt.Sprintf("(not (= %s 0.0))", a[1])
+				} else {
+					s = fmt.Sprintf("(%s %s)", op, a[1])
+				}
 			} else if op == "not" && a[1] == "false" {
-				s = fmt.Sprintf("(%s %s)", op, a[0])
-
+				// pair is [varName, false]: negation of (var == false) → var is not false
+				if c.varSMTType(a[0]) == "Real" {
+					s = fmt.Sprintf("(not (= %s 0.0))", a[0])
+				} else {
+					s = fmt.Sprintf("(%s %s)", op, a[0])
+				}
 			} else if op == "not" {
-				s = fmt.Sprintf("(%s (= %s %s))", op, a[0], a[1])
-
+				// negation of (var == something): replace bool literals with numerics for Real vars
+				lhs, rhs := a[0], a[1]
+				if c.varSMTType(lhs) == "Real" {
+					if rhs == "true" {
+						rhs = "1.0"
+					} else if rhs == "false" {
+						rhs = "0.0"
+					}
+				} else if c.varSMTType(rhs) == "Real" {
+					if lhs == "true" {
+						lhs = "1.0"
+					} else if lhs == "false" {
+						lhs = "0.0"
+					}
+				}
+				s = fmt.Sprintf("(%s (= %s %s))", op, lhs, rhs)
 			} else {
-
-				s = fmt.Sprintf("(%s %s %s)", op, a[0], a[1])
+				// plain comparison: replace bool literals with numerics for Real vars
+				lhs, rhs := a[0], a[1]
+				if c.varSMTType(lhs) == "Real" {
+					if rhs == "true" {
+						rhs = "1.0"
+					} else if rhs == "false" {
+						rhs = "0.0"
+					}
+				} else if c.varSMTType(rhs) == "Real" {
+					if lhs == "true" {
+						lhs = "1.0"
+					} else if lhs == "false" {
+						lhs = "0.0"
+					}
+				}
+				s = fmt.Sprintf("(%s %s %s)", op, lhs, rhs)
 			}
 			product.Add(s)
 		}
@@ -405,6 +567,9 @@ func (c *Constraint) applyTemporal() string {
 	switch c.Temporal.Type {
 	case "eventually": // At least one state is true
 		m := c.merge(c.Left, c.Right, c.Op)
+		if len(m.List()) == 0 {
+			return ""
+		}
 		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
 	case "always": // Every state is true
 		m := c.merge(c.Left, c.Right, c.Op)

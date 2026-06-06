@@ -149,3 +149,105 @@ func TestViolationMultipleAssertions(t *testing.T) {
 		t.Fatal("expected a2.Violated=false")
 	}
 }
+
+// TestViolationTemporalFilterSkipped: assertions with a TemporalFilter (nft/nmt)
+// are not yet supported and must return false without panicking.
+func TestViolationTemporalFilterSkipped(t *testing.T) {
+	for _, filter := range []string{"nft", "nmt"} {
+		a := &ast.AssertionStatement{
+			Constraint: &ast.InvariantClause{
+				Left:     makeAssertVar("spec1_x"),
+				Operator: "<=",
+				Right:    makeFloat(0),
+			},
+			TemporalFilter: filter,
+		}
+		values := map[string]string{
+			"spec1_x_0": "-1.0", // would violate if evaluated
+		}
+		mc := &ModelChecker{ResultValues: values}
+		mc.EvaluateViolations([]*ast.AssertionStatement{a})
+		if a.Violated {
+			t.Errorf("TemporalFilter=%q: expected Violated=false (unsupported filter), got true", filter)
+		}
+	}
+}
+
+// TestViolationZeroValueNotMissing: a variable that is zero (or false) is present
+// in the model and should be evaluated, not treated as missing.
+func TestViolationZeroValueNotMissing(t *testing.T) {
+	// Stored condition: X <= 0. X=0 satisfies it → violated.
+	a := makeAssertion(makeAssertVar("spec1_x"), "<=", makeFloat(0), "")
+	values := map[string]string{
+		"spec1_x_0": "0.0",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true for zero-value variable satisfying stored condition")
+	}
+}
+
+// TestViolationArithmetic: stored condition X + Y <= 0 with X=1, Y=-2 → holds → violated.
+func TestViolationArithmetic(t *testing.T) {
+	a := &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left: &ast.InfixExpression{
+				Left:     makeAssertVar("spec1_x"),
+				Operator: "+",
+				Right:    makeAssertVar("spec1_y"),
+			},
+			Operator: "<=",
+			Right:    makeFloat(0),
+		},
+	}
+	values := map[string]string{
+		"spec1_x_0": "1.0",
+		"spec1_y_0": "-2.0",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when X+Y=-1 satisfies stored condition <=0")
+	}
+}
+
+// TestViolationPartialRoundsAlways: "always" with a variable present in only some
+// rounds — held only in the round where it exists → violated.
+func TestViolationPartialRoundsAlways(t *testing.T) {
+	a := makeAssertion(makeAssertVar("spec1_x"), "<=", makeFloat(0), "always")
+	// Only round 0 exists for x; condition holds.
+	values := map[string]string{
+		"spec1_x_0": "-1.0",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when condition holds in the only round present")
+	}
+}
+
+// TestViolationDivisionByZeroSafe: stored condition X / Y <= 0 with Y=0 must not panic.
+func TestViolationDivisionByZeroSafe(t *testing.T) {
+	a := &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left: &ast.InfixExpression{
+				Left:     makeAssertVar("spec1_x"),
+				Operator: "/",
+				Right:    makeAssertVar("spec1_y"),
+			},
+			Operator: "<=",
+			Right:    makeFloat(0),
+		},
+	}
+	values := map[string]string{
+		"spec1_x_0": "5.0",
+		"spec1_y_0": "0.0",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	// Must not panic; result is indeterminate (ok=false) so not violated.
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when division by zero yields indeterminate result")
+	}
+}

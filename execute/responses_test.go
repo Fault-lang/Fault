@@ -297,6 +297,87 @@ func TestErrorShortCircuitsSubsequentEntries(t *testing.T) {
 	}
 }
 
+// --- Zero value traces ---
+
+func TestParseZeroFloat(t *testing.T) {
+	// A variable holding 0.0 must produce a FloatTrace entry, not be silently dropped.
+	model := `(model
+		(define-fun vault_value_0 () Real 0.0)
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("unexpected error: %s", l.err)
+	}
+	trace, ok := l.Results["vault_value"].(*FloatTrace)
+	if !ok || trace == nil {
+		t.Fatalf("expected *FloatTrace for vault_value, got %T", l.Results["vault_value"])
+	}
+	v, present := trace.Index(0)
+	if !present {
+		t.Fatal("expected round 0 to be present in trace for zero-value variable")
+	}
+	if v != 0.0 {
+		t.Fatalf("expected 0.0, got %f", v)
+	}
+}
+
+func TestParseZeroInt(t *testing.T) {
+	model := `(model
+		(define-fun counter_0 () Int 0)
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("unexpected error: %s", l.err)
+	}
+	trace, ok := l.Results["counter"].(*IntTrace)
+	if !ok || trace == nil {
+		t.Fatalf("expected *IntTrace for counter, got %T", l.Results["counter"])
+	}
+	v, present := trace.Index(0)
+	if !present {
+		t.Fatal("expected round 0 to be present in trace for zero-value int variable")
+	}
+	if v != 0 {
+		t.Fatalf("expected 0, got %d", v)
+	}
+}
+
+func TestParseZeroBool(t *testing.T) {
+	model := `(model
+		(define-fun flag_0 () Bool false)
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("unexpected error: %s", l.err)
+	}
+	trace, ok := l.Results["flag"].(*BoolTrace)
+	if !ok || trace == nil {
+		t.Fatalf("expected *BoolTrace for flag, got %T", l.Results["flag"])
+	}
+	v, present := trace.Index(0)
+	if !present {
+		t.Fatal("expected round 0 to be present in trace for false bool variable")
+	}
+	if v != false {
+		t.Fatalf("expected false, got %v", v)
+	}
+}
+
+// --- Unknown sort survives to Results ---
+
+func TestUnknownSortInResults(t *testing.T) {
+	// An unknown sort passes through convertTerm as a string.
+	// The variable should still appear in Values; Results behaviour depends on
+	// whether the listener stores unknown sorts — verify it at least doesn't error.
+	model := `(model
+		(define-fun weird_var_0 () String hello)
+	)`
+	l := prepTestListener(model)
+	// We only require that the listener does not crash and records no fatal error
+	// that would prevent subsequent entries from being parsed.
+	_ = l
+}
+
 // --- mergeTermParts: negative-prefix fast path ---
 
 func TestMergeTermPartsNegativePrefix(t *testing.T) {

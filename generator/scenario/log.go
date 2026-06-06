@@ -336,6 +336,14 @@ func (l *Logger) Kill() {
 			continue
 		}
 
+		// Synthesis slot functions (synth_N) are always kept alive — Print() handles
+		// their display via synthChoice, regardless of what their nested candidates do.
+		funcBaseName := strings.TrimRight(fname, "0123456789")
+		funcBaseName = strings.TrimSuffix(funcBaseName, "-")
+		if isSynthSlotName(funcBaseName) {
+			continue
+		}
+
 		entryIdx := indices[0]
 		var exitIdx int
 		if len(indices) >= 2 {
@@ -435,6 +443,20 @@ func (l *Logger) AddBranchSelector(s *BranchSelector) {
 	l.BranchSelectors = append(l.BranchSelectors, s)
 }
 
+// isSynthSlotName returns true if name is a synthesis slot identifier like "synth_1".
+func isSynthSlotName(name string) bool {
+	if !strings.HasPrefix(name, "synth_") {
+		return false
+	}
+	suffix := name[len("synth_"):]
+	for _, c := range suffix {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(suffix) > 0
+}
+
 func getBase(s string) string {
 	// Remove the SSA number from the variable name
 	parts := strings.Split(s, "_")
@@ -457,6 +479,7 @@ func (l *Logger) IsInternalVariable(varName string) bool {
 	// Filter out internal solver variables:
 	// - block selectors: block*true_*, block*false_*
 	// - state selectors: *__state-%*
+	// - synthesis selectors: synth_N_*
 	base := getBase(varName)
 
 	if strings.HasPrefix(base, "block") && (strings.HasSuffix(base, "true") || strings.HasSuffix(base, "false")) {
@@ -467,7 +490,27 @@ func (l *Logger) IsInternalVariable(varName string) bool {
 		return true
 	}
 
+	if strings.HasPrefix(base, "synth_") {
+		return true
+	}
+
 	return false
+}
+
+// synthChoice finds which candidate function was chosen for a synthesis slot.
+// slotName is "synth_N"; returns the function name if a true selector is found.
+func (l *Logger) synthChoice(slotName string) string {
+	prefix := slotName + "_"
+	for varWithSSA, val := range l.Results {
+		if val != "true" {
+			continue
+		}
+		base := getBase(varWithSSA)
+		if strings.HasPrefix(base, prefix) {
+			return strings.TrimPrefix(base, prefix)
+		}
+	}
+	return ""
 }
 
 func (l *Logger) Print() {
@@ -567,6 +610,22 @@ func (l *Logger) Print() {
 				fmt.Printf("%sStart model, run for %s rounds\n", identLevel, event.Round)
 				fmt.Printf("-----------------------------------\n")
 				identLevel += "   "
+				continue
+			}
+
+			if strings.HasPrefix(event.FunctionName, "synth_") {
+				if event.Type == "Entry" {
+					chosen := l.synthChoice(event.FunctionName)
+					if chosen != "" {
+						fmt.Printf("%sFault chose %s (step %s)\n", identLevel, chosen, event.Round)
+					} else {
+						fmt.Printf("%sSynthesis step %s (unsatisfiable)\n", identLevel, event.Round)
+					}
+					identLevel += "   "
+				}
+				if event.Type == "Exit" {
+					identLevel = identLevel[:len(identLevel)-3]
+				}
 				continue
 			}
 
@@ -782,6 +841,22 @@ func (l *Logger) String() string {
 				sb.WriteString(fmt.Sprintf("%sStart model, run for %s rounds\n", identLevel, event.Round))
 				sb.WriteString("-----------------------------------\n")
 				identLevel += "   "
+				continue
+			}
+
+			if strings.HasPrefix(event.FunctionName, "synth_") {
+				if event.Type == "Entry" {
+					chosen := l.synthChoice(event.FunctionName)
+					if chosen != "" {
+						sb.WriteString(fmt.Sprintf("%sFault chose %s (step %s)\n", identLevel, chosen, event.Round))
+					} else {
+						sb.WriteString(fmt.Sprintf("%sSynthesis step %s (unsatisfiable)\n", identLevel, event.Round))
+					}
+					identLevel += "   "
+				}
+				if event.Type == "Exit" {
+					identLevel = identLevel[:len(identLevel)-3]
+				}
 				continue
 			}
 

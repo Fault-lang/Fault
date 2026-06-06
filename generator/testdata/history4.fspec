@@ -9,14 +9,18 @@ def v = stock{
 def seq = flow{
     place: new v,
     step: func{
-        if place.A { 
-            if place.B { 
+        if place.A {
+            if place.B {
                 place.value <- place.value[now-1];
             }
         }
     }
 };
 
-for 5 init{s = new seq;} run{
+run init{s = new seq;} {
+    s.step;
+    s.step;
+    s.step;
+    s.step;
     s.step;
 }

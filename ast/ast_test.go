@@ -41,7 +41,6 @@ func InitNodes() []Node {
 		//&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Comparison: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		//&Invariant{Token: token, Variable: &IntegerLiteral{Token: token, Value: 3}, Conjuction: "==", Expression: &IntegerLiteral{Token: token, Value: 3}},
 		&InvariantClause{Token: token, Operator: "==", Left: &IntegerLiteral{Token: token, Value: 3}, Right: &IntegerLiteral{Token: token, Value: 3}},
-		&ForStatement{Token: token, Rounds: &IntegerLiteral{Token: token, Value: 5}, Body: &BlockStatement{Statements: []Statement{&ConstantStatement{Token: token, Name: &Identifier{InferredType: intType, Token: token, Value: "fuzz"}, Value: &IntegerLiteral{InferredType: intType, Token: token, Value: 24}}}}},
 		&ExpressionStatement{Token: token, Expression: &PrefixExpression{Token: token, Operator: "!", Right: &IntegerLiteral{Token: token, Value: 3}}},
 		&Identifier{InferredType: baseType, Token: token, Value: "foo"},
 		&ParameterCall{Token: token, Value: []string{"foo", "bar"}},
@@ -84,10 +83,10 @@ func InitNodes() []Node {
 		&StockLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&FlowLiteral{Token: token, Pairs: pairs, Order: pairOrder},
 		&ComponentLiteral{Token: token, Pairs: pairs, Order: pairOrder},
-		&Unknown{Token: token, Name: &Identifier{Token: token, Value: "foo"}},
+		&Unknown{Token: token, TypeHint: "INT"},
 		&StructInstance{Token: token, Properties: properties},
 		&BuiltIn{Token: token, Parameters: params, Function: "advance"},
-		&StartStatement{Token: token, Pairs: [][]string{{"foo", "bar"}, {"hello", "world"}}},
+		&StateActivation{Token: token, Calls: []*ParameterCall{{Token: token, Value: []string{"foo", "bar"}}}, Operator: ""},
 	}
 }
 
@@ -136,9 +135,6 @@ func TestString(t *testing.T) {
 		case *InvariantClause:
 			got = t.String()
 			want = "testassert 3==3;"
-		case *ForStatement:
-			got = t.String()
-			want = "test 5test fuzz = 24;;"
 		case *Identifier:
 			got = t.String()
 			want = "foo"
@@ -222,16 +218,16 @@ func TestString(t *testing.T) {
 			want = "{foo:3, bar:5, bash:-4}"
 		case *Unknown:
 			got = t.String()
-			want = "unknown(foo)"
+			want = "unknown(INT)"
 		case *StructInstance:
 			got = t.String()
 			want = "__foo:3"
 		case *BuiltIn:
 			got = t.String()
 			want = "advance(foo.bar)"
-		case *StartStatement:
+		case *StateActivation:
 			got = t.String()
-			want = "test {foo : bar, hello : world};"
+			want = "foo.bar;"
 		}
 		if got != want {
 			t.Fatalf("String failed for node type %T. got=%s", n, got)
@@ -271,9 +267,6 @@ func TestTypes(t *testing.T) {
 		case *InvariantClause:
 			got = t.Type()
 			want = "INT"
-		case *ForStatement:
-			got = t.Type()
-			want = ""
 		case *Identifier:
 			got = t.Type()
 			want = "test"
@@ -355,9 +348,9 @@ func TestTypes(t *testing.T) {
 		case *BuiltIn:
 			got = t.Type()
 			want = "BUILTIN"
-		case *StartStatement:
+		case *StateActivation:
 			got = t.Type()
-			want = "START"
+			want = ""
 		}
 		if got != want {
 			t.Fatalf("Type failed for node type %T. got=%s", n, got)

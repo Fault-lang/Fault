@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* startBlock? (forStmt | sysForStmt)?
+    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* runStmt?
     ;
 
 sysClause
@@ -27,20 +27,12 @@ swap
 componentDecl
     : 'component' IDENT '=' 'states' '{' ( comProperties (',' comProperties)* ','? )? '}' eos
     ;
-
-startBlock
-    : 'start' '{' ( startPair (',' startPair)* ','? )? '}' eos
-    ;
-
-startPair
-    : IDENT ':' IDENT
-    ;
 /*
     Individual specs of state changes
 */
 
 spec
-    : specClause declaration* forStmt?
+    : specClause declaration* runStmt?
     ;
 
 specClause
@@ -122,11 +114,14 @@ structType
 sfProperties
     : IDENT ':' functionLit #PropFunc
     | structProperties      #sfMisc
+    | EXTENDS IDENT         #PropExtends
+    | EXCLUDE IDENT         #PropExclude
     ;
 
 comProperties
-    : IDENT ':' stateLit #StateFunc
-    | structProperties   #compMisc
+    : IDENT ':' stateLit   #StateFunc
+    | IDENT ':' unfuncLit  #UnfuncState
+    | structProperties     #compMisc
     ;
 
 structProperties
@@ -209,6 +204,7 @@ assumption
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
     | ('nmt' | 'nft') integer
+    | 'available'
     ;
 
 invariant
@@ -238,24 +234,8 @@ ifStmtState
     : 'if' (simpleStmt ';')? expression stateBlock ('else' (ifStmtState | stateBlock))?
     ;
 
-forStmt
-    : 'for' rounds ('init' initBlock)? 'run' runBlock eos?
-    ;
-
-sysForStmt
-    : 'for' rounds 'run' sysRunBlock eos?
-    ;
-
-sysRunBlock
-    : '{' sysRunStep* '}'
-    ;
-
-sysRunStep
-    : IDENT ('|' IDENT)* eos    #sysRunStepExpr
-    ;
-
-rounds
-    : integer
+runStmt
+    : 'run' ('init' initBlock)? runBlock eos?
     ;
 
 paramCall
@@ -287,8 +267,10 @@ initStep
 
 runStep
     : paramCall ('|' paramCall)* eos              #runStepExpr
+    | IDENT ('|' IDENT)* eos                      #runStepIdentExpr
     | simpleStmt eos                              #runExpr
-    | ifStmtRun                                     #runIfExpr
+    | ifStmtRun                                   #runIfExpr
+    | SYNTH eos                                   #runSolvableExpr
     ;
 
 faultType
@@ -299,6 +281,7 @@ faultType
     | TY_NATURAL
     | TY_UNCERTAIN
     | TY_UNKNOWN
+    | TY_WHOLE
     ;
 
 solvable
@@ -382,6 +365,40 @@ functionLit
 
 stateLit
     : 'func' stateBlock
+    ;
+
+unfuncLit
+    : UNFUNC unfuncBlock
+    ;
+
+unfuncBlock
+    : '{' (unfuncClause (',' unfuncClause)* ','?)? '}'
+    ;
+
+unfuncClause
+    : REQUIRES unfuncExpr      #requiresClause
+    | EMITS unfuncExpr         #emitsClause
+    | ASSUME unfuncAssumeExpr  #assumeClause
+    ;
+
+unfuncExpr
+    : unfuncExpr '&&' unfuncExpr
+    | unfuncExpr '||' unfuncExpr
+    | '!' unfuncExpr
+    | '(' unfuncExpr ')'
+    | paramCall
+    ;
+
+unfuncAssumeExpr
+    : paramCall '=' unfuncArithExpr
+    ;
+
+unfuncArithExpr
+    : unfuncArithExpr ('*' | '/') unfuncArithExpr
+    | unfuncArithExpr ('+' | '-') unfuncArithExpr
+    | '(' unfuncArithExpr ')'
+    | paramCall
+    | numeric
     ;
 
 eos

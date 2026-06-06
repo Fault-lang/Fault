@@ -15,6 +15,6 @@ def fl = flow{
     },
 };
 
-for 1 init{l = new fl;} run {
+run init{l = new fl;} {
     l.fn;
 }

@@ -40,14 +40,14 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	}
 }
 
-func Execute(tree *ast.Spec, processor *preprocess.Processor) *Checker {
+func Execute(tree *ast.Spec, processor *preprocess.Processor) (*Checker, error) {
 	ty := NewTypeChecker(processor)
 	tree, err := ty.Check(tree)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	ty.Checked = tree
-	return ty
+	return ty, nil
 }
 
 func (c *Checker) Check(a *ast.Spec) (*ast.Spec, error) {
@@ -132,6 +132,54 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		rawid := node.RawId()
 		spec := c.SpecStructs[rawid[0]]
 		node.InferredType = &ast.Type{Type: "STOCK", Scope: 0, Parameters: nil}
+
+		if node.Extends != nil {
+			parentName := node.Extends.Value
+			parentFields, ferr := spec.FetchStock(parentName)
+			if ferr != nil {
+				return nil, fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())
+			}
+
+			for _, excluded := range node.Excludes {
+				if _, ok := parentFields[excluded]; !ok {
+					return nil, fmt.Errorf("stock %s: cannot exclude field %q - not found in parent stock %q", node.IdString(), excluded, parentName)
+				}
+			}
+
+			parentKey := strings.Join([]string{rawid[0], parentName}, "_")
+			parentOrder := c.Preprocesser.StructsPropertyOrder[parentKey]
+
+			var inheritedOrder []string
+			for _, fieldName := range parentOrder {
+				excluded := false
+				for _, ex := range node.Excludes {
+					if ex == fieldName {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+				if node.GetPropertyIdent(fieldName) != nil {
+					continue
+				}
+				inheritedVal := parentFields[fieldName].(ast.Expression)
+				ident := &ast.Identifier{
+					Token: node.Extends.Token,
+					Value: fieldName,
+					Spec:  rawid[0],
+				}
+				node.Pairs[ident] = inheritedVal
+				inheritedOrder = append(inheritedOrder, fieldName)
+				spec.UpdateVar(append(rawid, fieldName), "STOCK", inheritedVal)
+			}
+			node.Order = append(inheritedOrder, node.Order...)
+
+			childKey := strings.Join(rawid, "_")
+			c.Preprocesser.StructsPropertyOrder[childKey] = node.Order
+		}
+
 		for _, key := range node.Order {
 			propid := node.GetPropertyIdent(key)
 			v := node.Pairs[propid]
@@ -192,6 +240,19 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 
 		return node, err
+	case *ast.UnfuncLiteral:
+		if err = c.checkUnfuncExpr(node.Requires, "requires"); err != nil {
+			return node, err
+		}
+		if err = c.checkUnfuncExpr(node.Emits, "emits"); err != nil {
+			return node, err
+		}
+		for _, assume := range node.Assumes {
+			if err = c.checkUnfuncArithExpr(assume, "assume"); err != nil {
+				return node, err
+			}
+		}
+		return node, nil
 	case *ast.AssertionStatement:
 		n, err := c.inferFunction(node.Constraint)
 		valtype := typeable(n)
@@ -203,28 +264,19 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		return node, err
 
-	case *ast.ForStatement:
-		var st1 []ast.Statement
-		var st2 []ast.Statement
-		for _, v := range node.Inits.Statements {
-			tnode, err = c.typecheck(v)
-			if err != nil {
-				return node, err
+	case *ast.RunStatement:
+		if node.Inits != nil {
+			var st1 []ast.Statement
+			for _, v := range node.Inits.Statements {
+				tnode, err = c.typecheck(v)
+				if err != nil {
+					return node, err
+				}
+				st1 = append(st1, tnode.(ast.Statement))
 			}
-			st1 = append(st1, tnode.(ast.Statement))
+			node.Inits.Statements = st1
 		}
-		node.Inits.Statements = st1
-
-		for _, v := range node.Body.Statements {
-			tnode, err = c.typecheck(v)
-			if err != nil {
-				return node, err
-			}
-			st2 = append(st2, tnode.(ast.Statement))
-		}
-		node.Body.Statements = st2
-		return node, err
-	case *ast.StartStatement:
+		// Run steps (CallStep, SolvableStep, ParallelFunctions, IfStep) are not typechecked here.
 		return node, err
 	case *ast.Instance:
 		return node, err
@@ -298,6 +350,8 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return c.infer(node)
 	case *ast.Unknown:
 		return c.infer(node)
+	case *ast.Whole:
+		return c.infer(node)
 	case *ast.PrefixExpression:
 		return c.inferFunction(node)
 	case *ast.InfixExpression:
@@ -358,6 +412,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.Unknown:
 		return true
+	case *ast.Whole:
+		return true
 	case *ast.Nil:
 		return true
 	case *ast.StockLiteral:
@@ -365,6 +421,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 	case *ast.FlowLiteral:
 		return true
 	case *ast.ComponentLiteral:
+		return true
+	case *ast.UnfuncLiteral:
 		return true
 	case *ast.IndexExpression:
 		return true
@@ -416,7 +474,21 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 
 	case *ast.Unknown:
 		if node.InferredType == nil {
-			node.InferredType = &ast.Type{Type: "UNKNOWN", Scope: 0, Parameters: nil}
+			ty := "UNKNOWN"
+			switch node.TypeHint {
+			case "INT":
+				ty = "INT"
+			case "REAL":
+				ty = "FLOAT"
+			case "BOOL":
+				ty = "BOOL"
+			}
+			node.InferredType = &ast.Type{Type: ty, Scope: 0, Parameters: nil}
+		}
+		return node, nil
+	case *ast.Whole:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "WHOLE", Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	case *ast.Identifier:
@@ -538,6 +610,16 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 
 	spec := c.SpecStructs[rawid[0]]
 	ty, _ := spec.GetStructType(rawid)
+	// [spec, field] with ty==NIL: try expanding to [spec, spec, field] for cases
+	// where the spec name matches the struct definition name (e.g. "mySpec.myField"
+	// where mySpec is both the spec and a top-level stock/flow name).
+	if ty == "NIL" && len(rawid) == 2 {
+		expanded := []string{rawid[0], rawid[0], rawid[1]}
+		if ety, _ := spec.GetStructType(expanded); ety != "NIL" {
+			rawid = expanded
+			ty = ety
+		}
+	}
 	v, err := spec.FetchVar(rawid, ty)
 	if err != nil {
 		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
@@ -709,6 +791,13 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		node.Right = nr.(ast.Expression)
 
 		if COMPARE[node.Operator] {
+			if left != nil && right != nil {
+				if (left.Type == "BOOL" || right.Type == "BOOL") && left.Type != right.Type {
+					if left.Type != "STRING" && right.Type != "STRING" {
+						return nil, fmt.Errorf("invalid expression: got=%s %s %s", left.Type, node.Operator, right.Type)
+					}
+				}
+			}
 			node.InferredType = &ast.Type{Type: "BOOL",
 				Scope:      0,
 				Parameters: nil}
@@ -1030,6 +1119,16 @@ func (c *Checker) lookupReference(base ast.Node) (ast.Node, error) {
 		rawid := b.RawId()
 		spec := c.SpecStructs[rawid[0]]
 		ty, _ := spec.GetStructType(rawid)
+		// When rawid is [spec, field] and resolves to NIL, the identifier was
+		// created from a dotted path like "specName.field" where specName is both
+		// the spec and a struct definition. Expand to [spec, spec, field].
+		if ty == "NIL" && len(rawid) == 2 {
+			expanded := []string{rawid[0], rawid[0], rawid[1]}
+			if ety, _ := spec.GetStructType(expanded); ety != "NIL" {
+				rawid = expanded
+				ty = ety
+			}
+		}
 		p, err := spec.FetchVar(rawid, ty)
 
 		if p == nil {
@@ -1229,6 +1328,11 @@ func isConvertible(t1 *ast.Type, t2 *ast.Type) bool {
 	if IsNumeric(t1) && IsNumeric(t2) {
 		return true
 	}
+	// unknown() is a free-variable placeholder compatible with any type —
+	// flow functions may assign booleans or numerics to unknown() fields.
+	if t1.Type == "UNKNOWN" || t2.Type == "UNKNOWN" {
+		return true
+	}
 	return false
 }
 
@@ -1238,12 +1342,83 @@ func IsNumeric(t *ast.Type) bool {
 		return true
 	case "FLOAT":
 		return true
+	case "WHOLE":
+		return true
 	case "UNKNOWN":
 		return true
 	case "UNCERTAIN":
 		return true
 	}
 	return false
+}
+
+// checkUnfuncExpr walks an unfunc requires/emits expression tree and validates
+// every ParameterCall leaf against SpecStructs.
+func (c *Checker) checkUnfuncExpr(expr ast.Expression, clause string) error {
+	if expr == nil {
+		return nil
+	}
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return c.checkUnfuncFieldRef(e, clause)
+	case *ast.InfixExpression:
+		if err := c.checkUnfuncExpr(e.Left, clause); err != nil {
+			return err
+		}
+		return c.checkUnfuncExpr(e.Right, clause)
+	case *ast.PrefixExpression:
+		return c.checkUnfuncExpr(e.Right, clause)
+	}
+	return nil
+}
+
+func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) error {
+	if len(pc.Value) != 2 {
+		return fmt.Errorf("unfunc %s: expected stock.field reference, got %q", clause, pc.String())
+	}
+	typeName := pc.Value[0]
+	fieldName := pc.Value[1]
+
+	spec, ok := c.SpecStructs[pc.Spec]
+	if !ok {
+		return fmt.Errorf("unfunc %s: spec %q not found", clause, pc.Spec)
+	}
+
+	// Try stock first, then component (for system specs where component
+	// properties are referenced in requires/emits).
+	fields, err := spec.FetchStock(typeName)
+	if err != nil {
+		fields, err = spec.FetchComponent(typeName)
+		if err != nil {
+			return fmt.Errorf("unfunc %s: stock or component %q not found", clause, typeName)
+		}
+	}
+
+	if fields[fieldName] == nil {
+		return fmt.Errorf("unfunc %s: %q has no field %q", clause, typeName, fieldName)
+	}
+
+	return nil
+}
+
+// checkUnfuncArithExpr validates an assume clause expression tree.
+// The top-level must be an InfixExpression with operator "=" whose LHS is a
+// ParameterCall (the produced field). RHS may contain ParameterCalls and
+// numeric literals connected by arithmetic operators.
+func (c *Checker) checkUnfuncArithExpr(expr ast.Expression, clause string) error {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return c.checkUnfuncFieldRef(e, clause)
+	case *ast.IntegerLiteral, *ast.FloatLiteral:
+		return nil
+	case *ast.InfixExpression:
+		if err := c.checkUnfuncArithExpr(e.Left, clause); err != nil {
+			return err
+		}
+		return c.checkUnfuncArithExpr(e.Right, clause)
+	default:
+		return fmt.Errorf("unfunc %s: unsupported expression type %T", clause, expr)
+	}
 }
 
 func typeable(node ast.Node) *ast.Type {
@@ -1269,6 +1444,8 @@ func typeable(node ast.Node) *ast.Type {
 	case *ast.Uncertain:
 		return n.InferredType
 	case *ast.Unknown:
+		return n.InferredType
+	case *ast.Whole:
 		return n.InferredType
 	case *ast.PrefixExpression:
 		return n.InferredType

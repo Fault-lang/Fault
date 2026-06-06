@@ -137,8 +137,13 @@ type Init struct {
 	Type           string
 	Value          Rule
 	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
+	Whole          bool //If true, whole-number variable (affects sort and is_int behaviour)
+	IntegerMode    bool //If true, declare whole vars as Int sort and suppress is_int assertions
 	Indexed        bool
 	OmitFromOutput bool
+	Mean           float64 // uncertain() mean — used to generate SMT bounds
+	Sigma          float64 // uncertain() sigma — used to generate SMT bounds
+	K              float64 // sigma multiplier for SMT bounds (default 3.0)
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -172,12 +177,26 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		i.Log.UpdateVariable(id, i.OmitFromOutput)
 	}
 
-	d = fmt.Sprintf("(declare-fun %s () %s)", id, i.Type)
+	sort := i.Type
+	if i.Whole && i.IntegerMode {
+		sort = "Int"
+	}
+	d = fmt.Sprintf("(declare-fun %s () %s)", id, sort)
 
 	if i.Value != nil && i.Global && !i.Solvable {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else if i.Whole && !i.IntegerMode {
+		rule = fmt.Sprintf("%s\n(assert (is_int %s))\n", d, id)
+	} else if i.Sigma != 0 {
+		k := i.K
+		if k == 0 {
+			k = 3.0
+		}
+		lower := i.Mean - k*i.Sigma
+		upper := i.Mean + k*i.Sigma
+		rule = fmt.Sprintf("%s\n(assert (>= %s %.6f))\n(assert (<= %s %.6f))\n", d, id, lower, id, upper)
 	} else {
 		rule = d
 	}
@@ -231,6 +250,29 @@ func NewInit(name string, t string, ssa int, val Rule, solvable bool, indexed bo
 		Value:    val,
 		Solvable: solvable,
 		Indexed:  indexed,
+	}
+}
+
+func NewUncertainInit(name string, t string, ssa int, mean float64, sigma float64, k float64) *Init {
+	return &Init{
+		Ident:    name,
+		SSA:      fmt.Sprintf("%d", ssa),
+		Type:     t,
+		Solvable: true,
+		Mean:     mean,
+		Sigma:    sigma,
+		K:        k,
+	}
+}
+
+func NewWholeInit(name string, t string, ssa int, integerMode bool) *Init {
+	return &Init{
+		Ident:       name,
+		SSA:         fmt.Sprintf("%d", ssa),
+		Type:        t,
+		Solvable:    true,
+		Whole:       true,
+		IntegerMode: integerMode,
 	}
 }
 
@@ -690,7 +732,11 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		return init, "", ssa
 	}
 
-	return init, fmt.Sprintf("(%s %s %s)", i.Op, x, y), ssa
+	result := fmt.Sprintf("(%s %s %s)", i.Op, x, y)
+	if strings.Contains(x, "divertedCurrent") && strings.Contains(y, "isStopped") {
+		fmt.Printf("DEBUG BAD INFIX: %s\nX-rule=%T(%s) Y-rule=%T(%s)\n", result, i.X, i.X.String(), i.Y, i.Y.String())
+	}
+	return init, result, ssa
 }
 
 func (i *Infix) Assertless() string {
@@ -909,6 +955,11 @@ type Wrap struct { //wrapper for constant values to be used in infix as rules
 	HaveSeen       map[string]bool
 	OnEntry        map[string][]int16
 	Whens          map[string][]string //map of when asserts this variable is involved in
+	Whole          bool                //If true, whole-number variable
+	IntegerMode    bool                //If true, declare as Int sort and suppress is_int
+	Mean           float64             // uncertain() mean for SMT bounds
+	Sigma          float64             // uncertain() sigma for SMT bounds
+	K              float64             // uncertain() k multiplier (0 = use default 3.0)
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -945,6 +996,29 @@ func (w *Wrap) SetWhensThens(whens map[string]map[string][]string) {
 
 func (w *Wrap) SetOmit(current_function string) {
 	w.OmitFromOutput = current_function == "__run"
+}
+
+func (w *Wrap) SetWhole(wholes []string) {
+	for _, v := range wholes {
+		if v == w.Value {
+			w.Whole = true
+			return
+		}
+	}
+}
+
+func (w *Wrap) SetUncertain(uncertains map[string][]float64) {
+	if params, ok := uncertains[w.Value]; ok && len(params) >= 2 && params[1] != 0 {
+		w.Mean = params[0]
+		w.Sigma = params[1]
+		if len(params) >= 3 {
+			w.K = params[2]
+		}
+	}
+}
+
+func (w *Wrap) SetIntegerMode(on bool) {
+	w.IntegerMode = on
 }
 
 func (w *Wrap) SetRound(r int) {
@@ -985,6 +1059,11 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 			rule = fmt.Sprintf("%s_%d", w.Value, ssa.Update(w.Value))
 			//default_value := DefaultValue(w.Type)
 			i := NewInit(w.Value, w.Type, int(ssa.Get(w.Value)), nil, false, false)
+			i.Whole = w.Whole
+			i.IntegerMode = w.IntegerMode
+			i.Mean = w.Mean
+			i.Sigma = w.Sigma
+			i.K = w.K
 			i.SetRound(w.Round)
 			return []*Init{i}, rule, ssa
 		}
@@ -1327,6 +1406,46 @@ func TagRules(ru []Rule, branch string, block string) []Rule {
 		tagged = append(tagged, TagRule(ru[i], branch, block))
 	}
 	return tagged
+}
+
+// SynthSlot represents a synthesis step (__ in the run block).
+// The generator enumerates all candidate flow functions and asks the SMT
+// solver to pick exactly one to execute at this step.
+type SynthSlot struct {
+	Rule
+	Round      int
+	Candidates map[string][]Rule // fname → pre-unrolled rules for that function
+	tag        *branch
+}
+
+func (ss *SynthSlot) ruleNode() {}
+func (ss *SynthSlot) LoadContext(_ int, _ map[string]bool, _ map[string][]int16, _ *scenario.Logger) {
+}
+func (ss *SynthSlot) SetRound(r int) {
+	ss.Round = r
+	for _, rules := range ss.Candidates {
+		for _, ru := range rules {
+			ru.SetRound(r)
+		}
+	}
+}
+func (ss *SynthSlot) GetRound() int { return ss.Round }
+func (ss *SynthSlot) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
+	return nil, "", ssa // handled by unpackSynthSlot
+}
+func (ss *SynthSlot) String() string {
+	var names []string
+	for k := range ss.Candidates {
+		names = append(names, k)
+	}
+	return fmt.Sprintf("synth(%s)", strings.Join(names, "|"))
+}
+func (ss *SynthSlot) Assertless() string { return ss.String() }
+func (ss *SynthSlot) IsTagged() bool     { return ss.tag != nil }
+func (ss *SynthSlot) Choice() string     { return ss.tag.block }
+func (ss *SynthSlot) Branch() string     { return ss.tag.branch }
+func (ss *SynthSlot) Tag(k1 string, k2 string) {
+	ss.tag = &branch{branch: k1, block: k2}
 }
 
 func TagRule(ru Rule, branch string, block string) Rule {

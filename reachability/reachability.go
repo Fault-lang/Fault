@@ -54,14 +54,16 @@ func (t *Tracer) walk(n ast.Node) {
 				t.walk(f)
 			}
 		}
-	case *ast.StartStatement:
-		for _, v := range node.Pairs {
-			id := strings.Join(v, "_")
-			if _, ok := t.graph[id]; !ok {
-				t.undefined[id] = true
-			} else {
-				t.graph[id] = true
-				t.removeUndefined(id)
+	case *ast.StateActivation:
+		for _, pc := range node.Calls {
+			if len(pc.ProcessedName) >= 3 {
+				id := pc.ProcessedName[1] + "_" + pc.ProcessedName[2]
+				if _, ok := t.graph[id]; !ok {
+					t.undefined[id] = true
+				} else {
+					t.graph[id] = true
+					t.removeUndefined(id)
+				}
 			}
 		}
 	case *ast.FunctionLiteral:
@@ -99,6 +101,10 @@ func (t *Tracer) walk(n ast.Node) {
 		t.walk(node.Right)
 	case *ast.PrefixExpression:
 		t.walk(node.Right)
+	case *ast.RunStatement:
+		for _, step := range node.Steps {
+			t.walk(step)
+		}
 	}
 }
 

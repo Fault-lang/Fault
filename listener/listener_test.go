@@ -158,6 +158,68 @@ func TestStockDecl(t *testing.T) {
 
 }
 
+func TestStockExtends(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	personDef := spec.Statements[2].(*ast.DefStatement)
+	if personDef.Name.Value != "person" {
+		t.Fatalf("expected def name 'person', got %q", personDef.Name.Value)
+	}
+
+	person := personDef.Value.(*ast.StockLiteral)
+	if person.Extends == nil {
+		t.Fatal("person.Extends is nil, expected *ast.Identifier")
+	}
+	if person.Extends.Value != "generic" {
+		t.Fatalf("person.Extends.Value = %q, want 'generic'", person.Extends.Value)
+	}
+	if len(person.Pairs) != 1 {
+		t.Fatalf("person.Pairs should have 1 own property before type-check, got %d", len(person.Pairs))
+	}
+}
+
+func TestStockExtendsWithExclude(t *testing.T) {
+	test := `spec test1;
+def generic = stock{
+	id: "entity primary key",
+	name: "entity name",
+	age: "entity age",
+};
+def person = stock{
+	extends generic,
+	occupation: "the person's job",
+	exclude age,
+};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	person := spec.Statements[2].(*ast.DefStatement).Value.(*ast.StockLiteral)
+	if person.Extends == nil {
+		t.Fatal("person.Extends is nil")
+	}
+	if len(person.Excludes) != 1 || person.Excludes[0] != "age" {
+		t.Fatalf("person.Excludes = %v, want [age]", person.Excludes)
+	}
+}
+
 func TestStockDeclFloat(t *testing.T) {
 	test := `spec test1;
 			 def foo = stock{
@@ -434,28 +496,6 @@ func TestClock(t *testing.T) {
 	}
 }
 
-func TestClockRun(t *testing.T) {
-	test := `spec test1;
-			 def foo = flow{
-				bar: func{1+this;},
-			 };
-			 for 1 run {
-				 now;
-			 }
-			`
-	flags := make(map[string]bool)
-	flags["specType"] = true
-	_, spec := prepTest(test, flags)
-	run := spec.Statements[2].(*ast.ForStatement).Body.Statements
-	clock, ok := run[0].(*ast.ExpressionStatement).Expression.(*ast.Clock)
-	if !ok {
-		t.Fatal("clock missing from run block")
-	}
-
-	if clock.Value != "" {
-		t.Fatal("scope failed to reset")
-	}
-}
 
 func TestPrefix(t *testing.T) {
 	test := `spec test1;
@@ -771,9 +811,9 @@ func TestMultiImport(t *testing.T) {
 	}
 }
 
-func TestForStatement(t *testing.T) {
+func TestRunStatement(t *testing.T) {
 	test := `spec test1;
-			 for 5 run{};
+			 run{};
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = true
@@ -784,19 +824,18 @@ func TestForStatement(t *testing.T) {
 	if len(spec.Statements) != 2 {
 		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
 	}
-	forSt, ok := spec.Statements[1].(*ast.ForStatement)
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
+		t.Fatalf("spec.Statements[1] is not a RunStatement. got=%T", spec.Statements[1])
 	}
-
-	if forSt.Rounds.Value != 5 {
-		t.Fatalf("ForStatement does not have 5 rounds. got=%d", forSt.Rounds.Value)
+	if len(runSt.Steps) != 0 {
+		t.Fatalf("RunStatement should have 0 steps. got=%d", len(runSt.Steps))
 	}
 }
 
 func TestRunBlock(t *testing.T) {
 	test := `spec test1;
-			 for 5 init{d = new foo;} run{
+			 run init{d = new foo;} {
 				d.fn;
 			 };
 			`
@@ -809,14 +848,14 @@ func TestRunBlock(t *testing.T) {
 	if len(spec.Statements) != 2 {
 		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
 	}
-	forSt, ok := spec.Statements[1].(*ast.ForStatement)
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
+		t.Fatalf("spec.Statements[1] is not a RunStatement. got=%T", spec.Statements[1])
 	}
 
-	inst, ok := forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	inst, ok := runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if !ok {
-		t.Fatalf("forSt.Inits.Statements[0] is not an Instance. got=%T", forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("runSt.Inits.Statements[0] is not an Instance. got=%T", runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 	if inst.Value.Spec != "test1" {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Value.Spec)
@@ -828,101 +867,27 @@ func TestRunBlock(t *testing.T) {
 		t.Fatalf("instance has the wrong name. got=%s", inst.Name)
 	}
 
-	expr, ok := forSt.Body.Statements[0].(*ast.ParallelFunctions)
-	if !ok {
-		t.Fatalf("forSt.Body.Statements[0] is not an ParallelFunctions. got=%T", forSt.Body.Statements[0])
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("runSt should have 1 step. got=%d", len(runSt.Steps))
 	}
-
-	id, ok := expr.Expressions[0].(*ast.ParameterCall)
+	step, ok := runSt.Steps[0].(*ast.CallStep)
 	if !ok {
-		t.Fatalf("expr.Expression is not an function call. got=%T", expr.Expressions[0])
+		t.Fatalf("runSt.Steps[0] is not a CallStep. got=%T", runSt.Steps[0])
 	}
-
+	if len(step.Calls) != 1 {
+		t.Fatalf("CallStep does not have 1 call. got=%d", len(step.Calls))
+	}
+	id := step.Calls[0]
 	if id.Value[0] != "d" && id.Value[0] != "fn" {
 		t.Fatalf("Identifier is not d.fn. got=%s", id.Value)
 	}
-
 }
 
-func TestRunIfBlock(t *testing.T) {
-	test := `spec test1;
-			 for 5 init{d = new foo;}run{
-				if true {
-					d.fn;
-				}else if false {
-					d.fn2;
-				}else{
-					d.fn3;
-				}
-			 };
-			`
-	flags := make(map[string]bool)
-	flags["specType"] = true
-	_, spec := prepTest(test, flags)
-	if spec == nil {
-		t.Fatalf("prepTest() returned nil")
-	}
-	if len(spec.Statements) != 2 {
-		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
-	}
-	forSt, ok := spec.Statements[1].(*ast.ForStatement)
-	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
-	}
-
-	ifblock, ok := forSt.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IfExpression)
-	if !ok {
-		t.Fatalf("forSt.Body.Statements[0] is not an IfExpression. got=%T", forSt.Body.Statements[0])
-	}
-
-	expr, ok := ifblock.Consequence.Statements[0].(*ast.ParallelFunctions)
-	if !ok {
-		t.Fatalf("if consequence is not packaged as a ParallelFunctions. got=%T", ifblock.Consequence.Statements[0])
-	}
-
-	id, ok := expr.Expressions[0].(*ast.ParameterCall)
-	if !ok {
-		t.Fatalf("expr.Expression is not an function call. got=%T", expr.Expressions[0])
-	}
-
-	if id.Value[0] != "d" && id.Value[0] != "fn" {
-		t.Fatalf("Identifier is not d.fn. got=%s", id.Value)
-	}
-
-	expr1, ok := ifblock.Elif.Consequence.Statements[0].(*ast.ParallelFunctions)
-	if !ok {
-		t.Fatalf("if consequence is not packaged as a ParallelFunctions. got=%T", ifblock.Elif.Consequence.Statements[0])
-	}
-
-	id1, ok := expr1.Expressions[0].(*ast.ParameterCall)
-	if !ok {
-		t.Fatalf("expr.Expression is not an function call. got=%T", expr1.Expressions[0])
-	}
-
-	if id1.Value[0] != "d" && id1.Value[0] != "fn2" {
-		t.Fatalf("Identifier is not d.fn2. got=%s", id1.Value)
-	}
-
-	expr2, ok := ifblock.Elif.Alternative.Statements[0].(*ast.ParallelFunctions)
-	if !ok {
-		t.Fatalf("if consequence is not packaged as a ParallelFunctions. got=%T", ifblock.Elif.Alternative.Statements[0])
-	}
-
-	id2, ok := expr2.Expressions[0].(*ast.ParameterCall)
-	if !ok {
-		t.Fatalf("expr.Expression is not an function call. got=%T", expr2.Expressions[0])
-	}
-
-	if id2.Value[0] != "d" && id2.Value[0] != "fn3" {
-		t.Fatalf("Identifier is not d.fn3. got=%s", id2.Value)
-	}
-
-}
 
 func TestSkipRun(t *testing.T) {
 	test := `spec test1;
 			 const a = 5;
-			 for 5 init{d = new foo;}run{
+			 run init{d = new foo;} {
 				d.fn;
 			 };
 			 `
@@ -946,7 +911,7 @@ func TestSkipRun(t *testing.T) {
 
 func TestRunInit(t *testing.T) {
 	test := `spec test1;
-			 for 5 init{d = new test2.foo;} run{};
+			 run init{d = new test2.foo;} {};
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = true
@@ -957,14 +922,14 @@ func TestRunInit(t *testing.T) {
 	if len(spec.Statements) != 2 {
 		t.Fatalf("spec.Statements does not contain 2 statements. got=%d", len(spec.Statements))
 	}
-	forSt, ok := spec.Statements[1].(*ast.ForStatement)
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
+		t.Fatalf("spec.Statements[1] is not a RunStatement. got=%T", spec.Statements[1])
 	}
 
-	inst, ok := forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	inst, ok := runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if !ok {
-		t.Fatalf("forSt.Inits.Statements[1] is not an Instance. got=%T", forSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("runSt.Inits.Statements[0] is not an Instance. got=%T", runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 	if inst.Value.Spec != "test2" {
 		t.Fatalf("instance has the wrong spec name. got=%s", inst.Value.Spec)
@@ -978,89 +943,91 @@ func TestRunInit(t *testing.T) {
 
 }
 
-func TestIncr(t *testing.T) {
+func TestRunStmtExplicitStep(t *testing.T) {
 	test := `spec test1;
-			 for 5 run{
-				i++;
+			 run init{d = new foo;} {
+				d.fn;
 			 };
 			`
-	flags := make(map[string]bool)
-	flags["specType"] = true
+	flags := map[string]bool{"specType": true}
 	_, spec := prepTest(test, flags)
-	forSt, ok := spec.Statements[1].(*ast.ForStatement)
+
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
+		t.Fatalf("Statement is not a RunStatement. got=%T", spec.Statements[1])
 	}
-
-	expr, ok := forSt.Body.Statements[0].(*ast.ExpressionStatement)
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("RunStatement does not have 1 step. got=%d", len(runSt.Steps))
+	}
+	step, ok := runSt.Steps[0].(*ast.CallStep)
 	if !ok {
-		t.Fatalf("forSt.Body.Statements[0] is not an ExpressionStatement. got=%T", forSt.Body.Statements[1])
+		t.Fatalf("Step is not a CallStep. got=%T", runSt.Steps[0])
 	}
-
-	infix, ok := expr.Expression.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("expr.Expression is not an InfixExpression. got=%T", expr.Expression)
+	if len(step.Calls) != 1 {
+		t.Fatalf("CallStep does not have 1 call. got=%d", len(step.Calls))
 	}
-
-	if infix.Token.Type != "PLUS" {
-		t.Fatalf("infix token is not PLUS. got=%s", infix.Token.Type)
+	if step.Operator != "|" {
+		t.Fatalf("CallStep operator should be | for single call from runStepExpr, got=%q", step.Operator)
 	}
-
-	if infix.Right.String() != "1" {
-		t.Fatalf("infix right side is not 1. got=%s", infix.Right.String())
-	}
-
-	if infix.Left.(*ast.Identifier).Value != "i" {
-		t.Fatalf("infix left side is not i. got=%s", infix.Left.(*ast.Identifier).Value)
-	}
-
-	if infix.Operator != "+" {
-		t.Fatalf("infix operator is not +. got=%s", infix.Operator)
-	}
-
 }
 
-func TestDecr(t *testing.T) {
+func TestRunStmtSolvableStep(t *testing.T) {
 	test := `spec test1;
-			 for 5 run{
-				i--;
+			 run init{d = new foo;} {
+				__;
+				d.fn;
+				__;
 			 };
 			`
-	flags := make(map[string]bool)
-	flags["specType"] = true
+	flags := map[string]bool{"specType": true}
 	_, spec := prepTest(test, flags)
-	forSt, ok := spec.Statements[1].(*ast.ForStatement)
+
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
 	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
+		t.Fatalf("Statement is not a RunStatement. got=%T", spec.Statements[1])
 	}
-
-	expr, ok := forSt.Body.Statements[0].(*ast.ExpressionStatement)
-	if !ok {
-		t.Fatalf("forSt.Body.Statements[0] is not an ExpressionStatement. got=%T", forSt.Body.Statements[1])
+	if len(runSt.Steps) != 3 {
+		t.Fatalf("RunStatement does not have 3 steps. got=%d", len(runSt.Steps))
 	}
-
-	infix, ok := expr.Expression.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("expr.Expression is not an InfixExpression. got=%T", expr.Expression)
+	if _, ok := runSt.Steps[0].(*ast.SolvableStep); !ok {
+		t.Fatalf("Step[0] is not a SolvableStep. got=%T", runSt.Steps[0])
 	}
-
-	if infix.Token.Type != "MINUS" {
-		t.Fatalf("infix token is not MINUS. got=%s", infix.Token.Type)
+	if _, ok := runSt.Steps[1].(*ast.CallStep); !ok {
+		t.Fatalf("Step[1] is not a CallStep. got=%T", runSt.Steps[1])
 	}
-
-	if infix.Right.String() != "1" {
-		t.Fatalf("infix right side is not 1. got=%s", infix.Right.String())
+	if _, ok := runSt.Steps[2].(*ast.SolvableStep); !ok {
+		t.Fatalf("Step[2] is not a SolvableStep. got=%T", runSt.Steps[2])
 	}
-
-	if infix.Left.(*ast.Identifier).Value != "i" {
-		t.Fatalf("infix left side is not i. got=%s", infix.Left.(*ast.Identifier).Value)
-	}
-
-	if infix.Operator != "-" {
-		t.Fatalf("infix operator is not -. got=%s", infix.Operator)
-	}
-
 }
+
+func TestRunStmtChoiceStep(t *testing.T) {
+	test := `spec test1;
+			 run init{d = new foo;} {
+				d.fn | d.fn2;
+			 };
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
+	if !ok {
+		t.Fatalf("Statement is not a RunStatement. got=%T", spec.Statements[1])
+	}
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("RunStatement does not have 1 step. got=%d", len(runSt.Steps))
+	}
+	step, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("Step is not a CallStep. got=%T", runSt.Steps[0])
+	}
+	if len(step.Calls) != 2 {
+		t.Fatalf("CallStep does not have 2 calls. got=%d", len(step.Calls))
+	}
+	if step.Operator != "|" {
+		t.Fatalf("CallStep operator should be |, got=%q", step.Operator)
+	}
+}
+
 
 func TestAssertion(t *testing.T) {
 	test := `spec test1;
@@ -1356,58 +1323,6 @@ func TestNil(t *testing.T) {
 	}
 }
 
-func TestAccessHistory(t *testing.T) {
-	test := `spec test1;
-			 for 1 run {
-				b[1][2];
-			 }
-			`
-	flags := make(map[string]bool)
-	flags["specType"] = true
-	_, spec := prepTest(test, flags)
-	con, ok := spec.Statements[1].(*ast.ForStatement)
-	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
-	}
-
-	idx1, ok := con.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IndexExpression)
-	if !ok {
-		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Body.Statements[0].(*ast.ExpressionStatement).Expression)
-	}
-
-	idx2, ok := idx1.Left.(*ast.IndexExpression)
-	if !ok {
-		t.Fatalf("IndexExpression Left is not b[1]. got=%s", idx1.Left.String())
-	}
-
-	if idx2.Left.(*ast.Identifier).Value != "b" {
-		t.Fatalf("IndexExpression Left is not b. got=%s", idx2.Left.(*ast.Identifier).Value)
-	}
-}
-
-func TestAccessHistory2(t *testing.T) {
-	test := `spec test1;
-			for 1 run {
-				b[a[2]];
-			}
-			`
-	flags := make(map[string]bool)
-	flags["specType"] = true
-	_, spec := prepTest(test, flags)
-	con, ok := spec.Statements[1].(*ast.ForStatement)
-	if !ok {
-		t.Fatalf("spec.Statements[1] is not a ForStatement. got=%T", spec.Statements[1])
-	}
-
-	idx1, ok := con.Body.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.IndexExpression)
-	if !ok {
-		t.Fatalf("Constant is not an IndexExpression. got=%T", con.Body.Statements[0].(*ast.ExpressionStatement).Expression)
-	}
-
-	if idx1.Left.(*ast.Identifier).Value != "b" {
-		t.Fatalf("IndexExpression Left is not b. got=%s", idx1.Left.(*ast.Identifier).Value)
-	}
-}
 
 func TestNegInt(t *testing.T) {
 	test := `spec test1;
@@ -1530,20 +1445,20 @@ func TestInstanceOrder(t *testing.T) {
 			 };
 
 			
-			for 1 init{car = new f;} run {}
+			run init{car = new f;} {}
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = true
 	_, spec := prepTest(test, flags)
 
-	fst, ok4 := spec.Statements[2].(*ast.ForStatement)
+	fst, ok4 := spec.Statements[2].(*ast.RunStatement)
 	if !ok4 {
-		t.Fatalf("spec.Statements[2] is not a ForStatement. got=%T", spec.Statements[2])
+		t.Fatalf("spec.Statements[2] is not a RunStatement. got=%T", spec.Statements[2])
 	}
 
 	ins, ok5 := fst.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if !ok5 {
-		t.Fatalf("ForStatement Statement is not an instance. got=%T", fst.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
+		t.Fatalf("RunStatement Statement is not an instance. got=%T", fst.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
 	}
 
 	order := ins.Order
@@ -1559,10 +1474,10 @@ func TestUnknown(t *testing.T) {
 
 			 def f = flow{
 				foo,
-				buzz: unknown(),
+				buzz: unknown(0),
+				baz: unknown(0.0),
 				bizz: func{
-					x = unknown();
-					z = x + unknown(y);
+					x = unknown(false);
 				},
 			 };
 
@@ -1581,16 +1496,8 @@ func TestUnknown(t *testing.T) {
 		t.Fatalf("Constant is not an Unknown. got=%T", con.Value)
 	}
 
-	if unkn.Name == nil {
-		t.Fatal("Unknown identifier Name is nil.")
-	}
-
-	if unkn.Name.Value != "a" {
-		t.Fatalf("Unknown identifier is not correctly set. got=%s", unkn.Name.Value)
-	}
-
-	if unkn.Name.Spec != "test1" {
-		t.Fatalf("Unknown spec is not correctly set. got=%s", unkn.Name.Spec)
+	if unkn.TypeHint != "" {
+		t.Fatalf("untyped unknown() should have empty TypeHint. got=%s", unkn.TypeHint)
 	}
 
 	df, ok := spec.Statements[2].(*ast.DefStatement)
@@ -1607,21 +1514,9 @@ func TestUnknown(t *testing.T) {
 	for ident, v := range fl.Pairs {
 
 		if ident.Value == "foo" {
-			val, ok := v.(*ast.Unknown)
+			_, ok := v.(*ast.Unknown)
 			if !ok {
 				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
-			}
-
-			if val.Name == nil {
-				t.Fatal("Unknown foo identifier Name is nil.")
-			}
-
-			if val.Name.Value != ident.Value {
-				t.Fatalf("Unknown has wrong identifier. got=%s", val.Name.Value)
-			}
-
-			if val.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", val.Name.Spec)
 			}
 			pass++
 		} else if ident.Value == "buzz" {
@@ -1629,17 +1524,17 @@ func TestUnknown(t *testing.T) {
 			if !ok {
 				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
 			}
-
-			if val.Name == nil {
-				t.Fatal("Unknown buzz identifier Name is nil.")
+			if val.TypeHint != "INT" {
+				t.Fatalf("unknown(0) should have TypeHint INT. got=%s", val.TypeHint)
 			}
-
-			if val.Name.Value != ident.Value {
-				t.Fatalf("Unknown has wrong identifier. got=%s", val.Name.Value)
+			pass++
+		} else if ident.Value == "baz" {
+			val, ok := v.(*ast.Unknown)
+			if !ok {
+				t.Fatalf("Improper value for property pair %s. got=%T", ident.Value, v)
 			}
-
-			if val.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", val.Name.Spec)
+			if val.TypeHint != "REAL" {
+				t.Fatalf("unknown(0.0) should have TypeHint REAL. got=%s", val.TypeHint)
 			}
 			pass++
 		} else if ident.Value == "bizz" {
@@ -1653,58 +1548,13 @@ func TestUnknown(t *testing.T) {
 				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[0].(*ast.ExpressionStatement).Expression)
 			}
 
-			id1, ok := infix1.Left.(*ast.Identifier)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.Identifier got=%T", infix1.Left)
-			}
-
 			un1, ok := infix1.Right.(*ast.Unknown)
 			if !ok {
 				t.Fatalf("Incorrect function statement want=*ast.Unknown got=%T", infix1.Right)
 			}
 
-			if un1.Name == nil {
-				t.Fatal("Unknown x identifier Name is nil.")
-			}
-
-			if un1.Name.Value != id1.Value {
-				t.Fatalf("Unknown has wrong identifier. got=%s", un1.Name.Value)
-			}
-
-			if un1.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", un1.Name.Spec)
-			}
-
-			infix2, ok := val.Body.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.InfixExpression)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[1].(*ast.ExpressionStatement).Expression)
-			}
-
-			_, ok = infix2.Left.(*ast.Identifier)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.Identifier got=%T", infix2.Left)
-			}
-
-			infix3, ok := infix2.Right.(*ast.InfixExpression)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.InfixExpression got=%T", val.Body.Statements[1].(*ast.ExpressionStatement).Expression)
-			}
-
-			un2, ok := infix3.Right.(*ast.Unknown)
-			if !ok {
-				t.Fatalf("Incorrect function statement want=*ast.Unknown got=%T", infix3.Right)
-			}
-
-			if un2.Name == nil {
-				t.Fatal("Unknown y identifier Name is nil.")
-			}
-
-			if un2.Name.Value != "y" {
-				t.Fatalf("Unknown has wrong identifier. got=%s", un1.Name.Value)
-			}
-
-			if un2.Name.Spec != "test1" {
-				t.Fatalf("Unknown has wrong spec. got=%s", un1.Name.Spec)
+			if un1.TypeHint != "BOOL" {
+				t.Fatalf("unknown(false) should have TypeHint BOOL. got=%s", un1.TypeHint)
 			}
 
 			pass++
@@ -1712,8 +1562,8 @@ func TestUnknown(t *testing.T) {
 			t.Fatalf("Flow has extra property. got=%s", ident.Value)
 		}
 	}
-	if pass != 3 {
-		t.Fatalf("Flow is missing property. want=3 got=%d", pass)
+	if pass != 4 {
+		t.Fatalf("Flow is missing property. want=4 got=%d", pass)
 	}
 
 	con2, ok := spec.Statements[3].(*ast.ConstantStatement)
@@ -1721,21 +1571,13 @@ func TestUnknown(t *testing.T) {
 		t.Fatalf("spec.Statements[3] is not a ConstantStatement. got=%T", spec.Statements[3])
 	}
 
-	unk2, ok := con2.Value.(*ast.Unknown)
+	_, ok = con2.Value.(*ast.Unknown)
 	if !ok {
 		t.Fatalf("Constant is not an Unknown. got=%T", con2.Value)
 	}
 
-	if unk2.Name.Value != "b" {
-		t.Fatalf("Unknown identifier is not correctly set. got=%s", unk2.Name.Value)
-	}
-
-	if unk2.Name.Spec != "test1" {
-		t.Fatalf("Unknown spec is not correctly set. got=%s", unk2.Name.Spec)
-	}
-
-	if len(l.Unknowns) != 5 {
-		t.Fatalf("missing an unknown want=5 got=%d", len(l.Unknowns))
+	if len(l.Unknowns) != 6 {
+		t.Fatalf("missing an unknown want=6 got=%d", len(l.Unknowns))
 	}
 
 }
@@ -1757,7 +1599,7 @@ func TestSysSpec(t *testing.T) {
 				},
 			 };
 			
-			for 1 run {
+			run {
 				car = new f;
 				bot = new foo.bar;
 			}
@@ -1818,7 +1660,7 @@ func TestSysSpec(t *testing.T) {
 	}
 }
 
-func TestSysForStmt(t *testing.T) {
+func TestSysRunStmt(t *testing.T) {
 	test := `system test1;
 
 			import "foo.fspec";
@@ -1840,109 +1682,53 @@ func TestSysForStmt(t *testing.T) {
 				},
 			};
 
-			start {
-				A: on,
-				B: idle,
-			};
-
-			for 3 run {
-				A | B;
+			run {
+				A.on | B.idle;
 			}
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = false
-	l, sys := prepTest(test, flags)
+	_, sys := prepTest(test, flags)
 
 	if sys == nil {
 		t.Fatal("prepTest() returned nil AST")
 	}
 
-	// MaxRounds should be set from sysForStmt, not from any imported fspec
-	if l.MaxRounds != 3 {
-		t.Fatalf("MaxRounds should be 3, got=%d", l.MaxRounds)
-	}
-
-	// isSysSpec should be set
-	if !l.isSysSpec {
-		t.Fatal("isSysSpec should be true for system spec")
-	}
-
-	// ForStatement should be in the AST
-	var forSt *ast.ForStatement
+	// RunStatement should be in the AST
+	var runSt *ast.RunStatement
 	for _, stmt := range sys.Statements {
-		if f, ok := stmt.(*ast.ForStatement); ok {
-			forSt = f
+		if r, ok := stmt.(*ast.RunStatement); ok {
+			runSt = r
 			break
 		}
 	}
-	if forSt == nil {
-		t.Fatal("no ForStatement found in AST")
+	if runSt == nil {
+		t.Fatal("no RunStatement found in AST")
 	}
 
-	if forSt.Rounds.Value != 3 {
-		t.Fatalf("ForStatement rounds should be 3, got=%d", forSt.Rounds.Value)
+	// Steps should contain 1 CallStep
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("RunStatement should have 1 step, got=%d", len(runSt.Steps))
 	}
 
-	// Body should contain a ParallelFunctions with two Identifier expressions
-	if len(forSt.Body.Statements) != 1 {
-		t.Fatalf("ForStatement body should have 1 statement, got=%d", len(forSt.Body.Statements))
-	}
-
-	pf, ok := forSt.Body.Statements[0].(*ast.ParallelFunctions)
+	cs, ok := runSt.Steps[0].(*ast.CallStep)
 	if !ok {
-		t.Fatalf("body statement should be ParallelFunctions, got=%T", forSt.Body.Statements[0])
+		t.Fatalf("step 0 should be CallStep, got=%T", runSt.Steps[0])
 	}
 
-	if len(pf.Expressions) != 2 {
-		t.Fatalf("ParallelFunctions should have 2 expressions, got=%d", len(pf.Expressions))
+	if cs.Operator != "|" {
+		t.Fatalf("CallStep operator should be |, got=%s", cs.Operator)
 	}
 
-	ident0, ok0 := pf.Expressions[0].(*ast.Identifier)
-	ident1, ok1 := pf.Expressions[1].(*ast.Identifier)
-	if !ok0 || !ok1 {
-		t.Fatalf("ParallelFunctions expressions should be Identifiers, got=%T and %T", pf.Expressions[0], pf.Expressions[1])
+	if len(cs.Calls) != 2 {
+		t.Fatalf("CallStep should have 2 calls, got=%d", len(cs.Calls))
 	}
 
-	if ident0.Value != "A" {
-		t.Fatalf("first identifier should be A, got=%s", ident0.Value)
+	if cs.Calls[0].Value[len(cs.Calls[0].Value)-1] != "on" {
+		t.Fatalf("first call should be A.on, got=%s", cs.Calls[0].Value)
 	}
-	if ident1.Value != "B" {
-		t.Fatalf("second identifier should be B, got=%s", ident1.Value)
-	}
-}
-
-func TestSysForStmtMaxRoundsIsolation(t *testing.T) {
-	// When a sysSpec imports an fspec with a higher round count,
-	// the sysSpec's own round count should NOT be overwritten by the import.
-	test := `system test1;
-
-			import "foo.fspec";
-
-			global fl = new foo.fl;
-
-			component A = states{
-				on: func{ stay(); },
-			};
-
-			start {
-				A: on,
-			};
-
-			for 2 run {
-				A;
-			}
-			`
-	flags := make(map[string]bool)
-	flags["specType"] = false
-	l, sys := prepTest(test, flags)
-
-	if sys == nil {
-		t.Fatal("prepTest() returned nil AST")
-	}
-
-	// MaxRounds should reflect the sysForStmt's own round count, not any imported fspec
-	if l.MaxRounds != 2 {
-		t.Fatalf("MaxRounds should be 2, got=%d", l.MaxRounds)
+	if cs.Calls[1].Value[len(cs.Calls[1].Value)-1] != "idle" {
+		t.Fatalf("second call should be B.idle, got=%s", cs.Calls[1].Value)
 	}
 }
 
@@ -1963,26 +1749,26 @@ func TestSwap(t *testing.T) {
 				},
 			 };
 			
-			for 1 init{ 
+			run init{
 				bot = new foo.bar;
 				car = new f;
-				car.test = bot; 
-			}run {}
+				car.test = bot;
+			} {}
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = false
 	_, sys := prepTest(test, flags)
 
-	forSt, ok := sys.Statements[3].(*ast.ForStatement)
+	runSt, ok := sys.Statements[3].(*ast.RunStatement)
 	if !ok {
-		t.Fatalf("sys.Statements[3] is not a ForStatement. got=%T", sys.Statements[3])
+		t.Fatalf("sys.Statements[3] is not a RunStatement. got=%T", sys.Statements[3])
 	}
 
-	if len(forSt.Inits.Statements) != 2 {
-		t.Fatalf("run block has the wrong number of statements. got=%d", len(forSt.Body.Statements))
+	if len(runSt.Inits.Statements) != 2 {
+		t.Fatalf("run block has the wrong number of statements. got=%d", len(runSt.Inits.Statements))
 	}
 
-	inst := forSt.Inits.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	inst := runSt.Inits.Statements[1].(*ast.ExpressionStatement).Expression.(*ast.Instance)
 	if inst.Swaps[0].TokenLiteral() != "SWAP" {
 		t.Fatalf("swap incorrect in AST. got=%s", inst.Swaps[0].TokenLiteral())
 	}
@@ -2039,22 +1825,36 @@ func TestSysStart(t *testing.T) {
 				},
 			};
 
-			start {
-				test:idle,
-				test2:active,
+			run {
+				test.idle && test2.active;
 			};
 			`
 	flags := make(map[string]bool)
 	flags["specType"] = false
 	_, sys := prepTest(test, flags)
 
-	starts, ok := sys.Statements[3].(*ast.StartStatement)
-	if !ok {
-		t.Fatalf("sys.Statements[3] is not a StartStatement. got=%T", sys.Statements[3])
+	var runSt *ast.RunStatement
+	for _, s := range sys.Statements {
+		if r, ok := s.(*ast.RunStatement); ok {
+			runSt = r
+			break
+		}
+	}
+	if runSt == nil {
+		t.Fatal("no RunStatement found in AST")
 	}
 
-	if len(starts.Pairs) != 2 {
-		t.Fatalf("start block has the wrong number of expressions. got=%d", len(starts.Pairs))
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("expected 1 run step, got=%d", len(runSt.Steps))
+	}
+
+	cs, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("step 0 should be a CallStep, got=%T", runSt.Steps[0])
+	}
+
+	if len(cs.Calls) != 2 {
+		t.Fatalf("CallStep should have 2 calls, got=%d", len(cs.Calls))
 	}
 
 }
@@ -2262,8 +2062,7 @@ func assertUnderscoreError(t *testing.T, test string, specType bool) {
 
 func TestGlobalDeclUnderscoreError(t *testing.T) {
 	assertUnderscoreError(t, `system test1;
-global foo_bar = 1;
-start {};`, false)
+global foo_bar = 1;`, false)
 }
 
 func TestStructDeclUnderscoreError(t *testing.T) {
@@ -2279,8 +2078,7 @@ component foo_bar = states{
 	idle: func{
 		stay();
 	},
-};
-start { foo_bar: idle, };`, false)
+};`, false)
 }
 
 func TestStringDeclUnderscoreError(t *testing.T) {
@@ -2299,8 +2097,7 @@ component foo = states{
 	foo_state: func{
 		stay();
 	},
-};
-start { foo: foo_state, };`, false)
+};`, false)
 }
 
 func TestPropFuncUnderscoreError(t *testing.T) {
@@ -2351,7 +2148,7 @@ func TestRunInitUnderscoreError(t *testing.T) {
 def foo = flow{
 	x: 1,
 };
-for 1 init { foo_inst = new foo; } run {}`, true)
+run init { foo_inst = new foo; } {}`, true)
 }
 
 func TestValidVarName(t *testing.T) {
@@ -2408,10 +2205,6 @@ func TestEmptyStateBlockError(t *testing.T) {
 
 component x = states{
 	foo: func{},
-};
-
-start {
-	x: foo,
 };`
 	flags := make(map[string]bool)
 	flags["specType"] = false // fsystem
@@ -2497,7 +2290,7 @@ foo = "hello";
 def bar = flow{
 	baz: func{foo + 1;},
 };
-for 1 run{};
+run{};
 `
 	flags := map[string]bool{"specType": true}
 	_, spec := prepTest(test, flags)
@@ -2526,7 +2319,7 @@ foo = a || b;
 def bar = flow{
 	baz: func{foo + 1;},
 };
-for 1 run{};
+run{};
 `
 	flags := map[string]bool{"specType": true}
 	_, spec := prepTest(test, flags)
@@ -2600,9 +2393,9 @@ assert when foo.x > 0 then foo.y > 0;
 
 // --- Multiple components in a system ---
 
-func TestMultipleComponentsInStartBlock(t *testing.T) {
-	// A start block with two component:state pairs should produce a StartStatement
-	// with two entries in Pairs.
+func TestMultipleComponentsStateActivation(t *testing.T) {
+	// A run block with a state activation step for two components should produce
+	// a RunStatement with one CallStep containing two ParameterCalls.
 	test := `system test1;
 
 component foo = states{
@@ -2617,9 +2410,8 @@ component bar = states{
 	},
 };
 
-start {
-	foo: idle,
-	bar: running,
+run {
+	foo.idle && bar.running;
 };
 `
 	flags := map[string]bool{"specType": false}
@@ -2628,30 +2420,25 @@ start {
 		t.Fatal("prepTest() returned nil")
 	}
 
-	// Find the StartStatement (last statement in the spec).
-	var start *ast.StartStatement
+	var runSt *ast.RunStatement
 	for _, s := range spec.Statements {
-		if ss, ok := s.(*ast.StartStatement); ok {
-			start = ss
+		if r, ok := s.(*ast.RunStatement); ok {
+			runSt = r
 			break
 		}
 	}
-	if start == nil {
-		t.Fatal("no StartStatement found in spec")
+	if runSt == nil {
+		t.Fatal("no RunStatement found in spec")
 	}
-	if len(start.Pairs) != 2 {
-		t.Fatalf("expected 2 start pairs, got %d", len(start.Pairs))
+	if len(runSt.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(runSt.Steps))
 	}
-	// Collect pairs into a map for order-independent comparison.
-	got := make(map[string]string)
-	for _, p := range start.Pairs {
-		got[p[0]] = p[1]
+	cs, ok := runSt.Steps[0].(*ast.CallStep)
+	if !ok {
+		t.Fatalf("step 0 should be CallStep, got=%T", runSt.Steps[0])
 	}
-	if got["foo"] != "idle" {
-		t.Errorf("expected foo:idle in start block, got foo:%q", got["foo"])
-	}
-	if got["bar"] != "running" {
-		t.Errorf("expected bar:running in start block, got bar:%q", got["bar"])
+	if len(cs.Calls) != 2 {
+		t.Fatalf("expected 2 calls in step, got %d", len(cs.Calls))
 	}
 }
 
@@ -2734,4 +2521,325 @@ func prepTest(test string, flags map[string]bool) (*FaultListener, *ast.Spec) {
 	flags["testing"] = true
 	listener, _ := Execute(test, "", flags)
 	return listener, listener.AST
+}
+
+// --- unfunc{} listener tests ---
+
+// unfuncLiteral returns the single UnfuncLiteral from a component with one state.
+func unfuncLiteralFromSpec(t *testing.T, spec *ast.Spec) *ast.UnfuncLiteral {
+	t.Helper()
+	comp := spec.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	for _, v := range comp.Pairs {
+		uf, ok := v.(*ast.UnfuncLiteral)
+		if !ok {
+			t.Fatalf("component pair value is not UnfuncLiteral, got %T", v)
+		}
+		return uf
+	}
+	t.Fatal("no pairs in component")
+	return nil
+}
+
+func TestUnfuncSimple(t *testing.T) {
+	// A single unfunc state with one requires and one emits clause.
+	test := `system test1;
+
+component fetch = states{
+	getByName: unfunc{
+		requires generic.name,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	def, ok := spec.Statements[1].(*ast.DefStatement)
+	if !ok {
+		t.Fatalf("expected DefStatement, got %T", spec.Statements[1])
+	}
+	comp, ok := def.Value.(*ast.ComponentLiteral)
+	if !ok {
+		t.Fatalf("expected ComponentLiteral, got %T", def.Value)
+	}
+	var uf *ast.UnfuncLiteral
+	for _, v := range comp.Pairs {
+		u, ok := v.(*ast.UnfuncLiteral)
+		if !ok {
+			t.Fatalf("component pair value is not UnfuncLiteral, got %T", v)
+		}
+		uf = u
+		break
+	}
+
+	req, ok := uf.Requires.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("Requires is not a ParameterCall, got %T", uf.Requires)
+	}
+	if strings.Join(req.Value, ".") != "generic.name" {
+		t.Errorf("Requires = %v, want generic.name", req.Value)
+	}
+
+	emit, ok := uf.Emits.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("Emits is not a ParameterCall, got %T", uf.Emits)
+	}
+	if strings.Join(emit.Value, ".") != "generic.id" {
+		t.Errorf("Emits = %v, want generic.id", emit.Value)
+	}
+}
+
+func TestUnfuncMultipleRequires(t *testing.T) {
+	// requires with && should produce an InfixExpression preserving the operator.
+	test := `system test1;
+
+component fetch = states{
+	getWithJoin: unfunc{
+		requires generic.id && generic.joinId,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	infix, ok := uf.Requires.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Requires is not an InfixExpression, got %T", uf.Requires)
+	}
+	if infix.Operator != "&&" {
+		t.Errorf("operator = %q, want &&", infix.Operator)
+	}
+	if infix.Left.String() != "generic.joinId" && infix.Right.String() != "generic.joinId" {
+		t.Error("neither side of Requires contains generic.joinId")
+	}
+}
+
+func TestUnfuncMultipleEmits(t *testing.T) {
+	// emits with && should produce an InfixExpression preserving the operator.
+	test := `system test1;
+
+component fetch = states{
+	getDetails: unfunc{
+		requires generic.id,
+		emits generic.name && generic.joinId,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	infix, ok := uf.Emits.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Emits is not an InfixExpression, got %T", uf.Emits)
+	}
+	if infix.Operator != "&&" {
+		t.Errorf("operator = %q, want &&", infix.Operator)
+	}
+	if infix.Left.String() != "generic.name" && infix.Right.String() != "generic.name" {
+		t.Error("neither side of Emits contains generic.name")
+	}
+}
+
+func TestUnfuncRequiresOr(t *testing.T) {
+	// requires with || should produce an InfixExpression with || operator.
+	test := `system test1;
+
+component fetch = states{
+	getByNameOrId: unfunc{
+		requires generic.name || generic.id,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	infix, ok := uf.Requires.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Requires is not an InfixExpression, got %T", uf.Requires)
+	}
+	if infix.Operator != "||" {
+		t.Errorf("operator = %q, want ||", infix.Operator)
+	}
+}
+
+func TestUnfuncRequiresNot(t *testing.T) {
+	// requires with ! should produce a PrefixExpression wrapping the ParameterCall.
+	test := `system test1;
+
+component fetch = states{
+	getIfNotDeleted: unfunc{
+		requires !generic.deleted,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	prefix, ok := uf.Requires.(*ast.PrefixExpression)
+	if !ok {
+		t.Fatalf("Requires is not a PrefixExpression, got %T", uf.Requires)
+	}
+	if prefix.Operator != "!" {
+		t.Errorf("operator = %q, want !", prefix.Operator)
+	}
+	inner, ok := prefix.Right.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("inner expression is not a ParameterCall, got %T", prefix.Right)
+	}
+	if strings.Join(inner.Value, ".") != "generic.deleted" {
+		t.Errorf("inner = %v, want generic.deleted", inner.Value)
+	}
+}
+
+func TestUnfuncMixedWithFunc(t *testing.T) {
+	// A component containing both a func{} state and an unfunc{} state.
+	test := `system test1;
+
+component fetch = states{
+	idle: func{
+		stay();
+	},
+	getByName: unfunc{
+		requires generic.name,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	comp := spec.Statements[1].(*ast.DefStatement).Value.(*ast.ComponentLiteral)
+	if len(comp.Pairs) != 2 {
+		t.Fatalf("expected 2 component pairs, got %d", len(comp.Pairs))
+	}
+
+	var funcCount, unfuncCount int
+	for _, v := range comp.Pairs {
+		switch v.(type) {
+		case *ast.FunctionLiteral:
+			funcCount++
+		case *ast.UnfuncLiteral:
+			unfuncCount++
+		}
+	}
+	if funcCount != 1 {
+		t.Errorf("expected 1 FunctionLiteral, got %d", funcCount)
+	}
+	if unfuncCount != 1 {
+		t.Errorf("expected 1 UnfuncLiteral, got %d", unfuncCount)
+	}
+}
+
+func TestUnfuncAssumeClause(t *testing.T) {
+	// assume clause: a single postcondition arithmetic constraint.
+	test := `system test1;
+
+component calc = states{
+	multiply: unfunc{
+		requires calc.a && calc.b,
+		emits calc.product,
+		assume calc.product = calc.a * calc.b,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Assumes) != 1 {
+		t.Fatalf("expected 1 assume clause, got %d", len(uf.Assumes))
+	}
+
+	assume, ok := uf.Assumes[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("assume is not an InfixExpression, got %T", uf.Assumes[0])
+	}
+	if assume.Operator != "=" {
+		t.Errorf("assume operator = %q, want =", assume.Operator)
+	}
+
+	lhs, ok := assume.Left.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("assume LHS is not a ParameterCall, got %T", assume.Left)
+	}
+	if strings.Join(lhs.Value, ".") != "calc.product" {
+		t.Errorf("assume LHS = %v, want calc.product", lhs.Value)
+	}
+
+	rhs, ok := assume.Right.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("assume RHS is not an InfixExpression, got %T", assume.Right)
+	}
+	if rhs.Operator != "*" {
+		t.Errorf("assume RHS operator = %q, want *", rhs.Operator)
+	}
+}
+
+func TestUnfuncMultipleAssumeClauses(t *testing.T) {
+	// Multiple assume clauses in one unfunc.
+	test := `system test1;
+
+component calc = states{
+	multiply: unfunc{
+		requires calc.a && calc.b,
+		emits calc.product,
+		assume calc.product = calc.a * calc.b,
+		assume calc.product = calc.a + calc.b,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Assumes) != 2 {
+		t.Fatalf("expected 2 assume clauses, got %d", len(uf.Assumes))
+	}
+
+	for i, a := range uf.Assumes {
+		infix, ok := a.(*ast.InfixExpression)
+		if !ok {
+			t.Fatalf("assume[%d] is not an InfixExpression, got %T", i, a)
+		}
+		if infix.Operator != "=" {
+			t.Errorf("assume[%d] operator = %q, want =", i, infix.Operator)
+		}
+	}
 }

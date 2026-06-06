@@ -80,21 +80,6 @@ type CompilationOutput struct {
 	Pending       *PendingModelCheck // non-nil when LargeSMTLines > 0 (CLI resume path)
 }
 
-const highRoundThreshold = int64(5)
-
-// checkHighRoundCount warns when any for-loop (including in imported specs)
-// has a round count at or above highRoundThreshold. lstnr.MaxRounds is set
-// during parsing for all for-loops regardless of skipRun.
-func checkHighRoundCount(maxRounds int64, warnings []string) []string {
-	if maxRounds >= highRoundThreshold {
-		warnings = append(warnings, fmt.Sprintf(
-			"'for %d run' generates a large SMT formula — most properties are provable in 3–4 rounds. Consider reducing the round count.",
-			maxRounds,
-		))
-	}
-	return warnings
-}
-
 type Runner struct {
 	config   CompilationConfig
 	progress chan ProgressUpdate
@@ -156,7 +141,10 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	r.sendProgress(PhasePreprocessing, "Preprocessing complete", 0.28, true)
 
 	r.sendProgress(PhaseTypeChecking, "Type checking...", 0.28, false)
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 	r.sendProgress(PhaseTypeChecking, "Type checking complete", 0.42, true)
 
 	sw := swaps.NewPrecompiler(ty)
@@ -320,7 +308,7 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 
 		r.sendProgress(PhaseLLVM, "Generating LLVM IR...", 0.42, false)
-		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, alias, false)
 		if err != nil {
 			r.sendError(PhaseLLVM, err)
 			output.Error = err
@@ -336,7 +324,6 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
-		output.Warnings = checkHighRoundCount(lstnr.MaxRounds, output.Warnings)
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
 		g := generator.Execute(compiler, generator.GeneratorOptions{
 			Timeout:       r.config.SMTTimeout,

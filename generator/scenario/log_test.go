@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -110,5 +111,330 @@ func TestFunctionCall_MarkDead(t *testing.T) {
 	}
 	if !logger.Events[4].IsDead() {
 		t.Errorf("FunctionCall.IsDead() = %v, want %v", logger.Events[4].IsDead(), true)
+	}
+}
+
+// ---- isSynthSlotName ----
+
+func TestIsSynthSlotName_Valid(t *testing.T) {
+	cases := []string{"synth_0", "synth_1", "synth_42"}
+	for _, c := range cases {
+		if !isSynthSlotName(c) {
+			t.Errorf("isSynthSlotName(%q) = false, want true", c)
+		}
+	}
+}
+
+func TestIsSynthSlotName_Invalid(t *testing.T) {
+	cases := []string{
+		"synth_",       // empty suffix
+		"synth_abc",    // non-numeric suffix
+		"synth_1a",     // mixed
+		"synth_1_fill", // has extra segment
+		"other_1",      // wrong prefix
+		"",             // empty
+		"synth",        // no underscore
+	}
+	for _, c := range cases {
+		if isSynthSlotName(c) {
+			t.Errorf("isSynthSlotName(%q) = true, want false", c)
+		}
+	}
+}
+
+// ---- synthChoice ----
+
+func TestSynthChoice_FoundTrue(t *testing.T) {
+	l := NewLogger()
+	l.Results["synth_1_fill_1"] = "true"
+	l.Results["synth_1_drain_1"] = "false"
+	got := l.synthChoice("synth_1")
+	if got != "fill" {
+		t.Errorf("synthChoice = %q, want %q", got, "fill")
+	}
+}
+
+func TestSynthChoice_NoneTrue(t *testing.T) {
+	l := NewLogger()
+	l.Results["synth_1_fill_1"] = "false"
+	l.Results["synth_1_drain_1"] = "false"
+	got := l.synthChoice("synth_1")
+	if got != "" {
+		t.Errorf("synthChoice with all false = %q, want %q", got, "")
+	}
+}
+
+func TestSynthChoice_NoResults(t *testing.T) {
+	l := NewLogger()
+	got := l.synthChoice("synth_1")
+	if got != "" {
+		t.Errorf("synthChoice with empty results = %q, want %q", got, "")
+	}
+}
+
+func TestSynthChoice_WrongSlot(t *testing.T) {
+	l := NewLogger()
+	l.Results["synth_2_fill_2"] = "true"
+	got := l.synthChoice("synth_1") // asking about slot 1, not 2
+	if got != "" {
+		t.Errorf("synthChoice wrong slot = %q, want %q", got, "")
+	}
+}
+
+// ---- IsInternalVariable ----
+
+func TestIsInternalVariable_BlockSelectors(t *testing.T) {
+	l := NewLogger()
+	// block*true_N and block*false_N are internal
+	if !l.IsInternalVariable("blockABCtrue_0") {
+		t.Error("blockABCtrue_0 should be internal")
+	}
+	if !l.IsInternalVariable("blockXYZfalse_1") {
+		t.Error("blockXYZfalse_1 should be internal")
+	}
+}
+
+func TestIsInternalVariable_SynthSelectors(t *testing.T) {
+	l := NewLogger()
+	if !l.IsInternalVariable("synth_1_fill_1") {
+		t.Error("synth_1_fill_1 should be internal")
+	}
+}
+
+func TestIsInternalVariable_UserVars(t *testing.T) {
+	l := NewLogger()
+	cases := []string{"spec_c_value_0", "spec_tank_level_2", "myvar_3"}
+	for _, c := range cases {
+		if l.IsInternalVariable(c) {
+			t.Errorf("IsInternalVariable(%q) = true, want false", c)
+		}
+	}
+}
+
+// ---- Kill: synthesis slot protection ----
+
+func TestKill_SynthSlotEntryStaysAlive(t *testing.T) {
+	// When the drain candidate's selector is false, drain's variable update is dead.
+	// But the outer synth_1 Entry/Exit must remain alive (isSynthSlotName guards it).
+	l := NewLogger()
+
+	// Events:
+	// [0] Enter synth_1
+	// [1]   Enter synth_1_drain  (candidate)
+	// [2]     VariableUpdate spec_t_level_1
+	// [3]   Exit  synth_1_drain
+	// [4] Exit  synth_1
+	l.EnterFunction("synth_1", 1)
+	l.EnterFunction("synth_1_drain", 1)
+	l.UpdateVariable("spec_t_level_1", false)
+	l.ExitFunction("synth_1_drain", 1)
+	l.ExitFunction("synth_1", 1)
+
+	// synth_1_drain selector is false → drain's vars are dead
+	sel := l.NewBranchSelector("synth_1_drain", 1, []string{"(= phi spec_t_level_1)"}, []string{"spec_t_level_1"})
+	l.AddBranchSelector(sel)
+	l.Results["synth_1_drain_1"] = "false"
+
+	l.Trace()
+	l.Kill()
+
+	// The variable update inside drain should be dead
+	if !l.Events[2].IsDead() {
+		t.Error("spec_t_level_1 update should be dead (in false branch)")
+	}
+
+	// The outer synth_1 Entry must NOT be dead
+	if l.Events[0].IsDead() {
+		t.Error("synth_1 Entry must stay alive (synthesis slot)")
+	}
+	// The outer synth_1 Exit must NOT be dead
+	if l.Events[4].IsDead() {
+		t.Error("synth_1 Exit must stay alive (synthesis slot)")
+	}
+}
+
+func TestKill_DeadBranchKillsFunction(t *testing.T) {
+	// A normal function whose selector is false should have Entry/Exit marked dead.
+	l := NewLogger()
+
+	// [0] Enter foo
+	// [1]   VariableUpdate var_x_0
+	// [2] Exit foo
+	l.EnterFunction("foo", 0)
+	l.UpdateVariable("var_x_0", false)
+	l.ExitFunction("foo", 0)
+
+	sel := l.NewBranchSelector("blockABC", 0, []string{"(= phi var_x_0)"}, []string{"var_x_0"})
+	l.AddBranchSelector(sel)
+	l.Results["blockABC_0"] = "false"
+
+	l.Trace()
+	l.Kill()
+
+	if !l.Events[1].IsDead() {
+		t.Error("var_x_0 update should be dead")
+	}
+	if !l.Events[0].IsDead() {
+		t.Error("foo Entry should be dead (all vars dead)")
+	}
+	if !l.Events[2].IsDead() {
+		t.Error("foo Exit should be dead (all vars dead)")
+	}
+}
+
+func TestKill_LiveBranchKeepsFunction(t *testing.T) {
+	// A function whose selector is true: nothing should be marked dead.
+	l := NewLogger()
+
+	l.EnterFunction("bar", 0)
+	l.UpdateVariable("var_y_0", false)
+	l.ExitFunction("bar", 0)
+
+	sel := l.NewBranchSelector("blockDEF", 0, []string{"(= phi var_y_0)"}, []string{"var_y_0"})
+	l.AddBranchSelector(sel)
+	l.Results["blockDEF_0"] = "true"
+
+	l.Trace()
+	l.Kill()
+
+	for i, e := range l.Events {
+		if e.IsDead() {
+			t.Errorf("event[%d] should be alive (true branch), got dead", i)
+		}
+	}
+}
+
+func TestKill_NoBranchSelectors(t *testing.T) {
+	// Kill is a no-op when there are no dead selectors.
+	l := NewLogger()
+	l.EnterFunction("baz", 0)
+	l.UpdateVariable("var_z_0", false)
+	l.ExitFunction("baz", 0)
+
+	l.Trace()
+	l.Kill() // no BranchSelectors, should not panic
+
+	for i, e := range l.Events {
+		if e.IsDead() {
+			t.Errorf("event[%d] should be alive (no selectors), got dead", i)
+		}
+	}
+}
+
+// ---- synthChoice: multiple true candidates ----
+
+func TestSynthChoice_MultipleTrueCandidates(t *testing.T) {
+	// When more than one candidate selector is true the function must return
+	// one of the true candidates without panicking.
+	l := NewLogger()
+	l.Results["synth_1_fill_1"] = "true"
+	l.Results["synth_1_drain_1"] = "true"
+	got := l.synthChoice("synth_1")
+	if got != "fill" && got != "drain" {
+		t.Errorf("synthChoice with multiple true candidates = %q, want fill or drain", got)
+	}
+}
+
+// ---- Kill: empty Results map ----
+
+func TestKill_EmptyResults(t *testing.T) {
+	// Kill must not panic when Results is empty.
+	l := NewLogger()
+	l.EnterFunction("foo", 0)
+	l.UpdateVariable("var_x_0", false)
+	l.ExitFunction("foo", 0)
+
+	sel := l.NewBranchSelector("blockABC", 0, []string{"(= phi var_x_0)"}, []string{"var_x_0"})
+	l.AddBranchSelector(sel)
+	// Results is empty — selector value is missing, treated as not-true.
+
+	l.Trace()
+	l.Kill() // must not panic
+}
+
+// ---- IsNegated / _neg suffix rendering in String() ----
+
+func TestIsNegated_Positive(t *testing.T) {
+	l := NewLogger()
+	base, negated := l.IsNegated("spec_x_neg")
+	if !negated {
+		t.Error("expected negated=true for 'spec_x_neg'")
+	}
+	if base != "spec_x" {
+		t.Errorf("expected base %q, got %q", "spec_x", base)
+	}
+}
+
+func TestIsNegated_Negative(t *testing.T) {
+	l := NewLogger()
+	base, negated := l.IsNegated("spec_x")
+	if negated {
+		t.Error("expected negated=false for 'spec_x'")
+	}
+	if base != "spec_x" {
+		t.Errorf("expected base unchanged %q, got %q", "spec_x", base)
+	}
+}
+
+func TestString_NegatedVariableInOutput(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("foo", 1)
+	// Variable name encodes negation via _neg suffix.
+	l.UpdateVariable("spec_x_neg_1", false)
+	l.ExitFunction("foo", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_x_neg_1"] = "true"
+	l.StringRules["spec_x"] = "x"
+	l.IsStringRule["spec_x"] = true
+
+	l.Trace()
+	out := l.String()
+	if !strings.Contains(out, "not x") {
+		t.Errorf("String() should contain 'not x' for negated variable, got:\n%s", out)
+	}
+}
+
+// ---- Trace: nested function scopes ----
+
+func TestTrace_NestedFunctionScopes(t *testing.T) {
+	// Ensure Trace() completes without panic for two levels of nesting.
+	l := NewLogger()
+	l.EnterFunction("@__run", 2)
+	l.EnterFunction("outer", 2)
+	l.EnterFunction("inner", 2)
+	l.UpdateVariable("spec_y_1", false)
+	l.ExitFunction("inner", 2)
+	l.ExitFunction("outer", 2)
+	l.ExitFunction("@__run", 2)
+
+	l.Results["spec_y_1"] = "42"
+	l.Trace() // must not panic
+}
+
+// ---- String(): synthesis choice appears in output ----
+
+func TestString_SynthChoiceInOutput(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("synth_1", 1)
+	l.EnterFunction("synth_1_fill", 1)
+	l.UpdateVariable("spec_t_level_1", false)
+	l.ExitFunction("synth_1_fill", 1)
+	l.ExitFunction("synth_1", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["synth_1_fill_1"] = "true"
+	l.Results["synth_1_drain_1"] = "false"
+	l.Results["spec_t_level_1"] = "60"
+
+	l.Trace()
+
+	out := l.String()
+	if !strings.Contains(out, "Fault chose fill") {
+		t.Errorf("String() should contain 'Fault chose fill', got:\n%s", out)
 	}
 }

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type ResultsModel struct {
@@ -62,46 +62,42 @@ func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 			viewportWidth := msg.Width
 			viewportHeight := msg.Height - verticalMarginHeight
 
-			m.viewport = viewport.New(viewportWidth, viewportHeight)
+			m.viewport = viewport.New(viewport.WithWidth(viewportWidth), viewport.WithHeight(viewportHeight))
 			m.viewport.YPosition = headerHeight
-
-			// Ensure the viewport uses the correct width for ANSI content
-			m.viewport.Width = viewportWidth
+			m.viewport.SoftWrap = true
 
 			// Set content based on mode (only once)
 			content := m.getContent()
-			m.content = lipgloss.NewStyle().Width(viewportWidth).Render(content)
+			m.content = content
 			m.viewport.SetContent(m.content)
 
 			m.ready = true
 		} else {
 			// Update dimensions on resize
-			m.viewport.Width = msg.Width - 4
-			m.viewport.Height = msg.Height - verticalMarginHeight
+			m.viewport.SetWidth(msg.Width - 4)
+			m.viewport.SetHeight(msg.Height - verticalMarginHeight)
 		}
 
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "ctrl+q", "q", "esc":
 			return m, tea.Quit
 		case "g", "home":
-			m.viewport.GotoTop()
+			if m.ready {
+				m.viewport.GotoTop()
+			}
 			return m, nil
 		case "G", "end":
-			m.viewport.GotoBottom()
-			return m, nil
-		case "h", "pgup", "b":
-			m.viewport.PageUp()
-			return m, nil
-		case "l", "pgdown", "f":
-			m.viewport.PageDown()
+			if m.ready {
+				m.viewport.GotoBottom()
+			}
 			return m, nil
 		}
 	}
 
-	// Forward viewport updates for arrow keys, j/k scrolling
+	// Forward all other messages (j/k, arrows, pgup/dn, f/b, u/d) to the viewport
 	if m.ready {
 		m.viewport, cmd = m.viewport.Update(msg)
 	}

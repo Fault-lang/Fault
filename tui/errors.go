@@ -6,8 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
+
+const issuesURL = "https://github.com/fault-lang/fault/issues"
+
+func issueLink() string {
+	return lipgloss.NewStyle().Hyperlink(issuesURL).Render(issuesURL)
+}
 
 type ErrorCategory int
 
@@ -148,16 +154,15 @@ func CategorizeError(err error, phase runner.ProgressPhase) *EnhancedError {
 	case strings.Contains(errMsg, "Missing run block") || strings.Contains(errMsg, "Missing start block") ||
 		strings.Contains(errMsg, "missing run block") || strings.Contains(errMsg, "missing start block"):
 		enhanced.Category = ErrorLLVM
-		enhanced.Detail = "No run or start block was found in the specification."
-		enhanced.Suggestion = "Add a run block to your .fspec:\n  for <n> run { ... }\n" +
-			"Or a start block to your .fsystem:\n  start { <component>: <state>, };"
+		enhanced.Detail = "No run block was found in the specification."
+		enhanced.Suggestion = "Add a run block to your .fspec or .fsystem:\n  run { ... }"
 
 	case strings.Contains(errMsg, "Internal compiler stacktrace"):
 		enhanced.Category = ErrorInternal
 		enhanced.Detail = errMsg
 		enhanced.Message = "An internal compiler error occurred."
 		enhanced.Suggestion = "This is likely a bug in Fault. Please report it at\n" +
-			"https://github.com/fault-lang/fault/issues with the full error message."
+			issueLink() + " with the full error message."
 
 	case phase == runner.PhaseLLVM:
 		enhanced.Category = ErrorLLVM
@@ -192,7 +197,7 @@ func CategorizeError(err error, phase runner.ProgressPhase) *EnhancedError {
 	default:
 		enhanced.Category = ErrorInternal
 		enhanced.Suggestion = "This is an unexpected error. Try again, or report it at\n" +
-			"https://github.com/fault-lang/fault/issues"
+			issueLink()
 	}
 
 	return enhanced

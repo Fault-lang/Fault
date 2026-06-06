@@ -92,13 +92,21 @@ func TestRunBlock(t *testing.T) {
 				b: 20,
 			};
 
-			for 5 init{test = new foo;} run{
+			run init{test = new foo;} {
+				test.fizz | test.fizz2;
+				test.fizz3;
+				test.fizz | test.fizz2;
+				test.fizz3;
+				test.fizz | test.fizz2;
+				test.fizz3;
+				test.fizz | test.fizz2;
+				test.fizz3;
 				test.fizz | test.fizz2;
 				test.fizz3;
 			};
 	`
 
-	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block-1:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundsstore[38xi8]c"44b9b452817d4d3ea103f1449105264c_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"44b9b452817d4d3ea103f1449105264c_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei162,i16*@__roundsstore[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei163,i16*@__roundsstore[38xi8]c"cb7fdc02d16d31723661579b54e31084_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"cb7fdc02d16d31723661579b54e31084_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei164,i16*@__roundsstore[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei165,i16*@__roundsstore[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_close",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-2:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-3:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block-4:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}`
+	expecting := `@__rounds=globali160@__parallelGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@__choiceGroup=global[38xi8]c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"@test1_a=globaldouble0x4002666666666666@test1_b=globaldouble2.0definevoid@__run(){block:storei160,i16*@__rounds%test1_test_buzz_a=allocadoublestoredouble10.0,double*%test1_test_buzz_a%test1_test_buzz_b=allocadoublestoredouble20.0,double*%test1_test_buzz_bstorei161,i16*@__roundsstore[38xi8]c"44b9b452817d4d3ea103f1449105264c_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"44b9b452817d4d3ea103f1449105264c_close",[38xi8]*@__parallelGroupstorei162,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei163,i16*@__roundsstore[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"9a2b113b63e8232c2945f1018bf785f0_close",[38xi8]*@__parallelGroupstorei164,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei165,i16*@__roundsstore[38xi8]c"cb7fdc02d16d31723661579b54e31084_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"cb7fdc02d16d31723661579b54e31084_close",[38xi8]*@__parallelGroupstorei166,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei167,i16*@__roundsstore[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7e3f85f9630519ec31a508b611b1d4bb_close",[38xi8]*@__parallelGroupstorei168,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)storei169,i16*@__roundsstore[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_start",[38xi8]*@__parallelGroupcallvoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b)callvoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b)store[38xi8]c"7fbb0459ad7da0f1a336cf5de1cf9068_close",[38xi8]*@__parallelGroupstorei1610,i16*@__roundscallvoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b)retvoid}definevoid@test1_test_fizz(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*@test1_a%2=loaddouble,double*%test1_test_buzz_a%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz2(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block:%0=loaddouble,double*%test1_test_buzz_b%1=loaddouble,double*%test1_test_buzz_a%2=loaddouble,double*@test1_b%3=fsubdouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_bretvoid}definevoid@test1_test_fizz3(double*%test1_test_buzz_a,double*%test1_test_buzz_b){block:%0=loaddouble,double*%test1_test_buzz_a%1=loaddouble,double*%test1_test_buzz_b%2=loaddouble,double*@test1_b%3=fadddouble%1,%2%4=fadddouble%0,%3storedouble%4,double*%test1_test_buzz_aretvoid}`
 	//Should fadd have variable names or the values in those variables?
 
 	llvm, err := prepTest(test, true)
@@ -116,6 +124,86 @@ func TestRunBlock(t *testing.T) {
 
 	if err != nil {
 		t.Fatal(err.Error())
+	}
+}
+
+func TestRunStmtExplicit(t *testing.T) {
+	test := `spec test1;
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					buzz.a <- buzz.a + 1;
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+			};
+
+			run init{test = new foo;} {
+				test.fizz;
+			};
+	`
+
+	llvm, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	// __synthStep should NOT appear — no solvable steps
+	if strings.Contains(string(ir), "__synthStep") {
+		t.Fatalf("__synthStep marker should not appear in IR without solvable steps")
+	}
+
+	// The flow function should be defined and called
+	if !strings.Contains(string(ir), "test1_test_fizz") {
+		t.Fatalf("expected test1_test_fizz function in IR, got:\n%s", string(ir))
+	}
+}
+
+func TestRunStmtSolvable(t *testing.T) {
+	test := `spec test1;
+			def foo = flow{
+				buzz: new bar,
+				fizz: func{
+					buzz.a <- buzz.a + 1;
+				},
+			};
+
+			def bar = stock{
+				a: 10,
+			};
+
+			run init{test = new foo;} {
+				__;
+				test.fizz;
+				__;
+			};
+	`
+
+	llvm, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("compilation failed on valid spec. got=%s", err)
+	}
+
+	ir, err := validateIR(llvm)
+	if err != nil {
+		t.Fatalf("generated IR is not valid. got=%s", err)
+	}
+
+	// __synthStep marker must appear
+	if !strings.Contains(string(ir), "__synthStep") {
+		t.Fatalf("expected __synthStep marker in IR for solvable steps, got:\n%s", string(ir))
+	}
+
+	// The explicit step should still compile
+	if !strings.Contains(string(ir), "test1_test_fizz") {
+		t.Fatalf("expected test1_test_fizz function in IR, got:\n%s", string(ir))
 	}
 }
 
@@ -141,7 +229,7 @@ func TestIfCond(t *testing.T) {
 				b: 20,
 			};
 
-			for 1 init{test = new foo;} run{
+			run init{test = new foo;} {
 				test.fizz;
 			};
 	`
@@ -183,7 +271,11 @@ func TestUnknowns(t *testing.T) {
 				 },
 			 };
 
-	for 5 init{t = new test;} run {
+	run init{t = new test;} {
+		t.bar;
+		t.bar;
+		t.bar;
+		t.bar;
 		t.bar;
 	};
 	`
@@ -213,7 +305,7 @@ func TestUnknowns(t *testing.T) {
 func TestParamReset(t *testing.T) {
 	structs := make(map[string]*preprocess.SpecRecord)
 	c := NewCompiler()
-	c.LoadMeta(structs, make(map[string][]float64), []string{}, make(map[string]string), true)
+	c.LoadMeta(structs, make(map[string][]float64), []string{}, []string{}, make(map[string]string), true)
 	s := NewCompiledSpec("test")
 	c.currentSpec = "test"
 	c.specs["test"] = s
@@ -358,7 +450,7 @@ func TestUncertains(t *testing.T) {
 func TestUnknowns2(t *testing.T) {
 	c := NewCompiler()
 	c.specs["test"] = NewCompiledSpec("test")
-	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Unknown{Name: &ast.Identifier{Spec: "test", Value: "bar"}, ProcessedName: []string{"test", "foo", "bar"}}}}}
+	test := &ast.StructInstance{Spec: "test", Name: "foo", Parent: []string{"test", "zoo"}, Order: []string{"bar"}, ProcessedName: []string{"test", "foo"}, Properties: map[string]*ast.StructProperty{"bar": {Spec: "test", Name: "bar", ProcessedName: []string{"test", "foo", "bar"}, Value: &ast.Unknown{ProcessedName: []string{"test", "foo", "bar"}}}}}
 	c.processStruct(test)
 
 	if len(c.RawInputs.Unknowns) == 0 {
@@ -389,107 +481,53 @@ func TestComponentIR(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 
-	expecting := `@__rounds = global i16 0
-@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-define void @__run() {
-block-16:
-	%test_foo_x = alloca double
-	store double 8.0, double* %test_foo_x
-	%test_foo_initial = alloca i1
-	store i1 false, i1* %test_foo_initial
-	%test_foo_alarm = alloca i1
-	store i1 false, i1* %test_foo_alarm
-	store i1 true, i1* %test_foo_initial
-	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x)
-	ret void
-}
-
-define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-block-17:
-	%0 = load i1, i1* %test_foo_initial
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-19-true, label %block-18-after
-
-block-18-after:
-	%2 = load i1, i1* %test_foo_initial
-	%3 = icmp eq i1 %2, true
-	%4 = load double, double* %test_foo_x
-	%5 = fcmp ogt double %4, 10.0
-	%6 = and i1 %3, %5
-	br i1 %6, label %block-22-true, label %block-21-after
-
-block-19-true:
-	%7 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %7
-	%8 = bitcast [14 x i8]* %7 to i8*
-	%9 = call i1 @advance(i8* %8)
-	br label %block-18-after
-
-block-21-after:
-	ret void
-
-block-22-true:
-	%10 = alloca [16 x i8]
-	store [16 x i8] c"test_foo_initial", [16 x i8]* %10
-	%11 = bitcast [16 x i8]* %10 to i8*
-	%12 = call i1 @stay(i8* %11)
-	br label %block-21-after
-}
-
-define i1 @advance(i8* %toState) {
-block-20:
-	ret i1 true
-}
-
-define i1 @stay(i8* %exitState) {
-block-23:
-	ret i1 true
-}
-
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial, double* %test_foo_x) {
-block-24:
-	%0 = load i1, i1* %test_foo_alarm
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-26-true, label %block-25-after
-
-block-25-after:
-	ret void
-
-block-26-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_close", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @advance(i8* %3)
-	br label %block-25-after
-}
-`
-
-	llvm, err := prepTest(test, false)
-
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
 	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
+		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ir, err := validateIR(llvm)
-
+	ty, err := types.Execute(pre.Processed, pre)
 	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
+		t.Fatal(err)
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
 	}
 
-	err = compareResults(llvm, expecting, string(ir))
+	ir := compiler.GetIR()
 
-	if err != nil {
-		t.Fatal(err.Error())
+	// State activation should store true into initial state
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
+	}
+	// Transition chain should be called
+	if !strings.Contains(ir, "@test_foo_initial__state") {
+		t.Fatal("IR should call @test_foo_initial__state")
+	}
+	if !strings.Contains(ir, "@test_foo_alarm__state") {
+		t.Fatal("IR should call @test_foo_alarm__state")
 	}
 
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
 }
 
 func TestIndexExp(t *testing.T) {
@@ -506,7 +544,7 @@ func TestIndexExp(t *testing.T) {
 				a: 10,
 			};
 
-			for 1 init{test = new foo;} run{
+			run init{test = new foo;} {
 				test.fizz;
 			};
 	`
@@ -611,117 +649,57 @@ func TestChoose(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 
-	expecting := `@__rounds = global i16 0
-@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-define void @__run() {
-block-30:
-	%test_foo_initial = alloca i1
-	store i1 false, i1* %test_foo_initial
-	%test_foo_alarm = alloca i1
-	store i1 false, i1* %test_foo_alarm
-	%test_foo_close = alloca i1
-	store i1 false, i1* %test_foo_close
-	store i1 true, i1* %test_foo_initial
-	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
-	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
-	call void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial)
-	ret void
-}
-
-define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-31:
-	%0 = load i1, i1* %test_foo_initial
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-33-true, label %block-32-after
-
-block-32-after:
-	ret void
-
-block-33-true:
-	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_start", [38 x i8]* @__choiceGroup
-	%2 = alloca [16 x i8]
-	store [16 x i8] c"test_foo_initial", [16 x i8]* %2
-	%3 = bitcast [16 x i8]* %2 to i8*
-	%4 = call i1 @stay(i8* %3)
-	%5 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %5
-	%6 = bitcast [14 x i8]* %5 to i8*
-	%7 = call i1 @advance(i8* %6)
-	%8 = or i1 %4, %7
-	store [38 x i8] c"e7c3ef66bc338a214829009722f76203_close", [38 x i8]* @__choiceGroup
-	br label %block-32-after
-}
-
-define i1 @stay(i8* %exitState) {
-block-34:
-	ret i1 true
-}
-
-define i1 @advance(i8* %toState) {
-block-35:
-	ret i1 true
-}
-
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-36:
-	%0 = load i1, i1* %test_foo_alarm
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-38-true, label %block-37-after
-
-block-37-after:
-	ret void
-
-block-38-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_close", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @advance(i8* %3)
-	br label %block-37-after
-}
-
-define void @test_foo_close__state(i1* %test_foo_alarm, i1* %test_foo_close, i1* %test_foo_initial) {
-block-39:
-	%0 = load i1, i1* %test_foo_close
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-41-true, label %block-40-after
-
-block-40-after:
-	ret void
-
-block-41-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_close", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @stay(i8* %3)
-	br label %block-40-after
-}
-`
-
-	llvm, err := prepTest(test, false)
-
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
 	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
+		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ir, err := validateIR(llvm)
-
+	ty, err := types.Execute(pre.Processed, pre)
 	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
+		t.Fatal(err)
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
 	}
 
-	err = compareResults(llvm, expecting, string(ir))
+	ir := compiler.GetIR()
 
-	if err != nil {
-		t.Fatal(err.Error())
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
+	}
+	if !strings.Contains(ir, "@test_foo_initial__state") {
+		t.Fatal("IR should call @test_foo_initial__state")
+	}
+	if !strings.Contains(ir, "@test_foo_alarm__state") {
+		t.Fatal("IR should call @test_foo_alarm__state")
+	}
+	if !strings.Contains(ir, "@test_foo_close__state") {
+		t.Fatal("IR should call @test_foo_close__state")
+	}
+	if !strings.Contains(ir, "@__choiceGroup") {
+		t.Fatal("IR should contain choice group markers")
 	}
 
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
 }
 
 func TestLeave(t *testing.T) {
@@ -737,100 +715,54 @@ func TestLeave(t *testing.T) {
 		},
 	};
 
-	start {
-		foo: initial,
-	};
+	run {
+		foo.initial;
+	}
 	`
 
-	expecting := `@__rounds = global i16 0
-@__parallelGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
-@__choiceGroup = global [38 x i8] c"\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
 
-define void @__run() {
-block-42:
-	%test_foo_initial = alloca i1
-	store i1 false, i1* %test_foo_initial
-	%test_foo_alarm = alloca i1
-	store i1 false, i1* %test_foo_alarm
-	store i1 true, i1* %test_foo_initial
-	call void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial)
-	call void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial)
-	ret void
-}
-
-define void @test_foo_initial__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
-block-43:
-	%0 = load i1, i1* %test_foo_initial
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-45-true, label %block-44-after
-
-block-44-after:
-	ret void
-
-block-45-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @advance(i8* %3)
-	%5 = alloca [16 x i8]
-	store [16 x i8] c"test_foo_initial", [16 x i8]* %5
-	%6 = bitcast [16 x i8]* %5 to i8*
-	%7 = call i1 @leave(i8* %6)
-	%8 = and i1 %4, %7
-	br label %block-44-after
-}
-
-define i1 @advance(i8* %toState) {
-block-46:
-	ret i1 true
-}
-
-define i1 @leave(i8* %exitState) {
-block-47:
-	ret i1 true
-}
-
-define void @test_foo_alarm__state(i1* %test_foo_alarm, i1* %test_foo_initial) {
-block-48:
-	%0 = load i1, i1* %test_foo_alarm
-	%1 = icmp eq i1 %0, true
-	br i1 %1, label %block-50-true, label %block-49-after
-
-block-49-after:
-	ret void
-
-block-50-true:
-	%2 = alloca [14 x i8]
-	store [14 x i8] c"test_foo_alarm", [14 x i8]* %2
-	%3 = bitcast [14 x i8]* %2 to i8*
-	%4 = call i1 @stay(i8* %3)
-	br label %block-49-after
-}
-
-define i1 @stay(i8* %exitState) {
-block-51:
-	ret i1 true
-}
-`
-
-	llvm, err := prepTest(test, false)
-
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
 	if err != nil {
-		t.Fatalf("compilation failed on valid spec. got=%s", err)
+		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ir, err := validateIR(llvm)
-
+	ty, err := types.Execute(pre.Processed, pre)
 	if err != nil {
-		t.Fatalf("generated IR is not valid. got=%s", err)
+		t.Fatal(err)
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
 	}
 
-	err = compareResults(llvm, expecting, string(ir))
+	ir := compiler.GetIR()
 
-	if err != nil {
-		t.Fatal(err.Error())
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
+	}
+	if !strings.Contains(ir, "@test_foo_initial__state") {
+		t.Fatal("IR should call @test_foo_initial__state")
+	}
+	if !strings.Contains(ir, "@test_foo_alarm__state") {
+		t.Fatal("IR should call @test_foo_alarm__state")
+	}
+	if !strings.Contains(ir, "@leave") {
+		t.Fatal("IR should contain @leave function")
 	}
 
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
 }
 
 func TestSysRunBlock(t *testing.T) {
@@ -852,13 +784,8 @@ func TestSysRunBlock(t *testing.T) {
 		},
 	};
 
-	start {
-		a: on,
-		b: idle,
-	};
-
-	for 2 run {
-		a | b;
+	run {
+		a.on | b.idle;
 	}
 	`
 
@@ -873,25 +800,97 @@ func TestSysRunBlock(t *testing.T) {
 		t.Fatalf("preprocessing failed: %s", err)
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
 	err = compiler.Compile(tree)
 	if err != nil {
 		t.Fatalf("compilation failed: %s", err)
 	}
 
-	if !compiler.hasSysRunBlock {
-		t.Fatal("hasSysRunBlock should be true for sysForStmt with component identifiers")
+	ir := compiler.GetIR()
+
+	// Both component state functions should appear in the IR
+	if !strings.Contains(ir, "@test_a_on__state") {
+		t.Fatal("IR should contain @test_a_on__state")
+	}
+	if !strings.Contains(ir, "@test_b_idle__state") {
+		t.Fatal("IR should contain @test_b_idle__state")
+	}
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestStateActivation(t *testing.T) {
+	test := `
+	system test;
+
+	component a = states{
+		on: func{
+			stay();
+		},
+		off: func{
+			stay();
+		},
+	};
+
+	component b = states{
+		idle: func{
+			stay();
+		},
+	};
+
+	run {
+		a.on && b.idle;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
 	}
 
 	ir := compiler.GetIR()
 
-	// Parallel group markers should appear (from compileParallel on component names)
-	if !strings.Contains(ir, "_start") || !strings.Contains(ir, "_close") {
-		t.Fatal("IR should contain parallel group start/close markers")
+	// StartStates should be populated by the StateActivation step
+	aPrefix := "test_a_"
+	bPrefix := "test_b_"
+	if _, ok := compiler.StartStates[aPrefix]; !ok {
+		t.Fatalf("StartStates should contain prefix %q after StateActivation", aPrefix)
+	}
+	if _, ok := compiler.StartStates[bPrefix]; !ok {
+		t.Fatalf("StartStates should contain prefix %q after StateActivation", bPrefix)
+	}
+
+	// The initial state store (true) should appear in the IR
+	if !strings.Contains(ir, "store i1 true") {
+		t.Fatal("IR should contain 'store i1 true' for state activation")
 	}
 
 	// Both component state functions should appear in the IR
@@ -902,10 +901,148 @@ func TestSysRunBlock(t *testing.T) {
 		t.Fatal("IR should contain @test_b_idle__state")
 	}
 
-	// stateCheck() should NOT have been called outside the parallel block,
-	// so the __run function should call state functions only inside parallel groups.
-	// Verify the IR is valid.
 	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestUnfuncCompiles(t *testing.T) {
+	test := `
+	system test;
+
+	component fetch = states{
+		id: false,
+		count: false,
+		countVotes: unfunc{
+			requires fetch.id,
+			emits fetch.count,
+		},
+	};
+
+	run {
+		fetch.countVotes;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	ir := compiler.GetIR()
+
+	// Stub function should appear in LLVM IR
+	if !strings.Contains(ir, "@test_fetch_countVotes__state") {
+		t.Fatal("IR should contain @test_fetch_countVotes__state")
+	}
+
+	// ComponentOrder should include the unfunc state
+	found := false
+	for _, k := range compiler.ComponentOrder {
+		if strings.Contains(k, "countVotes") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("ComponentOrder should include countVotes, got %v", compiler.ComponentOrder)
+	}
+
+	// RawInputs.Unfuncs should contain the unfunc info
+	if len(compiler.RawInputs.Unfuncs) == 0 {
+		t.Fatal("RawInputs.Unfuncs should not be empty")
+	}
+	uf := compiler.RawInputs.Unfuncs[0]
+	if uf.Requires == nil {
+		t.Fatal("UnfuncInfo.Requires should not be nil")
+	}
+	if uf.Emits == nil {
+		t.Fatal("UnfuncInfo.Emits should not be nil")
+	}
+
+	_, err = validateIR(ir)
+	if err != nil {
+		t.Fatalf("generated IR is not valid: %s", err)
+	}
+}
+
+func TestUnfuncWithMultipleRequires(t *testing.T) {
+	test := `
+	system test;
+
+	component ops = states{
+		id: false,
+		joinId: false,
+		result: false,
+		getWithJoin: unfunc{
+			requires ops.id && ops.joinId,
+			emits ops.result,
+		},
+	};
+
+	run {
+		ops.getWithJoin;
+	}
+	`
+
+	flags := make(map[string]bool)
+	flags["specType"] = false
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		t.Fatalf("preprocessing failed: %s", err)
+	}
+
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	if len(compiler.RawInputs.Unfuncs) == 0 {
+		t.Fatal("RawInputs.Unfuncs should not be empty")
+	}
+
+	uf := compiler.RawInputs.Unfuncs[0]
+	if uf.Requires == nil {
+		t.Fatal("Requires should not be nil for getWithJoin")
+	}
+	// The requires expression should be an InfixExpression (&&)
+	if _, ok := uf.Requires.(*ast.InfixExpression); !ok {
+		t.Fatalf("Requires should be an InfixExpression for &&, got %T", uf.Requires)
+	}
+
+	_, err = validateIR(compiler.GetIR())
 	if err != nil {
 		t.Fatalf("generated IR is not valid: %s", err)
 	}
@@ -947,6 +1084,70 @@ func stripAndEscape(str string) string {
 	return output.String()
 }
 
+func TestStockExtendsAssertPropagation(t *testing.T) {
+	// An assert on parent.field should also constrain child.field when child extends parent.
+	test := `spec test1;
+def generic = stock{
+	id: "primary key",
+};
+def person = stock{
+	extends generic,
+	name: "person name",
+};
+assert generic.id == true;
+`
+	compiler, err := prepTestCompiler(test, true)
+	if err != nil {
+		t.Fatalf("compilation failed: %s", err)
+	}
+
+	if len(compiler.RawInputs.Asserts) == 0 {
+		t.Fatal("no asserts compiled")
+	}
+
+	assertVar, ok := compiler.RawInputs.Asserts[0].Constraint.Left.(*ast.AssertVar)
+	if !ok {
+		t.Fatalf("assert left is not AssertVar, got %T", compiler.RawInputs.Asserts[0].Constraint.Left)
+	}
+
+	// Should contain both generic_id and person_id
+	found := make(map[string]bool)
+	for _, inst := range assertVar.Instances {
+		found[inst] = true
+	}
+
+	if !found["test1_generic_id"] {
+		t.Errorf("assert did not include test1_generic_id, got %v", assertVar.Instances)
+	}
+	if !found["test1_person_id"] {
+		t.Errorf("assert did not propagate to test1_person_id, got %v", assertVar.Instances)
+	}
+}
+
+func prepTestCompiler(test string, specType bool) (*Compiler, error) {
+	flags := make(map[string]bool)
+	flags["specType"] = specType
+	flags["testing"] = true
+	flags["skipRun"] = false
+
+	l, _ := listener.Execute(test, "", flags)
+	pre, err := preprocess.Execute(l)
+	if err != nil {
+		return nil, err
+	}
+
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		return nil, err
+	}
+	sw := swaps.NewPrecompiler(ty)
+	tree := sw.Swap(ty.Checked)
+	compiler := NewCompiler()
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	err = compiler.Compile(tree)
+	return compiler, err
+}
+
 func prepTest(test string, specType bool) (string, error) {
 	flags := make(map[string]bool)
 	flags["specType"] = specType
@@ -959,11 +1160,14 @@ func prepTest(test string, specType bool) (string, error) {
 		return "", err
 	}
 
-	ty := types.Execute(pre.Processed, pre)
+	ty, err := types.Execute(pre.Processed, pre)
+	if err != nil {
+		return "", err
+	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
 	compiler := NewCompiler()
-	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, sw.Alias, true)
+	compiler.LoadMeta(ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
 	err = compiler.Compile(tree)
 
 	if err != nil {

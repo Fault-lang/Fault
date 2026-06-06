@@ -7,6 +7,7 @@ import (
 	"fault/util"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/llir/llvm/ir"
@@ -26,6 +27,7 @@ type Env struct {
 	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
 	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
 	UsedVars         map[string]bool        // alloca names accessed by at least one flow function
+	WriteSets        map[string]map[string]bool // fname → set of global base var names the function stores to
 	CurrentFunction  string
 	CurrentRound     int
 	returnVoid       *PhiState
@@ -43,6 +45,7 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		ConstantVals: make(map[string]value.Value),
 		StringRules:  make(map[string]string),
 		UsedVars:     make(map[string]bool),
+		WriteSets:    make(map[string]map[string]bool),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),
 		WhensThens:   make(map[string]map[string][]string),
@@ -204,7 +207,9 @@ func (f *LLFunc) GenerateCallstack(callstack []string) []rules.Rule {
 		v, ok = f.functions[fname]
 		if !ok {
 			v = NewLLFunc(f.Env, f.rawFunctions, f.rawFunctions[fname])
+			savedCurrentFunction := f.Env.CurrentFunction
 			v.Unroll()
+			f.Env.CurrentFunction = savedCurrentFunction
 		}
 
 		if len(callstack) == 1 {
@@ -405,8 +410,9 @@ func (b *LLBlock) GenerateCallstack(callstack []string) []rules.Rule {
 		v, ok = b.functions[fname]
 		if !ok {
 			v = NewLLFunc(b.Env, b.rawFunctions, b.rawFunctions[fname])
+			savedCurrentFunction := b.Env.CurrentFunction
 			v.Unroll()
-
+			b.Env.CurrentFunction = savedCurrentFunction
 		}
 		if len(callstack) == 1 {
 			return v.GetAllRules(enter, exit)
@@ -489,21 +495,47 @@ func FindMutableVars(funcs []*ir.Func) map[string]bool {
 func FindUsedVars(funcs []*ir.Func) map[string]bool {
 	used := make(map[string]bool)
 	for _, f := range funcs {
-		if util.FormatIdent(f.Ident()) == "__run" {
-			continue
-		}
 		for _, block := range f.Blocks {
 			for _, inst := range block.Insts {
 				switch v := inst.(type) {
 				case *ir.InstLoad:
 					used[util.FormatIdent(v.Src.Ident())] = true
 				case *ir.InstStore:
-					used[util.FormatIdent(v.Dst.Ident())] = true
+					if util.FormatIdent(f.Ident()) != "__run" {
+						used[util.FormatIdent(v.Dst.Ident())] = true
+					}
 				}
 			}
 		}
 	}
 	return used
+}
+
+// FindWriteSets scans all non-__run function bodies and returns, for each
+// function, the set of global variable base names it stores to.
+func FindWriteSets(funcs []*ir.Func) map[string]map[string]bool {
+	writeSets := make(map[string]map[string]bool)
+	for _, f := range funcs {
+		fname := util.FormatIdent(f.Ident())
+		if fname == "__run" || isBuiltIn(f.Ident()) {
+			continue
+		}
+		written := make(map[string]bool)
+		for _, block := range f.Blocks {
+			for _, inst := range block.Insts {
+				if store, ok := inst.(*ir.InstStore); ok {
+					dst := util.FormatIdent(store.Dst.Ident())
+					if IsGlobal(store.Dst.Ident()) {
+						written[baseVarName(dst)] = true
+					}
+				}
+			}
+		}
+		if len(written) > 0 {
+			writeSets[fname] = written
+		}
+	}
+	return writeSets
 }
 
 // baseVarName strips any trailing decimal digits from name.
@@ -588,29 +620,84 @@ func WhenThen(aw []*ast.AssertionStatement) map[string]map[string][]string {
 	//variables are on the right side (then) for every variable on the left side (when)
 	//this allows us to build out asserts later and capture overlapping SSA transitions
 	//Example: a1 is true, b1 must be true. b1 becomes b2 before a1 becomes a2 so b2 must still be true
+	//
+	// When AssertVars have multiple instances (from BFS expansion over template stocks and their
+	// concrete run instances), we pair variables by positional index within the Instances slices.
+	// This ensures r1_pos1 is only linked to r1_pos2/r1_pos3 and r2_pos1 only to r2_pos2/r2_pos3,
+	// rather than cross-linking all instances together (which collapses to one combo due to dedup).
 	var whenThens = make(map[string]map[string][]string)
 	for _, a := range aw {
 		if a.Constraint.Operator == "then" {
-			when := extractVariables(a.Constraint.Left)
-			then := extractVariables(a.Constraint.Right)
-			for _, w := range when {
-				left := util.RemoveFromStringSlice(when, w)
-				if whenThens[w] == nil {
-					whenThens[w] = make(map[string][]string)
+			whenAssertVars := collectAssertVarNodes(a.Constraint.Left)
+			thenAssertVars := collectAssertVarNodes(a.Constraint.Right)
+
+			if len(whenAssertVars) == 0 {
+				// No AssertVars — fall back to flat extraction (e.g. Identifier-only asserts)
+				when := extractVariables(a.Constraint.Left)
+				then := extractVariables(a.Constraint.Right)
+				for _, w := range when {
+					left := util.RemoveFromStringSlice(when, w)
+					if whenThens[w] == nil {
+						whenThens[w] = make(map[string][]string)
+					}
+					whenThens[w][a.String()] = append(left, then...)
 				}
-				whenThens[w][a.String()] = append(left, then...)
+				for _, t := range then {
+					right := util.RemoveFromStringSlice(then, t)
+					if whenThens[t] == nil {
+						whenThens[t] = make(map[string][]string)
+					}
+					whenThens[t][a.String()] = append(when, right...)
+				}
+				continue
 			}
 
-			for _, t := range then {
-				right := util.RemoveFromStringSlice(then, t)
-				if whenThens[t] == nil {
-					whenThens[t] = make(map[string][]string)
+			nInstances := len(whenAssertVars[0].Instances)
+			for i := 0; i < nInstances; i++ {
+				var whenI []string
+				for _, wv := range whenAssertVars {
+					if i < len(wv.Instances) {
+						whenI = append(whenI, wv.Instances[i])
+					}
 				}
-				whenThens[t][a.String()] = append(when, right...)
+				var thenI []string
+				for _, tv := range thenAssertVars {
+					if i < len(tv.Instances) {
+						thenI = append(thenI, tv.Instances[i])
+					}
+				}
+				for _, w := range whenI {
+					left := util.RemoveFromStringSlice(whenI, w)
+					if whenThens[w] == nil {
+						whenThens[w] = make(map[string][]string)
+					}
+					whenThens[w][a.String()] = append(left, thenI...)
+				}
+				for _, t := range thenI {
+					right := util.RemoveFromStringSlice(thenI, t)
+					if whenThens[t] == nil {
+						whenThens[t] = make(map[string][]string)
+					}
+					whenThens[t][a.String()] = append(whenI, right...)
+				}
 			}
 		}
 	}
 	return whenThens
+}
+
+// collectAssertVarNodes walks an expression tree and returns all *ast.AssertVar nodes found.
+func collectAssertVarNodes(e ast.Node) []*ast.AssertVar {
+	switch v := e.(type) {
+	case *ast.AssertVar:
+		return []*ast.AssertVar{v}
+	case *ast.InfixExpression:
+		return append(collectAssertVarNodes(v.Left), collectAssertVarNodes(v.Right)...)
+	case *ast.PrefixExpression:
+		return collectAssertVarNodes(v.Right)
+	default:
+		return nil
+	}
 }
 
 func extractVariables(e ast.Node) []string {
@@ -639,7 +726,8 @@ func extractVariables(e ast.Node) []string {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return vars
 	case *ast.Unknown:
-		vars = append(vars, v.Name.IdString())
+		return vars
+	case *ast.Whole:
 	case *ast.Nil:
 		return vars
 	case *ast.IndexExpression:
@@ -653,7 +741,7 @@ func extractVariables(e ast.Node) []string {
 }
 
 func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.RawInputs) rules.Rule {
-	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" {
+	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" || id == "__synthStep" {
 		return nil
 	}
 	if strings.HasPrefix(id, "__hist_") {
@@ -681,8 +769,20 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 		return declareVar(id, ty, &rules.Wrap{Value: val.String()}, false)
 	case *constant.Float:
 		ty := LookupType(id, val)
-		if isASolvable(id, RawInputs) {
+		if isAWhole(id, RawInputs) {
+			return rules.NewWholeInit(id, ty, -1, RawInputs.IntegerMode)
+		} else if isASolvable(id, RawInputs) {
+			if params, ok := RawInputs.Uncertains[id]; ok && len(params) >= 2 && params[1] != 0 {
+				var k float64
+				if len(params) >= 3 {
+					k = params[2]
+				}
+				return rules.NewUncertainInit(id, ty, -1, params[0], params[1], k)
+			}
 			return declareVar(id, ty, &rules.Wrap{Value: val.X.String()}, true)
+		} else if RawInputs.IntegerMode {
+			v := floatLitToInt(val.X.String())
+			return declareVar(id, "Int", &rules.Wrap{Value: v}, false)
 		} else {
 			v := val.X.String()
 			if strings.Contains(v, ".") {
@@ -723,6 +823,15 @@ func isBuiltIn(c string) bool {
 	return false
 }
 
+// floatLitToInt converts a float literal string like "1.0" to an integer string "1".
+// Used when generating SMT in QF_NIA (integer) mode.
+func floatLitToInt(s string) string {
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return strconv.FormatInt(int64(f), 10)
+	}
+	return s
+}
+
 func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
@@ -734,6 +843,10 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 			case *constant.Float, *constant.Int:
 				litStr := extractLiteral(c.(constant.Constant))
 				ty := LookupType(refname, v)
+				if e.RawInputs.IntegerMode && ty == "Real" {
+					litStr = floatLitToInt(litStr)
+					ty = "Int"
+				}
 				return litStr, ty, false
 			}
 			ty := LookupType(refname, v)
@@ -751,6 +864,9 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 	}
 
 	if IsNumeric(x) {
+		if e.RawInputs.IntegerMode {
+			return floatLitToInt(x), "Int", false
+		}
 		return x, "Real", false
 	}
 
@@ -772,24 +888,44 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 	_, file, line, _ := runtime.Caller(1)
 
 	var xr, yr rules.Rule
-	if strings.HasPrefix(x, "__hist_") {
-		offset, histBase := parseHistSentinel(x)
-		xr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyX}
-	} else {
-		wx := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
-		wx.SetWhensThens(b.Env.WhensThens)
-		wx.SetOmit(b.Env.CurrentFunction)
-		xr = wx
+
+	// If x or y is still a raw temp (e.g. %2), look it up in irRefs and
+	// substitute the stored sub-expression rule directly.
+	if IsTemp(x) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, x)
+		if ref, ok := b.irRefs[refname]; ok {
+			xr = ref
+		}
+	}
+	if IsTemp(y) {
+		refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, y)
+		if ref, ok := b.irRefs[refname]; ok {
+			yr = ref
+		}
 	}
 
-	if strings.HasPrefix(y, "__hist_") {
-		offset, histBase := parseHistSentinel(y)
-		yr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyY}
-	} else {
-		wy := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
-		wy.SetWhensThens(b.Env.WhensThens)
-		wy.SetOmit(b.Env.CurrentFunction)
-		yr = wy
+	if xr == nil {
+		if strings.HasPrefix(x, "__hist_") {
+			offset, histBase := parseHistSentinel(x)
+			xr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyX}
+		} else {
+			wx := rules.NewWrap(x, tyX, vrX, file, line, false, xIs)
+			wx.SetWhensThens(b.Env.WhensThens)
+			wx.SetOmit(b.Env.CurrentFunction)
+			xr = wx
+		}
+	}
+
+	if yr == nil {
+		if strings.HasPrefix(y, "__hist_") {
+			offset, histBase := parseHistSentinel(y)
+			yr = &rules.HistoryWrap{Base: histBase, Offset: offset, Type: tyY}
+		} else {
+			wy := rules.NewWrap(y, tyY, vrY, file, line, false, yIs)
+			wy.SetWhensThens(b.Env.WhensThens)
+			wy.SetOmit(b.Env.CurrentFunction)
+			yr = wy
+		}
 	}
 
 	return &rules.Infix{

@@ -13,12 +13,12 @@ def outer = flow{
     },
 };
 
-for 1 init{
+run init{
     i = new inner;
     m = new middle;
     o = new outer;
     m.core = i;
     o.layer = m;
-} run {
+} {
     o.fn;
 }
