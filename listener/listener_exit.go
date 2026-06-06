@@ -1085,6 +1085,9 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 				typeHint = "BOOL"
 			}
 		}
+		if typeHint == "" {
+			panic(fmt.Sprintf("param() requires a type hint: line %d col %d — use param(0) for Int, param(0.0) for Real, or param(false) for Bool", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+		}
 		l.push(&ast.Param{
 			Token:    token,
 			TypeHint: typeHint,
