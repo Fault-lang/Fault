@@ -325,6 +325,14 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
+		if len(compiler.RawInputs.Params) > 0 && r.config.Mode != "template" && r.config.Mode != "ir" {
+			err := fmt.Errorf("spec contains param() fields but mode is %q — param() fields produce __PARAM_...__ placeholder tokens that Z3 cannot parse; use --mode=template to generate a substitutable SMT template", r.config.Mode)
+			r.sendError(PhaseSMT, err)
+			output.Error = err
+			output.ErrorPhase = PhaseSMT
+			return output
+		}
+
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
 		g := generator.Execute(compiler, generator.GeneratorOptions{
 			Timeout:       r.config.SMTTimeout,

@@ -187,3 +187,61 @@ func TestLargeSMTTUIPath(t *testing.T) {
 		}
 	})
 }
+
+const paramSpec = `spec testreq;
+def request = stock{
+    amount: param(0.0),
+    count: param(0),
+};
+run init{r1 = new request;} {}
+`
+
+func TestParamRequiresTemplateMode(t *testing.T) {
+	path := writeTempSpec(t, paramSpec)
+
+	// "ir" mode outputs LLVM IR (no __PARAM__ tokens), so it is allowed.
+	// "ast" mode returns before LLVM, so it never triggers the check.
+	for _, mode := range []string{"model", "smt"} {
+		t.Run(mode, func(t *testing.T) {
+			config := CompilationConfig{
+				Filepath: path,
+				Mode:     mode,
+				Input:    "fault",
+				Output:   "text",
+			}
+			r := NewRunner(config, nil)
+			result := r.Run()
+			if result.Error == nil {
+				t.Fatalf("mode=%q: expected error for param() spec, got none", mode)
+			}
+			if result.ErrorPhase != PhaseSMT {
+				t.Fatalf("mode=%q: expected ErrorPhase PhaseSMT, got %v", mode, result.ErrorPhase)
+			}
+		})
+	}
+}
+
+func TestParamTemplateMode(t *testing.T) {
+	path := writeTempSpec(t, paramSpec)
+
+	config := CompilationConfig{
+		Filepath: path,
+		Mode:     "template",
+		Input:    "fault",
+		Output:   "text",
+	}
+	r := NewRunner(config, nil)
+	result := r.Run()
+	if result.Error != nil {
+		t.Fatalf("unexpected error in template mode: %v", result.Error)
+	}
+	if result.SMT == "" {
+		t.Fatal("expected SMT output in template mode, got empty string")
+	}
+	if result.ParamManifest == nil {
+		t.Fatal("expected ParamManifest to be set in template mode")
+	}
+	if len(result.ParamManifest) == 0 {
+		t.Fatal("expected non-empty ParamManifest")
+	}
+}
