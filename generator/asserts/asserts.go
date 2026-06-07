@@ -494,6 +494,108 @@ func (c *Constraint) merge(left *rules.VarSets, right *rules.VarSets, operator s
 	return merged
 }
 
+// mergeSameIndex is like merge but only pairs left and right values that share
+// the same SSA index suffix. This prevents cross-index pairings where a helper
+// variable at one index is combined with a real state variable at another index,
+// which would create spurious violation conditions for "always" assertions.
+//
+// Like merge(), it only pairs values from matching registry keys (k == k2).
+// If no indexed values are found in the right side (e.g., right is a constant),
+// it falls back to the standard cross-product merge.
+func (c *Constraint) mergeSameIndex(left *rules.VarSets, right *rules.VarSets, operator string) *rules.VarSets {
+	merged := rules.NewVarSets(make(map[string]*util.StringSet))
+
+	if len(left.Vars) == 0 {
+		return merged
+	}
+
+	anyRightIndexed := false
+	for _, vs := range right.Vars {
+		for _, v := range vs.Values() {
+			if ssaIndexOf(v) != "" {
+				anyRightIndexed = true
+				break
+			}
+		}
+		if anyRightIndexed {
+			break
+		}
+	}
+
+	// If right has no SSA-indexed variables (e.g., it's a constant literal),
+	// fall back to the full cross-product merge — no index mismatch possible.
+	if !anyRightIndexed {
+		return c.merge(left, right, operator)
+	}
+
+	// For each registry key that appears in both left and right, pair values
+	// that share the same SSA numeric index.
+	for k, lVs := range left.Vars {
+		rVs, ok := right.Vars[k]
+		if !ok {
+			continue
+		}
+
+		leftByIdx := make(map[string][]string)
+		for _, v := range lVs.Values() {
+			if idx := ssaIndexOf(v); idx != "" {
+				leftByIdx[idx] = append(leftByIdx[idx], v)
+			}
+		}
+
+		rightByIdx := make(map[string][]string)
+		for _, v := range rVs.Values() {
+			if idx := ssaIndexOf(v); idx != "" {
+				rightByIdx[idx] = append(rightByIdx[idx], v)
+			}
+		}
+
+		var combos [][]string
+		for idx, lefts := range leftByIdx {
+			rights, ok := rightByIdx[idx]
+			if !ok {
+				continue
+			}
+			for _, l := range lefts {
+				for _, r := range rights {
+					combos = append(combos, []string{l, r})
+				}
+			}
+		}
+
+		if len(combos) > 0 {
+			merged.Vars[k] = c.Package(combos, operator)
+		}
+	}
+
+	return merged
+}
+
+// ssaIndexOf extracts the trailing numeric SSA index from an SMT expression.
+// Handles wrapped expressions like "(not waterpumpmonitor_Alarm_Silent_2)" → "2".
+func ssaIndexOf(expr string) string {
+	s := strings.TrimSpace(expr)
+	// Unwrap single-argument SMT operators: (not X), (- X), etc.
+	for strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
+		inner := strings.TrimSpace(s[1 : len(s)-1])
+		fields := strings.Fields(inner)
+		if len(fields) == 2 {
+			s = fields[1]
+		} else {
+			break
+		}
+	}
+	i := strings.LastIndex(s, "_")
+	if i < 0 {
+		return ""
+	}
+	suffix := s[i+1:]
+	if _, err := strconv.Atoi(suffix); err != nil {
+		return ""
+	}
+	return suffix
+}
+
 // varSMTType returns the SMT sort for an SSA-versioned variable name,
 // stripping the trailing numeric suffix to look up the base name in VarTypes.
 func (c *Constraint) varSMTType(ssaName string) string {
@@ -586,7 +688,7 @@ func (c *Constraint) applyTemporal() string {
 		}
 		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
 	case "always": // Every state is true
-		m := c.merge(c.Left, c.Right, c.Op)
+		m := c.mergeSameIndex(c.Left, c.Right, c.Op)
 		if len(m.List()) == 0 {
 			return ""
 		}

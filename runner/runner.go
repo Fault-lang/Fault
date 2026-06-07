@@ -419,6 +419,7 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 		mc.EvaluateViolations(compiler.RawInputs.Asserts)
 		output.Asserts = compiler.RawInputs.Asserts
+		g.ResultLog.SystemName = systemName(tree)
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Validate()
@@ -509,4 +510,17 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 	r.sendProgress(PhaseResults, "Results ready", 1.0, true)
 	output.ResultLog = pending.ResultLog
 	return output
+}
+
+// systemName extracts the spec or system name from the top-level AST declaration.
+func systemName(tree *ast.Spec) string {
+	for _, stmt := range tree.Statements {
+		switch s := stmt.(type) {
+		case *ast.SpecDeclStatement:
+			return s.Name.Value
+		case *ast.SysDeclStatement:
+			return s.Name.Value
+		}
+	}
+	return ""
 }

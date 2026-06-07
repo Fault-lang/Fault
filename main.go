@@ -183,8 +183,13 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThr
 	case "model":
 		if result.ResultLog != nil {
 			result.ResultLog.Print()
+			sysPrefix := result.ResultLog.SystemName + "_"
 			for _, a := range result.Asserts {
-				fmt.Println(a.EvLogString(true))
+				s := a.EvLogString(true)
+				if sysPrefix != "_" {
+					s = strings.ReplaceAll(s, sysPrefix, "")
+				}
+				fmt.Println(s)
 			}
 		} else {
 			fmt.Println(result.SMT)
