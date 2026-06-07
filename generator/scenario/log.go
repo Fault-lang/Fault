@@ -597,6 +597,10 @@ func (l *Logger) String() string {
 	var stack []*frame
 	var root strings.Builder
 
+	// initialStates collects "Set variable X to value true" lines for state
+	// variables active at model start. Printed as a block before the "---" divider.
+	var initialStates []string
+
 	// write sends s to the innermost open frame, or to root when no frame is open.
 	write := func(s string) {
 		if len(stack) > 0 {
@@ -626,8 +630,26 @@ func (l *Logger) String() string {
 			return
 		}
 		ind := strings.Repeat("   ", len(stack)+1)
+
+		// For state functions (Foo__state), if the first buffered line sets the
+		// corresponding state variable to true, hoist it before the function header.
+		// This makes clear that the state was activated before the function ran,
+		// not that the function activated itself.
+		if strings.HasSuffix(f.displayName, "__state") {
+			stateName := strings.TrimSuffix(f.displayName, "__state")
+			innerInd := ind + "   "
+			marker := fmt.Sprintf("%sSet variable %s to value true\n", innerInd, stateName)
+			if strings.HasPrefix(content, marker) {
+				// Collect into the initial-state block rather than writing inline.
+				initialStates = append(initialStates, fmt.Sprintf("%sSet variable %s to value true\n", ind, stateName))
+				content = content[len(marker):]
+			}
+		}
+
 		write(fmt.Sprintf("%sRun function %s\n", ind, f.displayName))
-		write(content)
+		if content != "" {
+			write(content)
+		}
 	}
 
 	// currentState: base variable name → latest known value.
@@ -700,6 +722,8 @@ func (l *Logger) String() string {
 
 			if event.FunctionName == "@__run" {
 				if event.Type == "Entry" {
+					root.WriteString("\nInitialize model\n")
+					root.WriteString("-----------------------------------\n")
 					root.WriteString("\nStart model\n")
 					root.WriteString("-----------------------------------\n")
 				}
@@ -796,6 +820,23 @@ func (l *Logger) String() string {
 			// They are not meaningful model events and are suppressed.
 		}
 	}
+
+	// Insert the collected initial states
+	if len(initialStates) > 0 {
+		const model_run = "\nStart model\n-----------------------------------\n"
+		const model_init = "\nInitialize model\n-----------------------------------\n"
+		s := root.String()
+		if idx := strings.Index(s, model_init+model_run); idx >= 0 {
+			insertAt := idx + len(model_init)
+			root.Reset()
+			root.WriteString(s[:insertAt])
+			for _, line := range initialStates {
+				root.WriteString(line)
+			}
+			root.WriteString(s[insertAt:])
+		}
+	}
+
 	root.WriteString("\n")
 	return root.String()
 }
