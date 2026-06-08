@@ -221,6 +221,24 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 	l.structscope = ""
 }
 
+func (l *FaultListener) ExitPropExtends(c *parser.PropExtendsContext) {
+	node := l.pop()
+	switch n := node.(type) {
+	case *ast.Identifier:
+		if n.Spec == "" {
+			n.Spec = l.currSpec
+		}
+		l.pendingExtends = n
+	case *ast.ParameterCall:
+		token := ast.GenerateToken("IDENT", n.Value[len(n.Value)-1], c.GetStart(), c.GetStop())
+		l.pendingExtends = &ast.Identifier{
+			Token: token,
+			Spec:  n.Spec,
+			Value: n.Value[len(n.Value)-1],
+		}
+	}
+}
+
 func (l *FaultListener) ExitStock(c *parser.StockContext) {
 	allProps := c.AllSfProperties()
 	token := ast.GenerateToken("STOCK", "STOCK", c.GetStart(), c.GetStop())
@@ -230,16 +248,12 @@ func (l *FaultListener) ExitStock(c *parser.StockContext) {
 	normalCount := 0
 
 	for _, prop := range allProps {
-		switch p := prop.(type) {
+		switch prop.(type) {
 		case *parser.PropExtendsContext:
-			identToken := ast.GenerateToken("IDENT", p.IDENT().GetText(), p.GetStart(), p.GetStop())
-			extends = &ast.Identifier{
-				Token: identToken,
-				Value: p.IDENT().GetText(),
-				Spec:  l.currSpec,
-			}
+			extends = l.pendingExtends
+			l.pendingExtends = nil
 		case *parser.PropExcludeContext:
-			excludes = append(excludes, p.IDENT().GetText())
+			excludes = append(excludes, prop.(*parser.PropExcludeContext).IDENT().GetText())
 		default:
 			normalCount++
 		}

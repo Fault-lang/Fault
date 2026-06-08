@@ -114,7 +114,7 @@ structType
 sfProperties
     : IDENT ':' functionLit #PropFunc
     | structProperties      #sfMisc
-    | EXTENDS IDENT         #PropExtends
+    | EXTENDS operandName   #PropExtends
     | EXCLUDE IDENT         #PropExclude
     ;
 

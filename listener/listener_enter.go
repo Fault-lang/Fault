@@ -122,7 +122,7 @@ func (l *FaultListener) EnterPropVar(c *parser.PropVarContext) {
 }
 
 func (l *FaultListener) EnterPropExtends(c *parser.PropExtendsContext) {
-	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+	// validation delegated to operandName sub-rules (EnterOpName / EnterParamCall)
 }
 
 func (l *FaultListener) EnterPropExclude(c *parser.PropExcludeContext) {

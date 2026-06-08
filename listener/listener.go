@@ -30,6 +30,7 @@ type FaultListener struct {
 	StructsPropertyOrder map[string][]string
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node
+	pendingExtends       *ast.Identifier
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {

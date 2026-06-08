@@ -476,7 +476,11 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		stock := def.Value.(*ast.StockLiteral)
 		c.structPropOrder[key] = stock.Order
 		if stock.Extends != nil {
-			parentKey := fmt.Sprintf("%s_%s", id[0], stock.Extends.Value)
+			extSpec := id[0]
+			if stock.Extends.Spec != "" {
+				extSpec = stock.Extends.Spec
+			}
+			parentKey := fmt.Sprintf("%s_%s", extSpec, stock.Extends.Value)
 			c.instances[key] = append(c.instances[key], parentKey)
 			c.instances[parentKey] = append(c.instances[parentKey], key)
 			c.instanceChildOf[parentKey] = append(c.instanceChildOf[parentKey], key)

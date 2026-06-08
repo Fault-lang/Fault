@@ -135,7 +135,12 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 
 		if node.Extends != nil {
 			parentName := node.Extends.Value
-			parentFields, ferr := spec.FetchStock(parentName)
+			parentSpecName := node.Extends.Spec
+			if parentSpecName == "" {
+				parentSpecName = rawid[0]
+			}
+			parentSpec := c.SpecStructs[parentSpecName]
+			parentFields, ferr := parentSpec.FetchStock(parentName)
 			if ferr != nil {
 				return nil, fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())
 			}
@@ -146,7 +151,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 				}
 			}
 
-			parentKey := strings.Join([]string{rawid[0], parentName}, "_")
+			parentKey := strings.Join([]string{parentSpecName, parentName}, "_")
 			parentOrder := c.Preprocesser.StructsPropertyOrder[parentKey]
 
 			var inheritedOrder []string
