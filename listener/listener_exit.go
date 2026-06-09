@@ -222,25 +222,18 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitPropExtends(c *parser.PropExtendsContext) {
-	// Current generated parser has EXTENDS IDENT (terminal); ExitOpName does not fire.
-	// Read directly from the parse tree context.
-	// TODO: after `make java && make golang` regenerates the parser with EXTENDS operandName,
-	// switch to popping *ast.Identifier/*ast.ParameterCall from the stack instead.
-	identToken := ast.GenerateToken("IDENT", c.IDENT().GetText(), c.GetStart(), c.GetStop())
-	v := c.IDENT().GetText()
-	param := strings.Split(v, ".")
-	if len(param) == 2 && util.InStringSlice(l.specs, param[0]) {
+	node := l.pop()
+	switch v := node.(type) {
+	case *ast.Identifier:
+		l.pendingExtends = v
+	case *ast.ParameterCall:
 		l.pendingExtends = &ast.Identifier{
-			Token: identToken,
-			Spec:  param[0],
-			Value: param[1],
+			Token: v.Token,
+			Spec:  v.Spec,
+			Value: v.Value[len(v.Value)-1],
 		}
-	} else {
-		l.pendingExtends = &ast.Identifier{
-			Token: identToken,
-			Value: v,
-			Spec:  l.currSpec,
-		}
+	default:
+		panic(fmt.Sprintf("ExitPropExtends: unexpected node type %T", node))
 	}
 }
 
