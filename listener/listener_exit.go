@@ -222,19 +222,24 @@ func (l *FaultListener) ExitStructDecl(c *parser.StructDeclContext) {
 }
 
 func (l *FaultListener) ExitPropExtends(c *parser.PropExtendsContext) {
-	node := l.pop()
-	switch n := node.(type) {
-	case *ast.Identifier:
-		if n.Spec == "" {
-			n.Spec = l.currSpec
-		}
-		l.pendingExtends = n
-	case *ast.ParameterCall:
-		token := ast.GenerateToken("IDENT", n.Value[len(n.Value)-1], c.GetStart(), c.GetStop())
+	// Current generated parser has EXTENDS IDENT (terminal); ExitOpName does not fire.
+	// Read directly from the parse tree context.
+	// TODO: after `make java && make golang` regenerates the parser with EXTENDS operandName,
+	// switch to popping *ast.Identifier/*ast.ParameterCall from the stack instead.
+	identToken := ast.GenerateToken("IDENT", c.IDENT().GetText(), c.GetStart(), c.GetStop())
+	v := c.IDENT().GetText()
+	param := strings.Split(v, ".")
+	if len(param) == 2 && util.InStringSlice(l.specs, param[0]) {
 		l.pendingExtends = &ast.Identifier{
-			Token: token,
-			Spec:  n.Spec,
-			Value: n.Value[len(n.Value)-1],
+			Token: identToken,
+			Spec:  param[0],
+			Value: param[1],
+		}
+	} else {
+		l.pendingExtends = &ast.Identifier{
+			Token: identToken,
+			Value: v,
+			Spec:  l.currSpec,
 		}
 	}
 }
