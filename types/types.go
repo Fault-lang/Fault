@@ -215,8 +215,8 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 				return node, err
 			}
 			switch tnode.(type) {
-			case *ast.FunctionLiteral, *ast.Instance, *ast.StructInstance:
-				// allowed: functions and stock references
+			case *ast.FunctionLiteral, *ast.Instance, *ast.StructInstance, *ast.UnfuncLiteral:
+				// allowed: functions, stock references, and unfuncs
 			default:
 				return nil, fmt.Errorf("flow %s: property %q must be a function or stock reference; use a stock to hold plain values", node.IdString(), key)
 			}

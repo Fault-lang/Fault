@@ -2875,6 +2875,64 @@ component calc = states{
 	}
 }
 
+func TestUnfuncInFlow(t *testing.T) {
+	// An unfunc inside a flow{} struct.
+	test := `spec test1;
+
+def lookup = flow{
+	getByName: unfunc{
+		requires store.key,
+		emits store.value,
+	},
+};
+`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	var fl *ast.FlowLiteral
+	for _, s := range spec.Statements {
+		def, ok := s.(*ast.DefStatement)
+		if !ok {
+			continue
+		}
+		if f, ok := def.Value.(*ast.FlowLiteral); ok {
+			fl = f
+			break
+		}
+	}
+	if fl == nil {
+		t.Fatal("no FlowLiteral found in spec")
+	}
+
+	if len(fl.Pairs) != 1 {
+		t.Fatalf("expected 1 property, got %d", len(fl.Pairs))
+	}
+
+	for _, v := range fl.Pairs {
+		uf, ok := v.(*ast.UnfuncLiteral)
+		if !ok {
+			t.Fatalf("flow property is not UnfuncLiteral, got %T", v)
+		}
+		req, ok := uf.Requires.(*ast.ParameterCall)
+		if !ok {
+			t.Fatalf("Requires is not a ParameterCall, got %T", uf.Requires)
+		}
+		if strings.Join(req.Value, ".") != "store.key" {
+			t.Errorf("Requires = %v, want store.key", req.Value)
+		}
+		emit, ok := uf.Emits.(*ast.ParameterCall)
+		if !ok {
+			t.Fatalf("Emits is not a ParameterCall, got %T", uf.Emits)
+		}
+		if strings.Join(emit.Value, ".") != "store.value" {
+			t.Errorf("Emits = %v, want store.value", emit.Value)
+		}
+	}
+}
+
 func TestUnfuncMultipleAssumeClauses(t *testing.T) {
 	// Multiple assume clauses in one unfunc.
 	test := `system test1;

@@ -849,7 +849,8 @@ func (c *Compiler) precompileAllFlowFunctions() {
 		}
 		funcKeys := make([]string, 0, len(branches))
 		for funcKey, node := range branches {
-			if _, isFunc := node.(*ast.FunctionLiteral); isFunc {
+			switch node.(type) {
+			case *ast.FunctionLiteral, *ast.UnfuncLiteral:
 				funcKeys = append(funcKeys, funcKey)
 			}
 		}
@@ -1818,6 +1819,33 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			params = append(params, pInner...)
 		case *ast.FunctionLiteral:
 			c.compileFunction(pv)
+			id = pv.Id()
+			funcs = append(funcs, id)
+		case *ast.UnfuncLiteral:
+			rawid := pv.RawId()
+			c.componentBool(rawid)
+
+			params := []*ir.Param{}
+			params = c.includeGlobalParams(params)
+			s := c.specs[rawid[0]]
+			funcId := pv.Id()
+			for _, par := range params {
+				s.vars.AddParam(funcId, par)
+			}
+			c.resetParaState(params)
+			childId := pv.IdString()
+			f := c.module.NewFunc(childId, irtypes.Void, params...)
+			stubBlock := f.NewBlock(name.Block())
+			stubBlock.NewRet(nil)
+			c.specFunctions[childId] = f
+
+			c.RawInputs.Unfuncs = append(c.RawInputs.Unfuncs, &UnfuncInfo{
+				StateKey: childId,
+				Requires: pv.Requires,
+				Emits:    pv.Emits,
+				Assumes:  pv.Assumes,
+			})
+
 			id = pv.Id()
 			funcs = append(funcs, id)
 		default:

@@ -535,6 +535,21 @@ func (l *FaultListener) ExitPropFunc(c *parser.PropFuncContext) {
 
 }
 
+func (l *FaultListener) ExitPropUnfunc(c *parser.PropUnfuncContext) {
+	val := l.pop()
+	token := ast.GenerateToken("IDENT", "IDENT", c.GetStart(), c.GetStop())
+
+	l.push(&ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	})
+	l.push(val)
+
+	scope := strings.Split(l.scope, ".")
+	l.scope = strings.Join(scope[0:len(scope)-1], ".")
+}
+
 func (l *FaultListener) ExitFunctionLit(c *parser.FunctionLitContext) {
 	l.inFuncBody--
 	token := ast.GenerateToken("FUNCTION", "FUNCTION", c.GetStart(), c.GetStop())

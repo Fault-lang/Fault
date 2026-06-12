@@ -77,6 +77,9 @@ type FaultParserListener interface {
 	// EnterPropFunc is called when entering the PropFunc production.
 	EnterPropFunc(c *PropFuncContext)
 
+	// EnterPropUnfunc is called when entering the PropUnfunc production.
+	EnterPropUnfunc(c *PropUnfuncContext)
+
 	// EnterSfMisc is called when entering the sfMisc production.
 	EnterSfMisc(c *SfMiscContext)
 
@@ -388,6 +391,9 @@ type FaultParserListener interface {
 
 	// ExitPropFunc is called when exiting the PropFunc production.
 	ExitPropFunc(c *PropFuncContext)
+
+	// ExitPropUnfunc is called when exiting the PropUnfunc production.
+	ExitPropUnfunc(c *PropUnfuncContext)
 
 	// ExitSfMisc is called when exiting the sfMisc production.
 	ExitSfMisc(c *SfMiscContext)

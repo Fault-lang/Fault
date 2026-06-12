@@ -100,6 +100,10 @@ func (v *BaseFaultParserVisitor) VisitPropFunc(ctx *PropFuncContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitPropUnfunc(ctx *PropUnfuncContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitSfMisc(ctx *SfMiscContext) interface{} {
 	return v.VisitChildren(ctx)
 }

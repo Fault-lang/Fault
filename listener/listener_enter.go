@@ -105,6 +105,12 @@ func (l *FaultListener) EnterPropFunc(c *parser.PropFuncContext) {
 	l.scope = fmt.Sprint(l.scope, ".", varname)
 }
 
+func (l *FaultListener) EnterPropUnfunc(c *parser.PropUnfuncContext) {
+	varname := c.IDENT().GetText()
+	assertValidVarName(varname, c.GetStart())
+	l.scope = fmt.Sprint(l.scope, ".", varname)
+}
+
 func (l *FaultListener) EnterPropInt(c *parser.PropIntContext) {
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
 }

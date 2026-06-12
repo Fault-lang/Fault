@@ -77,6 +77,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#PropFunc.
 	VisitPropFunc(ctx *PropFuncContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropUnfunc.
+	VisitPropUnfunc(ctx *PropUnfuncContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#sfMisc.
 	VisitSfMisc(ctx *SfMiscContext) interface{}
 
