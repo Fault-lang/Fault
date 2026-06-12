@@ -684,12 +684,14 @@ func exprIsBool(expr ast.Expression, bools map[string]bool) bool {
 		}
 		return exprIsBool(e.Right, bools)
 	case *ast.AssertVar:
+		// Instances are OR'd alternatives (same property across spec instantiations).
+		// If any instance is Bool, the expression is Bool.
 		for _, inst := range e.Instances {
-			if !bools[inst] {
-				return false
+			if bools[inst] {
+				return true
 			}
 		}
-		return len(e.Instances) > 0
+		return false
 	case *ast.Boolean:
 		return true
 	}
@@ -706,7 +708,7 @@ func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
 			if !bools[inst] {
 				bools[inst] = true
 				changed = true
-			}
+				}
 		}
 	case *ast.InfixExpression:
 		if markBoolVars(e.Left, bools) {

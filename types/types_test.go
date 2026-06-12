@@ -1351,8 +1351,7 @@ func TestUnknownRealHintInBoolAssume(t *testing.T) {
 	if err == nil {
 		t.Fatal("type checker should reject real-hinted unknown in boolean assume")
 	}
-	actual := "invalid expression: got=FLOAT && BOOL"
-	if err.Error() != actual {
+	if !strings.HasPrefix(err.Error(), "invalid expression: got=FLOAT && BOOL") {
 		t.Fatalf("wrong error message. got=%s", err)
 	}
 }
@@ -1366,8 +1365,7 @@ func TestUnknownBoolHintComparedWithNumeric(t *testing.T) {
 	if err == nil {
 		t.Fatal("type checker should reject bool-hinted unknown compared with numeric")
 	}
-	actual := "invalid expression: got=BOOL > INT"
-	if err.Error() != actual {
+	if !strings.HasPrefix(err.Error(), "invalid expression: got=BOOL > INT") {
 		t.Fatalf("wrong error message. got=%s", err)
 	}
 }

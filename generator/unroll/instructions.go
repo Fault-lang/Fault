@@ -106,9 +106,16 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 			return ru
 		}
 		// On close: build a SynthSlot with all candidate flow functions.
+		// Build a set of unfunc stub names to exclude — unfuncs are handled
+		// separately by ProcessUnfuncs and do not produce LLVM variable changes,
+		// so they cannot contribute phi conditions to a synthesis branch selector.
+		unfuncStubs := make(map[string]bool)
+		for _, uf := range b.Env.RawInputs.Unfuncs {
+			unfuncStubs[util.FormatIdent(uf.StateKey)] = true
+		}
 		candidates := make(map[string][]rules.Rule)
 		for fname, rawF := range b.rawFunctions {
-			if fname == "__run" || isBuiltIn(fname) || strings.HasSuffix(fname, "__state") {
+			if fname == "__run" || isBuiltIn(fname) || strings.HasSuffix(fname, "__state") || unfuncStubs[fname] {
 				continue
 			}
 			enter := rules.NewFuncCall(fname, "Enter", b.Env.CurrentRound)
