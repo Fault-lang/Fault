@@ -1,6 +1,0 @@
-spec assumes;
-
-import "defimport.fspec";
-
-run init{s1 = new defimport.stock1;
-         s2 = new defimport.stock2; } {};

@@ -84,8 +84,13 @@ func (l *FaultListener) validate() {
 		return
 	}
 
+	spec := l.currSpec
+	if spec == "" {
+		spec = l.Path
+	}
+
 	if len(l.stack) < 2 {
-		panic(fmt.Sprintf("Malformed fspec or fsystem file. Too few statements (got %d).", len(l.stack)))
+		panic(fmt.Sprintf("Malformed fspec or fsystem file %q. Too few statements (got %d).", spec, len(l.stack)))
 	}
 
 	for _, v := range l.stack {
@@ -108,7 +113,7 @@ func (l *FaultListener) validate() {
 		}
 	}
 
-	panic("Malformed fspec or fsystem file. No model possible.")
+	panic(fmt.Sprintf("Malformed fspec or fsystem file %q. No model possible.", spec))
 }
 
 func (l *FaultListener) push(n ast.Node) {
