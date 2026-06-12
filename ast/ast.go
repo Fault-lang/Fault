@@ -1806,7 +1806,7 @@ func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
 type UnfuncLiteral struct {
 	Token         Token
 	Requires      Expression   // expression tree preserving &&, ||, ! operators
-	Emits         Expression
+	Emits         []Expression // each is a ParameterCall (implicit true) or InfixExpression: paramCall = bool
 	Assumes       []Expression // each is an InfixExpression: paramCall = arithExpr
 	ProcessedName []string
 }
@@ -1821,8 +1821,11 @@ func (ul *UnfuncLiteral) String() string {
 		out.WriteString(ul.Requires.String())
 	}
 	out.WriteString(", emits ")
-	if ul.Emits != nil {
-		out.WriteString(ul.Emits.String())
+	for i, e := range ul.Emits {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(e.String())
 	}
 	for _, a := range ul.Assumes {
 		out.WriteString(", assume ")

@@ -1038,7 +1038,7 @@ func TestUnfuncValidFields(t *testing.T) {
 	c := makeUnfuncChecker("name", "id")
 	uf := &ast.UnfuncLiteral{
 		Requires: paramCall("generic", "name"),
-		Emits:    paramCall("generic", "id"),
+		Emits:    []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err != nil {
@@ -1050,7 +1050,7 @@ func TestUnfuncUnknownStock(t *testing.T) {
 	c := makeUnfuncChecker("name", "id")
 	uf := &ast.UnfuncLiteral{
 		Requires: paramCall("doesNotExist", "name"),
-		Emits:    paramCall("generic", "id"),
+		Emits:    []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err == nil {
@@ -1062,7 +1062,7 @@ func TestUnfuncUnknownField(t *testing.T) {
 	c := makeUnfuncChecker("name", "id")
 	uf := &ast.UnfuncLiteral{
 		Requires: paramCall("generic", "name"),
-		Emits:    paramCall("generic", "nonexistent"),
+		Emits:    []ast.Expression{paramCall("generic", "nonexistent")},
 	}
 	_, err := c.typecheck(uf)
 	if err == nil {
@@ -1079,7 +1079,7 @@ func TestUnfuncCompoundRequiresValid(t *testing.T) {
 			Operator: "&&",
 			Right:    paramCall("generic", "joinId"),
 		},
-		Emits: paramCall("generic", "id"),
+		Emits: []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err != nil {
@@ -1097,7 +1097,7 @@ func TestUnfuncCompoundRequiresInvalidField(t *testing.T) {
 			Operator: "&&",
 			Right:    paramCall("generic", "joinId"),
 		},
-		Emits: paramCall("generic", "id"),
+		Emits: []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err == nil {

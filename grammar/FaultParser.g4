@@ -378,9 +378,14 @@ unfuncBlock
     ;
 
 unfuncClause
-    : REQUIRES unfuncExpr      #requiresClause
-    | EMITS unfuncExpr         #emitsClause
-    | ASSUME unfuncAssumeExpr  #assumeClause
+    : REQUIRES unfuncExpr                                      #requiresClause
+    | EMITS unfuncEmitExpr (',' unfuncEmitExpr)* ','?          #emitsClause
+    | ASSUME unfuncAssumeExpr                                  #assumeClause
+    ;
+
+unfuncEmitExpr
+    : paramCall '=' bool_
+    | paramCall
     ;
 
 unfuncExpr

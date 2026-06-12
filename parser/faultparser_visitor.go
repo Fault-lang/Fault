@@ -311,6 +311,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#assumeClause.
 	VisitAssumeClause(ctx *AssumeClauseContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#unfuncEmitExpr.
+	VisitUnfuncEmitExpr(ctx *UnfuncEmitExprContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#unfuncExpr.
 	VisitUnfuncExpr(ctx *UnfuncExprContext) interface{}
 

@@ -311,6 +311,9 @@ type FaultParserListener interface {
 	// EnterAssumeClause is called when entering the assumeClause production.
 	EnterAssumeClause(c *AssumeClauseContext)
 
+	// EnterUnfuncEmitExpr is called when entering the unfuncEmitExpr production.
+	EnterUnfuncEmitExpr(c *UnfuncEmitExprContext)
+
 	// EnterUnfuncExpr is called when entering the unfuncExpr production.
 	EnterUnfuncExpr(c *UnfuncExprContext)
 
@@ -625,6 +628,9 @@ type FaultParserListener interface {
 
 	// ExitAssumeClause is called when exiting the assumeClause production.
 	ExitAssumeClause(c *AssumeClauseContext)
+
+	// ExitUnfuncEmitExpr is called when exiting the unfuncEmitExpr production.
+	ExitUnfuncEmitExpr(c *UnfuncEmitExprContext)
 
 	// ExitUnfuncExpr is called when exiting the unfuncExpr production.
 	ExitUnfuncExpr(c *UnfuncExprContext)

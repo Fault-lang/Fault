@@ -627,6 +627,12 @@ func (s *BaseFaultParserListener) EnterAssumeClause(ctx *AssumeClauseContext) {}
 // ExitAssumeClause is called when production assumeClause is exited.
 func (s *BaseFaultParserListener) ExitAssumeClause(ctx *AssumeClauseContext) {}
 
+// EnterUnfuncEmitExpr is called when production unfuncEmitExpr is entered.
+func (s *BaseFaultParserListener) EnterUnfuncEmitExpr(ctx *UnfuncEmitExprContext) {}
+
+// ExitUnfuncEmitExpr is called when production unfuncEmitExpr is exited.
+func (s *BaseFaultParserListener) ExitUnfuncEmitExpr(ctx *UnfuncEmitExprContext) {}
+
 // EnterUnfuncExpr is called when production unfuncExpr is entered.
 func (s *BaseFaultParserListener) EnterUnfuncExpr(ctx *UnfuncExprContext) {}
 

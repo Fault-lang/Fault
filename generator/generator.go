@@ -285,14 +285,34 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 				smt = append(smt, fmt.Sprintf("(assert (=> %s %s))", activeVar, reqSMT))
 			}
 
-			// Write effects and frame conditions on _available shadow variables
-			if uf.Emits != nil {
-				for _, fieldBase := range collectUnfuncFields(uf.Emits) {
-					next := fmt.Sprintf("%s_available_%d", fieldBase, n+1)
-					curr := fmt.Sprintf("%s_available_%d", fieldBase, n)
-					smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s true)))", activeVar, next))
-					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
+			// Write effects and frame conditions on _available shadow variables.
+			// Each emit item is either a bare ParameterCall (implicit true) or
+			// an InfixExpression (paramCall = bool) with an explicit value.
+			for _, emitItem := range uf.Emits {
+				var fieldBase, emitVal string
+				switch e := emitItem.(type) {
+				case *ast.ParameterCall:
+					fieldBase = unfuncVarBase(e)
+					emitVal = "true"
+				case *ast.InfixExpression:
+					if pc, ok := e.Left.(*ast.ParameterCall); ok {
+						fieldBase = unfuncVarBase(pc)
+					}
+					if b, ok := e.Right.(*ast.Boolean); ok {
+						if b.Value {
+							emitVal = "true"
+						} else {
+							emitVal = "false"
+						}
+					}
 				}
+				if fieldBase == "" {
+					continue
+				}
+				next := fmt.Sprintf("%s_available_%d", fieldBase, n+1)
+				curr := fmt.Sprintf("%s_available_%d", fieldBase, n)
+				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, next, emitVal))
+				smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
 			}
 
 			// Assume constraints: postcondition arithmetic scoped to this exact firing.
@@ -531,7 +551,12 @@ func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
 	seen := make(map[string]bool)
 	var result []string
 	for _, uf := range unfuncs {
-		for _, expr := range []ast.Expression{uf.Requires, uf.Emits} {
+		emitExprs := make([]ast.Expression, 0, len(uf.Emits))
+		for _, e := range uf.Emits {
+			emitExprs = append(emitExprs, e)
+		}
+		allExprs := append([]ast.Expression{uf.Requires}, emitExprs...)
+		for _, expr := range allExprs {
 			if expr == nil {
 				continue
 			}

@@ -54,7 +54,7 @@ type RawInputs struct {
 type UnfuncInfo struct {
 	StateKey string
 	Requires ast.Expression
-	Emits    ast.Expression
+	Emits    []ast.Expression
 	Assumes  []ast.Expression
 }
 

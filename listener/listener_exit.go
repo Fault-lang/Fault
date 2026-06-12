@@ -428,26 +428,59 @@ func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
 
 	clauses := c.UnfuncBlock().AllUnfuncClause()
 
-	// Pop one expression per clause (in stack order: last clause on top)
-	exprs := make([]ast.Node, len(clauses))
-	for i := len(clauses) - 1; i >= 0; i-- {
+	// Count total stack items: requires and assume clauses contribute 1 each;
+	// emitsClause contributes N (one per unfuncEmitExpr item).
+	total := 0
+	for _, clause := range clauses {
+		if ec, ok := clause.(*parser.EmitsClauseContext); ok {
+			total += len(ec.AllUnfuncEmitExpr())
+		} else {
+			total++
+		}
+	}
+
+	exprs := make([]ast.Node, total)
+	for i := total - 1; i >= 0; i-- {
 		exprs[i] = l.pop()
 	}
 
 	uf := &ast.UnfuncLiteral{Token: token}
-	for i, clause := range clauses {
-		expr := exprs[i].(ast.Expression)
-		switch clause.(type) {
+	idx := 0
+	for _, clause := range clauses {
+		switch ctx := clause.(type) {
 		case *parser.RequiresClauseContext:
-			uf.Requires = expr
+			uf.Requires = exprs[idx].(ast.Expression)
+			idx++
 		case *parser.EmitsClauseContext:
-			uf.Emits = expr
+			n := len(ctx.AllUnfuncEmitExpr())
+			for j := 0; j < n; j++ {
+				uf.Emits = append(uf.Emits, exprs[idx].(ast.Expression))
+				idx++
+			}
 		case *parser.AssumeClauseContext:
-			uf.Assumes = append(uf.Assumes, expr)
+			uf.Assumes = append(uf.Assumes, exprs[idx].(ast.Expression))
+			idx++
 		}
 	}
 
 	l.push(uf)
+}
+
+func (l *FaultListener) ExitUnfuncEmitExpr(c *parser.UnfuncEmitExprContext) {
+	// bare paramCall — already on the stack from ExitParamCall; nothing to do.
+	if c.Bool_() == nil {
+		return
+	}
+	// paramCall '=' bool_: bool_ is on top, paramCall is below.
+	rhs := l.pop()
+	lhs := l.pop()
+	token := ast.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lhs.(ast.Expression),
+		Operator: "=",
+		Right:    rhs.(ast.Expression),
+	})
 }
 
 func (l *FaultListener) ExitUnfuncArithExpr(c *parser.UnfuncArithExprContext) {

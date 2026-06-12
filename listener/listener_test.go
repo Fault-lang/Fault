@@ -2650,9 +2650,12 @@ component fetch = states{
 		t.Errorf("Requires = %v, want generic.name", req.Value)
 	}
 
-	emit, ok := uf.Emits.(*ast.ParameterCall)
+	if len(uf.Emits) != 1 {
+		t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+	}
+	emit, ok := uf.Emits[0].(*ast.ParameterCall)
 	if !ok {
-		t.Fatalf("Emits is not a ParameterCall, got %T", uf.Emits)
+		t.Fatalf("Emits[0] is not a ParameterCall, got %T", uf.Emits[0])
 	}
 	if strings.Join(emit.Value, ".") != "generic.id" {
 		t.Errorf("Emits = %v, want generic.id", emit.Value)
@@ -2691,13 +2694,13 @@ component fetch = states{
 }
 
 func TestUnfuncMultipleEmits(t *testing.T) {
-	// emits with && should produce an InfixExpression preserving the operator.
+	// emits with multiple comma-separated items should produce a []Expression.
 	test := `system test1;
 
 component fetch = states{
 	getDetails: unfunc{
 		requires generic.id,
-		emits generic.name && generic.joinId,
+		emits generic.name, generic.joinId,
 	},
 };
 `
@@ -2709,15 +2712,73 @@ component fetch = states{
 
 	uf := unfuncLiteralFromSpec(t, spec)
 
-	infix, ok := uf.Emits.(*ast.InfixExpression)
+	if len(uf.Emits) != 2 {
+		t.Fatalf("expected 2 emits, got %d", len(uf.Emits))
+	}
+	names := make([]string, 2)
+	for i, e := range uf.Emits {
+		pc, ok := e.(*ast.ParameterCall)
+		if !ok {
+			t.Fatalf("Emits[%d] is not a ParameterCall, got %T", i, e)
+		}
+		names[i] = strings.Join(pc.Value, ".")
+	}
+	if names[0] != "generic.name" {
+		t.Errorf("Emits[0] = %q, want generic.name", names[0])
+	}
+	if names[1] != "generic.joinId" {
+		t.Errorf("Emits[1] = %q, want generic.joinId", names[1])
+	}
+}
+
+func TestUnfuncEmitAssignment(t *testing.T) {
+	// emits with explicit bool assignment: x = true, y = false
+	test := `system test1;
+
+component fetch = states{
+	deactivate: unfunc{
+		requires store.active,
+		emits store.active = false, store.done = true,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Emits) != 2 {
+		t.Fatalf("expected 2 emits, got %d", len(uf.Emits))
+	}
+
+	first, ok := uf.Emits[0].(*ast.InfixExpression)
 	if !ok {
-		t.Fatalf("Emits is not an InfixExpression, got %T", uf.Emits)
+		t.Fatalf("Emits[0] is not an InfixExpression, got %T", uf.Emits[0])
 	}
-	if infix.Operator != "&&" {
-		t.Errorf("operator = %q, want &&", infix.Operator)
+	if first.Operator != "=" {
+		t.Errorf("Emits[0] operator = %q, want =", first.Operator)
 	}
-	if infix.Left.String() != "generic.name" && infix.Right.String() != "generic.name" {
-		t.Error("neither side of Emits contains generic.name")
+	firstRHS, ok := first.Right.(*ast.Boolean)
+	if !ok {
+		t.Fatalf("Emits[0] RHS is not a Boolean, got %T", first.Right)
+	}
+	if firstRHS.Value != false {
+		t.Errorf("Emits[0] RHS = %v, want false", firstRHS.Value)
+	}
+
+	second, ok := uf.Emits[1].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Emits[1] is not an InfixExpression, got %T", uf.Emits[1])
+	}
+	secondRHS, ok := second.Right.(*ast.Boolean)
+	if !ok {
+		t.Fatalf("Emits[1] RHS is not a Boolean, got %T", second.Right)
+	}
+	if secondRHS.Value != true {
+		t.Errorf("Emits[1] RHS = %v, want true", secondRHS.Value)
 	}
 }
 
@@ -2923,9 +2984,12 @@ def lookup = flow{
 		if strings.Join(req.Value, ".") != "store.key" {
 			t.Errorf("Requires = %v, want store.key", req.Value)
 		}
-		emit, ok := uf.Emits.(*ast.ParameterCall)
+		if len(uf.Emits) != 1 {
+			t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+		}
+		emit, ok := uf.Emits[0].(*ast.ParameterCall)
 		if !ok {
-			t.Fatalf("Emits is not a ParameterCall, got %T", uf.Emits)
+			t.Fatalf("Emits[0] is not a ParameterCall, got %T", uf.Emits[0])
 		}
 		if strings.Join(emit.Value, ".") != "store.value" {
 			t.Errorf("Emits = %v, want store.value", emit.Value)

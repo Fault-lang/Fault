@@ -249,8 +249,10 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		if err = c.checkUnfuncExpr(node.Requires, "requires"); err != nil {
 			return node, err
 		}
-		if err = c.checkUnfuncExpr(node.Emits, "emits"); err != nil {
-			return node, err
+		for _, e := range node.Emits {
+			if err = c.checkUnfuncEmitItem(e); err != nil {
+				return node, err
+			}
 		}
 		for _, assume := range node.Assumes {
 			if err = c.checkUnfuncArithExpr(assume, "assume"); err != nil {
@@ -1422,6 +1424,32 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	}
 
 	return nil
+}
+
+// checkUnfuncEmitItem validates a single emits item: either a bare ParameterCall
+// (implicit true) or an InfixExpression of the form paramCall = bool.
+func (c *Checker) checkUnfuncEmitItem(expr ast.Expression) error {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return c.checkUnfuncFieldRef(e, "emits")
+	case *ast.InfixExpression:
+		if e.Operator != "=" {
+			return fmt.Errorf("unfunc emits: expected assignment (=), got %q", e.Operator)
+		}
+		lhs, ok := e.Left.(*ast.ParameterCall)
+		if !ok {
+			return fmt.Errorf("unfunc emits: left side of assignment must be a field reference, got %T", e.Left)
+		}
+		if err := c.checkUnfuncFieldRef(lhs, "emits"); err != nil {
+			return err
+		}
+		if _, ok := e.Right.(*ast.Boolean); !ok {
+			return fmt.Errorf("unfunc emits: right side of assignment must be true or false, got %T", e.Right)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unfunc emits: unsupported expression type %T", expr)
+	}
 }
 
 // checkUnfuncArithExpr validates an assume clause expression tree.
