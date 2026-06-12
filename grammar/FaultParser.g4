@@ -113,6 +113,7 @@ structType
 
 sfProperties
     : IDENT ':' functionLit #PropFunc
+    | IDENT ':' unfuncLit   #PropUnfunc
     | structProperties      #sfMisc
     | EXTENDS operandName   #PropExtends
     | EXCLUDE IDENT         #PropExclude
