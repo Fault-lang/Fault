@@ -497,6 +497,46 @@ func TestAsserts(t *testing.T) {
 	}
 }
 
+func TestAssertCrossStockDefinitions(t *testing.T) {
+	// When an assertion compares properties of two stock definitions using the
+	// fully-qualified spec.stock.prop syntax (as happens with imported specs),
+	// ExitParamCall includes the spec name in node.Value while buildIdContext
+	// also prepends it, producing a doubled prefix. The preprocessor must
+	// deduplicate and resolve the reference instead of erroring.
+	test := `spec test1;
+	def foo = stock{
+		a: 5,
+	};
+	def bar = stock{
+		b: 3,
+	};
+	assert test1.foo.a = test1.bar.b;
+	`
+
+	process, err := prepTestWithError(test, true)
+	if err != nil {
+		t.Fatalf("unexpected error processing cross-stock assertion: %v", err)
+	}
+
+	tree := process.Processed
+	stmts := tree.Statements
+
+	as, ok := stmts[3].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("expected AssertionStatement, got %T", stmts[3])
+	}
+
+	leftId := as.Constraint.Left.(ast.Nameable).RawId()
+	if len(leftId) != 3 || leftId[0] != "test1" || leftId[1] != "foo" || leftId[2] != "a" {
+		t.Fatalf("left rawid wrong: got %v", leftId)
+	}
+
+	rightId := as.Constraint.Right.(ast.Nameable).RawId()
+	if len(rightId) != 3 || rightId[0] != "test1" || rightId[1] != "bar" || rightId[2] != "b" {
+		t.Fatalf("right rawid wrong: got %v", rightId)
+	}
+}
+
 func TestCollapseIf(t *testing.T) {
 	test := `spec test1;
 	const a = 2;

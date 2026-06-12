@@ -22,6 +22,7 @@ type Processor struct {
 	inStruct             string
 	inState              string
 	inGlobal             bool
+	inAssert             bool
 	StructsPropertyOrder map[string][]string
 	Instances            map[string]*ast.StructInstance
 }
@@ -543,7 +544,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		p.scope = ""
 		return node, err
 	case *ast.AssertionStatement:
+		p.inAssert = true
 		pro, err = p.walk(node.Constraint)
+		p.inAssert = false
 		if err != nil {
 			return node, err
 		}
@@ -1327,11 +1330,27 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				defName = node.Value[0]
 			}
 			if defName != "" {
+				var fixedTy string
 				if _, ferr := spec.FetchStock(defName); ferr == nil {
-					return node, fmt.Errorf("'%s.%s' is a stock type definition, not an instance — stock definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, defName, node.Value[len(node.Value)-1])
+					fixedTy = "STOCK"
+				} else if _, ferr := spec.FetchFlow(defName); ferr == nil {
+					fixedTy = "FLOW"
 				}
-				if _, ferr := spec.FetchFlow(defName); ferr == nil {
-					return node, fmt.Errorf("'%s.%s' is a flow type definition, not an instance — flow definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, defName, node.Value[len(node.Value)-1])
+				if fixedTy != "" {
+					if !p.inAssert {
+						return node, fmt.Errorf("'%s.%s' is a %s type definition, not an instance — %s definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, strings.ToLower(fixedTy), strings.ToLower(fixedTy), defName, node.Value[len(node.Value)-1])
+					}
+					// In an assertion/assumption, referencing a stock/flow definition property
+					// is valid. The rawid has a doubled spec prefix because ExitParamCall
+					// includes the spec name in node.Value while buildIdContext also prepends
+					// it. Fix rawid to the canonical ["spec", "defName", "prop..."] form.
+					if node.Value[0] == node.Spec {
+						rawid = append([]string{node.Spec, defName}, node.Value[2:]...)
+					} else {
+						rawid = append([]string{node.Spec, defName}, node.Value[1:]...)
+					}
+					ty = fixedTy
+					node.ProcessedName = rawid
 				}
 			}
 		}
