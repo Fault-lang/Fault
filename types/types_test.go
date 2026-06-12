@@ -4,6 +4,7 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/preprocess"
+	"strings"
 	"testing"
 )
 
@@ -1102,6 +1103,72 @@ func TestUnfuncCompoundRequiresInvalidField(t *testing.T) {
 	_, err := c.typecheck(uf)
 	if err == nil {
 		t.Fatal("type checking should have caught missing field in compound requires")
+	}
+}
+
+func TestEmitArithRHSValid(t *testing.T) {
+	c := makeUnfuncChecker("id", "count")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "count"),
+		Operator: "+",
+		Right:    &ast.IntegerLiteral{Value: 1},
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "count"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on valid arithmetic emit: %s", err)
+	}
+}
+
+func TestEmitArithRHSUnknownField(t *testing.T) {
+	c := makeUnfuncChecker("id", "count")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "nonexistent"),
+		Operator: "+",
+		Right:    &ast.IntegerLiteral{Value: 1},
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "count"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught unknown field in emit RHS")
+	}
+}
+
+func TestEmitDuplicateTarget(t *testing.T) {
+	c := makeUnfuncChecker("id", "count")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits: []ast.Expression{
+			paramCall("generic", "count"),
+			paramCall("generic", "count"),
+		},
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught duplicate emit target")
+	}
+	if !strings.Contains(err.Error(), "duplicate target") {
+		t.Fatalf("unexpected error: %q", err.Error())
 	}
 }
 

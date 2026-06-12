@@ -458,7 +458,16 @@ func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
 				idx++
 			}
 		case *parser.AssumeClauseContext:
-			uf.Assumes = append(uf.Assumes, exprs[idx].(ast.Expression))
+			modifier := "always"
+			if ctx.EVENTUALLY() != nil {
+				modifier = "eventually"
+			} else if ctx.EVENTUALLYALWAYS() != nil {
+				modifier = "eventually-always"
+			}
+			uf.Assumes = append(uf.Assumes, ast.UnfuncAssume{
+				Expr:     exprs[idx].(ast.Expression),
+				Modifier: modifier,
+			})
 			idx++
 		}
 	}
@@ -466,12 +475,38 @@ func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
 	l.push(uf)
 }
 
-func (l *FaultListener) ExitUnfuncEmitExpr(c *parser.UnfuncEmitExprContext) {
+func (l *FaultListener) ExitEmitBare(c *parser.EmitBareContext) {
 	// bare paramCall — already on the stack from ExitParamCall; nothing to do.
-	if c.Bool_() == nil {
-		return
-	}
+}
+
+func (l *FaultListener) ExitEmitNegation(c *parser.EmitNegationContext) {
+	// '!' paramCall — paramCall already on stack; wrap as x = false.
+	operand := l.pop()
+	token := ast.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
+	boolToken := ast.GenerateToken("BOOL", "false", c.GetStart(), c.GetStop())
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     operand.(ast.Expression),
+		Operator: "=",
+		Right:    &ast.Boolean{Token: boolToken, Value: false},
+	})
+}
+
+func (l *FaultListener) ExitEmitBoolAssign(c *parser.EmitBoolAssignContext) {
 	// paramCall '=' bool_: bool_ is on top, paramCall is below.
+	rhs := l.pop()
+	lhs := l.pop()
+	token := ast.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lhs.(ast.Expression),
+		Operator: "=",
+		Right:    rhs.(ast.Expression),
+	})
+}
+
+func (l *FaultListener) ExitEmitArithAssign(c *parser.EmitArithAssignContext) {
+	// paramCall '=' unfuncArithExpr: arith expr is on top, paramCall is below.
 	rhs := l.pop()
 	lhs := l.pop()
 	token := ast.GenerateToken("ASSIGN", "=", c.GetStart(), c.GetStop())
@@ -1682,6 +1717,9 @@ func (l *FaultListener) ExitStageInvariant(c *parser.StageInvariantContext) {
 }
 
 func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
+	if l.inFuncBody > 0 {
+		panic(fmt.Sprintf("assert is not allowed inside func or unfunc bodies: line %d col %d — place assert statements at the spec or system level", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	}
 	token := ast.GenerateToken("ASSERT", "assert", c.GetStart(), c.GetStop())
 
 	var temporal string
@@ -1762,6 +1800,9 @@ func (l *FaultListener) ExitAssertion(c *parser.AssertionContext) {
 }
 
 func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
+	if l.inFuncBody > 0 {
+		panic(fmt.Sprintf("assume is not allowed inside func or unfunc bodies: line %d col %d — place assume statements at the spec or system level", c.GetStart().GetLine(), c.GetStart().GetColumn()))
+	}
 	token := ast.GenerateToken("ASSUME", "assume", c.GetStart(), c.GetStop())
 	var temporal string
 	var temporalFilter string

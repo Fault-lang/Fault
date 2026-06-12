@@ -378,14 +378,16 @@ unfuncBlock
     ;
 
 unfuncClause
-    : REQUIRES unfuncExpr                                      #requiresClause
-    | EMITS unfuncEmitExpr (',' unfuncEmitExpr)* ','?          #emitsClause
-    | ASSUME unfuncAssumeExpr                                  #assumeClause
+    : REQUIRES unfuncExpr                                          #requiresClause
+    | EMITS unfuncEmitExpr (',' unfuncEmitExpr)* ','?              #emitsClause
+    | ASSUME unfuncAssumeExpr (ALWAYS | EVENTUALLY | EVENTUALLYALWAYS)?  #assumeClause
     ;
 
 unfuncEmitExpr
-    : paramCall '=' bool_
-    | paramCall
+    : '!' paramCall                  #EmitNegation
+    | paramCall '=' bool_            #EmitBoolAssign
+    | paramCall '=' unfuncArithExpr  #EmitArithAssign
+    | paramCall                      #EmitBare
     ;
 
 unfuncExpr

@@ -325,7 +325,7 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 			// Frame condition: when the unfunc does NOT fire at step n, the output
 			// field is unchanged (carries its previous value forward).
 			for _, assume := range uf.Assumes {
-				infix, ok := assume.(*ast.InfixExpression)
+				infix, ok := assume.Expr.(*ast.InfixExpression)
 				if !ok {
 					continue
 				}
@@ -334,21 +334,29 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 					continue
 				}
 				lhsBase := resolveVarBase(lhsPC, varTypes)
-				lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
-
-				// "curr" for the frame condition:
-				//   - at step 0, use the version declared in the main formula
-				//   - at step n>0, use the version we declared at the prior step
-				var lhsCurr string
-				if n == 0 {
-					lhsCurr = registryBestVersion(registry, lhsBase, 0)
-				} else {
-					lhsCurr = fmt.Sprintf("%s_%d", lhsBase, n)
-				}
-
 				rhsSMT := unfuncArithExprToSMT(infix.Right, n, registry, varTypes)
-				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
-				smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
+
+				switch assume.Modifier {
+				case "eventually":
+					// Existential: the constraint holds at this step (no activation guard,
+					// no frame condition — solver picks when it fires).
+					lhsVer := registryBestVersion(registry, lhsBase, n)
+					smt = append(smt, fmt.Sprintf("(assert (= %s %s))", lhsVer, rhsSMT))
+				case "eventually-always":
+					// From step n onward: lhs equals rhs at step n+1 and is framed from there.
+					lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
+					smt = append(smt, fmt.Sprintf("(assert (= %s %s))", lhsNext, rhsSMT))
+				default: // "always" — conditional on activation, with frame condition
+					lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
+					var lhsCurr string
+					if n == 0 {
+						lhsCurr = registryBestVersion(registry, lhsBase, 0)
+					} else {
+						lhsCurr = fmt.Sprintf("%s_%d", lhsBase, n)
+					}
+					smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
+					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
+				}
 			}
 		}
 	}
@@ -420,7 +428,7 @@ func collectAssumeLHSTypes(unfuncs []*llvm.UnfuncInfo, varTypes map[string]strin
 	result := make(map[string]string)
 	for _, uf := range unfuncs {
 		for _, assume := range uf.Assumes {
-			infix, ok := assume.(*ast.InfixExpression)
+			infix, ok := assume.Expr.(*ast.InfixExpression)
 			if !ok {
 				continue
 			}

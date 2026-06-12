@@ -627,11 +627,29 @@ func (s *BaseFaultParserListener) EnterAssumeClause(ctx *AssumeClauseContext) {}
 // ExitAssumeClause is called when production assumeClause is exited.
 func (s *BaseFaultParserListener) ExitAssumeClause(ctx *AssumeClauseContext) {}
 
-// EnterUnfuncEmitExpr is called when production unfuncEmitExpr is entered.
-func (s *BaseFaultParserListener) EnterUnfuncEmitExpr(ctx *UnfuncEmitExprContext) {}
+// EnterEmitNegation is called when production EmitNegation is entered.
+func (s *BaseFaultParserListener) EnterEmitNegation(ctx *EmitNegationContext) {}
 
-// ExitUnfuncEmitExpr is called when production unfuncEmitExpr is exited.
-func (s *BaseFaultParserListener) ExitUnfuncEmitExpr(ctx *UnfuncEmitExprContext) {}
+// ExitEmitNegation is called when production EmitNegation is exited.
+func (s *BaseFaultParserListener) ExitEmitNegation(ctx *EmitNegationContext) {}
+
+// EnterEmitBoolAssign is called when production EmitBoolAssign is entered.
+func (s *BaseFaultParserListener) EnterEmitBoolAssign(ctx *EmitBoolAssignContext) {}
+
+// ExitEmitBoolAssign is called when production EmitBoolAssign is exited.
+func (s *BaseFaultParserListener) ExitEmitBoolAssign(ctx *EmitBoolAssignContext) {}
+
+// EnterEmitArithAssign is called when production EmitArithAssign is entered.
+func (s *BaseFaultParserListener) EnterEmitArithAssign(ctx *EmitArithAssignContext) {}
+
+// ExitEmitArithAssign is called when production EmitArithAssign is exited.
+func (s *BaseFaultParserListener) ExitEmitArithAssign(ctx *EmitArithAssignContext) {}
+
+// EnterEmitBare is called when production EmitBare is entered.
+func (s *BaseFaultParserListener) EnterEmitBare(ctx *EmitBareContext) {}
+
+// ExitEmitBare is called when production EmitBare is exited.
+func (s *BaseFaultParserListener) ExitEmitBare(ctx *EmitBareContext) {}
 
 // EnterUnfuncExpr is called when production unfuncExpr is entered.
 func (s *BaseFaultParserListener) EnterUnfuncExpr(ctx *UnfuncExprContext) {}

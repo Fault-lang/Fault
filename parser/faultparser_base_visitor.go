@@ -412,7 +412,19 @@ func (v *BaseFaultParserVisitor) VisitAssumeClause(ctx *AssumeClauseContext) int
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitUnfuncEmitExpr(ctx *UnfuncEmitExprContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitEmitNegation(ctx *EmitNegationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitBoolAssign(ctx *EmitBoolAssignContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitArithAssign(ctx *EmitArithAssignContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitBare(ctx *EmitBareContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

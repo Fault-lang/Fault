@@ -1803,11 +1803,18 @@ func (cl *ComponentLiteral) GetPropertyIdent(key string) *Identifier {
 
 // UnfuncLiteral represents an unfunc{} state block — an uninterpreted function
 // declared only by its requires, emits, and optional assume clauses.
+// UnfuncAssume is a single assume clause with its temporal modifier.
+// Modifier is one of: "always" (default, empty string ok), "eventually", "eventually-always".
+type UnfuncAssume struct {
+	Expr     Expression
+	Modifier string
+}
+
 type UnfuncLiteral struct {
 	Token         Token
-	Requires      Expression   // expression tree preserving &&, ||, ! operators
-	Emits         []Expression // each is a ParameterCall (implicit true) or InfixExpression: paramCall = bool
-	Assumes       []Expression // each is an InfixExpression: paramCall = arithExpr
+	Requires      Expression    // expression tree preserving &&, ||, ! operators
+	Emits         []Expression  // each is a ParameterCall (implicit true) or InfixExpression: paramCall = bool/arith
+	Assumes       []UnfuncAssume
 	ProcessedName []string
 }
 
@@ -1829,7 +1836,10 @@ func (ul *UnfuncLiteral) String() string {
 	}
 	for _, a := range ul.Assumes {
 		out.WriteString(", assume ")
-		out.WriteString(a.String())
+		out.WriteString(a.Expr.String())
+		if a.Modifier != "" && a.Modifier != "always" {
+			out.WriteString(" " + a.Modifier)
+		}
 	}
 	out.WriteString("}")
 	return out.String()

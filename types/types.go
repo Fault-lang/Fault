@@ -249,13 +249,19 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		if err = c.checkUnfuncExpr(node.Requires, "requires"); err != nil {
 			return node, err
 		}
+		seenEmitTargets := make(map[string]bool)
 		for _, e := range node.Emits {
 			if err = c.checkUnfuncEmitItem(e); err != nil {
 				return node, err
 			}
+			target := emitTargetKey(e)
+			if seenEmitTargets[target] {
+				return node, fmt.Errorf("unfunc emits: duplicate target %q", target)
+			}
+			seenEmitTargets[target] = true
 		}
 		for _, assume := range node.Assumes {
-			if err = c.checkUnfuncArithExpr(assume, "assume"); err != nil {
+			if err = c.checkUnfuncArithExpr(assume.Expr, "assume"); err != nil {
 				return node, err
 			}
 		}
@@ -1426,8 +1432,10 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	return nil
 }
 
-// checkUnfuncEmitItem validates a single emits item: either a bare ParameterCall
-// (implicit true) or an InfixExpression of the form paramCall = bool.
+// checkUnfuncEmitItem validates a single emits item:
+//   - bare ParameterCall (implicit true)
+//   - InfixExpression: paramCall = bool
+//   - InfixExpression: paramCall = arithExpr (field refs in RHS are validated)
 func (c *Checker) checkUnfuncEmitItem(expr ast.Expression) error {
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
@@ -1443,12 +1451,29 @@ func (c *Checker) checkUnfuncEmitItem(expr ast.Expression) error {
 		if err := c.checkUnfuncFieldRef(lhs, "emits"); err != nil {
 			return err
 		}
-		if _, ok := e.Right.(*ast.Boolean); !ok {
-			return fmt.Errorf("unfunc emits: right side of assignment must be true or false, got %T", e.Right)
+		// RHS: bool literal or arithmetic expression (field refs validated)
+		switch e.Right.(type) {
+		case *ast.Boolean:
+			return nil
+		default:
+			return c.checkUnfuncArithExpr(e.Right, "emits")
 		}
-		return nil
 	default:
 		return fmt.Errorf("unfunc emits: unsupported expression type %T", expr)
+	}
+}
+
+// emitTargetKey returns a stable string key for the target field of an emit item,
+// used to detect duplicates. For bare paramCall it's the call string; for
+// assignments it's the LHS field string.
+func emitTargetKey(expr ast.Expression) string {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return e.String()
+	case *ast.InfixExpression:
+		return e.Left.String()
+	default:
+		return expr.String()
 	}
 }
 

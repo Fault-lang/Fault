@@ -55,7 +55,7 @@ type UnfuncInfo struct {
 	StateKey string
 	Requires ast.Expression
 	Emits    []ast.Expression
-	Assumes  []ast.Expression
+	Assumes  []ast.UnfuncAssume
 }
 
 func NewRawInputs() *RawInputs {

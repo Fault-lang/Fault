@@ -2349,6 +2349,81 @@ const x = 5;`, "", flags)
 	}
 }
 
+// --- assert/assume inside func/unfunc bodies ---
+
+// assert and assume inside func{} / unfunc{} bodies are syntax errors at the
+// grammar level — the parser rejects them before the listener fires. These tests
+// confirm the grammar enforcement (the listener guards are a defensive fallback
+// for any future grammar relaxation).
+func TestAssertInsideFunc(t *testing.T) {
+	flags := map[string]bool{"specType": true, "testing": false}
+	_, err := Execute(`spec test1;
+def f = flow{
+	change: func{ assert x > 0; },
+};
+assert x > 0;
+`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for assert inside func body, got nil")
+	}
+	// Grammar rejects it before the listener fires.
+	if !strings.Contains(err.Error(), "Invalid spec syntax") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}
+
+func TestAssumeInsideFunc(t *testing.T) {
+	flags := map[string]bool{"specType": true, "testing": false}
+	_, err := Execute(`spec test1;
+def f = flow{
+	change: func{ assume x > 0; },
+};
+assert x > 0;
+`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for assume inside func body, got nil")
+	}
+	if !strings.Contains(err.Error(), "Invalid spec syntax") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}
+
+func TestAssertInsideUnfunc(t *testing.T) {
+	flags := map[string]bool{"specType": false, "testing": false}
+	_, err := Execute(`system test1;
+component fetch = states{
+	getByName: unfunc{
+		requires fetch.ready,
+		assert fetch.ready > 0,
+	},
+};
+`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for assert inside unfunc body, got nil")
+	}
+	if !strings.Contains(err.Error(), "Invalid spec syntax") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}
+
+func TestAssumeInsideUnfunc(t *testing.T) {
+	flags := map[string]bool{"specType": false, "testing": false}
+	_, err := Execute(`system test1;
+component fetch = states{
+	getByName: unfunc{
+		requires fetch.ready,
+		assume fetch.ready > 0,
+	},
+};
+`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for assume inside unfunc body, got nil")
+	}
+	if !strings.Contains(err.Error(), "Invalid spec syntax") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}
+
 // --- String declaration happy paths ---
 
 func TestStringDeclHappyPath(t *testing.T) {
@@ -2911,9 +2986,13 @@ component calc = states{
 		t.Fatalf("expected 1 assume clause, got %d", len(uf.Assumes))
 	}
 
-	assume, ok := uf.Assumes[0].(*ast.InfixExpression)
+	a0 := uf.Assumes[0]
+	if a0.Modifier != "always" {
+		t.Errorf("assume modifier = %q, want always", a0.Modifier)
+	}
+	assume, ok := a0.Expr.(*ast.InfixExpression)
 	if !ok {
-		t.Fatalf("assume is not an InfixExpression, got %T", uf.Assumes[0])
+		t.Fatalf("assume is not an InfixExpression, got %T", a0.Expr)
 	}
 	if assume.Operator != "=" {
 		t.Errorf("assume operator = %q, want =", assume.Operator)
@@ -3023,12 +3102,124 @@ component calc = states{
 	}
 
 	for i, a := range uf.Assumes {
-		infix, ok := a.(*ast.InfixExpression)
+		infix, ok := a.Expr.(*ast.InfixExpression)
 		if !ok {
-			t.Fatalf("assume[%d] is not an InfixExpression, got %T", i, a)
+			t.Fatalf("assume[%d] is not an InfixExpression, got %T", i, a.Expr)
 		}
 		if infix.Operator != "=" {
 			t.Errorf("assume[%d] operator = %q, want =", i, infix.Operator)
 		}
+	}
+}
+
+func TestEmitNegation(t *testing.T) {
+	// !x.field should produce an InfixExpression x.field = false
+	test := `system test1;
+
+component toggle = states{
+	disable: unfunc{
+		requires store.active,
+		emits !store.active,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Emits) != 1 {
+		t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+	}
+	infix, ok := uf.Emits[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+	}
+	if infix.Operator != "=" {
+		t.Errorf("operator = %q, want =", infix.Operator)
+	}
+	b, ok := infix.Right.(*ast.Boolean)
+	if !ok {
+		t.Fatalf("RHS is not Boolean, got %T", infix.Right)
+	}
+	if b.Value != false {
+		t.Errorf("RHS = %v, want false", b.Value)
+	}
+}
+
+func TestEmitArithAssign(t *testing.T) {
+	// emits x = x + 1 should produce an InfixExpression with arithmetic RHS
+	test := `system test1;
+
+component counter = states{
+	increment: unfunc{
+		requires store.count,
+		emits store.count = store.count + 1,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Emits) != 1 {
+		t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+	}
+	assign, ok := uf.Emits[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+	}
+	if assign.Operator != "=" {
+		t.Errorf("operator = %q, want =", assign.Operator)
+	}
+	rhs, ok := assign.Right.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("RHS is not an InfixExpression, got %T", assign.Right)
+	}
+	if rhs.Operator != "+" {
+		t.Errorf("RHS operator = %q, want +", rhs.Operator)
+	}
+}
+
+func TestAssumeModifiers(t *testing.T) {
+	// assume with eventually and eventually-always modifiers
+	test := `system test1;
+
+component calc = states{
+	execute: unfunc{
+		requires calc.a,
+		assume calc.product = calc.a eventually,
+		assume calc.product = calc.b eventually-always,
+		assume calc.product = calc.a always,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Assumes) != 3 {
+		t.Fatalf("expected 3 assume clauses, got %d", len(uf.Assumes))
+	}
+
+	if uf.Assumes[0].Modifier != "eventually" {
+		t.Errorf("Assumes[0].Modifier = %q, want eventually", uf.Assumes[0].Modifier)
+	}
+	if uf.Assumes[1].Modifier != "eventually-always" {
+		t.Errorf("Assumes[1].Modifier = %q, want eventually-always", uf.Assumes[1].Modifier)
+	}
+	if uf.Assumes[2].Modifier != "always" {
+		t.Errorf("Assumes[2].Modifier = %q, want always", uf.Assumes[2].Modifier)
 	}
 }

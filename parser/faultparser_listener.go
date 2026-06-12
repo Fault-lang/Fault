@@ -311,8 +311,17 @@ type FaultParserListener interface {
 	// EnterAssumeClause is called when entering the assumeClause production.
 	EnterAssumeClause(c *AssumeClauseContext)
 
-	// EnterUnfuncEmitExpr is called when entering the unfuncEmitExpr production.
-	EnterUnfuncEmitExpr(c *UnfuncEmitExprContext)
+	// EnterEmitNegation is called when entering the EmitNegation production.
+	EnterEmitNegation(c *EmitNegationContext)
+
+	// EnterEmitBoolAssign is called when entering the EmitBoolAssign production.
+	EnterEmitBoolAssign(c *EmitBoolAssignContext)
+
+	// EnterEmitArithAssign is called when entering the EmitArithAssign production.
+	EnterEmitArithAssign(c *EmitArithAssignContext)
+
+	// EnterEmitBare is called when entering the EmitBare production.
+	EnterEmitBare(c *EmitBareContext)
 
 	// EnterUnfuncExpr is called when entering the unfuncExpr production.
 	EnterUnfuncExpr(c *UnfuncExprContext)
@@ -629,8 +638,17 @@ type FaultParserListener interface {
 	// ExitAssumeClause is called when exiting the assumeClause production.
 	ExitAssumeClause(c *AssumeClauseContext)
 
-	// ExitUnfuncEmitExpr is called when exiting the unfuncEmitExpr production.
-	ExitUnfuncEmitExpr(c *UnfuncEmitExprContext)
+	// ExitEmitNegation is called when exiting the EmitNegation production.
+	ExitEmitNegation(c *EmitNegationContext)
+
+	// ExitEmitBoolAssign is called when exiting the EmitBoolAssign production.
+	ExitEmitBoolAssign(c *EmitBoolAssignContext)
+
+	// ExitEmitArithAssign is called when exiting the EmitArithAssign production.
+	ExitEmitArithAssign(c *EmitArithAssignContext)
+
+	// ExitEmitBare is called when exiting the EmitBare production.
+	ExitEmitBare(c *EmitBareContext)
 
 	// ExitUnfuncExpr is called when exiting the unfuncExpr production.
 	ExitUnfuncExpr(c *UnfuncExprContext)
