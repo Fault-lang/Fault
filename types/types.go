@@ -822,8 +822,10 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		if COMPARE[node.Operator] {
 			if left != nil && right != nil {
 				if (left.Type == "BOOL" || right.Type == "BOOL") && left.Type != right.Type {
-					if left.Type != "STRING" && right.Type != "STRING" {
-						return nil, fmt.Errorf("invalid expression: got=%s %s %s", left.Type, node.Operator, right.Type)
+					// UNKNOWN and STRING are compatible with BOOL in comparisons
+					if left.Type != "STRING" && right.Type != "STRING" &&
+						left.Type != "UNKNOWN" && right.Type != "UNKNOWN" {
+						return nil, fmt.Errorf("invalid expression: got=%s %s %s %s", left.Type, node.Operator, right.Type, node.GetToken().Location())
 					}
 				}
 			}
@@ -1419,7 +1421,19 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	if err != nil {
 		fields, err = spec.FetchComponent(typeName)
 		if err != nil {
-			return fmt.Errorf("unfunc %s: stock or component %q not found", clause, typeName)
+			// Unfunc parameters inside flow definitions use the local variable name
+			// (e.g. "membership"), but the spec record stores it under the compound
+			// key "flowName_varName". Try looking up via the enclosing scope.
+			if pc.Scope != "" {
+				compoundKey := pc.Scope + "_" + typeName
+				fields, err = spec.FetchStock(compoundKey)
+				if err != nil {
+					fields, err = spec.FetchComponent(compoundKey)
+				}
+			}
+			if err != nil {
+				return fmt.Errorf("unfunc %s: stock or component %q not found", clause, typeName)
+			}
 		}
 	}
 

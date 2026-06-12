@@ -235,8 +235,26 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 	switch node := n.(type) {
 	case *ast.Spec:
+		// Process non-assertion statements first so that instances declared in
+		// run-init blocks (and globals) are registered before assume/assert
+		// statements are resolved. This lets system specs write:
+		//   run init { x = new foo.Bar; } { ... }
+		//   assume x.prop == true;
+		// without requiring explicit global declarations.
+		var assertIdxs []int
 		for i, v := range node.Statements {
+			if _, ok := v.(*ast.AssertionStatement); ok {
+				assertIdxs = append(assertIdxs, i)
+				continue
+			}
 			pro, err = p.walk(v)
+			if err != nil {
+				return node, err
+			}
+			node.Statements[i] = pro.(ast.Statement)
+		}
+		for _, i := range assertIdxs {
+			pro, err = p.walk(node.Statements[i])
 			if err != nil {
 				return node, err
 			}
