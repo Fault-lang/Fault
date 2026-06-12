@@ -54,13 +54,14 @@ func Execute(l *listener.FaultListener) (pre *Processor, err error) {
 func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	tree, err := p.walk(n)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
 	}
 	p.initialPass = false
 
 	tree, err = p.walk(tree)
 	if err != nil {
-		panic(err)
+		spec := tree.(*ast.Spec)
+		panic(fmt.Sprintf("%s %s", err, spec.GetToken().Location()))
 	}
 	spec := tree.(*ast.Spec)
 	p.Processed = spec
@@ -182,23 +183,23 @@ func (p *Processor) formatIndex(n *ast.InfixExpression) string {
 	_, okL := n.Left.(*ast.Clock)
 
 	if okR && n.Operator == "-" {
-		panic("negative indexes not possible")
+		panic(fmt.Sprintf("negative indexes not possible %s", n.GetToken().Location()))
 	}
 
 	if (okR || okL) && n.Operator == "+" {
-		panic("index out of range")
+		panic(fmt.Sprintf("index out of range %s", n.GetToken().Location()))
 	}
 
 	if (okR || okL) && n.Operator == "*" {
-		panic("index out of range")
+		panic(fmt.Sprintf("index out of range %s", n.GetToken().Location()))
 	}
 
 	// If left and right are numeric it will evaluate
 	// and return new node, otherwise just returns the
 	// same node
 	val := ast.Evaluate(n)
-	if _, okF := val.(*ast.FloatLiteral); okF {
-		panic("index must be a whole number")
+	if fval, okF := val.(*ast.FloatLiteral); okF {
+		panic(fmt.Sprintf("index must be a whole number %s", fval.GetToken().Location()))
 	}
 
 	if _, ok := val.(*ast.InfixExpression); !ok {
@@ -736,7 +737,7 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			rawid = node.Left.(ast.Nameable).RawId()
 			rawid = append(rawid, node.Index.String())
 		default:
-			panic("unsupported syntax for index")
+			panic(fmt.Sprintf("unsupported syntax for index %s", node.GetToken().Location()))
 		}
 		node.ProcessedName = rawid
 		return node, err

@@ -1188,7 +1188,7 @@ func (l *FaultListener) ExitSolvable(c *parser.SolvableContext) {
 			TypeHint: typeHint,
 		})
 	default:
-		log.Fatalf("Unimplemented: %s", c.FaultType().GetText())
+		log.Fatalf("Unimplemented: %s %s", c.FaultType().GetText(), l.loc(c.GetStart()))
 	}
 }
 

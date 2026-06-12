@@ -213,13 +213,13 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		}
 	}
 
-	panic("Fault found nothing to run. Missing run block")
+	panic(fmt.Sprintf("Fault found nothing to run. Missing run block %s", specfile.GetToken().Location()))
 }
 
 func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
-		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
+		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T %s", root, root.GetToken().Location()))
 	}
 
 	c.validate(specfile)
@@ -299,8 +299,9 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					c.instanceChildOf[parent] = append(c.instanceChildOf[parent], key)
 					children, err := s.FetchInstanceStrMap(name, d.Parent[1], ty)
 					if err != nil {
-						panic(err)
+						panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
 					}
+
 					c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 				case *ast.ComponentLiteral:
 					//assembling component parts as params
@@ -308,7 +309,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					s := c.specStructs[id[0]]
 					branches, err := s.FetchComponent(id[1])
 					if err != nil {
-						panic(err)
+						panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
 					}
 					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
@@ -317,7 +318,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			}
 		}
 	default:
-		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
+		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T %s", specfile.Statements[0], specfile.Statements[0].GetToken().Location()))
 	}
 
 	if !c.isImport { //Don't compile if the spec is being imported
@@ -448,7 +449,7 @@ func (c *Compiler) compoundString(n ast.Expression) string {
 	case *ast.PrefixExpression:
 		return fmt.Sprintf("%s %s", util.PlainLangOp(v.Operator), c.compoundString(v.Right))
 	default:
-		panic(fmt.Sprintf("unknown compound string type %T", v))
+		panic(fmt.Sprintf("unknown compound string type %T %s", v, v.GetToken().Location()))
 	}
 }
 
@@ -499,7 +500,7 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		n := strings.Join(rawid[1:], "_")
 		branches, err := s.Fetch(n, ty)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, def.GetToken().Location()))
 		}
 		params := c.generateParameters(instance.Id(), branches, false)
 		c.sysGlobals = append(c.sysGlobals, params...)
@@ -608,7 +609,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 	spec := c.specStructs[id[0]]
 	tree, err := spec.FetchComponent(id[1])
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%s %s", err, node.GetToken().Location()))
 	}
 
 	for _, k := range node.Order {
@@ -749,15 +750,15 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	case "FLOW":
 		branches, err = spec.FetchFlow(st)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, pc.GetToken().Location()))
 		}
 	case "STOCK":
 		branches, err = spec.FetchStock(st)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, pc.GetToken().Location()))
 		}
 	default:
-		panic(fmt.Sprintf("struct %s not found", id))
+		panic(fmt.Sprintf("struct %s not found %s", id, pc.GetToken().Location()))
 	}
 
 	if c.contextFuncName == "__run" &&
@@ -901,7 +902,7 @@ func (c *Compiler) compileStateActivation(s *ast.StateActivation) {
 
 		branch, err := c.specStructs[specName].FetchComponent(componentName)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, pc.GetToken().Location()))
 		}
 
 		var rawid []string
@@ -911,7 +912,7 @@ func (c *Compiler) compileStateActivation(s *ast.StateActivation) {
 		case *ast.UnfuncLiteral:
 			rawid = node.RawId()
 		default:
-			panic(fmt.Errorf("component state %s.%s not valid", componentName, stateName))
+			panic(fmt.Sprintf("component state %s.%s not valid %s", componentName, stateName, pc.GetToken().Location()))
 		}
 
 		if c.isVarSet(rawid) && c.alloc {
