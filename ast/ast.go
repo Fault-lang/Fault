@@ -13,6 +13,7 @@ type TokenType string
 type Token struct {
 	Type     TokenType
 	Literal  string
+	File     string
 	Position []int
 }
 
@@ -22,6 +23,14 @@ func (t *Token) GetPosition() []int {
 	} else {
 		return []int{0, 0, 0, 0}
 	}
+}
+
+func (t Token) Location() string {
+	pos := t.GetPosition()
+	if t.File != "" {
+		return fmt.Sprintf("%s:%d:%d", t.File, pos[0], pos[1])
+	}
+	return fmt.Sprintf("%d:%d", pos[0], pos[1])
 }
 
 var OPS = map[string]TokenType{

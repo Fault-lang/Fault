@@ -45,6 +45,11 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 	}
 }
 
+// loc returns a formatted "file:line:col" string for error messages.
+func (l *FaultListener) loc(tok antlr.Token) string {
+	return fmt.Sprintf("%s:%d:%d", l.currSpec, tok.GetLine(), tok.GetColumn())
+}
+
 // Enter rules --> Validation
 // Exit rules --> AST assembly
 

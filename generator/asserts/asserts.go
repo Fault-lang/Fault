@@ -37,8 +37,7 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
 	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
-		pos := a.Position()
-		return nil, fmt.Errorf("cannot mix temporal logic with when/then assertions (line %d col %d)", pos[0], pos[1])
+		return nil, fmt.Errorf("cannot mix temporal logic with when/then assertions (%s)", a.GetToken().Location())
 	}
 
 	operator = smtlibOperators(a.Constraint.Operator)
@@ -281,11 +280,9 @@ func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
 			reg := c.RegistryConstant(placeholder)
 			return rules.NewVarSets(reg)
 		}
-		pos := e.Position()
-		panic(fmt.Sprintf("param() in assume/assert must be directly compared to a variable: line: %d, col: %d", pos[0], pos[1]))
+		panic(fmt.Sprintf("param() in assume/assert must be directly compared to a variable: %s", e.GetToken().Location()))
 	default:
-		pos := e.Position()
-		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+		panic(fmt.Sprintf("illegal node %T in assert or assume %s", e, e.GetToken().Location()))
 	}
 	return nil
 }
@@ -438,11 +435,9 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 		if len(e.ProcessedName) > 0 {
 			return fmt.Sprintf("__PARAM_%s__", strings.Join(e.ProcessedName, "_"))
 		}
-		pos := e.Position()
-		panic(fmt.Sprintf("param() in assume/assert must be directly compared to a variable: line: %d, col: %d", pos[0], pos[1]))
+		panic(fmt.Sprintf("param() in assume/assert must be directly compared to a variable: %s", e.GetToken().Location()))
 	default:
-		pos := e.Position()
-		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+		panic(fmt.Sprintf("illegal node %T in assert or assume %s", e, e.GetToken().Location()))
 	}
 
 }

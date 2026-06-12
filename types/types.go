@@ -597,14 +597,13 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	case *ast.This:
 		return node, nil
 	default:
-		pos := node.(ast.Node).Position()
-		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
+		n := node.(ast.Node)
+		return nil, fmt.Errorf("unrecognized type: %s got=%T", n.GetToken().Location(), node)
 	}
 }
 
 func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	var err error
-	pos := node.Position()
 
 	if t := typeable(node); t != nil {
 		return t, nil
@@ -653,7 +652,7 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	}
 	v, err := spec.FetchVar(rawid, ty)
 	if err != nil {
-		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
+		return nil, fmt.Errorf("can't find node %s %s", rawid, node.GetToken().Location())
 	}
 
 	if v.TokenLiteral() == "COMPOUND_STRING" {
@@ -681,8 +680,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			typedNode, err := c.infer(body[0].(*ast.ExpressionStatement).Expression)
 			tn, ok := typedNode.(ast.Expression)
 			if !ok {
-				pos := typedNode.Position()
-				return nil, fmt.Errorf("node %T not an valid expression line: %d, col: %d", typedNode, pos[0], pos[1])
+				return nil, fmt.Errorf("node %T not an valid expression %s", typedNode, typedNode.GetToken().Location())
 			}
 			node.Body.Statements[0].(*ast.ExpressionStatement).Expression = tn
 			return node, err
@@ -963,8 +961,8 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			Parameters: nil}
 		return node, err
 	default:
-		pos := node.(ast.Node).Position()
-		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
+		n := node.(ast.Node)
+		return nil, fmt.Errorf("unrecognized type: %s got=%T", n.GetToken().Location(), node)
 	}
 }
 

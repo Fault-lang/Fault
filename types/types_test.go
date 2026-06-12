@@ -120,7 +120,7 @@ func TestInstanceError(t *testing.T) {
 	`
 	_, err := prepTest(test, true)
 
-	actual := "can't find node [test1 fizz buzz] line:9, col:5"
+	actual := "can't find node [test1 fizz buzz] test1:9:5"
 
 	if err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
