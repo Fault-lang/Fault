@@ -1,0 +1,6 @@
+(set-logic QF_NRA)
+(declare-fun nestedextends_l2_a_0 () Bool)
+(declare-fun nestedextends_l2_b_0 () Bool)
+(assert (= nestedextends_l2_a_0 true))
+(assert (= nestedextends_l2_b_0 false))
+(assert (not (= nestedextends_l2_b_0 true)))

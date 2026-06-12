@@ -346,9 +346,14 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		if p.initialPass {
 			if node.Extends != nil {
-				parentFields, ferr := spec.FetchStock(node.Extends.Value)
+				parentSpecName := node.Extends.Spec
+				if parentSpecName == "" {
+					parentSpecName = p.trail.CurrentSpec()
+				}
+				parentSpec := p.getSpec(parentSpecName)
+				parentFields, ferr := parentSpec.FetchStock(node.Extends.Value)
 				if ferr == nil {
-					parentKey := strings.Join([]string{p.trail.CurrentSpec(), node.Extends.Value}, "_")
+					parentKey := strings.Join([]string{parentSpecName, node.Extends.Value}, "_")
 					parentOrder := p.StructsPropertyOrder[parentKey]
 
 					var inheritedOrder []string
