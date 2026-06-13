@@ -135,6 +135,11 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	// (e.g. unfunc bodies that store 1.0 to a Bool-typed stock property).
 	allStmts := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
 	g.RawInputs.BoolVarNames = inferBoolVarNames(allStmts)
+	// Merge Bool unknowns (unknown(false) fields) into BoolVarNames so that the
+	// unroll phase declares them with Bool sort and suppresses the sentinel assert.
+	for k := range g.RawInputs.BoolUnknowns {
+		g.RawInputs.BoolVarNames[k] = true
+	}
 
 	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()

@@ -143,14 +143,6 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) && !isAParam(base, b.Env.RawInputs) {
 			return nil
 		}
-		// In __run, Bool-typed alloca stores (store i1 false/true) are default
-		// initializations, not explicit user constraints. Treat them as free
-		// variables — the same role that 0x3DA3CA8CB153A753 plays for floats.
-		// Constraints on initial Bool values come from assume/assert statements.
-		if b.ParentFunction == "__run" && LookupType(base, inst.Src) == "Bool" {
-			b.Env.VarTypes[base] = "Bool"
-			return []rules.Rule{b.createRule(base, "0x3DA3CA8CB153A753", "Bool", "=")}
-		}
 		// For param fields, emit a __PARAM_...__ placeholder assertion.
 		if isAParam(base, b.Env.RawInputs) {
 			ty := b.Env.RawInputs.ParamTypes[base]

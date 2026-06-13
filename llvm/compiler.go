@@ -42,6 +42,10 @@ type RawInputs struct {
 	// the run block is unrolled. It tells the unroll phase which variables should be
 	// treated as Bool in SMT so that stores of 1.0/0.0 are emitted as true/false.
 	BoolVarNames map[string]bool
+	// BoolUnknowns tracks variables declared as unknown(false) — Bool free variables.
+	// Unlike float unknowns (which use the 0x3DA3CA8CB153A753 sentinel), Bool unknowns
+	// also emit that sentinel (as a Double) but need to be declared with Bool sort.
+	BoolUnknowns map[string]bool
 	// IntegerMode is set by the generator optimization pass when every free numeric
 	// variable is whole(). In that mode the SMT logic switches to QF_NIA, whole vars
 	// are declared with Int sort, and is_int assertions are suppressed entirely.
@@ -76,6 +80,7 @@ func NewRawInputs() *RawInputs {
 		ParamTypes:   make(map[string]string),
 		Unfuncs:      []*UnfuncInfo{},
 		BoolVarNames: make(map[string]bool),
+		BoolUnknowns: make(map[string]bool),
 	}
 }
 
@@ -536,9 +541,11 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Unknown:
-		if v.TypeHint == "BOOL" {
-			return constant.NewInt(irtypes.I1, 0)
-		}
+		// Bool unknowns use the same Double sentinel as float unknowns so that
+		// the generator can recognize them as free variables. Explicit bool
+		// values (true/false) remain as i1 and get asserted with their actual
+		// values. The unfunc coercion at store time handles i1→Double when
+		// writing back into a Double-typed alloca.
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Param:
 		if v.TypeHint == "BOOL" {
@@ -1855,6 +1862,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 	for _, k := range keys {
 		var isUncertain []float64
 		var isUnknown bool
+		var isBoolUnknown bool
 		var isWhole bool
 		var isParam bool
 		var paramSort string
@@ -1895,6 +1903,8 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 				isUnknown = true
 				if u.TypeHint == "INT" {
 					isWhole = true
+				} else if u.TypeHint == "BOOL" {
+					isBoolUnknown = true
 				}
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma, uncertain.K}
@@ -1933,6 +1943,9 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		vname := strings.Join(id, "_")
 		if isUnknown {
 			c.RawInputs.Unknowns = append(c.RawInputs.Unknowns, vname)
+		}
+		if isBoolUnknown {
+			c.RawInputs.BoolUnknowns[vname] = true
 		}
 		if isUncertain != nil {
 			c.RawInputs.Uncertains[vname] = isUncertain
