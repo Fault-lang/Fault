@@ -63,6 +63,7 @@ type PendingModelCheck struct {
 	Uncertains map[string][]float64
 	Unknowns   []string
 	Asserts    []*ast.AssertionStatement
+	HasSynth   bool // true when the run block contains synthesis slots (__)
 	ResultLog  *scenario.Logger
 }
 
@@ -380,6 +381,7 @@ func (r *Runner) Run() *CompilationOutput {
 					Uncertains: uncertains,
 					Unknowns:   unknowns,
 					Asserts:    compiler.RawInputs.Asserts,
+					HasSynth:   hasSolvableSteps(tree),
 					ResultLog:  g.ResultLog,
 				}
 				return output
@@ -413,8 +415,9 @@ func (r *Runner) Run() *CompilationOutput {
 		r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
 		r.sendProgress(PhaseResults, "Processing results...", 0.85, false)
 		if mc.NoSat {
-			r.sendProgress(PhaseResults, "Fault could not find a failure case. All good!", 1.0, true)
-			output.Message = "Fault could not find a failure case. All good!"
+			msg := noSatMessage(compiler.RawInputs.Asserts, hasSolvableSteps(tree))
+			r.sendProgress(PhaseResults, msg, 1.0, true)
+			output.Message = msg
 			return output
 		}
 		mc.EvaluateViolations(compiler.RawInputs.Asserts)
@@ -497,8 +500,9 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 	r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
 	r.sendProgress(PhaseResults, "Processing results...", 0.85, false)
 	if mc.NoSat {
-		r.sendProgress(PhaseResults, "Fault could not find a failure case. All good!", 1.0, true)
-		output.Message = "Fault could not find a failure case. All good!"
+		msg := noSatMessage(pending.Asserts, pending.HasSynth)
+		r.sendProgress(PhaseResults, msg, 1.0, true)
+		output.Message = msg
 		return output
 	}
 	mc.EvaluateViolations(pending.Asserts)
@@ -523,4 +527,41 @@ func systemName(tree *ast.Spec) string {
 		}
 	}
 	return ""
+}
+
+// hasSolvableSteps reports whether the spec's run block contains any synthesis
+// slots (__), indicating the user wants program synthesis rather than verification.
+func hasSolvableSteps(tree *ast.Spec) bool {
+	for _, stmt := range tree.Statements {
+		rs, ok := stmt.(*ast.RunStatement)
+		if !ok {
+			continue
+		}
+		for _, step := range rs.Steps {
+			if _, ok := step.(*ast.SolvableStep); ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// noSatMessage returns the appropriate user-facing message when the solver
+// returns unsat, based on whether the spec is in verification, synthesis, or
+// simulation mode.
+//
+//   - Verification (has assert statements): unsat means no assertion is ever
+//     violated — the model is correct.
+//   - Synthesis (has __ slots, no asserts): unsat means no combination of
+//     operations can satisfy all the assume constraints.
+//   - Simulation (only assumes, no __ and no asserts): unsat means the assume
+//     constraints are mutually contradictory.
+func noSatMessage(asserts []*ast.AssertionStatement, hasSynth bool) string {
+	if hasSynth {
+		return "Fault could not find a valid operation sequence that satisfies all constraints."
+	}
+	if len(asserts) > 0 {
+		return "Fault could not find a failure case. All good!"
+	}
+	return "Fault could not find a satisfying model. The assume constraints may be contradictory."
 }
