@@ -261,6 +261,78 @@ func (r *Runner) probability(smt string, uncertains map[string][]float64, unknow
 	return ex, nil
 }
 
+// synthProbability solves a synthesis problem using iterative deepening to find
+// the shortest valid operation sequence. It tries k=1,2,...,n non-noop steps and
+// returns the first satisfying result, ensuring the minimal solution is returned.
+func (r *Runner) synthProbability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, error) {
+	noopSelectors := findNoopSelectors(smt)
+	n := len(noopSelectors)
+	if n == 0 {
+		return r.probability(smt, uncertains, unknowns)
+	}
+
+	ex, err := execute.NewModelChecker()
+	if err != nil {
+		return nil, err
+	}
+	ex.LoadModel(smt, uncertains, unknowns)
+
+	for k := 1; k <= n; k++ {
+		extra := buildMinStepAsserts(noopSelectors, n-k)
+		ok, err := ex.CheckWithAsserts(extra)
+		if err != nil {
+			return nil, fmt.Errorf("model checker has failed: %s", err)
+		}
+		if ok {
+			err = ex.SolveWithAsserts(extra)
+			if err != nil {
+				return nil, fmt.Errorf("error found fetching solution from solver: %s", err)
+			}
+			return ex, nil
+		}
+	}
+
+	ex.NoSat = true
+	return ex, nil
+}
+
+// findNoopSelectors scans the SMT formula for noop candidate selector variable
+// declarations. These are Bool variables named synth_N___noop___N that the
+// synthesis unpacker emits for each step's noop candidate.
+func findNoopSelectors(smt string) []string {
+	var selectors []string
+	for _, line := range strings.Split(smt, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "(declare-fun") && strings.Contains(trimmed, "___noop___") {
+			parts := strings.Fields(trimmed)
+			if len(parts) >= 2 {
+				selectors = append(selectors, parts[1])
+			}
+		}
+	}
+	return selectors
+}
+
+// buildMinStepAsserts returns an SMT assertion requiring at least minNoops of the
+// given noop selectors to be true, which limits the solver to at most
+// len(noopSelectors)-minNoops non-noop steps.
+func buildMinStepAsserts(noopSelectors []string, minNoops int) []string {
+	if minNoops <= 0 {
+		return nil
+	}
+	var terms []string
+	for _, sel := range noopSelectors {
+		terms = append(terms, fmt.Sprintf("(ite %s 1 0)", sel))
+	}
+	var sum string
+	if len(terms) == 1 {
+		sum = terms[0]
+	} else {
+		sum = "(+ " + strings.Join(terms, " ") + ")"
+	}
+	return []string{fmt.Sprintf("(assert (>= %s %d))", sum, minNoops)}
+}
+
 func (r *Runner) Run() *CompilationOutput {
 	output := &CompilationOutput{}
 
@@ -405,7 +477,12 @@ func (r *Runner) Run() *CompilationOutput {
 		// Default output is "text" with full model checking
 		r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
 		r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
-		mc, err := r.probability(smt, uncertains, unknowns)
+		var mc *execute.ModelChecker
+		if hasSolvableSteps(tree) {
+			mc, err = r.synthProbability(smt, uncertains, unknowns)
+		} else {
+			mc, err = r.probability(smt, uncertains, unknowns)
+		}
 		if err != nil {
 			r.sendError(PhaseModelChecking, err)
 			output.Error = err
@@ -490,7 +567,13 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 
 	r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
 	r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
-	mc, err := r.probability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	var mc *execute.ModelChecker
+	var err error
+	if pending.HasSynth {
+		mc, err = r.synthProbability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	} else {
+		mc, err = r.probability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	}
 	if err != nil {
 		r.sendError(PhaseModelChecking, err)
 		output.Error = err

@@ -607,8 +607,10 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 			init, line := u2.unpackRule(l)
 			lines = append(lines, line)
 			initQue = append(initQue, InitsToList(init)...)
-			u.AddInit(init)
-			u.Register(init)
+			u.AddInit(init) // declare branch-internal vars
+			// Do NOT register branch-internal inits: they are unconstrained when
+			// this branch is not selected, so including them in the registry would
+			// let temporal constraints reference free variables.
 		}
 		rule_set = append(rule_set, lines)
 		PhiClone := u.GetPhis(u.SSA, u2.SSA)
@@ -660,7 +662,11 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 
 	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
 
-	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
+	// Return only the canonical post-phi inits (phi-merge vars + selector vars).
+	// Branch-internal inits are already in u.Inits for declaration but must not
+	// be registered into the parent registry — they are unconstrained when their
+	// branch is inactive, which would make temporal constraints trivially satisfiable.
+	return inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
 // unpackSynthSlot handles a synthesis step (__).
@@ -705,8 +711,11 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 			init, line := u2.unpackRule(l)
 			lines = append(lines, line)
 			initQue = append(initQue, InitsToList(init)...)
-			u.AddInit(init)
-			u.Register(init)
+			u.AddInit(init) // declare candidate-internal vars
+			// Do NOT register candidate-internal inits: they are unconstrained when
+			// this candidate is not selected, so including them in the registry would
+			// let temporal constraints (e.g. "eventually") reference free variables
+			// and become trivially satisfiable without the function ever being called.
 		}
 		ruleSet = append(ruleSet, lines)
 		phiClone := u.GetPhis(u.SSA, u2.SSA)
@@ -750,7 +759,11 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 	u.Log.ExitFunction(slotName, slot.Round)
 
 	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
-	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
+	// Return only the canonical post-phi inits (phi-merge vars + selector vars).
+	// Candidate-internal inits are already in u.Inits for declaration but must not
+	// be registered into the parent registry — they are unconstrained when their
+	// candidate is inactive, which would make temporal constraints trivially satisfiable.
+	return inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
 func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
