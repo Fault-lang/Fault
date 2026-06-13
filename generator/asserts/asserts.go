@@ -390,6 +390,9 @@ func (c *Constraint) parseWhenThen(node ast.Expression, w map[string]string) str
 		right := c.parseWhenThen(e.Right, w)
 		op := smtlibOperators(e.Operator)
 
+		if left == "" || right == "" {
+			return ""
+		}
 		if op == "not" {
 			return fmt.Sprintf("(distinct %s %s)", left, right)
 		}
@@ -722,6 +725,9 @@ func (c *Constraint) applyTemporal() string {
 			op = c.Off
 		}
 
+		if len(clause.List()) == 0 {
+			return ""
+		}
 		if len(clause.List()) == 1 {
 			return clause.List()[0]
 		}

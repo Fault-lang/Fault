@@ -424,7 +424,11 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 					}
 				}
 				if !found {
-					ends := fmt.Sprintf("%s_%d", var_name, u.OnEntry[var_name][len(u.OnEntry[var_name])-1])
+					entryIdx := int16(0)
+					if entry := u.OnEntry[var_name]; len(entry) > 0 {
+						entryIdx = entry[len(entry)-1]
+					}
+					ends := fmt.Sprintf("%s_%d", var_name, entryIdx)
 					phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 					i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
 					i.SetRound(u.Round)

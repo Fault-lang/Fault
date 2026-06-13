@@ -106,16 +106,12 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 			return ru
 		}
 		// On close: build a SynthSlot with all candidate flow functions.
-		// Build a set of unfunc stub names to exclude — unfuncs are handled
-		// separately by ProcessUnfuncs and do not produce LLVM variable changes,
-		// so they cannot contribute phi conditions to a synthesis branch selector.
-		unfuncStubs := make(map[string]bool)
-		for _, uf := range b.Env.RawInputs.Unfuncs {
-			unfuncStubs[util.FormatIdent(uf.StateKey)] = true
-		}
+		// A "__noop__" candidate is always included so the solver can skip a step,
+		// making the synthesis semantics "up to N operations" rather than "exactly N".
 		candidates := make(map[string][]rules.Rule)
+		candidates["__noop__"] = []rules.Rule{}
 		for fname, rawF := range b.rawFunctions {
-			if fname == "__run" || isBuiltIn(fname) || strings.HasSuffix(fname, "__state") || unfuncStubs[fname] {
+			if fname == "__run" || isBuiltIn(fname) || strings.HasSuffix(fname, "__state") {
 				continue
 			}
 			enter := rules.NewFuncCall(fname, "Enter", b.Env.CurrentRound)
@@ -146,6 +142,14 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		// variables so that constraints referencing them remain satisfiable.
 		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) && !isAParam(base, b.Env.RawInputs) {
 			return nil
+		}
+		// In __run, Bool-typed alloca stores (store i1 false/true) are default
+		// initializations, not explicit user constraints. Treat them as free
+		// variables — the same role that 0x3DA3CA8CB153A753 plays for floats.
+		// Constraints on initial Bool values come from assume/assert statements.
+		if b.ParentFunction == "__run" && LookupType(base, inst.Src) == "Bool" {
+			b.Env.VarTypes[base] = "Bool"
+			return []rules.Rule{b.createRule(base, "0x3DA3CA8CB153A753", "Bool", "=")}
 		}
 		// For param fields, emit a __PARAM_...__ placeholder assertion.
 		if isAParam(base, b.Env.RawInputs) {
@@ -229,9 +233,21 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 			if b.Env.RawInputs.IntegerMode && ty == "Real" {
 				ty = "Int"
 			}
+			srcVal := inst.Src.Ident()
+			// Coerce float-valued stores to Bool for variables that inferBoolVarNames
+			// identified as boolean (e.g. unfunc emits storing 1.0 to a Bool prop).
+			if ty == "Real" && b.Env.RawInputs.BoolVarNames[base] {
+				ty = "Bool"
+				if srcVal == "0.0" || srcVal == "0" {
+					srcVal = "false"
+				} else if srcVal != "0x3DA3CA8CB153A753" {
+					// Sentinel value is kept as-is; Infix.WriteRule suppresses it.
+					srcVal = "true"
+				}
+			}
 			b.Env.VarTypes[base] = ty
 
-			ru = append(ru, b.createRule(base, inst.Src.Ident(), ty, "="))
+			ru = append(ru, b.createRule(base, srcVal, ty, "="))
 		}
 		return ru
 	}

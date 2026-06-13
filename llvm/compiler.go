@@ -8,6 +8,7 @@ import (
 	"fault/preprocess"
 	"fault/util"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os/exec"
 	"sort"
@@ -37,6 +38,10 @@ type RawInputs struct {
 	Params     []string
 	ParamTypes map[string]string // base name → SMT sort ("Real", "Int", "Bool")
 	Unfuncs    []*UnfuncInfo
+	// BoolVarNames is pre-computed by the generator from inferBoolVarNames before
+	// the run block is unrolled. It tells the unroll phase which variables should be
+	// treated as Bool in SMT so that stores of 1.0/0.0 are emitted as true/false.
+	BoolVarNames map[string]bool
 	// IntegerMode is set by the generator optimization pass when every free numeric
 	// variable is whole(). In that mode the SMT logic switches to QF_NIA, whole vars
 	// are declared with Int sort, and is_int assertions are suppressed entirely.
@@ -68,8 +73,9 @@ func NewRawInputs() *RawInputs {
 		Unknowns:   []string{},
 		Wholes:     []string{},
 		Params:     []string{},
-		ParamTypes: make(map[string]string),
-		Unfuncs:    []*UnfuncInfo{},
+		ParamTypes:   make(map[string]string),
+		Unfuncs:      []*UnfuncInfo{},
+		BoolVarNames: make(map[string]bool),
 	}
 }
 
@@ -1749,7 +1755,8 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		fname = fname + "__state"
 	}
 
-	if c.RunRound >= 1 && c.specFunctions[fname] == nil { //initialize once, on first call
+	unfuncNode, isUnfuncStub := branch[rawId[len(rawId)-1]].(*ast.UnfuncLiteral)
+	if c.RunRound >= 1 && (c.specFunctions[fname] == nil || isUnfuncStub) { //initialize once, on first call
 		params := c.generateParameters(rawId, branch, component)
 		if component {
 			params = c.includeGlobalParams(params)
@@ -1762,8 +1769,64 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		c.contextFuncName = fname
 		c.contextBlock = f.NewBlock(name.Block())
 
-		val := c.compileValue(branch[rawId[len(rawId)-1]])
-		c.contextBlock.NewRet(val)
+		if isUnfuncStub {
+			// Emit stores for each emits clause so the synthesis unroller sees variable changes.
+			// Match by suffix: emit path [vote, GroupByMember] → look for param ending _vote_GroupByMember.
+			for _, emitItem := range unfuncNode.Emits {
+				var emitPath []string
+				var emitConst value.Value
+				switch e := emitItem.(type) {
+				case *ast.ParameterCall:
+					emitPath = e.Value
+					emitConst = constant.NewFloat(irtypes.Double, 1.0)
+				case *ast.InfixExpression:
+					if pc, ok := e.Left.(*ast.ParameterCall); ok {
+						emitPath = pc.Value
+					}
+					if b, ok := e.Right.(*ast.Boolean); ok {
+						if b.Value {
+							emitConst = constant.NewFloat(irtypes.Double, 1.0)
+						} else {
+							emitConst = constant.NewFloat(irtypes.Double, 0.0)
+						}
+					}
+				}
+				if len(emitPath) == 0 || emitConst == nil {
+					continue
+				}
+				suffix := "_" + strings.Join(emitPath, "_")
+				for _, p := range params {
+					if strings.HasSuffix(p.LocalIdent.LocalName, suffix) {
+						// Match the store type to the param's pointer element type.
+						var storeVal value.Value
+						if ptr, ok := p.Type().(*irtypes.PointerType); ok {
+							if ptr.ElemType == irtypes.I1 {
+								// Bool param: store i1
+								if f, ok2 := emitConst.(*constant.Float); ok2 {
+									if f.X.Cmp(new(big.Float).SetFloat64(0)) == 0 {
+										storeVal = constant.NewInt(irtypes.I1, 0)
+									} else {
+										storeVal = constant.NewInt(irtypes.I1, 1)
+									}
+								} else {
+									storeVal = emitConst
+								}
+							} else {
+								storeVal = emitConst
+							}
+						} else {
+							storeVal = emitConst
+						}
+						c.contextBlock.NewStore(storeVal, p)
+						break
+					}
+				}
+			}
+			c.contextBlock.NewRet(nil)
+		} else {
+			val := c.compileValue(branch[rawId[len(rawId)-1]])
+			c.contextBlock.NewRet(val)
+		}
 
 		c.contextBlock = oldBlock
 		c.contextFuncName = "__run"
@@ -1812,22 +1875,10 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			rawid := pv.RawId()
 			c.componentBool(rawid)
 
-			params := []*ir.Param{}
-			params = c.includeGlobalParams(params)
-			s := c.specs[rawid[0]]
-			funcId := pv.Id()
-			for _, par := range params {
-				s.vars.AddParam(funcId, par)
-			}
-			c.resetParaState(params)
-			childId := pv.IdString()
-			f := c.module.NewFunc(childId, irtypes.Void, params...)
-			stubBlock := f.NewBlock(name.Block())
-			stubBlock.NewRet(nil)
-			c.specFunctions[childId] = f
-
+			// Don't create an empty stub here — processFunc will create the proper
+			// version with full params and emit stores when precompileAllFlowFunctions runs.
 			c.RawInputs.Unfuncs = append(c.RawInputs.Unfuncs, &UnfuncInfo{
-				StateKey: childId,
+				StateKey: pv.IdString(),
 				Requires: pv.Requires,
 				Emits:    pv.Emits,
 				Assumes:  pv.Assumes,

@@ -380,6 +380,12 @@ func (a *Ands) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		rules = append(rules, ru)
 		i = append(i, init...)
 	}
+	if len(rules) == 0 {
+		return i, "true", ssa
+	}
+	if len(rules) == 1 {
+		return i, rules[0], ssa
+	}
 	return i, fmt.Sprintf("(and %s)", strings.Join(rules, " ")), ssa
 }
 
@@ -391,11 +397,17 @@ func (a *Ands) String() string {
 	return out.String()
 }
 func (a *Ands) Assertless() string {
-	var ands string
+	var parts []string
 	for _, asrt := range a.X {
-		ands = fmt.Sprintf("%s %s", ands, asrt.Assertless())
+		parts = append(parts, asrt.Assertless())
 	}
-	return fmt.Sprintf("(and %s)", ands)
+	if len(parts) == 0 {
+		return "true"
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	return fmt.Sprintf("(and %s)", strings.Join(parts, " "))
 }
 func (a *Ands) Tag(k1 string, k2 string) {
 	a.tag = &branch{

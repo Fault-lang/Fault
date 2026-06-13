@@ -130,6 +130,12 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.Env.WhensThens = unroll.WhenThen(append(g.RawInputs.Asserts, g.RawInputs.Assumes...))
 
+	// Pre-compute Bool variable names before unrolling so that parseStore can emit
+	// correct Bool types for stores to variables that are used in boolean contexts
+	// (e.g. unfunc bodies that store 1.0 to a Bool-typed stock property).
+	allStmts := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
+	g.RawInputs.BoolVarNames = inferBoolVarNames(allStmts)
+
 	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()
 
@@ -142,8 +148,7 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	// Upgrade Real-typed Inits to Bool for variables used in boolean contexts
 	// in assume/assert statements (e.g. unknown() fields used with ||/&&/!).
-	allStmts := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
-	boolVars := inferBoolVarNames(allStmts)
+	boolVars := g.RawInputs.BoolVarNames
 	for _, init := range p.Inits {
 		if boolVars[init.Ident] && init.Type == "Real" {
 			init.Type = "Bool"
@@ -396,10 +401,13 @@ func resolveVarBase(pc *ast.ParameterCall, varTypes map[string]string) string {
 
 // registryBestVersion finds the full SSA variable name for baseName at the most
 // recent round at or before maxRound. Registry keys have the form "round-N_blockId".
-// Falls back to baseName_0 if nothing is found.
+// Also matches synthesis selector variables of the form "synth_N_baseName" (generated
+// when baseName is a candidate in a synthesis slot). Falls back to baseName_0 if nothing
+// is found.
 func registryBestVersion(registry map[string][][]string, baseName string, maxRound int) string {
 	best := ""
 	bestRound := -1
+	synthSuffix := "_" + baseName
 	for key, vars := range registry {
 		var round int
 		if _, err := fmt.Sscanf(key, "round-%d_", &round); err != nil {
@@ -409,7 +417,7 @@ func registryBestVersion(registry map[string][][]string, baseName string, maxRou
 			continue
 		}
 		for _, varSSA := range vars {
-			if varSSA[0] == baseName && round >= bestRound {
+			if (varSSA[0] == baseName || strings.HasSuffix(varSSA[0], synthSuffix)) && round >= bestRound {
 				bestRound = round
 				best = strings.Join(varSSA, "_")
 			}
