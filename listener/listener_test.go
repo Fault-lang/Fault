@@ -3223,3 +3223,52 @@ component calc = states{
 		t.Errorf("Assumes[2].Modifier = %q, want always", uf.Assumes[2].Modifier)
 	}
 }
+
+func TestEmitFlowAssign(t *testing.T) {
+	// emits x <- 1 should desugar to InfixExpression{op:"<-", right:InfixExpression{op:"+", left:x, right:1}}
+	// emits x -> 1 should desugar to InfixExpression{op:"<-", right:InfixExpression{op:"-", left:x, right:1}}
+	tests := []struct {
+		name     string
+		src      string
+		arithOp  string
+	}{
+		{"add", "emits store.count <- 1,", "+"},
+		{"sub", "emits store.count -> 1,", "-"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			test := `system test1;
+
+component counter = states{
+	increment: unfunc{
+		requires store.count,
+		` + tt.src + `
+	},
+};
+`
+			flags := map[string]bool{"specType": false}
+			_, spec := prepTest(test, flags)
+			if spec == nil {
+				t.Fatal("prepTest() returned nil")
+			}
+			uf := unfuncLiteralFromSpec(t, spec)
+			if len(uf.Emits) != 1 {
+				t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+			}
+			assign, ok := uf.Emits[0].(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+			}
+			if assign.Operator != "<-" {
+				t.Errorf("outer operator = %q, want <-", assign.Operator)
+			}
+			rhs, ok := assign.Right.(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("RHS is not an InfixExpression, got %T", assign.Right)
+			}
+			if rhs.Operator != tt.arithOp {
+				t.Errorf("RHS operator = %q, want %q", rhs.Operator, tt.arithOp)
+			}
+		})
+	}
+}

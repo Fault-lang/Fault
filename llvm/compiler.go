@@ -353,14 +353,22 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			if err != nil {
 				panic(err)
 			}
-			c.compileAssert(a.(*ast.AssertionStatement))
+			stmt := a.(*ast.AssertionStatement)
+			if !c.assertionRefsActive(stmt.Constraint.Left) || !c.assertionRefsActive(stmt.Constraint.Right) {
+				continue
+			}
+			c.compileAssert(stmt)
 		}
 		for _, assert := range c.RawInputs.RawAssumes {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
 				panic(err)
 			}
-			c.compileAssert(a.(*ast.AssertionStatement))
+			stmt := a.(*ast.AssertionStatement)
+			if !c.assertionRefsActive(stmt.Constraint.Left) || !c.assertionRefsActive(stmt.Constraint.Right) {
+				continue
+			}
+			c.compileAssert(stmt)
 		}
 	}
 
@@ -2283,6 +2291,49 @@ func (c *Compiler) isInstance(id []string) bool {
 		}
 	}
 	return false
+}
+
+// assertionRefsActive returns true if every variable referenced in ex is defined
+// and (for component/stock/flow fields) has at least one active instance in the
+// run block. Returns false for any variable that is missing or has no instances,
+// so that assumes/asserts from imported fspecs are silently skipped when their
+// components are not instantiated in the importing spec.
+func (c *Compiler) assertionRefsActive(ex ast.Expression) bool {
+	switch e := ex.(type) {
+	case *ast.InfixExpression:
+		return c.assertionRefsActive(e.Left) && c.assertionRefsActive(e.Right)
+	case *ast.PrefixExpression:
+		return c.assertionRefsActive(e.Right)
+	case *ast.IndexExpression:
+		return c.assertionRefsActive(e.Left)
+	case *ast.Identifier:
+		id := c.AliasToBaseRaw(e.RawId())
+		if len(id) == 2 && !c.isVarSetAssert(id) {
+			expanded := []string{id[0], id[0], id[1]}
+			if c.isVarSetAssert(expanded) {
+				id = expanded
+			}
+		}
+		if !c.isVarSetAssert(id) {
+			return false
+		}
+		if len(id) > 2 {
+			return len(c.fetchInstances(id)) > 0
+		}
+		return true
+	case *ast.ParameterCall:
+		id := c.AliasToBaseRaw(e.RawId())
+		if !c.isVarSetAssert(id) {
+			return false
+		}
+		startKey := fmt.Sprintf("%s_%s", id[0], id[1])
+		if _, ok := c.instances[startKey]; ok {
+			return true
+		}
+		return len(c.fetchInstances(id)) > 0
+	default:
+		return true
+	}
 }
 
 func (c *Compiler) fetchInstances(id []string) []string {

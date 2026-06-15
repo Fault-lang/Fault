@@ -645,6 +645,12 @@ func (s *BaseFaultParserListener) EnterEmitArithAssign(ctx *EmitArithAssignConte
 // ExitEmitArithAssign is called when production EmitArithAssign is exited.
 func (s *BaseFaultParserListener) ExitEmitArithAssign(ctx *EmitArithAssignContext) {}
 
+// EnterEmitFlowAssign is called when production EmitFlowAssign is entered.
+func (s *BaseFaultParserListener) EnterEmitFlowAssign(ctx *EmitFlowAssignContext) {}
+
+// ExitEmitFlowAssign is called when production EmitFlowAssign is exited.
+func (s *BaseFaultParserListener) ExitEmitFlowAssign(ctx *EmitFlowAssignContext) {}
+
 // EnterEmitBare is called when production EmitBare is entered.
 func (s *BaseFaultParserListener) EnterEmitBare(ctx *EmitBareContext) {}
 

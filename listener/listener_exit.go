@@ -518,6 +518,34 @@ func (l *FaultListener) ExitEmitArithAssign(c *parser.EmitArithAssignContext) {
 	})
 }
 
+func (l *FaultListener) ExitEmitFlowAssign(c *parser.EmitFlowAssignContext) {
+	// paramCall ('<-' | '->') unfuncArithExpr — desugar the same way as ExitFaultAssign.
+	// '<-' means lhs = lhs + rhs; '->' means lhs = lhs - rhs.
+	rhs := l.pop()
+	lhs := l.pop()
+	operator := c.GetChild(1).(antlr.TerminalNode).GetText()
+	var arithOp, arithTok string
+	if operator == "<-" {
+		arithOp, arithTok = "+", "ADD"
+	} else {
+		arithOp, arithTok = "-", "MINUS"
+	}
+	token2 := ast.GenerateToken(arithTok, arithOp, l.currSpec, c.GetStart(), c.GetStop())
+	valChange := &ast.InfixExpression{
+		Token:    token2,
+		Left:     lhs.(ast.Expression),
+		Operator: arithOp,
+		Right:    rhs.(ast.Expression),
+	}
+	token := ast.GenerateToken("ASSIGN", "<-", l.currSpec, c.GetStart(), c.GetStop())
+	l.push(&ast.InfixExpression{
+		Token:    token,
+		Left:     lhs.(ast.Expression),
+		Operator: "<-",
+		Right:    valChange,
+	})
+}
+
 func (l *FaultListener) ExitUnfuncArithExpr(c *parser.UnfuncArithExprContext) {
 	// base cases: paramCall or numeric — already pushed by their own exit hooks
 	if c.ParamCall() != nil || c.Numeric() != nil {
@@ -525,6 +553,16 @@ func (l *FaultListener) ExitUnfuncArithExpr(c *parser.UnfuncArithExprContext) {
 	}
 	// parenthesised expression — inner already on stack
 	if c.LPAREN() != nil {
+		return
+	}
+	// bare IDENT — a spec-level global variable referenced by name
+	if c.IDENT() != nil {
+		token := ast.GenerateToken("IDENT", "IDENT", l.currSpec, c.GetStart(), c.GetStop())
+		l.push(&ast.Identifier{
+			Token: token,
+			Value: c.IDENT().GetText(),
+			Spec:  l.currSpec,
+		})
 		return
 	}
 	// binary op: unfuncArithExpr op unfuncArithExpr

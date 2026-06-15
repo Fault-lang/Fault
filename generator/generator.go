@@ -312,8 +312,9 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 			}
 
 			// Write effects and frame conditions on _available shadow variables.
-			// Each emit item is either a bare ParameterCall (implicit true) or
-			// an InfixExpression (paramCall = bool) with an explicit value.
+			// Each emit item is either a bare ParameterCall (implicit true),
+			// an InfixExpression (paramCall = bool), an arith assignment
+			// (paramCall = arithExpr), or a flow assignment (paramCall <- arithExpr).
 			for _, emitItem := range uf.Emits {
 				var fieldBase, emitVal string
 				switch e := emitItem.(type) {
@@ -322,14 +323,30 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 					emitVal = "true"
 				case *ast.InfixExpression:
 					if pc, ok := e.Left.(*ast.ParameterCall); ok {
-						fieldBase = unfuncVarBase(pc)
+						fieldBase = resolveVarBase(pc, varTypes)
 					}
-					if b, ok := e.Right.(*ast.Boolean); ok {
-						if b.Value {
-							emitVal = "true"
+					switch e.Operator {
+					case "=":
+						if b, ok := e.Right.(*ast.Boolean); ok {
+							if b.Value {
+								emitVal = "true"
+							} else {
+								emitVal = "false"
+							}
 						} else {
-							emitVal = "false"
+							// Arith assign: field is being modified.
+							emitVal = "true"
 						}
+					case "<-":
+						// Flow assign sugar: field is being modified, and we emit the
+						// value constraint here (lhs_N+1 = arithExpr_N) so the user
+						// doesn't need a separate assume clause.
+						emitVal = "true"
+						lhsNext := fmt.Sprintf("%s_%d", fieldBase, n+1)
+						rhsSMT := unfuncArithExprToSMT(e.Right, n, registry, varTypes)
+						smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
+						lhsCurr := registryBestVersion(registry, fieldBase, n)
+						smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
 					}
 				}
 				if fieldBase == "" {
@@ -538,6 +555,16 @@ func unfuncArithExprToSMT(expr ast.Expression, round int, registry map[string][]
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
 		base := resolveVarBase(e, varTypes)
+		return registryBestVersion(registry, base, round)
+	case *ast.Identifier:
+		// Bare spec-level global variable. ProcessedName may not be set (unfuncs bypass
+		// the preprocessor), so fall back to Spec_Value.
+		var base string
+		if len(e.ProcessedName) > 0 {
+			base = e.IdString()
+		} else {
+			base = e.Spec + "_" + e.Value
+		}
 		return registryBestVersion(registry, base, round)
 	case *ast.IntegerLiteral:
 		return fmt.Sprintf("%d", e.Value)

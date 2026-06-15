@@ -320,6 +320,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#EmitArithAssign.
 	VisitEmitArithAssign(ctx *EmitArithAssignContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#EmitFlowAssign.
+	VisitEmitFlowAssign(ctx *EmitFlowAssignContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#EmitBare.
 	VisitEmitBare(ctx *EmitBareContext) interface{}
 

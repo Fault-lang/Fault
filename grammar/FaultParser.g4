@@ -385,10 +385,11 @@ unfuncClause
     ;
 
 unfuncEmitExpr
-    : '!' paramCall                  #EmitNegation
-    | paramCall '=' bool_            #EmitBoolAssign
-    | paramCall '=' unfuncArithExpr  #EmitArithAssign
-    | paramCall                      #EmitBare
+    : '!' paramCall                          #EmitNegation
+    | paramCall '=' bool_                    #EmitBoolAssign
+    | paramCall '=' unfuncArithExpr          #EmitArithAssign
+    | paramCall ('<-' | '->') unfuncArithExpr #EmitFlowAssign
+    | paramCall                              #EmitBare
     ;
 
 unfuncExpr
@@ -409,6 +410,7 @@ unfuncArithExpr
     | '(' unfuncArithExpr ')'
     | paramCall
     | numeric
+    | IDENT
     ;
 
 eos

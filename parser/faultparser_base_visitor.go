@@ -424,6 +424,10 @@ func (v *BaseFaultParserVisitor) VisitEmitArithAssign(ctx *EmitArithAssignContex
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitEmitFlowAssign(ctx *EmitFlowAssignContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitEmitBare(ctx *EmitBareContext) interface{} {
 	return v.VisitChildren(ctx)
 }

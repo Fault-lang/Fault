@@ -320,6 +320,9 @@ type FaultParserListener interface {
 	// EnterEmitArithAssign is called when entering the EmitArithAssign production.
 	EnterEmitArithAssign(c *EmitArithAssignContext)
 
+	// EnterEmitFlowAssign is called when entering the EmitFlowAssign production.
+	EnterEmitFlowAssign(c *EmitFlowAssignContext)
+
 	// EnterEmitBare is called when entering the EmitBare production.
 	EnterEmitBare(c *EmitBareContext)
 
@@ -646,6 +649,9 @@ type FaultParserListener interface {
 
 	// ExitEmitArithAssign is called when exiting the EmitArithAssign production.
 	ExitEmitArithAssign(c *EmitArithAssignContext)
+
+	// ExitEmitFlowAssign is called when exiting the EmitFlowAssign production.
+	ExitEmitFlowAssign(c *EmitFlowAssignContext)
 
 	// ExitEmitBare is called when exiting the EmitBare production.
 	ExitEmitBare(c *EmitBareContext)

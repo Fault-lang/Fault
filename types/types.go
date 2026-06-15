@@ -1448,13 +1448,15 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 //   - bare ParameterCall (implicit true)
 //   - InfixExpression: paramCall = bool
 //   - InfixExpression: paramCall = arithExpr (field refs in RHS are validated)
+//   - InfixExpression: paramCall <- arithExpr  (desugared flow assignment)
+//   - InfixExpression: paramCall -> arithExpr  (desugared flow assignment)
 func (c *Checker) checkUnfuncEmitItem(expr ast.Expression) error {
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
 		return c.checkUnfuncFieldRef(e, "emits")
 	case *ast.InfixExpression:
-		if e.Operator != "=" {
-			return fmt.Errorf("unfunc emits: expected assignment (=), got %q", e.Operator)
+		if e.Operator != "=" && e.Operator != "<-" {
+			return fmt.Errorf("unfunc emits: expected assignment (= or <-), got %q", e.Operator)
 		}
 		lhs, ok := e.Left.(*ast.ParameterCall)
 		if !ok {
@@ -1497,6 +1499,10 @@ func (c *Checker) checkUnfuncArithExpr(expr ast.Expression, clause string) error
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
 		return c.checkUnfuncFieldRef(e, clause)
+	case *ast.Identifier:
+		// Bare identifier references a spec-level global variable — valid in arith expressions.
+		_ = e
+		return nil
 	case *ast.IntegerLiteral, *ast.FloatLiteral:
 		return nil
 	case *ast.InfixExpression:
