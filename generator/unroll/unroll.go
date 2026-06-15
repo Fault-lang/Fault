@@ -27,6 +27,8 @@ type Env struct {
 	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
 	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
 	UsedVars         map[string]bool        // alloca names accessed by at least one flow function
+	AssertVars       map[string]bool        // alloca names referenced in assume/assert constraints
+	AssumeOverrides  map[string]string      // base var name → literal value from assume == constraint
 	WriteSets        map[string]map[string]bool // fname → set of global base var names the function stores to
 	CurrentFunction  string
 	CurrentRound     int
@@ -44,7 +46,9 @@ func NewEnv(ri *llvm.RawInputs) *Env {
 		MutableVars:  make(map[string]bool),
 		ConstantVals: make(map[string]value.Value),
 		StringRules:  make(map[string]string),
-		UsedVars:     make(map[string]bool),
+		UsedVars:        make(map[string]bool),
+		AssertVars:      make(map[string]bool),
+		AssumeOverrides: make(map[string]string),
 		WriteSets:    make(map[string]map[string]bool),
 		CurrentRound: 0,
 		returnVoid:   NewPhiState(),

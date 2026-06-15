@@ -19,32 +19,35 @@ import (
 // in a user friendly way
 
 type Unpacker struct {
-	Inits        []*rules.Init
-	CurrentBlock string
-	Registry     map[string][][]string // current_round_current_block -> [(var_instance, ssa), (var_instance, ssa)]
-	SSA          *rules.SSA
-	Phis         map[string][]int16 // A tuple of [entry ssa, last updated ssa]
-	PhiLevel     int
-	HaveSeen     map[string]bool    // Have we seen this variable so far in this fork?
-	OnEntry      map[string][]int16 // SSA of variables on entry to a fork
-	VarTypes     map[string]string
-	Whens        map[string][]map[string]string // list of variable combinations for when/then asserts
-	Log          *scenario.Logger
-	Round        int // Current round
+	Inits           []*rules.Init
+	CurrentBlock    string
+	Registry        map[string][][]string // current_round_current_block -> [(var_instance, ssa), (var_instance, ssa)]
+	SSA             *rules.SSA
+	Phis            map[string][]int16 // A tuple of [entry ssa, last updated ssa]
+	PhiLevel        int
+	HaveSeen        map[string]bool    // Have we seen this variable so far in this fork?
+	OnEntry         map[string][]int16 // SSA of variables on entry to a fork
+	VarTypes        map[string]string
+	Whens           map[string][]map[string]string // list of variable combinations for when/then asserts
+	Log             *scenario.Logger
+	Round           int // Current round
+	AssumeOverrides map[string]string // base var name → literal value from assume == constraint
+	Warnings        []string
 }
 
 func NewUnpacker(block_id string) *Unpacker {
 	return &Unpacker{
-		SSA:          rules.NewSSA(),
-		CurrentBlock: block_id,
-		Registry:     make(map[string][][]string),
-		Phis:         make(map[string][]int16),
-		HaveSeen:     make(map[string]bool),
-		OnEntry:      make(map[string][]int16),
-		VarTypes:     make(map[string]string),
-		Whens:        make(map[string][]map[string]string),
-		Log:          scenario.NewLogger(),
-		Round:        0,
+		SSA:             rules.NewSSA(),
+		CurrentBlock:    block_id,
+		Registry:        make(map[string][][]string),
+		Phis:            make(map[string][]int16),
+		HaveSeen:        make(map[string]bool),
+		OnEntry:         make(map[string][]int16),
+		VarTypes:        make(map[string]string),
+		Whens:           make(map[string][]map[string]string),
+		Log:             scenario.NewLogger(),
+		Round:           0,
+		AssumeOverrides: make(map[string]string),
 	}
 }
 
@@ -196,11 +199,22 @@ func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
 func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 	r := []string{}
 	for _, c := range con {
-		if con, ok := c.(*rules.Init); ok {
-			con.Global = true
-			con.SSA = fmt.Sprintf("%d", u.SSA.Get(con.Ident))
-			u.Register([]*rules.Init{con})
-			c = con
+		if initRule, ok := c.(*rules.Init); ok {
+			initRule.Global = true
+			initRule.SSA = fmt.Sprintf("%d", u.SSA.Get(initRule.Ident))
+			u.Register([]*rules.Init{initRule})
+
+			if overrideVal, overridden := u.AssumeOverrides[initRule.Ident]; overridden {
+				initVal := initConstantLiteral(initRule)
+				if initVal != "" && initVal != overrideVal {
+					u.Warnings = append(u.Warnings, fmt.Sprintf(
+						"assume overrides constant init for %s: was %s, assume sets %s",
+						initRule.Ident, initVal, overrideVal))
+				}
+				initRule.SuppressValueAssertion = true
+			}
+
+			c = initRule
 		}
 		inits, finishedRules := u.unpackRule(c)
 		line := u.FormatRule(c, finishedRules)
@@ -209,6 +223,15 @@ func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 		u.Register(inits)
 	}
 	return r
+}
+
+// initConstantLiteral returns the literal string value stored in an Init rule's
+// Value field (a *rules.Wrap), or "" if it cannot be determined.
+func initConstantLiteral(i *rules.Init) string {
+	if w, ok := i.Value.(*rules.Wrap); ok {
+		return w.Value
+	}
+	return ""
 }
 
 func (u *Unpacker) LoadStringRules(StringRules map[string]string, IsCompound map[string]bool) {
@@ -226,6 +249,15 @@ func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
 	for _, r := range b.Rules {
 		u.InspectRule(r)
 		inits, finishedRules := u.unpackRule(r)
+		if base, suppressed := u.suppressedRunInitInfix(r); suppressed {
+			// An assume overrides this __run init assertion — keep the declaration
+			// (via AddInit) but drop the value assertion so the assume wins.
+			u.AddInit(inits)
+			u.Register(inits)
+			u.Warnings = append(u.Warnings, fmt.Sprintf(
+				"assume overrides constant init for %s; suppressing init assertion", base))
+			continue
+		}
 		line := u.FormatRule(r, finishedRules)
 		smt = append(smt, line)
 		u.AddInit(inits)
@@ -1017,4 +1049,26 @@ func InitsToList(inits []*rules.Init) []string {
 		init_list = append(init_list, i.FullVar())
 	}
 	return init_list
+}
+
+// suppressedRunInitInfix reports whether r is a __run init-store Infix for a
+// variable overridden by an assume. When true, the assertion should be dropped
+// (the assume provides the value) and only the declaration is emitted.
+// Returns the base variable name and true when suppression applies.
+func (u *Unpacker) suppressedRunInitInfix(r rules.Rule) (string, bool) {
+	if len(u.AssumeOverrides) == 0 {
+		return "", false
+	}
+	inf, ok := r.(*rules.Infix)
+	if !ok {
+		return "", false
+	}
+	wx, ok := inf.X.(*rules.Wrap)
+	if !ok || !wx.Variable || !wx.Init || !wx.OmitFromOutput {
+		return "", false
+	}
+	if _, exists := u.AssumeOverrides[wx.Value]; exists {
+		return wx.Value, true
+	}
+	return "", false
 }

@@ -47,6 +47,11 @@ type Generator struct {
 	ResultLog   *scenario.Logger
 	StringRules map[string]string
 	IsCompound  map[string]bool
+	Warnings    []string
+}
+
+func (g *Generator) GetWarnings() []string {
+	return g.Warnings
 }
 
 func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, opts GeneratorOptions) *Generator {
@@ -123,6 +128,15 @@ func (g *Generator) Run(llopt string) {
 func (g *Generator) newCallgraph(m *ir.Module) {
 	g.Env.MutableVars = unroll.FindMutableVars(m.Funcs)
 	g.Env.UsedVars = unroll.FindUsedVars(m.Funcs)
+	// Variables referenced in assume/assert constraints must not be pruned
+	// as "orphaned" inits, even if no flow function loads them directly.
+	// This happens when a spec-level assume references a constant-bool field
+	// (e.g. `bgovIdAvailable: false`) that was changed from `unknown(false)`.
+	allStmtsEarly := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
+	for inst := range findAssertVarInstances(allStmtsEarly) {
+		g.Env.AssertVars[inst] = true
+	}
+	g.Env.AssumeOverrides = extractAssumeOverrides(g.RawInputs.Assumes)
 	g.Env.WriteSets = unroll.FindWriteSets(m.Funcs)
 	g.Env.StringRules = g.StringRules
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
@@ -147,9 +161,11 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	p := unpack.NewUnpacker(g.RunBlock.Ident)
 	p.LoadStringRules(g.StringRules, g.IsCompound)
 	p.Log.Uncertains = g.RawInputs.Uncertains
+	p.AssumeOverrides = g.Env.AssumeOverrides
 
 	p.VarTypes = g.Env.VarTypes
 	smt := p.Unpack(g.constants, g.RunBlock)
+	g.Warnings = append(g.Warnings, p.Warnings...)
 
 	// Upgrade Real-typed Inits to Bool for variables used in boolean contexts
 	// in assume/assert statements (e.g. unknown() fields used with ||/&&/!).
@@ -736,4 +752,79 @@ func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
 		}
 	}
 	return changed
+}
+
+// findAssertVarInstances collects all AssertVar instance names referenced in
+// the given assume/assert statements. These must not be pruned from the SMT
+// model even if no flow function directly loads them.
+func findAssertVarInstances(stmts []*ast.AssertionStatement) map[string]bool {
+	result := make(map[string]bool)
+	for _, a := range stmts {
+		collectAssertVarInstances(a.Constraint.Left, result)
+		collectAssertVarInstances(a.Constraint.Right, result)
+	}
+	return result
+}
+
+func collectAssertVarInstances(expr ast.Expression, out map[string]bool) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			out[inst] = true
+		}
+	case *ast.InfixExpression:
+		collectAssertVarInstances(e.Left, out)
+		collectAssertVarInstances(e.Right, out)
+	case *ast.PrefixExpression:
+		collectAssertVarInstances(e.Right, out)
+	}
+}
+
+// extractAssumeOverrides walks assume statements with operator "==" and collects
+// a map from each AssertVar instance name to the literal value the assume pins it to.
+// Only direct literal values (bool/int/float) on either side are recorded.
+func extractAssumeOverrides(assumes []*ast.AssertionStatement) map[string]string {
+	overrides := make(map[string]string)
+	for _, a := range assumes {
+		if a.Constraint.Operator != "==" {
+			continue
+		}
+		extractSideOverrides(a.Constraint.Left, a.Constraint.Right, overrides)
+		extractSideOverrides(a.Constraint.Right, a.Constraint.Left, overrides)
+	}
+	return overrides
+}
+
+func extractSideOverrides(varSide ast.Expression, valSide ast.Expression, out map[string]string) {
+	av, ok := varSide.(*ast.AssertVar)
+	if !ok {
+		return
+	}
+	val := assumeLiteralString(valSide)
+	if val == "" {
+		// Non-literal RHS (e.g. another variable): still suppress the init
+		// so the assume can fully constrain the value.
+		val = "(assume)"
+	}
+	for _, inst := range av.Instances {
+		out[inst] = val
+	}
+}
+
+func assumeLiteralString(e ast.Expression) string {
+	switch v := e.(type) {
+	case *ast.Boolean:
+		if v.Value {
+			return "true"
+		}
+		return "false"
+	case *ast.IntegerLiteral:
+		return fmt.Sprintf("%d", v.Value)
+	case *ast.FloatLiteral:
+		return fmt.Sprintf("%g", v.Value)
+	}
+	return ""
 }

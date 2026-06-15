@@ -412,6 +412,7 @@ func (r *Runner) Run() *CompilationOutput {
 			MemoryMaxSize: r.config.SMTMemoryMaxSize,
 		})
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
+		output.Warnings = append(output.Warnings, g.GetWarnings()...)
 
 		if r.config.Mode == "smt" {
 			output.SMT = g.SMT()

@@ -140,7 +140,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 		// by any flow function — they would produce orphaned SMT declarations.
 		// However, always keep solvable (whole/unknown/uncertain) and param
 		// variables so that constraints referencing them remain satisfiable.
-		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) && !isAParam(base, b.Env.RawInputs) {
+		if !IsGlobal(inst.Dst.Ident()) && len(b.Env.UsedVars) > 0 && !b.Env.UsedVars[base] && !isASolvable(base, b.Env.RawInputs) && !isAParam(base, b.Env.RawInputs) && !b.Env.AssertVars[base] {
 			return nil
 		}
 		// For param fields, emit a __PARAM_...__ placeholder assertion.

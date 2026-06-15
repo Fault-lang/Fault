@@ -141,10 +141,11 @@ type Init struct {
 	IntegerMode    bool //If true, declare whole vars as Int sort and suppress is_int assertions
 	IsParam        bool //If true, emit a __PARAM_name__ placeholder assertion instead of a concrete value
 	Indexed        bool
-	OmitFromOutput bool
-	Mean           float64 // uncertain() mean — used to generate SMT bounds
-	Sigma          float64 // uncertain() sigma — used to generate SMT bounds
-	K              float64 // sigma multiplier for SMT bounds (default 3.0)
+	OmitFromOutput           bool
+	SuppressValueAssertion   bool // when true, emit only declare-fun (assume override wins)
+	Mean                     float64 // uncertain() mean — used to generate SMT bounds
+	Sigma                    float64 // uncertain() sigma — used to generate SMT bounds
+	K                        float64 // sigma multiplier for SMT bounds (default 3.0)
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -187,10 +188,12 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	if i.IsParam {
 		val = fmt.Sprintf("(assert (= %s __PARAM_%s__))", id, i.Ident)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
-	} else if i.Value != nil && i.Global && !i.Solvable {
+	} else if i.Value != nil && i.Global && !i.Solvable && !i.SuppressValueAssertion {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else if i.Value != nil && i.Global && !i.Solvable && i.SuppressValueAssertion {
+		rule = d // declare-fun only; assume provides the value
 	} else if i.Whole && !i.IntegerMode {
 		rule = fmt.Sprintf("%s\n(assert (is_int %s))\n", d, id)
 	} else if i.Sigma != 0 {
