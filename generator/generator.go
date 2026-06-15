@@ -792,6 +792,18 @@ func extractAssumeOverrides(assumes []*ast.AssertionStatement) map[string]string
 		if a.Constraint.Operator != "==" {
 			continue
 		}
+		// Only non-temporal and "always" assumes override the initial value.
+		// "always" means the constraint holds at every step including t=0, so it
+		// is correct to treat it as an initial override.
+		// "eventually", "eventually-always", and time-bounded filters (nmt/nft)
+		// describe future states — the solver must find a transition to reach them,
+		// so the init assertion must remain.
+		// "available" is handled separately in ProcessAsserts and never reaches here
+		// as a value override.
+		if a.Temporal == "eventually" || a.Temporal == "eventually-always" ||
+			a.Temporal == "available" || a.TemporalFilter != "" {
+			continue
+		}
 		extractSideOverrides(a.Constraint.Left, a.Constraint.Right, overrides)
 		extractSideOverrides(a.Constraint.Right, a.Constraint.Left, overrides)
 	}
