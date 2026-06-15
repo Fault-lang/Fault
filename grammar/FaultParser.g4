@@ -58,6 +58,7 @@ declaration
     | assertion
     | assumption
     | stringDecl
+    | globalDecl
     ;
 
 constDecl

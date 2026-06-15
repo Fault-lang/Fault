@@ -271,6 +271,15 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
 							c.storeGlobal(name, r)
 						}
+					default:
+						if n.TokenLiteral() == "GLOBAL" {
+							val := c.compileValue(n.Value)
+							rawid := n.Name.RawId()
+							s := c.specs[rawid[0]]
+							s.DefineSpecVar(rawid, val)
+							s.DefineSpecType(rawid, val.Type())
+							c.globalVariable(rawid, val, n.GetToken().Location())
+						}
 					}
 				}
 			}
@@ -397,6 +406,15 @@ func (c *Compiler) compile(node ast.Node) {
 				name := v.Name.IdString()
 				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
 				c.storeGlobal(name, r)
+			}
+		default:
+			if v.TokenLiteral() == "GLOBAL" {
+				val := c.compileValue(v.Value)
+				rawid := v.Name.RawId()
+				s := c.specs[rawid[0]]
+				s.DefineSpecVar(rawid, val)
+				s.DefineSpecType(rawid, val.Type())
+				c.globalVariable(rawid, val, v.GetToken().Location())
 			}
 		}
 	case *ast.FunctionLiteral:

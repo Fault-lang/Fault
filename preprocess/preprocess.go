@@ -345,6 +345,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			id := node.Name.Id()
 			spec := p.getSpec(id[0])
 			spec.AddGlobal(id[1], node.Value)
+		} else if node.TokenLiteral() == "GLOBAL" {
+			_, isStructInstance := node.Value.(*ast.StructInstance)
+			_, isInstance := node.Value.(*ast.Instance)
+			if !isStructInstance && !isInstance {
+				// Spec-level global with scalar value (not a struct instantiation)
+				id := node.Name.Id()
+				spec := p.getSpec(id[0])
+				spec.AddGlobal(id[1], node.Value)
+				if p.initialPass {
+					spec.Index("GLOBAL", id[1])
+				}
+			}
 		}
 
 		if node.TokenLiteral() == "GLOBAL" {
