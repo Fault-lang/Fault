@@ -2962,59 +2962,6 @@ component fetch = states{
 	}
 }
 
-func TestUnfuncAssumeClause(t *testing.T) {
-	// assume clause: a single postcondition arithmetic constraint.
-	test := `system test1;
-
-component calc = states{
-	multiply: unfunc{
-		requires calc.a && calc.b,
-		emits calc.product,
-		assume calc.product = calc.a * calc.b,
-	},
-};
-`
-	flags := map[string]bool{"specType": false}
-	_, spec := prepTest(test, flags)
-	if spec == nil {
-		t.Fatal("prepTest() returned nil")
-	}
-
-	uf := unfuncLiteralFromSpec(t, spec)
-
-	if len(uf.Assumes) != 1 {
-		t.Fatalf("expected 1 assume clause, got %d", len(uf.Assumes))
-	}
-
-	a0 := uf.Assumes[0]
-	if a0.Modifier != "always" {
-		t.Errorf("assume modifier = %q, want always", a0.Modifier)
-	}
-	assume, ok := a0.Expr.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("assume is not an InfixExpression, got %T", a0.Expr)
-	}
-	if assume.Operator != "=" {
-		t.Errorf("assume operator = %q, want =", assume.Operator)
-	}
-
-	lhs, ok := assume.Left.(*ast.ParameterCall)
-	if !ok {
-		t.Fatalf("assume LHS is not a ParameterCall, got %T", assume.Left)
-	}
-	if strings.Join(lhs.Value, ".") != "calc.product" {
-		t.Errorf("assume LHS = %v, want calc.product", lhs.Value)
-	}
-
-	rhs, ok := assume.Right.(*ast.InfixExpression)
-	if !ok {
-		t.Fatalf("assume RHS is not an InfixExpression, got %T", assume.Right)
-	}
-	if rhs.Operator != "*" {
-		t.Errorf("assume RHS operator = %q, want *", rhs.Operator)
-	}
-}
-
 func TestUnfuncInFlow(t *testing.T) {
 	// An unfunc inside a flow{} struct.
 	test := `spec test1;
@@ -3072,42 +3019,6 @@ def lookup = flow{
 		}
 		if strings.Join(emit.Value, ".") != "store.value" {
 			t.Errorf("Emits = %v, want store.value", emit.Value)
-		}
-	}
-}
-
-func TestUnfuncMultipleAssumeClauses(t *testing.T) {
-	// Multiple assume clauses in one unfunc.
-	test := `system test1;
-
-component calc = states{
-	multiply: unfunc{
-		requires calc.a && calc.b,
-		emits calc.product,
-		assume calc.product = calc.a * calc.b,
-		assume calc.product = calc.a + calc.b,
-	},
-};
-`
-	flags := map[string]bool{"specType": false}
-	_, spec := prepTest(test, flags)
-	if spec == nil {
-		t.Fatal("prepTest() returned nil")
-	}
-
-	uf := unfuncLiteralFromSpec(t, spec)
-
-	if len(uf.Assumes) != 2 {
-		t.Fatalf("expected 2 assume clauses, got %d", len(uf.Assumes))
-	}
-
-	for i, a := range uf.Assumes {
-		infix, ok := a.Expr.(*ast.InfixExpression)
-		if !ok {
-			t.Fatalf("assume[%d] is not an InfixExpression, got %T", i, a.Expr)
-		}
-		if infix.Operator != "=" {
-			t.Errorf("assume[%d] operator = %q, want =", i, infix.Operator)
 		}
 	}
 }
@@ -3185,42 +3096,6 @@ component counter = states{
 	}
 	if rhs.Operator != "+" {
 		t.Errorf("RHS operator = %q, want +", rhs.Operator)
-	}
-}
-
-func TestAssumeModifiers(t *testing.T) {
-	// assume with eventually and eventually-always modifiers
-	test := `system test1;
-
-component calc = states{
-	execute: unfunc{
-		requires calc.a,
-		assume calc.product = calc.a eventually,
-		assume calc.product = calc.b eventually-always,
-		assume calc.product = calc.a always,
-	},
-};
-`
-	flags := map[string]bool{"specType": false}
-	_, spec := prepTest(test, flags)
-	if spec == nil {
-		t.Fatal("prepTest() returned nil")
-	}
-
-	uf := unfuncLiteralFromSpec(t, spec)
-
-	if len(uf.Assumes) != 3 {
-		t.Fatalf("expected 3 assume clauses, got %d", len(uf.Assumes))
-	}
-
-	if uf.Assumes[0].Modifier != "eventually" {
-		t.Errorf("Assumes[0].Modifier = %q, want eventually", uf.Assumes[0].Modifier)
-	}
-	if uf.Assumes[1].Modifier != "eventually-always" {
-		t.Errorf("Assumes[1].Modifier = %q, want eventually-always", uf.Assumes[1].Modifier)
-	}
-	if uf.Assumes[2].Modifier != "always" {
-		t.Errorf("Assumes[2].Modifier = %q, want always", uf.Assumes[2].Modifier)
 	}
 }
 

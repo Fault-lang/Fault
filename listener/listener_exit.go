@@ -457,30 +457,31 @@ func (l *FaultListener) ExitUnfuncLit(c *parser.UnfuncLitContext) {
 				uf.Emits = append(uf.Emits, exprs[idx].(ast.Expression))
 				idx++
 			}
-		case *parser.AssumeClauseContext:
-			modifier := "always"
-			if ctx.EVENTUALLY() != nil {
-				modifier = "eventually"
-			} else if ctx.EVENTUALLYALWAYS() != nil {
-				modifier = "eventually-always"
-			}
-			uf.Assumes = append(uf.Assumes, ast.UnfuncAssume{
-				Expr:     exprs[idx].(ast.Expression),
-				Modifier: modifier,
-			})
-			idx++
 		}
 	}
 
 	l.push(uf)
 }
 
+// ExitEmitTargetParam is a no-op: ExitParamCall already pushed the ParameterCall.
+func (l *FaultListener) ExitEmitTargetParam(c *parser.EmitTargetParamContext) {}
+
+// ExitEmitTargetIdent pushes a bare global identifier as the emit target.
+func (l *FaultListener) ExitEmitTargetIdent(c *parser.EmitTargetIdentContext) {
+	token := ast.GenerateToken("IDENT", "IDENT", l.currSpec, c.GetStart(), c.GetStop())
+	l.push(&ast.Identifier{
+		Token: token,
+		Value: c.IDENT().GetText(),
+		Spec:  l.currSpec,
+	})
+}
+
 func (l *FaultListener) ExitEmitBare(c *parser.EmitBareContext) {
-	// bare paramCall — already on the stack from ExitParamCall; nothing to do.
+	// bare emitTarget — already on the stack from ExitEmitTargetParam or ExitEmitTargetIdent; nothing to do.
 }
 
 func (l *FaultListener) ExitEmitNegation(c *parser.EmitNegationContext) {
-	// '!' paramCall — paramCall already on stack; wrap as x = false.
+	// '!' emitTarget — target already on stack; wrap as x = false.
 	operand := l.pop()
 	token := ast.GenerateToken("ASSIGN", "=", l.currSpec, c.GetStart(), c.GetStop())
 	boolToken := ast.GenerateToken("BOOL", "false", l.currSpec, c.GetStart(), c.GetStop())
@@ -578,18 +579,6 @@ func (l *FaultListener) ExitUnfuncArithExpr(c *parser.UnfuncArithExprContext) {
 	})
 }
 
-func (l *FaultListener) ExitUnfuncAssumeExpr(c *parser.UnfuncAssumeExprContext) {
-	// paramCall '=' unfuncArithExpr — rhs on top, lhs below
-	rhs := l.pop()
-	lhs := l.pop()
-	token := ast.GenerateToken("ASSIGN", "=", l.currSpec, c.GetStart(), c.GetStop())
-	l.push(&ast.InfixExpression{
-		Token:    token,
-		Left:     lhs.(ast.Expression),
-		Operator: "=",
-		Right:    rhs.(ast.Expression),
-	})
-}
 
 func (l *FaultListener) ExitUnfuncExpr(c *parser.UnfuncExprContext) {
 	// base case: paramCall — already pushed by ExitParamCall
@@ -598,6 +587,16 @@ func (l *FaultListener) ExitUnfuncExpr(c *parser.UnfuncExprContext) {
 	}
 	// parenthesised expression — inner already on stack
 	if c.LPAREN() != nil {
+		return
+	}
+	// bare IDENT — a spec-level global variable referenced by name
+	if c.IDENT() != nil {
+		token := ast.GenerateToken("IDENT", "IDENT", l.currSpec, c.GetStart(), c.GetStop())
+		l.push(&ast.Identifier{
+			Token: token,
+			Value: c.IDENT().GetText(),
+			Spec:  l.currSpec,
+		})
 		return
 	}
 	// '!' unfuncExpr

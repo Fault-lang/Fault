@@ -308,8 +308,11 @@ type FaultParserListener interface {
 	// EnterEmitsClause is called when entering the emitsClause production.
 	EnterEmitsClause(c *EmitsClauseContext)
 
-	// EnterAssumeClause is called when entering the assumeClause production.
-	EnterAssumeClause(c *AssumeClauseContext)
+	// EnterEmitTargetParam is called when entering the EmitTargetParam production.
+	EnterEmitTargetParam(c *EmitTargetParamContext)
+
+	// EnterEmitTargetIdent is called when entering the EmitTargetIdent production.
+	EnterEmitTargetIdent(c *EmitTargetIdentContext)
 
 	// EnterEmitNegation is called when entering the EmitNegation production.
 	EnterEmitNegation(c *EmitNegationContext)
@@ -328,9 +331,6 @@ type FaultParserListener interface {
 
 	// EnterUnfuncExpr is called when entering the unfuncExpr production.
 	EnterUnfuncExpr(c *UnfuncExprContext)
-
-	// EnterUnfuncAssumeExpr is called when entering the unfuncAssumeExpr production.
-	EnterUnfuncAssumeExpr(c *UnfuncAssumeExprContext)
 
 	// EnterUnfuncArithExpr is called when entering the unfuncArithExpr production.
 	EnterUnfuncArithExpr(c *UnfuncArithExprContext)
@@ -638,8 +638,11 @@ type FaultParserListener interface {
 	// ExitEmitsClause is called when exiting the emitsClause production.
 	ExitEmitsClause(c *EmitsClauseContext)
 
-	// ExitAssumeClause is called when exiting the assumeClause production.
-	ExitAssumeClause(c *AssumeClauseContext)
+	// ExitEmitTargetParam is called when exiting the EmitTargetParam production.
+	ExitEmitTargetParam(c *EmitTargetParamContext)
+
+	// ExitEmitTargetIdent is called when exiting the EmitTargetIdent production.
+	ExitEmitTargetIdent(c *EmitTargetIdentContext)
 
 	// ExitEmitNegation is called when exiting the EmitNegation production.
 	ExitEmitNegation(c *EmitNegationContext)
@@ -658,9 +661,6 @@ type FaultParserListener interface {
 
 	// ExitUnfuncExpr is called when exiting the unfuncExpr production.
 	ExitUnfuncExpr(c *UnfuncExprContext)
-
-	// ExitUnfuncAssumeExpr is called when exiting the unfuncAssumeExpr production.
-	ExitUnfuncAssumeExpr(c *UnfuncAssumeExprContext)
 
 	// ExitUnfuncArithExpr is called when exiting the unfuncArithExpr production.
 	ExitUnfuncArithExpr(c *UnfuncArithExprContext)

@@ -1454,16 +1454,22 @@ func (c *Checker) checkUnfuncEmitItem(expr ast.Expression) error {
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
 		return c.checkUnfuncFieldRef(e, "emits")
+	case *ast.Identifier:
+		// bare global variable reference (implicit true)
+		return nil
 	case *ast.InfixExpression:
 		if e.Operator != "=" && e.Operator != "<-" {
 			return fmt.Errorf("unfunc emits: expected assignment (= or <-), got %q", e.Operator)
 		}
-		lhs, ok := e.Left.(*ast.ParameterCall)
-		if !ok {
-			return fmt.Errorf("unfunc emits: left side of assignment must be a field reference, got %T", e.Left)
-		}
-		if err := c.checkUnfuncFieldRef(lhs, "emits"); err != nil {
-			return err
+		switch lhs := e.Left.(type) {
+		case *ast.ParameterCall:
+			if err := c.checkUnfuncFieldRef(lhs, "emits"); err != nil {
+				return err
+			}
+		case *ast.Identifier:
+			// global variable target — valid, no struct-field lookup needed
+		default:
+			return fmt.Errorf("unfunc emits: left side of assignment must be a field or global reference, got %T", e.Left)
 		}
 		// RHS: bool literal or arithmetic expression (field refs validated)
 		switch e.Right.(type) {

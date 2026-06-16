@@ -143,6 +143,9 @@ func (l *FaultListener) EnterPropSolvable(c *parser.PropSolvableContext) {
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
 }
 
+func (l *FaultListener) EnterEmitTargetParam(c *parser.EmitTargetParamContext) {}
+func (l *FaultListener) EnterEmitTargetIdent(c *parser.EmitTargetIdentContext) {}
+
 func (l *FaultListener) EnterRunInit(c *parser.RunInitContext) {
 	// IDENT(0) is the variable being declared; IDENT(1) (if present) is the type reference
 	assertValidVarName(c.IDENT(0).GetText(), c.GetStart())

@@ -408,7 +408,11 @@ func (v *BaseFaultParserVisitor) VisitEmitsClause(ctx *EmitsClauseContext) inter
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitAssumeClause(ctx *AssumeClauseContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitEmitTargetParam(ctx *EmitTargetParamContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitTargetIdent(ctx *EmitTargetIdentContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -433,10 +437,6 @@ func (v *BaseFaultParserVisitor) VisitEmitBare(ctx *EmitBareContext) interface{}
 }
 
 func (v *BaseFaultParserVisitor) VisitUnfuncExpr(ctx *UnfuncExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseFaultParserVisitor) VisitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

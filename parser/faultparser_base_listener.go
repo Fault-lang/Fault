@@ -621,11 +621,17 @@ func (s *BaseFaultParserListener) EnterEmitsClause(ctx *EmitsClauseContext) {}
 // ExitEmitsClause is called when production emitsClause is exited.
 func (s *BaseFaultParserListener) ExitEmitsClause(ctx *EmitsClauseContext) {}
 
-// EnterAssumeClause is called when production assumeClause is entered.
-func (s *BaseFaultParserListener) EnterAssumeClause(ctx *AssumeClauseContext) {}
+// EnterEmitTargetParam is called when production EmitTargetParam is entered.
+func (s *BaseFaultParserListener) EnterEmitTargetParam(ctx *EmitTargetParamContext) {}
 
-// ExitAssumeClause is called when production assumeClause is exited.
-func (s *BaseFaultParserListener) ExitAssumeClause(ctx *AssumeClauseContext) {}
+// ExitEmitTargetParam is called when production EmitTargetParam is exited.
+func (s *BaseFaultParserListener) ExitEmitTargetParam(ctx *EmitTargetParamContext) {}
+
+// EnterEmitTargetIdent is called when production EmitTargetIdent is entered.
+func (s *BaseFaultParserListener) EnterEmitTargetIdent(ctx *EmitTargetIdentContext) {}
+
+// ExitEmitTargetIdent is called when production EmitTargetIdent is exited.
+func (s *BaseFaultParserListener) ExitEmitTargetIdent(ctx *EmitTargetIdentContext) {}
 
 // EnterEmitNegation is called when production EmitNegation is entered.
 func (s *BaseFaultParserListener) EnterEmitNegation(ctx *EmitNegationContext) {}
@@ -662,12 +668,6 @@ func (s *BaseFaultParserListener) EnterUnfuncExpr(ctx *UnfuncExprContext) {}
 
 // ExitUnfuncExpr is called when production unfuncExpr is exited.
 func (s *BaseFaultParserListener) ExitUnfuncExpr(ctx *UnfuncExprContext) {}
-
-// EnterUnfuncAssumeExpr is called when production unfuncAssumeExpr is entered.
-func (s *BaseFaultParserListener) EnterUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) {}
-
-// ExitUnfuncAssumeExpr is called when production unfuncAssumeExpr is exited.
-func (s *BaseFaultParserListener) ExitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) {}
 
 // EnterUnfuncArithExpr is called when production unfuncArithExpr is entered.
 func (s *BaseFaultParserListener) EnterUnfuncArithExpr(ctx *UnfuncArithExprContext) {}
