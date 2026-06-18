@@ -3147,3 +3147,383 @@ component counter = states{
 		})
 	}
 }
+
+func TestUnfuncNoRequires(t *testing.T) {
+	// An unfunc with no requires clause should parse successfully with Requires == nil.
+	test := `system test1;
+
+component fetch = states{
+	getAll: unfunc{
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if uf.Requires != nil {
+		t.Errorf("Requires should be nil for unfunc with no requires clause, got %T", uf.Requires)
+	}
+	if len(uf.Emits) != 1 {
+		t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+	}
+}
+
+func TestUnfuncRequiresGrouped(t *testing.T) {
+	// Parenthesized grouped expression: (a.x && b.y) || !c.z
+	test := `system test1;
+
+component fetch = states{
+	getComplex: unfunc{
+		requires (generic.id && generic.joinId) || !generic.deleted,
+		emits generic.id,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	outer, ok := uf.Requires.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("Requires is not an InfixExpression, got %T", uf.Requires)
+	}
+	if outer.Operator != "||" {
+		t.Errorf("outer operator = %q, want ||", outer.Operator)
+	}
+	_, ok = outer.Left.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("LHS of || should be InfixExpression (&&), got %T", outer.Left)
+	}
+	_, ok = outer.Right.(*ast.PrefixExpression)
+	if !ok {
+		t.Fatalf("RHS of || should be PrefixExpression (!), got %T", outer.Right)
+	}
+}
+
+func TestEmitLiteralAssign(t *testing.T) {
+	// emits stock.x = 5 should produce InfixExpression{op:"=", right:IntegerLiteral}
+	test := `system test1;
+
+component counter = states{
+	reset: unfunc{
+		requires store.count,
+		emits store.count = 5,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Emits) != 1 {
+		t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+	}
+	assign, ok := uf.Emits[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+	}
+	if assign.Operator != "=" {
+		t.Errorf("operator = %q, want =", assign.Operator)
+	}
+	_, ok = assign.Right.(*ast.IntegerLiteral)
+	if !ok {
+		t.Fatalf("RHS is not an IntegerLiteral, got %T", assign.Right)
+	}
+}
+
+func TestEmitFieldToFieldAssign(t *testing.T) {
+	// emits stock.x = stock.y should produce InfixExpression{op:"=", right:ParameterCall}
+	test := `system test1;
+
+component cache = states{
+	copy: unfunc{
+		requires store.src,
+		emits store.dst = store.src,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Emits) != 1 {
+		t.Fatalf("expected 1 emit, got %d", len(uf.Emits))
+	}
+	assign, ok := uf.Emits[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+	}
+	if assign.Operator != "=" {
+		t.Errorf("operator = %q, want =", assign.Operator)
+	}
+	rhs, ok := assign.Right.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("RHS is not a ParameterCall, got %T", assign.Right)
+	}
+	if strings.Join(rhs.Value, ".") != "store.src" {
+		t.Errorf("RHS = %v, want store.src", rhs.Value)
+	}
+}
+
+func TestEmitFieldArithmetic(t *testing.T) {
+	// emits stock.x = stock.y + stock.z — two field operands
+	test := `system test1;
+
+component adder = states{
+	add: unfunc{
+		requires store.a,
+		emits store.result = store.a + store.b,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	assign, ok := uf.Emits[0].(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+	}
+	rhs, ok := assign.Right.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("RHS is not an InfixExpression, got %T", assign.Right)
+	}
+	if rhs.Operator != "+" {
+		t.Errorf("RHS operator = %q, want +", rhs.Operator)
+	}
+	_, ok = rhs.Left.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("RHS.Left is not a ParameterCall, got %T", rhs.Left)
+	}
+	_, ok = rhs.Right.(*ast.ParameterCall)
+	if !ok {
+		t.Fatalf("RHS.Right is not a ParameterCall, got %T", rhs.Right)
+	}
+}
+
+func TestEmitFlowAssignByField(t *testing.T) {
+	// emits x <- stock.a and emits x -> stock.a — increment/decrement by field value
+	tests := []struct {
+		name    string
+		src     string
+		arithOp string
+	}{
+		{"increment_by_field", "emits store.count <- store.delta,", "+"},
+		{"decrement_by_field", "emits store.count -> store.delta,", "-"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			test := `system test1;
+
+component counter = states{
+	adjust: unfunc{
+		requires store.count,
+		` + tt.src + `
+	},
+};
+`
+			flags := map[string]bool{"specType": false}
+			_, spec := prepTest(test, flags)
+			if spec == nil {
+				t.Fatal("prepTest() returned nil")
+			}
+			uf := unfuncLiteralFromSpec(t, spec)
+			assign, ok := uf.Emits[0].(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("emit is not an InfixExpression, got %T", uf.Emits[0])
+			}
+			if assign.Operator != "<-" {
+				t.Errorf("outer operator = %q, want <-", assign.Operator)
+			}
+			rhs, ok := assign.Right.(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("RHS is not an InfixExpression, got %T", assign.Right)
+			}
+			if rhs.Operator != tt.arithOp {
+				t.Errorf("RHS operator = %q, want %q", rhs.Operator, tt.arithOp)
+			}
+			_, ok = rhs.Right.(*ast.ParameterCall)
+			if !ok {
+				t.Fatalf("RHS.Right is not a ParameterCall, got %T", rhs.Right)
+			}
+		})
+	}
+}
+
+func TestEmitMultipleLiterals(t *testing.T) {
+	// emits stock.x = 5, stock.y = 10 — multiple targets with literal values
+	test := `system test1;
+
+component setup = states{
+	configure: unfunc{
+		emits store.x = 5, store.y = 10,
+	},
+};
+`
+	flags := map[string]bool{"specType": false}
+	_, spec := prepTest(test, flags)
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	uf := unfuncLiteralFromSpec(t, spec)
+
+	if len(uf.Emits) != 2 {
+		t.Fatalf("expected 2 emits, got %d", len(uf.Emits))
+	}
+	for i, e := range uf.Emits {
+		assign, ok := e.(*ast.InfixExpression)
+		if !ok {
+			t.Fatalf("Emits[%d] is not an InfixExpression, got %T", i, e)
+		}
+		if assign.Operator != "=" {
+			t.Errorf("Emits[%d] operator = %q, want =", i, assign.Operator)
+		}
+		if _, ok := assign.Right.(*ast.IntegerLiteral); !ok {
+			t.Fatalf("Emits[%d] RHS is not an IntegerLiteral, got %T", i, assign.Right)
+		}
+	}
+}
+
+// --- invalid syntax tests ---
+
+func assertUnfuncParseError(t *testing.T, src string) {
+	t.Helper()
+	flags := map[string]bool{"specType": false, "testing": true}
+	_, err := Execute(src, "", flags)
+	if err == nil {
+		t.Fatal("expected parse error, got nil")
+	}
+}
+
+func TestRequiresTrueParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires true,
+		emits generic.id,
+	},
+};`)
+}
+
+func TestRequiresFalseParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires false,
+		emits generic.id,
+	},
+};`)
+}
+
+func TestRequiresNumericParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires 5,
+		emits generic.id,
+	},
+};`)
+}
+
+func TestRequiresStringParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires "hello",
+		emits generic.id,
+	},
+};`)
+}
+
+func TestRequiresSolvableParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires unknown(),
+		emits generic.id,
+	},
+};`)
+}
+
+func TestEmitStringRHSParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires generic.id,
+		emits store.x = "hello",
+	},
+};`)
+}
+
+func TestEmitSolvableRHSParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires generic.id,
+		emits store.x = uncertain(0, 1),
+	},
+};`)
+}
+
+func TestEmitLogicalOpParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires generic.id,
+		emits store.x && store.y,
+	},
+};`)
+}
+
+func TestEmitComparisonRHSParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires generic.id,
+		emits store.x = store.y < 5,
+	},
+};`)
+}
+
+func TestEmitNegationLiteralParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires generic.id,
+		emits !5,
+	},
+};`)
+}
+
+func TestEmitBareTrueParseFails(t *testing.T) {
+	assertUnfuncParseError(t, `system test1;
+component fetch = states{
+	op: unfunc{
+		requires generic.id,
+		emits true,
+	},
+};`)
+}

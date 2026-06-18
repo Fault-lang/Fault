@@ -1172,6 +1172,158 @@ func TestEmitDuplicateTarget(t *testing.T) {
 	}
 }
 
+func TestUnfuncNoRequires(t *testing.T) {
+	// Requires == nil should pass type checking without error.
+	c := makeUnfuncChecker("id")
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{paramCall("generic", "id")},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking should pass with nil Requires, got: %s", err)
+	}
+}
+
+func TestEmitLiteralAssignValid(t *testing.T) {
+	// emits stock.x = 5 — literal RHS should pass type checking.
+	c := makeUnfuncChecker("id", "count")
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "count"),
+		Operator: "=",
+		Right:    &ast.IntegerLiteral{Value: 5},
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on literal emit RHS: %s", err)
+	}
+}
+
+func TestEmitFieldToFieldValid(t *testing.T) {
+	// emits stock.dst = stock.src — field-to-field should pass type checking.
+	c := makeUnfuncChecker("src", "dst")
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "dst"),
+		Operator: "=",
+		Right:    paramCall("generic", "src"),
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on field-to-field emit: %s", err)
+	}
+}
+
+func TestEmitFieldArithmeticValid(t *testing.T) {
+	// emits stock.result = stock.a + stock.b — two field operands.
+	c := makeUnfuncChecker("a", "b", "result")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "a"),
+		Operator: "+",
+		Right:    paramCall("generic", "b"),
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "result"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on two-field arithmetic emit: %s", err)
+	}
+}
+
+func TestEmitFieldArithmeticUnknownField(t *testing.T) {
+	// emits stock.result = stock.a + stock.nonexistent — should fail.
+	c := makeUnfuncChecker("a", "result")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "a"),
+		Operator: "+",
+		Right:    paramCall("generic", "nonexistent"),
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "result"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught unknown field in two-operand arithmetic emit")
+	}
+}
+
+func TestEmitMultipleLiteralsValid(t *testing.T) {
+	// emits stock.x = 5, stock.y = 10 — two distinct literal assignments.
+	c := makeUnfuncChecker("x", "y")
+	makeAssign := func(field string, val int64) *ast.InfixExpression {
+		return &ast.InfixExpression{
+			Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+			Left:     paramCall("generic", field),
+			Operator: "=",
+			Right:    &ast.IntegerLiteral{Value: val},
+		}
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{makeAssign("x", 5), makeAssign("y", 10)},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on multiple literal emits: %s", err)
+	}
+}
+
+func TestUnfuncRequiresGroupedValid(t *testing.T) {
+	// (a.x && b.y) || !c.z — grouped expression should pass type checking.
+	c := makeUnfuncChecker("id", "joinId", "deleted")
+	inner := &ast.InfixExpression{
+		Token:    ast.Token{Type: "AND", Literal: "&&"},
+		Left:     paramCall("generic", "id"),
+		Operator: "&&",
+		Right:    paramCall("generic", "joinId"),
+	}
+	notExpr := &ast.PrefixExpression{
+		Token:    ast.Token{Type: "NOT", Literal: "!"},
+		Operator: "!",
+		Right:    paramCall("generic", "deleted"),
+	}
+	outer := &ast.InfixExpression{
+		Token:    ast.Token{Type: "OR", Literal: "||"},
+		Left:     inner,
+		Operator: "||",
+		Right:    notExpr,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: outer,
+		Emits:    []ast.Expression{paramCall("generic", "id")},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on grouped requires expression: %s", err)
+	}
+}
+
 func TestStockInheritance(t *testing.T) {
 	test := `spec test1;
 def generic = stock{
