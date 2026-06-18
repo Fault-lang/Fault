@@ -307,12 +307,10 @@ func TestCrossRoundWhenThen(t *testing.T) {
 
 		assert when a.active then b.on;
 
-		start{
-			a: active,
-			b: on,
-		};
-
-		run{};
+		run {
+			a.active;
+			b.on;
+		}
 		`
 
 	g := prepTest("", test, false, false)
