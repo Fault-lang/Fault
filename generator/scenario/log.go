@@ -418,7 +418,9 @@ func (bs *BranchSelector) Id() string {
 func (bs *BranchSelector) WriteRule() string {
 	name := bs.Id()
 	if len(bs.Cond) == 0 {
-		panic(fmt.Sprintf("Branch Selector %s is empty", name))
+		// No phi conditions (e.g. unfunc stubs with empty bodies).
+		// Selector is a free Bool constrained only by the exactly-one assertion.
+		return ""
 	}
 
 	if len(bs.Cond) == 1 {

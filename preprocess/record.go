@@ -55,21 +55,41 @@ func (sr *SpecRecord) AddGlobal(name string, v ast.Node) {
 }
 
 func (sr *SpecRecord) AddInstance(name string, v map[string]ast.Node, ty string) {
-
-	// When creating an instance of a struct need to deep copy the data
-	v2, err := deepcopy.Anything(v)
-
-	if err != nil {
-		panic(fmt.Sprintf("failed to clone struct into instance %s", name))
+	// When creating an instance of a struct need to deep copy the data.
+	// UnfuncLiteral has nil interface fields (Requires Expression) that
+	// cause the generic deepcopy library to panic, so we copy those manually.
+	v2 := make(map[string]ast.Node, len(v))
+	for k, node := range v {
+		if ul, ok := node.(*ast.UnfuncLiteral); ok {
+			emitsCopy := make([]ast.Expression, len(ul.Emits))
+			copy(emitsCopy, ul.Emits)
+			assumesCopy := make([]ast.UnfuncAssume, len(ul.Assumes))
+			copy(assumesCopy, ul.Assumes)
+			procCopy := make([]string, len(ul.ProcessedName))
+			copy(procCopy, ul.ProcessedName)
+			v2[k] = &ast.UnfuncLiteral{
+				Token:         ul.Token,
+				Requires:      ul.Requires,
+				Emits:         emitsCopy,
+				Assumes:       assumesCopy,
+				ProcessedName: procCopy,
+			}
+			continue
+		}
+		cloned, err := deepcopy.Anything(node)
+		if err != nil {
+			panic(fmt.Sprintf("failed to clone struct into instance %s", name))
+		}
+		v2[k] = cloned.(ast.Node)
 	}
 
 	switch ty {
 	case "STOCK":
-		sr.AddStock(name, v2.(map[string]ast.Node))
+		sr.AddStock(name, v2)
 	case "FLOW":
-		sr.AddFlow(name, v2.(map[string]ast.Node))
+		sr.AddFlow(name, v2)
 	case "COMPONENT":
-		sr.AddComponent(name, v2.(map[string]ast.Node))
+		sr.AddComponent(name, v2)
 	}
 }
 

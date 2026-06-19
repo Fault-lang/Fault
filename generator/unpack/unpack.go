@@ -665,7 +665,9 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 		selectors = append(selectors, selectorName)
 		selectorRule := u.Log.NewBranchSelector(o.BranchName, i, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
-		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+		if rule := selectorRule.WriteRule(); rule != "" {
+			ret = append(ret, fmt.Sprintf("(assert %s)", rule))
+		}
 
 		// Wrap branch rules in an implication from the selector
 		if len(rs) > 0 {
@@ -771,7 +773,9 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 		selectors = append(selectors, fullSelectorName)
 		selectorRule := u.Log.NewBranchSelector(selectorName, slot.Round, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
-		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+		if rule := selectorRule.WriteRule(); rule != "" {
+			ret = append(ret, fmt.Sprintf("(assert %s)", rule))
+		}
 
 		for _, r := range rs {
 			if r == "" {
@@ -834,7 +838,9 @@ func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		inits, caps, _ := u.buildPhis(phis, nil)
 		u.AddInit(inits)
 		SelectorRule := u.Log.NewBranchSelector(u.CurrentBlock, i, caps, InitsToList((inits)))
-		rule_set = append(rule_set, fmt.Sprintf("(assert %s)", SelectorRule.WriteRule()))
+		if rule := SelectorRule.WriteRule(); rule != "" {
+			rule_set = append(rule_set, fmt.Sprintf("(assert %s)", rule))
+		}
 		u.Log.AddBranchSelector(SelectorRule)
 		u2.Inits = append(u2.Inits, rules.NewInit(u.CurrentBlock, "Bool", i, nil, false, false))
 
@@ -964,7 +970,8 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 		return ""
 	}
 
-	if rule[0:7] == "(assert" || rule[0:8] == "\n(assert" { //Already formatted
+	trimmed := strings.TrimLeft(rule, "\n")
+	if strings.HasPrefix(trimmed, "(assert") { //Already formatted
 		return rule
 	}
 

@@ -1,0 +1,25 @@
+spec unfuncs;
+
+def s = stock{
+    a: false,
+    b: false,
+    c: true,
+};
+
+def f = flow{
+    st: new s,
+    fn: unfunc{
+        emits st.b = true,
+    },
+    fn2: unfunc{
+        requires st.a,
+        emits st.c = false,
+    }
+};
+
+run init{
+    t = new f;
+}{
+    __;
+    __;
+}
