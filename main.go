@@ -71,15 +71,17 @@ func loadConfig() {
 
 func main() {
 	loadConfig()
+	startupUpdateCheck()
 
 	var mode, input, output, filepath string
 	var reach bool
 	var smtThreshold, smtTimeout, smtMemory int
 
 	rootCmd := &cobra.Command{
-		Use:   "fault",
-		Short: "Fault model checker",
-		Long:  "Fault is a model checker for distributed systems. Run without a subcommand to compile a .fspec or .fsystem file, or omit -f to launch the interactive TUI.",
+		Use:     "fault",
+		Short:   "Fault model checker",
+		Long:    "Fault is a model checker for distributed systems. Run without a subcommand to compile a .fspec or .fsystem file, or omit -f to launch the interactive TUI.",
+		Version: fmt.Sprintf("%s (commit %s, built %s)", version, commit, date),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if filepath == "" {
 				runInteractiveMode()
@@ -221,10 +223,9 @@ func updateConfigFile(configPath string, updates map[string]string) error {
 func newUpdateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update",
-		Short: "Check for a new version of fault",
+		Short: "Download and install the latest release of fault",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Update check not yet implemented.")
-			return nil
+			return runUpdate()
 		},
 	}
 }

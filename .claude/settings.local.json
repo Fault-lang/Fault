@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(go build:*flnrlehvuiilnv)"
+      "Bash(python3 -m json.tool)"
     ]
   }
 }
