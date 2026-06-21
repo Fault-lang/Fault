@@ -10,7 +10,7 @@ def f = flow{
     conflict: new s,
     fn: func{
         conflict.value = true;
-    }
+    },
 };
 
 run init{ t = new f; } {
