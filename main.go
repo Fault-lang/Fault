@@ -10,13 +10,65 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	ospath "path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	_ "github.com/olekukonko/tablewriter"
 )
 
+var defaultFaultrc = `# Fault compiler configuration
+# Values here are overridden by environment variables set in your shell.
+
+# Path to your SMT solver binary (e.g. z3, cvc5)
+# SOLVERCMD=z3
+
+# Argument to make the solver read from stdin
+# SOLVERARG=-in
+
+# Base directory for resolving relative file paths (~ or ..).
+# Only needed if you reference .fspec/.fsystem files using relative paths.
+# FAULT_HOST=
+`
+
+func loadConfig() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	configPath := ospath.Join(home, ".faultrc")
+	f, err := os.Open(configPath)
+	if os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Warning: no ~/.faultrc found. Creating a default one at %s\n", configPath)
+		if werr := os.WriteFile(configPath, []byte(defaultFaultrc), 0644); werr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not create default config: %v\n", werr)
+		}
+		return
+	}
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		// Only set if not already set — env always wins
+		if os.Getenv(strings.TrimSpace(key)) == "" {
+			os.Setenv(strings.TrimSpace(key), strings.TrimSpace(val))
+		}
+	}
+}
+
 func main() {
+	loadConfig()
 	var mode string
 	var input string
 	var output string
