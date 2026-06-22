@@ -102,6 +102,7 @@ func main() {
 
 	rootCmd.AddCommand(newConfigCmd())
 	rootCmd.AddCommand(newUpdateCmd())
+	rootCmd.AddCommand(newRenderCmd())
 
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
