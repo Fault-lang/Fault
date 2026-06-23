@@ -71,7 +71,10 @@ func loadConfig() {
 
 func main() {
 	loadConfig()
-	startupUpdateCheck()
+	// Skip update check for non-interactive subcommands (lint, render, config, update)
+	if len(os.Args) < 2 || (os.Args[1] != "lint" && os.Args[1] != "render" && os.Args[1] != "config" && os.Args[1] != "update") {
+		startupUpdateCheck()
+	}
 
 	var mode, input, output, filepath string
 	var reach bool
@@ -103,6 +106,7 @@ func main() {
 	rootCmd.AddCommand(newConfigCmd())
 	rootCmd.AddCommand(newUpdateCmd())
 	rootCmd.AddCommand(newRenderCmd())
+	rootCmd.AddCommand(newLintCmd())
 
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true

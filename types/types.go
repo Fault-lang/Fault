@@ -29,6 +29,8 @@ type Checker struct {
 	temps        map[string]*ast.Type
 	Checked      *ast.Spec
 	Preprocesser *preprocess.Processor
+	lintMode     bool
+	errs         []error
 }
 
 func NewTypeChecker(Processer *preprocess.Processor) *Checker {
@@ -40,11 +42,44 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	}
 }
 
+// Errors returns all collected errors from a lint-mode run.
+func (c *Checker) Errors() []error {
+	return c.errs
+}
+
+// collect records a recoverable error in lint mode, or returns it for
+// immediate propagation in normal mode.
+func (c *Checker) collect(err error) error {
+	if err == nil {
+		return nil
+	}
+	if c.lintMode {
+		c.errs = append(c.errs, err)
+		return nil
+	}
+	return err
+}
+
 func Execute(tree *ast.Spec, processor *preprocess.Processor) (*Checker, error) {
 	ty := NewTypeChecker(processor)
 	tree, err := ty.Check(tree)
 	if err != nil {
 		return nil, err
+	}
+	ty.Checked = tree
+	return ty, nil
+}
+
+// ExecuteLint runs the type checker in lint mode, collecting all recoverable
+// errors rather than stopping at the first one. Returns the checker so the
+// caller can retrieve all errors via Errors().
+func ExecuteLint(tree *ast.Spec, processor *preprocess.Processor) (*Checker, error) {
+	ty := NewTypeChecker(processor)
+	ty.lintMode = true
+	tree, err := ty.Check(tree)
+	if err != nil {
+		// fatal error (e.g. nil node panic) — bail immediately
+		return ty, err
 	}
 	ty.Checked = tree
 	return ty, nil
@@ -78,10 +113,12 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		var st []ast.Statement
 		for _, v := range node.Statements {
 			tnode, err = c.typecheck(v)
-			if err != nil {
+			if err = c.collect(err); err != nil {
 				return node, err
 			}
-			st = append(st, tnode.(ast.Statement))
+			if tnode != nil {
+				st = append(st, tnode.(ast.Statement))
+			}
 		}
 		node.Statements = st
 		return node, err
@@ -142,12 +179,16 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			parentSpec := c.SpecStructs[parentSpecName]
 			parentFields, ferr := parentSpec.FetchStock(parentName)
 			if ferr != nil {
-				return nil, fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())
+				if err = c.collect(fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())); err != nil {
+					return nil, err
+				}
 			}
 
 			for _, excluded := range node.Excludes {
 				if _, ok := parentFields[excluded]; !ok {
-					return nil, fmt.Errorf("stock %s: cannot exclude field %q - not found in parent stock %q", node.IdString(), excluded, parentName)
+					if err = c.collect(fmt.Errorf("stock %s: cannot exclude field %q - not found in parent stock %q", node.IdString(), excluded, parentName)); err != nil {
+						return nil, err
+					}
 				}
 			}
 
@@ -189,11 +230,17 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			propid := node.GetPropertyIdent(key)
 			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
-			if err != nil {
+			if err = c.collect(err); err != nil {
 				return node, err
 			}
+			if tnode == nil {
+				continue
+			}
 			if _, ok := tnode.(*ast.FunctionLiteral); ok {
-				return nil, fmt.Errorf("stock %s: property %q cannot be a function; functions belong in flows", node.IdString(), key)
+				if err = c.collect(fmt.Errorf("stock %s: property %q cannot be a function; functions belong in flows", node.IdString(), key)); err != nil {
+					return nil, err
+				}
+				continue
 			}
 			node.Pairs[propid] = tnode.(ast.Expression)
 			name := append(rawid, key)
@@ -211,14 +258,20 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			propid := node.GetPropertyIdent(key)
 			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
-			if err != nil {
+			if err = c.collect(err); err != nil {
 				return node, err
+			}
+			if tnode == nil {
+				continue
 			}
 			switch tnode.(type) {
 			case *ast.FunctionLiteral, *ast.Instance, *ast.StructInstance, *ast.UnfuncLiteral:
 				// allowed: functions, stock references, and unfuncs
 			default:
-				return nil, fmt.Errorf("flow %s: property %q must be a function or stock reference; use a stock to hold plain values", node.IdString(), key)
+				if err = c.collect(fmt.Errorf("flow %s: property %q must be a function or stock reference; use a stock to hold plain values", node.IdString(), key)); err != nil {
+					return nil, err
+				}
+				continue
 			}
 			node.Pairs[propid] = tnode.(ast.Expression)
 			name := append(rawid, key)
@@ -246,22 +299,24 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 
 		return node, err
 	case *ast.UnfuncLiteral:
-		if err = c.checkUnfuncExpr(node.Requires, "requires"); err != nil {
+		if err = c.collect(c.checkUnfuncExpr(node.Requires, "requires")); err != nil {
 			return node, err
 		}
 		seenEmitTargets := make(map[string]bool)
 		for _, e := range node.Emits {
-			if err = c.checkUnfuncEmitItem(e); err != nil {
+			if err = c.collect(c.checkUnfuncEmitItem(e)); err != nil {
 				return node, err
 			}
 			target := emitTargetKey(e)
 			if seenEmitTargets[target] {
-				return node, fmt.Errorf("unfunc emits: duplicate target %q", target)
+				if err = c.collect(fmt.Errorf("unfunc emits: duplicate target %q", target)); err != nil {
+					return node, err
+				}
 			}
 			seenEmitTargets[target] = true
 		}
 		for _, assume := range node.Assumes {
-			if err = c.checkUnfuncArithExpr(assume.Expr, "assume"); err != nil {
+			if err = c.collect(c.checkUnfuncArithExpr(assume.Expr, "assume")); err != nil {
 				return node, err
 			}
 		}
@@ -269,13 +324,15 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 	case *ast.AssertionStatement:
 		n, err := c.inferFunction(node.Constraint)
 		valtype := typeable(n)
-		if err != nil {
+		if err = c.collect(err); err != nil {
 			return node, err
 		}
-		if valtype.Type != "BOOL" {
-			return nil, fmt.Errorf("assert statement not testing a Boolean expression. got=%s", valtype.Type)
+		if valtype != nil && valtype.Type != "BOOL" {
+			if err = c.collect(fmt.Errorf("assert statement not testing a Boolean expression. got=%s", valtype.Type)); err != nil {
+				return nil, err
+			}
 		}
-		return node, err
+		return node, nil
 
 	case *ast.RunStatement:
 		if node.Inits != nil {
