@@ -1,4 +1,7 @@
-### Current Status (6/5/2026)
+### Current Status (6/23/2026)
+The command line was refactored into a modular structure with configuration now loaded from a file. Added a built-in Fault linter that runs through the preprocess stage, a version checker and auto-updater. First draft of templating (expermential) Various fixes for program synthesis. Error messages were improved with column/line info and richer parse error output. The no-solver fallback that silently dumped SMT output has been removed — Fault now returns a clear error when `SOLVERCMD`/`SOLVERARG` are not set.
+
+### (6/5/2026)
 Program synthesis support added: writeset analysis, updated grammar/listener/type checker, SMT generation wired to a runner. Replaced `start` blocks with `run` blocks and removed the `for N run{}` construction. Language additions include `available` as a temporal clause, `assume` replacing `produce`, extendable stocks, whole number constraints, and unknowns that can now be booleans. Separated variable availability from variable value and finished the `unfunc` implementation including assumption handling. On the SMT side: uncertain values now translate directly to SMT rules (weights removed), added a framework for automatically switching solver logic when all variables are integers, and added pure boolean logic model support. Fixed a long list of bugs including ITE unpacking, type issues with booleans and unknowns, sibling rule pollution, and a tricky call stack issue. Upgraded charm/Bubbletea to v2 and fixed associated TUI bugs. Added unit tests for scenarios, unpacker, and asserts.
 
 ### (4/24/2026)
