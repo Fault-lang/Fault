@@ -259,8 +259,7 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThr
 
 	if mode == "model" &&
 		(os.Getenv("SOLVERCMD") == "" || os.Getenv("SOLVERARG") == "") {
-		fmt.Fprintf(os.Stderr, "\nno solver configured, defaulting to SMT output without model checking. Please set SOLVERCMD and SOLVERARG in ~/.faultrc or your environment.\n\n")
-		mode = "smt"
+		return fmt.Errorf("no solver configured: set SOLVERCMD and SOLVERARG in ~/.faultrc or your environment")
 	}
 
 	config := runner.CompilationConfig{
@@ -344,8 +343,6 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThr
 				}
 				fmt.Println(s)
 			}
-		} else {
-			fmt.Println(result.SMT)
 		}
 	}
 	return nil
