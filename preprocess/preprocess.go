@@ -25,6 +25,26 @@ type Processor struct {
 	inAssert             bool
 	StructsPropertyOrder map[string][]string
 	Instances            map[string]*ast.StructInstance
+	lintMode             bool
+	errs                 []error
+}
+
+// Errors returns all collected errors from a lint-mode run.
+func (p *Processor) Errors() []error {
+	return p.errs
+}
+
+// collect records a recoverable error in lint mode, or returns it for
+// immediate propagation in normal mode.
+func (p *Processor) collect(err error) error {
+	if err == nil {
+		return nil
+	}
+	if p.lintMode {
+		p.errs = append(p.errs, err)
+		return nil
+	}
+	return err
 }
 
 func NewProcesser() *Processor {
@@ -52,17 +72,36 @@ func Execute(l *listener.FaultListener) (pre *Processor, err error) {
 	return pre, nil
 }
 
+// ExecuteLint runs the preprocessor in lint mode, collecting recoverable
+// errors rather than stopping at the first one.
+func ExecuteLint(l *listener.FaultListener) (pre *Processor, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	pre = NewProcesser()
+	pre.lintMode = true
+	pre.StructsPropertyOrder = l.StructsPropertyOrder
+	pre.Run(l.AST)
+	return pre, nil
+}
+
 func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	tree, err := p.walk(n)
 	if err != nil {
-		panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
+		if p.collect(fmt.Errorf("%s %s", err, n.GetToken().Location())) != nil {
+			panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
+		}
 	}
 	p.initialPass = false
 
 	tree, err = p.walk(tree)
 	if err != nil {
 		spec := tree.(*ast.Spec)
-		panic(fmt.Sprintf("%s %s", err, spec.GetToken().Location()))
+		if p.collect(fmt.Errorf("%s %s", err, spec.GetToken().Location())) != nil {
+			panic(fmt.Sprintf("%s %s", err, spec.GetToken().Location()))
+		}
 	}
 	spec := tree.(*ast.Spec)
 	p.Processed = spec
@@ -248,17 +287,21 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				continue
 			}
 			pro, err = p.walk(v)
-			if err != nil {
+			if err = p.collect(err); err != nil {
 				return node, err
 			}
-			node.Statements[i] = pro.(ast.Statement)
+			if pro != nil {
+				node.Statements[i] = pro.(ast.Statement)
+			}
 		}
 		for _, i := range assertIdxs {
 			pro, err = p.walk(node.Statements[i])
-			if err != nil {
+			if err = p.collect(err); err != nil {
 				return node, err
 			}
-			node.Statements[i] = pro.(ast.Statement)
+			if pro != nil {
+				node.Statements[i] = pro.(ast.Statement)
+			}
 		}
 		return node, err
 	case *ast.SpecDeclStatement:
@@ -295,7 +338,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		// Has this already been defined?
 		_, err := spec.FetchConstant(node.Name.Value)
 		if err == nil {
-			return node, fmt.Errorf("variable %s is a constant and cannot be modified", node.Name.Value)
+			if err = p.collect(fmt.Errorf("variable %s is a constant and cannot be modified", node.Name.Value)); err != nil {
+				return node, err
+			}
 		}
 
 		pronm, err := p.walk(node.Name)
@@ -409,7 +454,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 						}
 						cloned, cerr := deepcopy.Anything(parentVal)
 						if cerr != nil {
-							return node, fmt.Errorf("stock %s: failed to clone field %q from parent: %v", p.scope, fieldName, cerr)
+							if err = p.collect(fmt.Errorf("stock %s: failed to clone field %q from parent: %v", p.scope, fieldName, cerr)); err != nil {
+								return node, err
+							}
+							continue
 						}
 						newIdent := &ast.Identifier{
 							Token: ast.Token{
@@ -1095,7 +1143,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 			p.scope = oldScope
 			return pro, err
 		default:
-			return node, fmt.Errorf("can't find an instance named %s", node.Value.Value)
+			if err = p.collect(fmt.Errorf("can't find an instance named %s", node.Value.Value)); err != nil {
+				return node, err
+			}
+			return node, nil
 		}
 	case *ast.StructInstance:
 		if p.Specs[p.trail.CurrentSpec()] == nil {
@@ -1249,7 +1300,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 			return node, err
 		default:
-			return node, fmt.Errorf("can't find a struct instance named %s", node.Parent)
+			if err = p.collect(fmt.Errorf("can't find a struct instance named %s", node.Parent)); err != nil {
+				return node, err
+			}
+			return node, nil
 		}
 	case *ast.Identifier:
 		var spec *SpecRecord
@@ -1368,7 +1422,10 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				}
 				if fixedTy != "" {
 					if !p.inAssert {
-						return node, fmt.Errorf("'%s.%s' is a %s type definition, not an instance — %s definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, strings.ToLower(fixedTy), strings.ToLower(fixedTy), defName, node.Value[len(node.Value)-1])
+						if err = p.collect(fmt.Errorf("'%s.%s' is a %s type definition, not an instance — %s definitions have no runtime variables. Use an instance created with 'new' instead (e.g. 'instanceName.%s.%s')", node.Spec, defName, strings.ToLower(fixedTy), strings.ToLower(fixedTy), defName, node.Value[len(node.Value)-1])); err != nil {
+							return node, err
+						}
+						return node, nil
 					}
 					// In an assertion/assumption, referencing a stock/flow definition property
 					// is valid. The rawid has a doubled spec prefix because ExitParamCall

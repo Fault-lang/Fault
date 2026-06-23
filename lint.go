@@ -69,10 +69,10 @@ func runLint(filepath string, warnOnly bool) error {
 		os.Exit(1)
 	}
 
-	// Preprocess — fatal if this fails
-	pre, err := preprocess.Execute(lstnr)
+	// Preprocess in lint mode — collects recoverable errors
+	pre, err := preprocess.ExecuteLint(lstnr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: preprocess error: %v\n", filepath, err)
+		fmt.Fprintf(os.Stderr, "%s: fatal preprocess error: %v\n", filepath, err)
 		if warnOnly {
 			return nil
 		}
@@ -82,7 +82,6 @@ func runLint(filepath string, warnOnly bool) error {
 	// Type check in lint mode — collects all recoverable errors
 	ty, err := types.ExecuteLint(pre.Processed, pre)
 	if err != nil {
-		// Fatal type checker error (nil node, etc.)
 		fmt.Fprintf(os.Stderr, "%s: fatal type error: %v\n", filepath, err)
 		if warnOnly {
 			return nil
@@ -90,7 +89,7 @@ func runLint(filepath string, warnOnly bool) error {
 		os.Exit(1)
 	}
 
-	errs := ty.Errors()
+	errs := append(pre.Errors(), ty.Errors()...)
 	if len(errs) == 0 {
 		fmt.Printf("%s: no issues found\n", filepath)
 		return nil
