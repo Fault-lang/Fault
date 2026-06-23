@@ -48,6 +48,8 @@ func (l *FaultListener) EnterStructDecl(c *parser.StructDeclContext) {
 
 func (l *FaultListener) EnterComponentDecl(c *parser.ComponentDeclContext) {
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+	l.scope = c.IDENT().GetText()
+	l.structscope = l.scope
 }
 
 func (l *FaultListener) EnterStringDecl(c *parser.StringDeclContext) {
@@ -80,6 +82,15 @@ func (l *FaultListener) EnterFunctionLit(c *parser.FunctionLitContext) {
 	if c.Block().GetChildCount() < 3 {
 		panic(fmt.Sprintf("Malformed fspec or fsystem file. A function cannot be empty: line %d col %d", c.GetStart().GetLine(), c.GetStart().GetColumn()))
 	}
+	l.inFuncBody++
+}
+
+func (l *FaultListener) EnterStateLit(c *parser.StateLitContext) {
+	l.inFuncBody++
+}
+
+func (l *FaultListener) EnterUnfuncLit(c *parser.UnfuncLitContext) {
+	l.inFuncBody++
 }
 
 func (l *FaultListener) EnterStateBlock(c *parser.StateBlockContext) {
@@ -89,6 +100,12 @@ func (l *FaultListener) EnterStateBlock(c *parser.StateBlockContext) {
 }
 
 func (l *FaultListener) EnterPropFunc(c *parser.PropFuncContext) {
+	varname := c.IDENT().GetText()
+	assertValidVarName(varname, c.GetStart())
+	l.scope = fmt.Sprint(l.scope, ".", varname)
+}
+
+func (l *FaultListener) EnterPropUnfunc(c *parser.PropUnfuncContext) {
 	varname := c.IDENT().GetText()
 	assertValidVarName(varname, c.GetStart())
 	l.scope = fmt.Sprint(l.scope, ".", varname)
@@ -111,7 +128,7 @@ func (l *FaultListener) EnterPropVar(c *parser.PropVarContext) {
 }
 
 func (l *FaultListener) EnterPropExtends(c *parser.PropExtendsContext) {
-	assertValidVarName(c.IDENT().GetText(), c.GetStart())
+	// validation delegated to operandName sub-rules (EnterOpName / EnterParamCall)
 }
 
 func (l *FaultListener) EnterPropExclude(c *parser.PropExcludeContext) {
@@ -125,6 +142,9 @@ func (l *FaultListener) EnterPropSolvable(c *parser.PropSolvableContext) {
 	}
 	assertValidVarName(c.IDENT().GetText(), c.GetStart())
 }
+
+func (l *FaultListener) EnterEmitTargetParam(c *parser.EmitTargetParamContext) {}
+func (l *FaultListener) EnterEmitTargetIdent(c *parser.EmitTargetIdentContext) {}
 
 func (l *FaultListener) EnterRunInit(c *parser.RunInitContext) {
 	// IDENT(0) is the variable being declared; IDENT(1) (if present) is the type reference

@@ -139,11 +139,13 @@ type Init struct {
 	Solvable       bool //If this rule is solvable, meaning it can be used to solve the scenario
 	Whole          bool //If true, whole-number variable (affects sort and is_int behaviour)
 	IntegerMode    bool //If true, declare whole vars as Int sort and suppress is_int assertions
+	IsParam        bool //If true, emit a __PARAM_name__ placeholder assertion instead of a concrete value
 	Indexed        bool
-	OmitFromOutput bool
-	Mean           float64 // uncertain() mean — used to generate SMT bounds
-	Sigma          float64 // uncertain() sigma — used to generate SMT bounds
-	K              float64 // sigma multiplier for SMT bounds (default 3.0)
+	OmitFromOutput           bool
+	SuppressValueAssertion   bool // when true, emit only declare-fun (assume override wins)
+	Mean                     float64 // uncertain() mean — used to generate SMT bounds
+	Sigma                    float64 // uncertain() sigma — used to generate SMT bounds
+	K                        float64 // sigma multiplier for SMT bounds (default 3.0)
 	Log            *scenario.Logger
 	tag            *branch
 }
@@ -183,10 +185,15 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	}
 	d = fmt.Sprintf("(declare-fun %s () %s)", id, sort)
 
-	if i.Value != nil && i.Global && !i.Solvable {
+	if i.IsParam {
+		val = fmt.Sprintf("(assert (= %s __PARAM_%s__))", id, i.Ident)
+		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else if i.Value != nil && i.Global && !i.Solvable && !i.SuppressValueAssertion {
 		_, rule, ssa = i.Value.WriteRule(ssa)
 		val = fmt.Sprintf("(assert (= %s %s))", id, rule)
 		rule = fmt.Sprintf("%s\n%s\n", d, val)
+	} else if i.Value != nil && i.Global && !i.Solvable && i.SuppressValueAssertion {
+		rule = d // declare-fun only; assume provides the value
 	} else if i.Whole && !i.IntegerMode {
 		rule = fmt.Sprintf("%s\n(assert (is_int %s))\n", d, id)
 	} else if i.Sigma != 0 {
@@ -273,6 +280,15 @@ func NewWholeInit(name string, t string, ssa int, integerMode bool) *Init {
 		Solvable:    true,
 		Whole:       true,
 		IntegerMode: integerMode,
+	}
+}
+
+func NewParamInit(name string, t string, ssa int) *Init {
+	return &Init{
+		Ident:   name,
+		SSA:     fmt.Sprintf("%d", ssa),
+		Type:    t,
+		IsParam: true,
 	}
 }
 
@@ -367,6 +383,12 @@ func (a *Ands) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 		rules = append(rules, ru)
 		i = append(i, init...)
 	}
+	if len(rules) == 0 {
+		return i, "true", ssa
+	}
+	if len(rules) == 1 {
+		return i, rules[0], ssa
+	}
 	return i, fmt.Sprintf("(and %s)", strings.Join(rules, " ")), ssa
 }
 
@@ -378,11 +400,17 @@ func (a *Ands) String() string {
 	return out.String()
 }
 func (a *Ands) Assertless() string {
-	var ands string
+	var parts []string
 	for _, asrt := range a.X {
-		ands = fmt.Sprintf("%s %s", ands, asrt.Assertless())
+		parts = append(parts, asrt.Assertless())
 	}
-	return fmt.Sprintf("(and %s)", ands)
+	if len(parts) == 0 {
+		return "true"
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	return fmt.Sprintf("(and %s)", strings.Join(parts, " "))
 }
 func (a *Ands) Tag(k1 string, k2 string) {
 	a.tag = &branch{

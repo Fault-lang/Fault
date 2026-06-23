@@ -77,6 +77,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#PropFunc.
 	VisitPropFunc(ctx *PropFuncContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#PropUnfunc.
+	VisitPropUnfunc(ctx *PropUnfuncContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#sfMisc.
 	VisitSfMisc(ctx *SfMiscContext) interface{}
 
@@ -305,14 +308,29 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#emitsClause.
 	VisitEmitsClause(ctx *EmitsClauseContext) interface{}
 
-	// Visit a parse tree produced by FaultParser#assumeClause.
-	VisitAssumeClause(ctx *AssumeClauseContext) interface{}
+	// Visit a parse tree produced by FaultParser#EmitTargetParam.
+	VisitEmitTargetParam(ctx *EmitTargetParamContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#EmitTargetIdent.
+	VisitEmitTargetIdent(ctx *EmitTargetIdentContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#EmitNegation.
+	VisitEmitNegation(ctx *EmitNegationContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#EmitBoolAssign.
+	VisitEmitBoolAssign(ctx *EmitBoolAssignContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#EmitArithAssign.
+	VisitEmitArithAssign(ctx *EmitArithAssignContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#EmitFlowAssign.
+	VisitEmitFlowAssign(ctx *EmitFlowAssignContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#EmitBare.
+	VisitEmitBare(ctx *EmitBareContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#unfuncExpr.
 	VisitUnfuncExpr(ctx *UnfuncExprContext) interface{}
-
-	// Visit a parse tree produced by FaultParser#unfuncAssumeExpr.
-	VisitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) interface{}
 
 	// Visit a parse tree produced by FaultParser#unfuncArithExpr.
 	VisitUnfuncArithExpr(ctx *UnfuncArithExprContext) interface{}

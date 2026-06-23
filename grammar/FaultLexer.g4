@@ -12,7 +12,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 lexer grammar FaultLexer;
 
 // Keywords
-ALL: 'all';
 ASSERT: 'assert';
 ASSUME: 'assume';
 CLOCK: 'now';
@@ -20,13 +19,11 @@ CONST: 'const';
 DEF: 'def';
 ELSE: 'else';
 FLOW: 'flow';
-FOR: 'for';
 FUNC: 'func';
 IF: 'if';
 IMPORT: 'import';
 INIT: 'init';
 NEW: 'new';
-RETURN: 'return';
 RUN: 'run';
 SPEC: 'spec';
 STOCK: 'stock';
@@ -51,7 +48,6 @@ CHOOSE: 'choose';
 GLOBAL: 'global';
 LEAVE: 'leave';
 SYSTEM: 'system';
-START: 'start';
 STATE: 'states';
 STAY: 'stay';
 UNFUNC: 'unfunc';
@@ -70,6 +66,7 @@ TY_NATURAL: 'natural';
 TY_UNCERTAIN: 'uncertain';
 TY_UNKNOWN: 'unknown';
 TY_WHOLE: 'whole';
+TY_PARAM: 'param';
 
 SYNTH: '__';
 

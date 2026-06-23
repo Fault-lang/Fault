@@ -27,7 +27,8 @@ type Logger struct {
 	BranchSelectors []*BranchSelector // rules to make the solution easier to parse
 	// RoundPhis stores per-variable phi SSA history: index 0 = initial SSA (before any rounds),
 	// index N = phi output SSA after round N. Used by HistoryWrap to resolve value[now-N].
-	RoundPhis map[string][]int16
+	RoundPhis  map[string][]int16
+	SystemName string // stripped from variable and function names in output
 }
 
 func NewLogger() *Logger {
@@ -417,7 +418,9 @@ func (bs *BranchSelector) Id() string {
 func (bs *BranchSelector) WriteRule() string {
 	name := bs.Id()
 	if len(bs.Cond) == 0 {
-		panic(fmt.Sprintf("Branch Selector %s is empty", name))
+		// No phi conditions (e.g. unfunc stubs with empty bodies).
+		// Selector is a free Bool constrained only by the exactly-one assertion.
+		return ""
 	}
 
 	if len(bs.Cond) == 1 {
@@ -441,6 +444,38 @@ func (l *Logger) NewBranchSelector(name string, ssa int, cond []string, inits []
 
 func (l *Logger) AddBranchSelector(s *BranchSelector) {
 	l.BranchSelectors = append(l.BranchSelectors, s)
+}
+
+// stripSysPrefix removes the system name prefix (e.g. "waterpumpmonitor_") from a
+// variable or function name so output is readable without the model-level namespace.
+func (l *Logger) stripSysPrefix(name string) string {
+	if l.SystemName == "" {
+		return name
+	}
+	prefix := l.SystemName + "_"
+	if strings.HasPrefix(name, prefix) {
+		return name[len(prefix):]
+	}
+	return name
+}
+
+// displayFuncName strips the LLVM basic block suffix (e.g. "-%8") from a function name.
+func displayFuncName(fname string) string {
+	if i := strings.LastIndex(fname, "-%"); i >= 0 {
+		if suffix := fname[i+2:]; len(suffix) > 0 {
+			allDigits := true
+			for _, c := range suffix {
+				if c < '0' || c > '9' {
+					allDigits = false
+					break
+				}
+			}
+			if allDigits {
+				return fname[:i]
+			}
+		}
+	}
+	return fname
 }
 
 // isSynthSlotName returns true if name is a synthesis slot identifier like "synth_1".
@@ -514,200 +549,7 @@ func (l *Logger) synthChoice(slotName string) string {
 }
 
 func (l *Logger) Print() {
-	identLevel := ""
-
-	// Track current state to show transitions
-	currentState := make(map[string]string)
-
-	// Helper to get component prefix from state variable (e.g., "infusion_pump_idle" -> "infusion_pump")
-	getComponentPrefix := func(varName string) string {
-		parts := strings.Split(varName, "_")
-		if len(parts) >= 3 {
-			// For patterns like "infusion_pump_idle", return "infusion_pump"
-			// Return all but the last part (which is the state name)
-			return strings.Join(parts[:len(parts)-1], "_")
-		}
-		return ""
-	}
-
-	// Helper to find complementary state changes in the same component
-	findComplementaryStates := func(varName string, newValue string) []string {
-		if newValue != "true" {
-			return nil
-		}
-
-		componentPrefix := getComponentPrefix(varName)
-		if componentPrefix == "" {
-			return nil
-		}
-
-		var complementary []string
-		// Look through currentState to find other states in same component that were true
-		for otherVar, otherValue := range currentState {
-			if otherValue == "true" && otherVar != varName && strings.HasPrefix(otherVar, componentPrefix+"_") {
-				complementary = append(complementary, otherVar)
-			}
-		}
-		return complementary
-	}
-
-	// Initialize currentState with starting states by looking for state variables with low SSA indices
-	// Only use _1 (the first state after initialization) and ensure only one state per component is set
-	// Prefer common starting states like "idle", "silent", "empty", "off", etc.
-	componentStates := make(map[string]string) // Track which components already have a state set (map to state name)
-	preferredStates := []string{"idle", "silent", "empty", "off", "initial", "stopped"}
-
-	// First pass: look for preferred starting states
-	for varWithSSA, value := range l.Results {
-		if !strings.HasSuffix(varWithSSA, "_1") || value != "true" || l.IsInternalVariable(varWithSSA) {
-			continue
-		}
-
-		baseVar := getBase(varWithSSA)
-		componentPrefix := getComponentPrefix(baseVar)
-		if componentPrefix == "" {
-			continue
-		}
-
-		// Check if this is a preferred starting state
-		for _, preferred := range preferredStates {
-			if strings.HasSuffix(baseVar, "_"+preferred) {
-				if _, exists := componentStates[componentPrefix]; !exists {
-					currentState[baseVar] = value
-					componentStates[componentPrefix] = baseVar
-				}
-				break
-			}
-		}
-	}
-
-	// Second pass: fill in any components that don't have a state yet
-	for varWithSSA, value := range l.Results {
-		if !strings.HasSuffix(varWithSSA, "_1") || value != "true" || l.IsInternalVariable(varWithSSA) {
-			continue
-		}
-
-		baseVar := getBase(varWithSSA)
-		componentPrefix := getComponentPrefix(baseVar)
-		if componentPrefix == "" {
-			continue
-		}
-
-		if _, exists := componentStates[componentPrefix]; !exists {
-			currentState[baseVar] = value
-			componentStates[componentPrefix] = baseVar
-		}
-	}
-
-	for _, e := range l.Events {
-		if e.IsDead() {
-			continue
-		}
-		switch event := e.(type) {
-		case *FunctionCall:
-			if event.FunctionName == "@__run" {
-				fmt.Print("\n")
-				fmt.Printf("%sStart model, run for %s rounds\n", identLevel, event.Round)
-				fmt.Printf("-----------------------------------\n")
-				identLevel += "   "
-				continue
-			}
-
-			if strings.HasPrefix(event.FunctionName, "synth_") {
-				if event.Type == "Entry" {
-					chosen := l.synthChoice(event.FunctionName)
-					if chosen != "" {
-						fmt.Printf("%sFault chose %s (step %s)\n", identLevel, chosen, event.Round)
-					} else {
-						fmt.Printf("%sSynthesis step %s (unsatisfiable)\n", identLevel, event.Round)
-					}
-					identLevel += "   "
-				}
-				if event.Type == "Exit" {
-					identLevel = identLevel[:len(identLevel)-3]
-				}
-				continue
-			}
-
-			if event.Type == "Entry" {
-				fmt.Printf("%sRun function %s (round %s)\n", identLevel, event.FunctionName, event.Round)
-				identLevel += "   "
-			}
-
-			if event.Type == "Exit" {
-				identLevel = identLevel[:len(identLevel)-3]
-			}
-		case *VariableUpdate:
-			// Skip internal solver variables
-			if l.IsInternalVariable(event.Variable) {
-				continue
-			}
-
-			v := getBase(event.Variable)
-			s, negated := l.IsNegated(v)
-			newValue := l.Results[event.Variable]
-			oldValue, hasOldValue := currentState[v]
-
-			// Show complementary state transitions (e.g., when infusing becomes true, show idle becoming false)
-			if newValue == "true" && newValue != oldValue {
-				complementary := findComplementaryStates(v, newValue)
-				for _, compVar := range complementary {
-					fmt.Printf("%s%s: true → false\n", identLevel, compVar)
-					currentState[compVar] = "false"
-				}
-			}
-
-			// Update state
-			currentState[v] = newValue
-
-			if l.IsStringRule[s] == true {
-				s = l.StringRules[s]
-				if hasOldValue && oldValue != newValue {
-					if negated {
-						fmt.Printf("%s not %s: %s → %s\n", identLevel, s, oldValue, newValue)
-					} else {
-						fmt.Printf("%s %s: %s → %s\n", identLevel, s, oldValue, newValue)
-					}
-				} else {
-					if negated {
-						fmt.Printf("%s not %s is %s\n", identLevel, s, newValue)
-					} else {
-						fmt.Printf("%s %s is %s\n", identLevel, s, newValue)
-					}
-				}
-			} else {
-				if !hasOldValue {
-					fmt.Printf("%sSet variable %s to value %s\n", identLevel, v, newValue)
-				} else if hasOldValue && oldValue != newValue {
-					fmt.Printf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue)
-				} else {
-					fmt.Printf("%sVariable %s is still %s\n", identLevel, v, newValue)
-				}
-			}
-
-		case *Solvable:
-			// Skip internal solver variables
-			if l.IsInternalVariable(event.Variable) {
-				continue
-			}
-
-			v := getBase(event.Variable)
-			newValue := l.Results[event.Variable]
-
-			if event.Type == "Uncertain" {
-				fmt.Printf("%sResolving variable %s to value %s (%s) \n", identLevel, v, newValue, event.Probability)
-			} else {
-				fmt.Printf("%sResolving variable %s to value %s\n", identLevel, v, newValue)
-			}
-
-			// Update state
-			currentState[v] = newValue
-
-		case *Message:
-			fmt.Printf("%s%s\n", identLevel, event.Text)
-		}
-	}
-	fmt.Print("\n")
+	fmt.Print(l.String())
 }
 
 func (l *Logger) PrintRaw() {
@@ -743,91 +585,133 @@ func (l *Logger) PrintRaw() {
 	fmt.Print("\n")
 }
 
-// String returns the formatted output as a string instead of printing
+// String returns the formatted output as a string instead of printing.
+//
+// Each open function is buffered; on exit the buffer is only flushed to the
+// parent if it contains at least one line. This means functions with no
+// observable variable changes are silently omitted, regardless of model type.
 func (l *Logger) String() string {
-	var sb strings.Builder
+	type frame struct {
+		displayName string
+		buf         strings.Builder
+	}
 
-	identLevel := ""
+	var stack []*frame
+	var root strings.Builder
 
-	// Track current state to show transitions
+	// initialStates collects "Set variable X to value true" lines for state
+	// variables active at model start. Printed as a block before the "---" divider.
+	var initialStates []string
+
+	// write sends s to the innermost open frame, or to root when no frame is open.
+	write := func(s string) {
+		if len(stack) > 0 {
+			stack[len(stack)-1].buf.WriteString(s)
+		} else {
+			root.WriteString(s)
+		}
+	}
+
+	// indent returns whitespace appropriate for the current nesting depth.
+	// len(stack)==0 means we are at the @__run body level (1 level of indent).
+	indent := func() string {
+		return strings.Repeat("   ", len(stack)+1)
+	}
+
+	// flush pops the topmost frame. If its buffer is non-empty the function
+	// header and body are written to the new top (or root). Empty frames are
+	// dropped — this is what hides functions with no observable events.
+	flush := func() {
+		if len(stack) == 0 {
+			return
+		}
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		content := f.buf.String()
+		if content == "" {
+			return
+		}
+		ind := strings.Repeat("   ", len(stack)+1)
+
+		// For state functions (Foo__state), if the first buffered line sets the
+		// corresponding state variable to true, hoist it before the function header.
+		// This makes clear that the state was activated before the function ran,
+		// not that the function activated itself.
+		if strings.HasSuffix(f.displayName, "__state") {
+			stateName := strings.TrimSuffix(f.displayName, "__state")
+			innerInd := ind + "   "
+			marker := fmt.Sprintf("%sSet variable %s to value true\n", innerInd, stateName)
+			if strings.HasPrefix(content, marker) {
+				// Collect into the initial-state block rather than writing inline.
+				initialStates = append(initialStates, fmt.Sprintf("%sSet variable %s to value true\n", ind, stateName))
+				content = content[len(marker):]
+			}
+		}
+
+		write(fmt.Sprintf("%sRun function %s\n", ind, f.displayName))
+		if content != "" {
+			write(content)
+		}
+	}
+
+	// currentState: base variable name → latest known value.
 	currentState := make(map[string]string)
 
-	// Helper to get component prefix from state variable (e.g., "infusion_pump_idle" -> "infusion_pump")
-	getComponentPrefix := func(varName string) string {
+	// Pre-scan the event log to seed currentState from run-block direct
+	// assignments only. This avoids picking up SSA helper variables that
+	// happen to share the same _1 index as real initial states.
+	{
+		inRun, depth := false, 0
+		for _, e := range l.Events {
+			switch ev := e.(type) {
+			case *FunctionCall:
+				if ev.FunctionName == "@__run" {
+					if ev.Type == "Entry" {
+						inRun = true
+					} else {
+						inRun = false
+					}
+				} else if inRun {
+					if ev.Type == "Entry" {
+						depth++
+					} else {
+						depth--
+					}
+				}
+			case *VariableUpdate:
+				if inRun && depth == 0 && !e.IsDead() && !l.IsInternalVariable(ev.Variable) {
+					if val := l.Results[ev.Variable]; val == "true" {
+						currentState[getBase(ev.Variable)] = val
+					}
+				}
+			}
+		}
+	}
+
+	// componentPrefix returns everything but the last underscore-segment of
+	// varName, used to group state variables by component.
+	componentPrefix := func(varName string) string {
 		parts := strings.Split(varName, "_")
 		if len(parts) >= 3 {
-			// For patterns like "infusion_pump_idle", return "infusion_pump"
-			// Return all but the last part (which is the state name)
 			return strings.Join(parts[:len(parts)-1], "_")
 		}
 		return ""
 	}
 
-	// Helper to find complementary state changes in the same component
-	findComplementaryStates := func(varName string, newValue string) []string {
-		if newValue != "true" {
+	// complementaryStates returns base variable names in the same component
+	// that are currently true (they will be set to false by the new true state).
+	complementaryStates := func(varName string) []string {
+		prefix := componentPrefix(varName)
+		if prefix == "" {
 			return nil
 		}
-
-		componentPrefix := getComponentPrefix(varName)
-		if componentPrefix == "" {
-			return nil
-		}
-
-		var complementary []string
-		// Look through currentState to find other states in same component that were true
-		for otherVar, otherValue := range currentState {
-			if otherValue == "true" && otherVar != varName && strings.HasPrefix(otherVar, componentPrefix+"_") {
-				complementary = append(complementary, otherVar)
+		var out []string
+		for other, val := range currentState {
+			if val == "true" && other != varName && strings.HasPrefix(other, prefix+"_") {
+				out = append(out, other)
 			}
 		}
-		return complementary
-	}
-
-	// Initialize currentState with starting states by looking for state variables with low SSA indices
-	componentStates := make(map[string]string) // Track which components already have a state set
-	preferredStates := []string{"idle", "silent", "empty", "off", "initial", "stopped"}
-
-	// First pass: look for preferred starting states
-	for varWithSSA, value := range l.Results {
-		if !strings.HasSuffix(varWithSSA, "_1") || value != "true" || l.IsInternalVariable(varWithSSA) {
-			continue
-		}
-
-		baseVar := getBase(varWithSSA)
-		componentPrefix := getComponentPrefix(baseVar)
-		if componentPrefix == "" {
-			continue
-		}
-
-		// Check if this is a preferred starting state
-		for _, preferred := range preferredStates {
-			if strings.HasSuffix(baseVar, "_"+preferred) {
-				if _, exists := componentStates[componentPrefix]; !exists {
-					currentState[baseVar] = value
-					componentStates[componentPrefix] = baseVar
-				}
-				break
-			}
-		}
-	}
-
-	// Second pass: fill in any components that don't have a state yet
-	for varWithSSA, value := range l.Results {
-		if !strings.HasSuffix(varWithSSA, "_1") || value != "true" || l.IsInternalVariable(varWithSSA) {
-			continue
-		}
-
-		baseVar := getBase(varWithSSA)
-		componentPrefix := getComponentPrefix(baseVar)
-		if componentPrefix == "" {
-			continue
-		}
-
-		if _, exists := componentStates[componentPrefix]; !exists {
-			currentState[baseVar] = value
-			componentStates[componentPrefix] = baseVar
-		}
+		return out
 	}
 
 	for _, e := range l.Events {
@@ -836,11 +720,16 @@ func (l *Logger) String() string {
 		}
 		switch event := e.(type) {
 		case *FunctionCall:
+			displayName := displayFuncName(l.stripSysPrefix(event.FunctionName))
+
 			if event.FunctionName == "@__run" {
-				sb.WriteString("\n")
-				sb.WriteString(fmt.Sprintf("%sStart model, run for %s rounds\n", identLevel, event.Round))
-				sb.WriteString("-----------------------------------\n")
-				identLevel += "   "
+				if event.Type == "Entry" {
+					root.WriteString("\nInitialize model\n")
+					root.WriteString("-----------------------------------\n")
+					root.WriteString("\nStart model\n")
+					root.WriteString("-----------------------------------\n")
+				}
+				// @__run exit: nothing to flush — content was written directly to root
 				continue
 			}
 
@@ -848,96 +737,108 @@ func (l *Logger) String() string {
 				if event.Type == "Entry" {
 					chosen := l.synthChoice(event.FunctionName)
 					if chosen != "" {
-						sb.WriteString(fmt.Sprintf("%sFault chose %s (step %s)\n", identLevel, chosen, event.Round))
+						write(fmt.Sprintf("%sFault chose %s (step %s)\n", indent(), chosen, event.Round))
 					} else {
-						sb.WriteString(fmt.Sprintf("%sSynthesis step %s (unsatisfiable)\n", identLevel, event.Round))
+						write(fmt.Sprintf("%sSynthesis step %s (unsatisfiable)\n", indent(), event.Round))
 					}
-					identLevel += "   "
+					stack = append(stack, &frame{displayName: displayName})
+				} else {
+					flush()
 				}
-				if event.Type == "Exit" {
-					identLevel = identLevel[:len(identLevel)-3]
-				}
+				continue
+			}
+
+			// Internal block scopes (-%N suffix) are transparent: skip them.
+			if displayFuncName(event.FunctionName) != event.FunctionName {
 				continue
 			}
 
 			if event.Type == "Entry" {
-				sb.WriteString(fmt.Sprintf("%sRun function %s (round %s)\n", identLevel, event.FunctionName, event.Round))
-				identLevel += "   "
+				stack = append(stack, &frame{displayName: displayName})
+			} else {
+				flush()
 			}
 
-			if event.Type == "Exit" {
-				identLevel = identLevel[:len(identLevel)-3]
-			}
 		case *VariableUpdate:
-			// Skip internal solver variables
 			if l.IsInternalVariable(event.Variable) {
 				continue
 			}
-
 			v := getBase(event.Variable)
 			s, negated := l.IsNegated(v)
 			newValue := l.Results[event.Variable]
 			oldValue, hasOldValue := currentState[v]
 
-			// Show complementary state transitions
+			// When a state becomes true, emit implicit false transitions for
+			// other states in the same component that were previously true.
 			if newValue == "true" && newValue != oldValue {
-				complementary := findComplementaryStates(v, newValue)
-				for _, compVar := range complementary {
-					sb.WriteString(fmt.Sprintf("%s%s: true → false\n", identLevel, compVar))
-					currentState[compVar] = "false"
+				for _, comp := range complementaryStates(v) {
+					write(fmt.Sprintf("%s%s: true → false\n", indent(), l.stripSysPrefix(comp)))
+					currentState[comp] = "false"
 				}
 			}
-
-			// Update state
 			currentState[v] = newValue
 
-			if l.IsStringRule[s] == true {
+			displayV := l.stripSysPrefix(v)
+			if l.IsStringRule[s] {
 				s = l.StringRules[s]
 				if hasOldValue && oldValue != newValue {
 					if negated {
-						sb.WriteString(fmt.Sprintf("%s not %s: %s → %s\n", identLevel, s, oldValue, newValue))
+						write(fmt.Sprintf("%s not %s: %s → %s\n", indent(), s, oldValue, newValue))
 					} else {
-						sb.WriteString(fmt.Sprintf("%s %s: %s → %s\n", identLevel, s, oldValue, newValue))
+						write(fmt.Sprintf("%s %s: %s → %s\n", indent(), s, oldValue, newValue))
 					}
-				} else {
+				} else if !hasOldValue {
 					if negated {
-						sb.WriteString(fmt.Sprintf("%s not %s is %s\n", identLevel, s, newValue))
+						write(fmt.Sprintf("%s not %s is %s\n", indent(), s, newValue))
 					} else {
-						sb.WriteString(fmt.Sprintf("%s %s is %s\n", identLevel, s, newValue))
+						write(fmt.Sprintf("%s %s is %s\n", indent(), s, newValue))
 					}
 				}
 			} else {
-				if !hasOldValue {
-					sb.WriteString(fmt.Sprintf("%sSet variable %s to value %s\n", identLevel, v, newValue))
+				if !hasOldValue && newValue != "false" {
+					// Suppress first-time false: a variable being false for the
+					// first time is not an observable event in the trace.
+					write(fmt.Sprintf("%sSet variable %s to value %s\n", indent(), displayV, newValue))
 				} else if hasOldValue && oldValue != newValue {
-					sb.WriteString(fmt.Sprintf("%s%s: %s → %s\n", identLevel, v, oldValue, newValue))
-				} else {
-					sb.WriteString(fmt.Sprintf("%sVariable %s is still %s\n", identLevel, v, newValue))
+					write(fmt.Sprintf("%s%s: %s → %s\n", indent(), displayV, oldValue, newValue))
 				}
 			}
 
 		case *Solvable:
-			// Skip internal solver variables
 			if l.IsInternalVariable(event.Variable) {
 				continue
 			}
-
 			v := getBase(event.Variable)
 			newValue := l.Results[event.Variable]
-
 			if event.Type == "Uncertain" {
-				sb.WriteString(fmt.Sprintf("%sResolving variable %s to value %s (%s) \n", identLevel, v, newValue, event.Probability))
+				write(fmt.Sprintf("%sResolving variable %s to value %s (%s)\n", indent(), l.stripSysPrefix(v), newValue, event.Probability))
 			} else {
-				sb.WriteString(fmt.Sprintf("%sResolving variable %s to value %s\n", identLevel, v, newValue))
+				write(fmt.Sprintf("%sResolving variable %s to value %s\n", indent(), l.stripSysPrefix(v), newValue))
 			}
-
-			// Update state
 			currentState[v] = newValue
 
 		case *Message:
-			sb.WriteString(fmt.Sprintf("%s%s\n", identLevel, event.Text))
+			// Messages are encoding artifacts (e.g. "Stay in current state").
+			// They are not meaningful model events and are suppressed.
 		}
 	}
-	sb.WriteString("\n")
-	return sb.String()
+
+	// Insert the collected initial states
+	if len(initialStates) > 0 {
+		const model_run = "\nStart model\n-----------------------------------\n"
+		const model_init = "\nInitialize model\n-----------------------------------\n"
+		s := root.String()
+		if idx := strings.Index(s, model_init+model_run); idx >= 0 {
+			insertAt := idx + len(model_init)
+			root.Reset()
+			root.WriteString(s[:insertAt])
+			for _, line := range initialStates {
+				root.WriteString(line)
+			}
+			root.WriteString(s[insertAt:])
+		}
+	}
+
+	root.WriteString("\n")
+	return root.String()
 }

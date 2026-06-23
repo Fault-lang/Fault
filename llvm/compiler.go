@@ -8,6 +8,7 @@ import (
 	"fault/preprocess"
 	"fault/util"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os/exec"
 	"sort"
@@ -34,7 +35,17 @@ type RawInputs struct {
 	Uncertains map[string][]float64
 	Unknowns   []string
 	Wholes     []string
+	Params     []string
+	ParamTypes map[string]string // base name → SMT sort ("Real", "Int", "Bool")
 	Unfuncs    []*UnfuncInfo
+	// BoolVarNames is pre-computed by the generator from inferBoolVarNames before
+	// the run block is unrolled. It tells the unroll phase which variables should be
+	// treated as Bool in SMT so that stores of 1.0/0.0 are emitted as true/false.
+	BoolVarNames map[string]bool
+	// BoolUnknowns tracks variables declared as unknown(false) — Bool free variables.
+	// Unlike float unknowns (which use the 0x3DA3CA8CB153A753 sentinel), Bool unknowns
+	// also emit that sentinel (as a Double) but need to be declared with Bool sort.
+	BoolUnknowns map[string]bool
 	// IntegerMode is set by the generator optimization pass when every free numeric
 	// variable is whole(). In that mode the SMT logic switches to QF_NIA, whole vars
 	// are declared with Int sort, and is_int assertions are suppressed entirely.
@@ -52,8 +63,8 @@ type RawInputs struct {
 type UnfuncInfo struct {
 	StateKey string
 	Requires ast.Expression
-	Emits    ast.Expression
-	Assumes  []ast.Expression
+	Emits    []ast.Expression
+	Assumes  []ast.UnfuncAssume
 }
 
 func NewRawInputs() *RawInputs {
@@ -65,7 +76,11 @@ func NewRawInputs() *RawInputs {
 		Uncertains: make(map[string][]float64),
 		Unknowns:   []string{},
 		Wholes:     []string{},
-		Unfuncs:    []*UnfuncInfo{},
+		Params:     []string{},
+		ParamTypes:   make(map[string]string),
+		Unfuncs:      []*UnfuncInfo{},
+		BoolVarNames: make(map[string]bool),
+		BoolUnknowns: make(map[string]bool),
 	}
 }
 
@@ -149,9 +164,9 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, aliases map[string]string, testing bool) (*Compiler, error) {
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
-	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, aliases, testing)
+	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, params, aliases, testing)
 
 	err := compiler.Compile(tree)
 	if err != nil {
@@ -160,12 +175,13 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 	return compiler, nil
 }
 
-func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, aliases map[string]string, test bool) {
+func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, test bool) {
 
 	c.specStructs = structs
 	c.RawInputs.Unknowns = unknowns
 	c.RawInputs.Uncertains = uncertains
 	c.RawInputs.Wholes = wholes
+	c.RawInputs.Params = params
 	c.isTesting = test
 	c.Alias = aliases
 }
@@ -208,13 +224,13 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		}
 	}
 
-	panic("Fault found nothing to run. Missing run block")
+	panic(fmt.Sprintf("Fault found nothing to run. Missing run block %s", specfile.GetToken().Location()))
 }
 
 func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
 	specfile, ok := root.(*ast.Spec)
 	if !ok {
-		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T", root))
+		panic(fmt.Sprintf("spec file improperly formatted. Root node is %T %s", root, root.GetToken().Location()))
 	}
 
 	c.validate(specfile)
@@ -241,7 +257,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 						s := c.specs[rawid[0]]
 						c.StringRules[d.IdString()] = d.Value
 						s.DefineSpecType(rawid, value.Type())
-						c.globalVariable(rawid, value, d.Position())
+						c.globalVariable(rawid, value, d.GetToken().Location())
 					case *ast.InfixExpression:
 						if n.Value.TokenLiteral() == "COMPOUND_STRING" {
 							name := n.Name.IdString()
@@ -254,6 +270,15 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 							name := n.Name.IdString()
 							r := c.compileCompoundGlobal(name, n.Value.(*ast.InfixExpression))
 							c.storeGlobal(name, r)
+						}
+					default:
+						if n.TokenLiteral() == "GLOBAL" {
+							val := c.compileValue(n.Value)
+							rawid := n.Name.RawId()
+							s := c.specs[rawid[0]]
+							s.DefineSpecVar(rawid, val)
+							s.DefineSpecType(rawid, val.Type())
+							c.globalVariable(rawid, val, n.GetToken().Location())
 						}
 					}
 				}
@@ -294,8 +319,9 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					c.instanceChildOf[parent] = append(c.instanceChildOf[parent], key)
 					children, err := s.FetchInstanceStrMap(name, d.Parent[1], ty)
 					if err != nil {
-						panic(err)
+						panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
 					}
+
 					c.instanceChildren = util.MergeStringMaps(c.instanceChildren, children)
 				case *ast.ComponentLiteral:
 					//assembling component parts as params
@@ -303,7 +329,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					s := c.specStructs[id[0]]
 					branches, err := s.FetchComponent(id[1])
 					if err != nil {
-						panic(err)
+						panic(fmt.Sprintf("%s %s", err, n.GetToken().Location()))
 					}
 					params := c.generateParameters(d.Id(), branches, true)
 					c.sysGlobals = append(c.sysGlobals, params...)
@@ -312,7 +338,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			}
 		}
 	default:
-		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T", specfile.Statements[0]))
+		panic(fmt.Sprintf("spec file improperly formatted. Missing spec declaration, got %T %s", specfile.Statements[0], specfile.Statements[0].GetToken().Location()))
 	}
 
 	if !c.isImport { //Don't compile if the spec is being imported
@@ -327,14 +353,22 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			if err != nil {
 				panic(err)
 			}
-			c.compileAssert(a.(*ast.AssertionStatement))
+			stmt := a.(*ast.AssertionStatement)
+			if !c.assertionRefsActive(stmt.Constraint.Left) || !c.assertionRefsActive(stmt.Constraint.Right) {
+				continue
+			}
+			c.compileAssert(stmt)
 		}
 		for _, assert := range c.RawInputs.RawAssumes {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
 				panic(err)
 			}
-			c.compileAssert(a.(*ast.AssertionStatement))
+			stmt := a.(*ast.AssertionStatement)
+			if !c.assertionRefsActive(stmt.Constraint.Left) || !c.assertionRefsActive(stmt.Constraint.Right) {
+				continue
+			}
+			c.compileAssert(stmt)
 		}
 	}
 
@@ -367,7 +401,7 @@ func (c *Compiler) compile(node ast.Node) {
 			c.StringRules[v.Name.IdString()] = v.Value.String()
 			s.DefineSpecVar(rawid, value)
 			s.DefineSpecType(rawid, value.Type())
-			c.globalVariable(rawid, value, v.Position())
+			c.globalVariable(rawid, value, v.GetToken().Location())
 		case *ast.InfixExpression:
 			if v.Value.TokenLiteral() == "COMPOUND_STRING" {
 				name := v.Name.IdString()
@@ -380,6 +414,15 @@ func (c *Compiler) compile(node ast.Node) {
 				name := v.Name.IdString()
 				r := c.compileCompoundGlobal(name, v.Value.(*ast.InfixExpression))
 				c.storeGlobal(name, r)
+			}
+		default:
+			if v.TokenLiteral() == "GLOBAL" {
+				val := c.compileValue(v.Value)
+				rawid := v.Name.RawId()
+				s := c.specs[rawid[0]]
+				s.DefineSpecVar(rawid, val)
+				s.DefineSpecType(rawid, val.Type())
+				c.globalVariable(rawid, val, v.GetToken().Location())
 			}
 		}
 	case *ast.FunctionLiteral:
@@ -428,8 +471,7 @@ func (c *Compiler) compile(node ast.Node) {
 		c.contextFuncName = ""
 
 	default:
-		pos := node.Position()
-		panic(fmt.Sprintf("node type %T unimplemented line: %d col: %d", v, pos[0], pos[1]))
+		panic(fmt.Sprintf("node type %T unimplemented %s", v, node.GetToken().Location()))
 	}
 }
 
@@ -444,7 +486,7 @@ func (c *Compiler) compoundString(n ast.Expression) string {
 	case *ast.PrefixExpression:
 		return fmt.Sprintf("%s %s", util.PlainLangOp(v.Operator), c.compoundString(v.Right))
 	default:
-		panic(fmt.Sprintf("unknown compound string type %T", v))
+		panic(fmt.Sprintf("unknown compound string type %T %s", v, v.GetToken().Location()))
 	}
 }
 
@@ -452,7 +494,7 @@ func (c *Compiler) compileConstant(node *ast.ConstantStatement) {
 	value := c.compileValue(node.Value)
 	id := []string{c.currentSpec, node.Name.Value}
 	c.setConst(id, value)
-	c.globalVariable(id, value, node.Position())
+	c.globalVariable(id, value, node.GetToken().Location())
 }
 
 func (c *Compiler) setConst(rawid []string, val value.Value) {
@@ -471,7 +513,11 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		stock := def.Value.(*ast.StockLiteral)
 		c.structPropOrder[key] = stock.Order
 		if stock.Extends != nil {
-			parentKey := fmt.Sprintf("%s_%s", id[0], stock.Extends.Value)
+			extSpec := id[0]
+			if stock.Extends.Spec != "" {
+				extSpec = stock.Extends.Spec
+			}
+			parentKey := fmt.Sprintf("%s_%s", extSpec, stock.Extends.Value)
 			c.instances[key] = append(c.instances[key], parentKey)
 			c.instances[parentKey] = append(c.instances[parentKey], key)
 			c.instanceChildOf[parentKey] = append(c.instanceChildOf[parentKey], key)
@@ -491,7 +537,7 @@ func (c *Compiler) compileStruct(def *ast.DefStatement) {
 		n := strings.Join(rawid[1:], "_")
 		branches, err := s.Fetch(n, ty)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, def.GetToken().Location()))
 		}
 		params := c.generateParameters(instance.Id(), branches, false)
 		c.sysGlobals = append(c.sysGlobals, params...)
@@ -521,6 +567,13 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.Uncertain: //Set to dummy value for LLVM IR, catch during SMT generation
 		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	case *ast.Unknown:
+		// Bool unknowns use the same Double sentinel as float unknowns so that
+		// the generator can recognize them as free variables. Explicit bool
+		// values (true/false) remain as i1 and get asserted with their actual
+		// values. The unfunc coercion at store time handles i1→Double when
+		// writing back into a Double-typed alloca.
+		return constant.NewFloat(irtypes.Double, float64(0.000000000009))
+	case *ast.Param:
 		if v.TypeHint == "BOOL" {
 			return constant.NewInt(irtypes.I1, 0)
 		}
@@ -550,8 +603,7 @@ func (c *Compiler) compileValue(node ast.Node) value.Value {
 	case *ast.IndexExpression:
 		return c.compileIndex(v)
 	default:
-		pos := v.Position()
-		panic(fmt.Sprintf("unknown value type %T line: %d col: %d", v, pos[0], pos[1]))
+		panic(fmt.Sprintf("unknown value type %T %s", v, v.GetToken().Location()))
 	}
 	return nil
 }
@@ -568,7 +620,6 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 
 	id := node.Id()
 	parent := strings.Join(node.Parent, "_")
-	pos := node.Position()
 	children := make(map[string]string)
 
 	switch node.Type() {
@@ -577,7 +628,7 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	case "FLOW":
 		children = c.processStruct(node)
 	default:
-		panic(fmt.Sprintf("no stock or flow named %s, line: %d, col %d", id, pos[0], pos[1]))
+		panic(fmt.Sprintf("no stock or flow named %s %s", id, node.GetToken().Location()))
 	}
 	key := strings.Join(id, "_")
 	c.structPropOrder[key] = node.Order
@@ -597,7 +648,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 	spec := c.specStructs[id[0]]
 	tree, err := spec.FetchComponent(id[1])
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%s %s", err, node.GetToken().Location()))
 	}
 
 	for _, k := range node.Order {
@@ -695,7 +746,7 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 				} else {
 					s.DefineSpecType(rawid, val.Type())
 					s.DefineSpecVar(rawid, val)
-					c.allocVariable(rawid, val, []int{0, 0, 0, 0})
+					c.allocVariable(rawid, val, "")
 				}
 			}
 		}
@@ -719,7 +770,7 @@ func (c *Compiler) componentBool(rawid []string) value.Value {
 	if val != nil {
 		s.DefineSpecType(rawid, val.Type())
 		s.DefineSpecVar(rawid, val)
-		c.allocVariable(rawid, val, []int{0, 0, 0, 0})
+		c.allocVariable(rawid, val, "")
 	}
 	c.contextBlock = oldBlock
 	return val
@@ -738,15 +789,15 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 	case "FLOW":
 		branches, err = spec.FetchFlow(st)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, pc.GetToken().Location()))
 		}
 	case "STOCK":
 		branches, err = spec.FetchStock(st)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, pc.GetToken().Location()))
 		}
 	default:
-		panic(fmt.Sprintf("struct %s not found", id))
+		panic(fmt.Sprintf("struct %s not found %s", id, pc.GetToken().Location()))
 	}
 
 	if c.contextFuncName == "__run" &&
@@ -769,7 +820,7 @@ func (c *Compiler) compileParameterCall(pc *ast.ParameterCall) value.Value {
 		} else {
 			s.DefineSpecType(id, val.Type())
 			s.DefineSpecVar(id, val)
-			c.allocVariable(id, val, pc.Position())
+			c.allocVariable(id, val, pc.GetToken().Location())
 		}
 	}
 
@@ -835,7 +886,8 @@ func (c *Compiler) precompileAllFlowFunctions() {
 		}
 		funcKeys := make([]string, 0, len(branches))
 		for funcKey, node := range branches {
-			if _, isFunc := node.(*ast.FunctionLiteral); isFunc {
+			switch node.(type) {
+			case *ast.FunctionLiteral, *ast.UnfuncLiteral:
 				funcKeys = append(funcKeys, funcKey)
 			}
 		}
@@ -889,7 +941,7 @@ func (c *Compiler) compileStateActivation(s *ast.StateActivation) {
 
 		branch, err := c.specStructs[specName].FetchComponent(componentName)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("%s %s", err, pc.GetToken().Location()))
 		}
 
 		var rawid []string
@@ -899,7 +951,7 @@ func (c *Compiler) compileStateActivation(s *ast.StateActivation) {
 		case *ast.UnfuncLiteral:
 			rawid = node.RawId()
 		default:
-			panic(fmt.Errorf("component state %s.%s not valid", componentName, stateName))
+			panic(fmt.Sprintf("component state %s.%s not valid %s", componentName, stateName, pc.GetToken().Location()))
 		}
 
 		if c.isVarSet(rawid) && c.alloc {
@@ -1009,8 +1061,7 @@ func (c *Compiler) compileFunction(node ast.Node) value.Value {
 		return c.contextBlock.NewCall(c.builtIns[v.Function], params...)
 
 	default:
-		pos := node.Position()
-		panic(fmt.Sprintf("invalid expression %T in function body. line: %d, col:%d", node, pos[0], pos[1]))
+		panic(fmt.Sprintf("invalid expression %T in function body. %s", node, node.GetToken().Location()))
 	}
 	return nil
 }
@@ -1034,7 +1085,7 @@ func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
 		val = constant.NewFloat(irtypes.Double, float64(0.000000000009))
 	}
 	c.setConst(node.RawId(), val)
-	c.globalVariable(node.Id(), val, node.Position())
+	c.globalVariable(node.Id(), val, node.GetToken().Location())
 	return c.lookupIdent(node.Id(), node.Position())
 }
 
@@ -1087,7 +1138,6 @@ func (c *Compiler) compilePrefix(node *ast.PrefixExpression) value.Value {
 func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 	var s *spec
 	var id []string
-	pos := node.Position()
 
 	// if node.TokenLiteral() == "SWAP" {
 	// 	return c.compileSwap(node)
@@ -1140,7 +1190,7 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 			s.DefineSpecVar(id, r)
 			s.DefineSpecType(id, r.Type())
 			if c.alloc {
-				c.allocVariable(id, r, node.Left.Position())
+				c.allocVariable(id, r, node.Left.GetToken().Location())
 			}
 		}
 		return nil
@@ -1157,16 +1207,14 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		case *ast.Identifier:
 			rawId = n.RawId()
 		default:
-			pos := node.Position()
-			panic(fmt.Sprintf("cannot use <- or -> operator on a non-stock value col: %d, line: %d", pos[0], pos[1]))
+			panic(fmt.Sprintf("cannot use <- or -> operator on a non-stock value %s", node.GetToken().Location()))
 		}
-		pos := node.Left.Position()
 		id = c.AliasToBaseRaw(rawId)
 
 		s = c.specs[id[0]]
 
 		if !c.isVarSet(id) {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", strings.Join(id, "_"), pos[0], pos[1]))
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined %s", strings.Join(id, "_"), node.Left.GetToken().Location()))
 		}
 
 		if c.isConstant(id) {
@@ -1330,7 +1378,7 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 		return c.contextBlock.NewOr(l, r)
 
 	default:
-		panic(fmt.Sprintf("unknown operator %s. line: %d, col: %d", node.Operator, pos[0], pos[1]))
+		panic(fmt.Sprintf("unknown operator %s. %s", node.Operator, node.GetToken().Location()))
 	}
 }
 
@@ -1511,6 +1559,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	if a.Assume {
 		a.Constraint.Left = c.convertAssertVariables(a.Constraint.Left)
 		a.Constraint.Right = c.convertAssertVariables(a.Constraint.Right)
+		c.annotateAssertParam(a.Constraint.Left, a.Constraint.Right)
 		c.RawInputs.Assumes = append(c.RawInputs.Assumes, a)
 		return
 	}
@@ -1537,8 +1586,7 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 		r = a.Constraint.Right
 		a.TemporalFilter, a.TemporalN = negateTemporal(a.TemporalFilter, a.TemporalN)
 		if a.TemporalN < 0 {
-			pos := a.Position()
-			panic(fmt.Sprintf("temporal logic not value, filter searching for fewer than 0 states: line %d col %d", pos[0], pos[1]))
+			panic(fmt.Sprintf("temporal logic not value, filter searching for fewer than 0 states: %s", a.GetToken().Location()))
 		}
 	}
 	a.Constraint.Left = c.convertAssertVariables(l)
@@ -1558,13 +1606,14 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 	switch e := ex.(type) {
 	case *ast.InfixExpression:
-
 		e.Left = c.convertAssertVariables(e.Left)
 		e.Right = c.convertAssertVariables(e.Right)
+		// Annotate Param nodes with the opposing AssertVar instance name so
+		// the generator can emit the correct __PARAM_name__ placeholder.
+		c.annotateAssertParam(e.Left, e.Right)
 		return e
 	case *ast.Identifier:
 		id := c.AliasToBaseRaw(e.RawId())
-		pos := e.Position()
 		// Identifiers parsed from "specName.field" (where specName is also a struct
 		// definition) arrive as [spec, field]. Expand to [spec, spec, field] so that
 		// the normal 3-element lookup path applies.
@@ -1577,14 +1626,13 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		vname := strings.Join(id, "_")
 
 		if !c.isVarSetAssert(id) {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", vname, pos[0], pos[1]))
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined %s", vname, e.GetToken().Location()))
 		}
 
 		instas := c.fetchInstances(id)
 		if len(instas) == 0 {
 			if len(id) > 2 {
-				pos := e.Position()
-				panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (line: %d col: %d)", vname, pos[0], pos[1]))
+				panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (%s)", vname, e.GetToken().Location()))
 			}
 			instas = []string{vname}
 		}
@@ -1595,11 +1643,10 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		}
 	case *ast.ParameterCall:
 		id := c.AliasToBaseRaw(e.RawId())
-		pos := e.Position()
 		vname := strings.Join(id, "_")
 
 		if !c.isVarSetAssert(id) {
-			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined line: %d, col: %d", vname, pos[0], pos[1]))
+			panic(fmt.Sprintf("cannot send value to variable %s. Variable not defined %s", vname, e.GetToken().Location()))
 		}
 
 		var instas []string
@@ -1627,8 +1674,7 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		}
 
 		if len(instas) == 0 {
-			pos := e.Position()
-			panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (line: %d col: %d)", vname, pos[0], pos[1]))
+			panic(fmt.Sprintf("assertion references %s but no instance of it exists in the run block (%s)", vname, e.GetToken().Location()))
 		}
 		return &ast.AssertVar{
 			Token:        e.Token,
@@ -1654,6 +1700,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.Whole:
 		return e
+	case *ast.Param:
+		return e
 	case *ast.PrefixExpression:
 		e.Right = c.convertAssertVariables(e.Right)
 		return e
@@ -1663,8 +1711,51 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		e.Left = c.convertAssertVariables(e.Left)
 		return e
 	default:
-		pos := e.Position()
-		panic(fmt.Sprintf("illegal node %T in assert or assume line: %d, col: %d", e, pos[0], pos[1]))
+		panic(fmt.Sprintf("illegal node %T in assert or assume %s", e, e.GetToken().Location()))
+	}
+}
+
+// annotateAssertParam looks for Param nodes directly paired with an AssertVar
+// (either side of a constraint) and stamps ProcessedName onto the Param so
+// the SMT generator can emit the right __PARAM_name__ placeholder. It also
+// registers the param in RawInputs.Params/ParamTypes if not already present.
+func (c *Compiler) annotateAssertParam(left, right ast.Expression) {
+	annotate := func(p *ast.Param, av *ast.AssertVar) {
+		if len(p.ProcessedName) > 0 || len(av.Instances) == 0 {
+			return
+		}
+		base := av.Instances[0]
+		p.ProcessedName = strings.Split(base, "_")
+		sort := "Real"
+		switch p.TypeHint {
+		case "INT":
+			sort = "Int"
+		case "BOOL":
+			sort = "Bool"
+		}
+		// Register in RawInputs so ParamManifest() includes it.
+		// If already present (from a field declaration), update the type if we
+		// now have a more specific hint from the inline param() expression.
+		for _, existing := range c.RawInputs.Params {
+			if existing == base {
+				if sort != "Real" {
+					c.RawInputs.ParamTypes[base] = sort
+				}
+				return
+			}
+		}
+		c.RawInputs.Params = append(c.RawInputs.Params, base)
+		c.RawInputs.ParamTypes[base] = sort
+	}
+	if p, ok := right.(*ast.Param); ok {
+		if av, ok := left.(*ast.AssertVar); ok {
+			annotate(p, av)
+		}
+	}
+	if p, ok := left.(*ast.Param); ok {
+		if av, ok := right.(*ast.AssertVar); ok {
+			annotate(p, av)
+		}
 	}
 }
 
@@ -1697,7 +1788,8 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		fname = fname + "__state"
 	}
 
-	if c.RunRound >= 1 && c.specFunctions[fname] == nil { //initialize once, on first call
+	unfuncNode, isUnfuncStub := branch[rawId[len(rawId)-1]].(*ast.UnfuncLiteral)
+	if c.RunRound >= 1 && (c.specFunctions[fname] == nil || isUnfuncStub) { //initialize once, on first call
 		params := c.generateParameters(rawId, branch, component)
 		if component {
 			params = c.includeGlobalParams(params)
@@ -1710,8 +1802,64 @@ func (c *Compiler) processFunc(rawId []string, branch map[string]ast.Node, compo
 		c.contextFuncName = fname
 		c.contextBlock = f.NewBlock(name.Block())
 
-		val := c.compileValue(branch[rawId[len(rawId)-1]])
-		c.contextBlock.NewRet(val)
+		if isUnfuncStub {
+			// Emit stores for each emits clause so the synthesis unroller sees variable changes.
+			// Match by suffix: emit path [vote, GroupByMember] → look for param ending _vote_GroupByMember.
+			for _, emitItem := range unfuncNode.Emits {
+				var emitPath []string
+				var emitConst value.Value
+				switch e := emitItem.(type) {
+				case *ast.ParameterCall:
+					emitPath = e.Value
+					emitConst = constant.NewFloat(irtypes.Double, 1.0)
+				case *ast.InfixExpression:
+					if pc, ok := e.Left.(*ast.ParameterCall); ok {
+						emitPath = pc.Value
+					}
+					if b, ok := e.Right.(*ast.Boolean); ok {
+						if b.Value {
+							emitConst = constant.NewFloat(irtypes.Double, 1.0)
+						} else {
+							emitConst = constant.NewFloat(irtypes.Double, 0.0)
+						}
+					}
+				}
+				if len(emitPath) == 0 || emitConst == nil {
+					continue
+				}
+				suffix := "_" + strings.Join(emitPath, "_")
+				for _, p := range params {
+					if strings.HasSuffix(p.LocalIdent.LocalName, suffix) {
+						// Match the store type to the param's pointer element type.
+						var storeVal value.Value
+						if ptr, ok := p.Type().(*irtypes.PointerType); ok {
+							if ptr.ElemType == irtypes.I1 {
+								// Bool param: store i1
+								if f, ok2 := emitConst.(*constant.Float); ok2 {
+									if f.X.Cmp(new(big.Float).SetFloat64(0)) == 0 {
+										storeVal = constant.NewInt(irtypes.I1, 0)
+									} else {
+										storeVal = constant.NewInt(irtypes.I1, 1)
+									}
+								} else {
+									storeVal = emitConst
+								}
+							} else {
+								storeVal = emitConst
+							}
+						} else {
+							storeVal = emitConst
+						}
+						c.contextBlock.NewStore(storeVal, p)
+						break
+					}
+				}
+			}
+			c.contextBlock.NewRet(nil)
+		} else {
+			val := c.compileValue(branch[rawId[len(rawId)-1]])
+			c.contextBlock.NewRet(val)
+		}
 
 		c.contextBlock = oldBlock
 		c.contextFuncName = "__run"
@@ -1731,7 +1879,6 @@ func (c *Compiler) includeGlobalParams(params []*ir.Param) []*ir.Param {
 func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 	keys := node.Order
 	tree := node.Properties
-	pos := node.Position()
 	parentId := node.Id()
 	var s *spec
 	children := make(map[string]string)
@@ -1741,7 +1888,10 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 	for _, k := range keys {
 		var isUncertain []float64
 		var isUnknown bool
+		var isBoolUnknown bool
 		var isWhole bool
+		var isParam bool
+		var paramSort string
 		var id []string
 
 		switch pv := tree[k].Value.(type) {
@@ -1755,6 +1905,21 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			c.compileFunction(pv)
 			id = pv.Id()
 			funcs = append(funcs, id)
+		case *ast.UnfuncLiteral:
+			rawid := pv.RawId()
+			c.componentBool(rawid)
+
+			// Don't create an empty stub here — processFunc will create the proper
+			// version with full params and emit stores when precompileAllFlowFunctions runs.
+			c.RawInputs.Unfuncs = append(c.RawInputs.Unfuncs, &UnfuncInfo{
+				StateKey: pv.IdString(),
+				Requires: pv.Requires,
+				Emits:    pv.Emits,
+				Assumes:  pv.Assumes,
+			})
+
+			id = pv.Id()
+			funcs = append(funcs, id)
 		default:
 			if c.IsAlias(pv.(ast.Nameable).IdString()) {
 				continue
@@ -1764,12 +1929,24 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 				isUnknown = true
 				if u.TypeHint == "INT" {
 					isWhole = true
+				} else if u.TypeHint == "BOOL" {
+					isBoolUnknown = true
 				}
 			} else if uncertain, ok2 := pv.(*ast.Uncertain); ok2 {
 				isUncertain = []float64{uncertain.Mean, uncertain.Sigma, uncertain.K}
 			} else if _, ok3 := pv.(*ast.Whole); ok3 {
 				isUnknown = true // whole is a free variable like unknown
 				isWhole = true
+			} else if p, ok4 := pv.(*ast.Param); ok4 {
+				isParam = true
+				switch p.TypeHint {
+				case "INT":
+					paramSort = "Int"
+				case "BOOL":
+					paramSort = "Bool"
+				default:
+					paramSort = "Real"
+				}
 			}
 
 			id = pv.(ast.Nameable).Id()
@@ -1778,7 +1955,7 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 			s = c.specs[id[0]]
 			s.DefineSpecVar(id, val)
 			s.DefineSpecType(id, val.Type())
-			c.allocVariable(id, val, pos)
+			c.allocVariable(id, val, node.GetToken().Location())
 			vname := strings.Join(id, "_")
 			s.vars.ResetState(vname)
 			ty := s.GetPointerType(vname)
@@ -1793,11 +1970,18 @@ func (c *Compiler) processStruct(node *ast.StructInstance) map[string]string {
 		if isUnknown {
 			c.RawInputs.Unknowns = append(c.RawInputs.Unknowns, vname)
 		}
+		if isBoolUnknown {
+			c.RawInputs.BoolUnknowns[vname] = true
+		}
 		if isUncertain != nil {
 			c.RawInputs.Uncertains[vname] = isUncertain
 		}
 		if isWhole {
 			c.RawInputs.Wholes = append(c.RawInputs.Wholes, vname)
+		}
+		if isParam {
+			c.RawInputs.Params = append(c.RawInputs.Params, vname)
+			c.RawInputs.ParamTypes[vname] = paramSort
 		}
 		children[vname] = node.Parent[1]
 	}
@@ -2107,6 +2291,49 @@ func (c *Compiler) isInstance(id []string) bool {
 		}
 	}
 	return false
+}
+
+// assertionRefsActive returns true if every variable referenced in ex is defined
+// and (for component/stock/flow fields) has at least one active instance in the
+// run block. Returns false for any variable that is missing or has no instances,
+// so that assumes/asserts from imported fspecs are silently skipped when their
+// components are not instantiated in the importing spec.
+func (c *Compiler) assertionRefsActive(ex ast.Expression) bool {
+	switch e := ex.(type) {
+	case *ast.InfixExpression:
+		return c.assertionRefsActive(e.Left) && c.assertionRefsActive(e.Right)
+	case *ast.PrefixExpression:
+		return c.assertionRefsActive(e.Right)
+	case *ast.IndexExpression:
+		return c.assertionRefsActive(e.Left)
+	case *ast.Identifier:
+		id := c.AliasToBaseRaw(e.RawId())
+		if len(id) == 2 && !c.isVarSetAssert(id) {
+			expanded := []string{id[0], id[0], id[1]}
+			if c.isVarSetAssert(expanded) {
+				id = expanded
+			}
+		}
+		if !c.isVarSetAssert(id) {
+			return false
+		}
+		if len(id) > 2 {
+			return len(c.fetchInstances(id)) > 0
+		}
+		return true
+	case *ast.ParameterCall:
+		id := c.AliasToBaseRaw(e.RawId())
+		if !c.isVarSetAssert(id) {
+			return false
+		}
+		startKey := fmt.Sprintf("%s_%s", id[0], id[1])
+		if _, ok := c.instances[startKey]; ok {
+			return true
+		}
+		return len(c.fetchInstances(id)) > 0
+	default:
+		return true
+	}
 }
 
 func (c *Compiler) fetchInstances(id []string) []string {

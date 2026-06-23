@@ -574,7 +574,7 @@ func TestGeneratorToken(t *testing.T) {
 	stream.GetAllText()
 	tokens := stream.GetAllTokens()
 
-	token := GenerateToken("IMPORT_DECL", "IMPORT_DECL", tokens[0], tokens[0])
+	token := GenerateToken("IMPORT_DECL", "IMPORT_DECL", "testfile", tokens[0], tokens[0])
 	if token.Literal != "IMPORT_DECL" {
 		t.Fatalf("token literal not correct. got=%s", token.Literal)
 	}

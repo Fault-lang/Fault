@@ -20,7 +20,7 @@ func (c *Compiler) updateVariableStateName(id []string) string {
 	return fmt.Sprint(strings.Join(id, "_"), incr+1)
 }
 
-func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
+func (c *Compiler) allocVariable(id []string, val value.Value, loc string) {
 	name := strings.Join(id, "_")
 
 	var alloc *ir.InstAlloca
@@ -86,13 +86,13 @@ func (c *Compiler) allocVariable(id []string, val value.Value, pos []int) {
 	case *ir.Func:
 		return
 	default:
-		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
+		panic(fmt.Sprintf("unknown variable type %T %s", v, loc))
 	}
 
 	c.storeAllocation(name, id, alloc)
 }
 
-func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
+func (c *Compiler) globalVariable(id []string, val value.Value, loc string) {
 	name := c.updateVariableStateName(id)
 
 	switch v := val.(type) {
@@ -109,19 +109,19 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
 		c.storeGlobal(name, alloc)
 	case *ir.InstFAdd:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.InstFSub:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.InstFMul:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.InstFDiv:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.InstFRem:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.InstICmp:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.InstFCmp:
-		c.allocVariable(id, val, pos)
+		c.allocVariable(id, val, loc)
 	case *ir.Func:
 	case *ir.InstAnd:
 		placeholder := constant.NewAnd(v.X.(constant.Expression), v.Y.(constant.Expression))
@@ -132,7 +132,7 @@ func (c *Compiler) globalVariable(id []string, val value.Value, pos []int) {
 		alloc := c.module.NewGlobalDef(name, placeholder)
 		c.storeGlobal(name, alloc)
 	default:
-		panic(fmt.Sprintf("unknown variable type %T line: %d col: %d", v, pos[0], pos[1]))
+		panic(fmt.Sprintf("unknown variable type %T %s", v, loc))
 	}
 
 }

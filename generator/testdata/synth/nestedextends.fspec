@@ -1,0 +1,11 @@
+spec nestedextends;
+
+import "nestedimport.fspec";
+
+def level2 =  stock{
+    extends nestedimport.level1,
+};
+
+assert level2.b = true;
+
+run init{ l2 = new level2; } {}

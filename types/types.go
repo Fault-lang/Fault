@@ -29,6 +29,8 @@ type Checker struct {
 	temps        map[string]*ast.Type
 	Checked      *ast.Spec
 	Preprocesser *preprocess.Processor
+	lintMode     bool
+	errs         []error
 }
 
 func NewTypeChecker(Processer *preprocess.Processor) *Checker {
@@ -40,11 +42,44 @@ func NewTypeChecker(Processer *preprocess.Processor) *Checker {
 	}
 }
 
+// Errors returns all collected errors from a lint-mode run.
+func (c *Checker) Errors() []error {
+	return c.errs
+}
+
+// collect records a recoverable error in lint mode, or returns it for
+// immediate propagation in normal mode.
+func (c *Checker) collect(err error) error {
+	if err == nil {
+		return nil
+	}
+	if c.lintMode {
+		c.errs = append(c.errs, err)
+		return nil
+	}
+	return err
+}
+
 func Execute(tree *ast.Spec, processor *preprocess.Processor) (*Checker, error) {
 	ty := NewTypeChecker(processor)
 	tree, err := ty.Check(tree)
 	if err != nil {
 		return nil, err
+	}
+	ty.Checked = tree
+	return ty, nil
+}
+
+// ExecuteLint runs the type checker in lint mode, collecting all recoverable
+// errors rather than stopping at the first one. Returns the checker so the
+// caller can retrieve all errors via Errors().
+func ExecuteLint(tree *ast.Spec, processor *preprocess.Processor) (*Checker, error) {
+	ty := NewTypeChecker(processor)
+	ty.lintMode = true
+	tree, err := ty.Check(tree)
+	if err != nil {
+		// fatal error (e.g. nil node panic) — bail immediately
+		return ty, err
 	}
 	ty.Checked = tree
 	return ty, nil
@@ -78,10 +113,12 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		var st []ast.Statement
 		for _, v := range node.Statements {
 			tnode, err = c.typecheck(v)
-			if err != nil {
+			if err = c.collect(err); err != nil {
 				return node, err
 			}
-			st = append(st, tnode.(ast.Statement))
+			if tnode != nil {
+				st = append(st, tnode.(ast.Statement))
+			}
 		}
 		node.Statements = st
 		return node, err
@@ -135,18 +172,27 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 
 		if node.Extends != nil {
 			parentName := node.Extends.Value
-			parentFields, ferr := spec.FetchStock(parentName)
+			parentSpecName := node.Extends.Spec
+			if parentSpecName == "" {
+				parentSpecName = rawid[0]
+			}
+			parentSpec := c.SpecStructs[parentSpecName]
+			parentFields, ferr := parentSpec.FetchStock(parentName)
 			if ferr != nil {
-				return nil, fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())
+				if err = c.collect(fmt.Errorf("stock %s: extends %q but %s", node.IdString(), parentName, ferr.Error())); err != nil {
+					return nil, err
+				}
 			}
 
 			for _, excluded := range node.Excludes {
 				if _, ok := parentFields[excluded]; !ok {
-					return nil, fmt.Errorf("stock %s: cannot exclude field %q - not found in parent stock %q", node.IdString(), excluded, parentName)
+					if err = c.collect(fmt.Errorf("stock %s: cannot exclude field %q - not found in parent stock %q", node.IdString(), excluded, parentName)); err != nil {
+						return nil, err
+					}
 				}
 			}
 
-			parentKey := strings.Join([]string{rawid[0], parentName}, "_")
+			parentKey := strings.Join([]string{parentSpecName, parentName}, "_")
 			parentOrder := c.Preprocesser.StructsPropertyOrder[parentKey]
 
 			var inheritedOrder []string
@@ -184,11 +230,17 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			propid := node.GetPropertyIdent(key)
 			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
-			if err != nil {
+			if err = c.collect(err); err != nil {
 				return node, err
 			}
+			if tnode == nil {
+				continue
+			}
 			if _, ok := tnode.(*ast.FunctionLiteral); ok {
-				return nil, fmt.Errorf("stock %s: property %q cannot be a function; functions belong in flows", node.IdString(), key)
+				if err = c.collect(fmt.Errorf("stock %s: property %q cannot be a function; functions belong in flows", node.IdString(), key)); err != nil {
+					return nil, err
+				}
+				continue
 			}
 			node.Pairs[propid] = tnode.(ast.Expression)
 			name := append(rawid, key)
@@ -206,14 +258,20 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 			propid := node.GetPropertyIdent(key)
 			v := node.Pairs[propid]
 			tnode, err = c.typecheck(v)
-			if err != nil {
+			if err = c.collect(err); err != nil {
 				return node, err
 			}
+			if tnode == nil {
+				continue
+			}
 			switch tnode.(type) {
-			case *ast.FunctionLiteral, *ast.Instance, *ast.StructInstance:
-				// allowed: functions and stock references
+			case *ast.FunctionLiteral, *ast.Instance, *ast.StructInstance, *ast.UnfuncLiteral:
+				// allowed: functions, stock references, and unfuncs
 			default:
-				return nil, fmt.Errorf("flow %s: property %q must be a function or stock reference; use a stock to hold plain values", node.IdString(), key)
+				if err = c.collect(fmt.Errorf("flow %s: property %q must be a function or stock reference; use a stock to hold plain values", node.IdString(), key)); err != nil {
+					return nil, err
+				}
+				continue
 			}
 			node.Pairs[propid] = tnode.(ast.Expression)
 			name := append(rawid, key)
@@ -241,14 +299,24 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 
 		return node, err
 	case *ast.UnfuncLiteral:
-		if err = c.checkUnfuncExpr(node.Requires, "requires"); err != nil {
+		if err = c.collect(c.checkUnfuncExpr(node.Requires, "requires")); err != nil {
 			return node, err
 		}
-		if err = c.checkUnfuncExpr(node.Emits, "emits"); err != nil {
-			return node, err
+		seenEmitTargets := make(map[string]bool)
+		for _, e := range node.Emits {
+			if err = c.collect(c.checkUnfuncEmitItem(e)); err != nil {
+				return node, err
+			}
+			target := emitTargetKey(e)
+			if seenEmitTargets[target] {
+				if err = c.collect(fmt.Errorf("unfunc emits: duplicate target %q", target)); err != nil {
+					return node, err
+				}
+			}
+			seenEmitTargets[target] = true
 		}
 		for _, assume := range node.Assumes {
-			if err = c.checkUnfuncArithExpr(assume, "assume"); err != nil {
+			if err = c.collect(c.checkUnfuncArithExpr(assume.Expr, "assume")); err != nil {
 				return node, err
 			}
 		}
@@ -256,13 +324,15 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 	case *ast.AssertionStatement:
 		n, err := c.inferFunction(node.Constraint)
 		valtype := typeable(n)
-		if err != nil {
+		if err = c.collect(err); err != nil {
 			return node, err
 		}
-		if valtype.Type != "BOOL" {
-			return nil, fmt.Errorf("assert statement not testing a Boolean expression. got=%s", valtype.Type)
+		if valtype != nil && valtype.Type != "BOOL" {
+			if err = c.collect(fmt.Errorf("assert statement not testing a Boolean expression. got=%s", valtype.Type)); err != nil {
+				return nil, err
+			}
 		}
-		return node, err
+		return node, nil
 
 	case *ast.RunStatement:
 		if node.Inits != nil {
@@ -352,6 +422,8 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return c.infer(node)
 	case *ast.Whole:
 		return c.infer(node)
+	case *ast.Param:
+		return c.infer(node)
 	case *ast.PrefixExpression:
 		return c.inferFunction(node)
 	case *ast.InfixExpression:
@@ -414,6 +486,8 @@ func (c *Checker) isValue(exp interface{}) bool {
 		return true
 	case *ast.Whole:
 		return true
+	case *ast.Param:
+		return true
 	case *ast.Nil:
 		return true
 	case *ast.StockLiteral:
@@ -475,6 +549,20 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	case *ast.Unknown:
 		if node.InferredType == nil {
 			ty := "UNKNOWN"
+			switch node.TypeHint {
+			case "INT":
+				ty = "INT"
+			case "REAL":
+				ty = "FLOAT"
+			case "BOOL":
+				ty = "BOOL"
+			}
+			node.InferredType = &ast.Type{Type: ty, Scope: 0, Parameters: nil}
+		}
+		return node, nil
+	case *ast.Param:
+		if node.InferredType == nil {
+			ty := "PARAM"
 			switch node.TypeHint {
 			case "INT":
 				ty = "INT"
@@ -566,14 +654,13 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 	case *ast.This:
 		return node, nil
 	default:
-		pos := node.(ast.Node).Position()
-		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
+		n := node.(ast.Node)
+		return nil, fmt.Errorf("unrecognized type: %s got=%T", n.GetToken().Location(), node)
 	}
 }
 
 func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	var err error
-	pos := node.Position()
 
 	if t := typeable(node); t != nil {
 		return t, nil
@@ -622,7 +709,7 @@ func (c *Checker) LookupType(node ast.Node) (*ast.Type, error) {
 	}
 	v, err := spec.FetchVar(rawid, ty)
 	if err != nil {
-		return nil, fmt.Errorf("can't find node %s line:%d, col:%d", rawid, pos[0], pos[1])
+		return nil, fmt.Errorf("can't find node %s %s", rawid, node.GetToken().Location())
 	}
 
 	if v.TokenLiteral() == "COMPOUND_STRING" {
@@ -650,8 +737,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			typedNode, err := c.infer(body[0].(*ast.ExpressionStatement).Expression)
 			tn, ok := typedNode.(ast.Expression)
 			if !ok {
-				pos := typedNode.Position()
-				return nil, fmt.Errorf("node %T not an valid expression line: %d, col: %d", typedNode, pos[0], pos[1])
+				return nil, fmt.Errorf("node %T not an valid expression %s", typedNode, typedNode.GetToken().Location())
 			}
 			node.Body.Statements[0].(*ast.ExpressionStatement).Expression = tn
 			return node, err
@@ -793,8 +879,10 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		if COMPARE[node.Operator] {
 			if left != nil && right != nil {
 				if (left.Type == "BOOL" || right.Type == "BOOL") && left.Type != right.Type {
-					if left.Type != "STRING" && right.Type != "STRING" {
-						return nil, fmt.Errorf("invalid expression: got=%s %s %s", left.Type, node.Operator, right.Type)
+					// UNKNOWN and STRING are compatible with BOOL in comparisons
+					if left.Type != "STRING" && right.Type != "STRING" &&
+						left.Type != "UNKNOWN" && right.Type != "UNKNOWN" {
+						return nil, fmt.Errorf("invalid expression: got=%s %s %s %s", left.Type, node.Operator, right.Type, node.GetToken().Location())
 					}
 				}
 			}
@@ -932,8 +1020,8 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			Parameters: nil}
 		return node, err
 	default:
-		pos := node.(ast.Node).Position()
-		return nil, fmt.Errorf("unrecognized type: line %d col %d got=%T", pos[0], pos[1], node)
+		n := node.(ast.Node)
+		return nil, fmt.Errorf("unrecognized type: %s got=%T", n.GetToken().Location(), node)
 	}
 }
 
@@ -1070,7 +1158,7 @@ func (c *Checker) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
 	rawid := val.RawId()
 	node, err := c.Preprocesser.Partial(rawid[0], val)
 	if err != nil {
-		panic(fmt.Sprintf("failed to update process ids on swap %s", val.String()))
+		panic(fmt.Sprintf("failed to update process ids on swap %s %s", val.String(), val.GetToken().Location()))
 	}
 	return node.(*ast.StructInstance)
 }
@@ -1390,7 +1478,19 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	if err != nil {
 		fields, err = spec.FetchComponent(typeName)
 		if err != nil {
-			return fmt.Errorf("unfunc %s: stock or component %q not found", clause, typeName)
+			// Unfunc parameters inside flow definitions use the local variable name
+			// (e.g. "membership"), but the spec record stores it under the compound
+			// key "flowName_varName". Try looking up via the enclosing scope.
+			if pc.Scope != "" {
+				compoundKey := pc.Scope + "_" + typeName
+				fields, err = spec.FetchStock(compoundKey)
+				if err != nil {
+					fields, err = spec.FetchComponent(compoundKey)
+				}
+			}
+			if err != nil {
+				return fmt.Errorf("unfunc %s: stock or component %q not found", clause, typeName)
+			}
 		}
 	}
 
@@ -1401,6 +1501,59 @@ func (c *Checker) checkUnfuncFieldRef(pc *ast.ParameterCall, clause string) erro
 	return nil
 }
 
+// checkUnfuncEmitItem validates a single emits item:
+//   - bare ParameterCall (implicit true)
+//   - InfixExpression: paramCall = bool
+//   - InfixExpression: paramCall = arithExpr (field refs in RHS are validated)
+//   - InfixExpression: paramCall <- arithExpr  (desugared flow assignment)
+//   - InfixExpression: paramCall -> arithExpr  (desugared flow assignment)
+func (c *Checker) checkUnfuncEmitItem(expr ast.Expression) error {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return c.checkUnfuncFieldRef(e, "emits")
+	case *ast.Identifier:
+		// bare global variable reference (implicit true)
+		return nil
+	case *ast.InfixExpression:
+		if e.Operator != "=" && e.Operator != "<-" {
+			return fmt.Errorf("unfunc emits: expected assignment (= or <-), got %q", e.Operator)
+		}
+		switch lhs := e.Left.(type) {
+		case *ast.ParameterCall:
+			if err := c.checkUnfuncFieldRef(lhs, "emits"); err != nil {
+				return err
+			}
+		case *ast.Identifier:
+			// global variable target — valid, no struct-field lookup needed
+		default:
+			return fmt.Errorf("unfunc emits: left side of assignment must be a field or global reference, got %T", e.Left)
+		}
+		// RHS: bool literal or arithmetic expression (field refs validated)
+		switch e.Right.(type) {
+		case *ast.Boolean:
+			return nil
+		default:
+			return c.checkUnfuncArithExpr(e.Right, "emits")
+		}
+	default:
+		return fmt.Errorf("unfunc emits: unsupported expression type %T", expr)
+	}
+}
+
+// emitTargetKey returns a stable string key for the target field of an emit item,
+// used to detect duplicates. For bare paramCall it's the call string; for
+// assignments it's the LHS field string.
+func emitTargetKey(expr ast.Expression) string {
+	switch e := expr.(type) {
+	case *ast.ParameterCall:
+		return e.String()
+	case *ast.InfixExpression:
+		return e.Left.String()
+	default:
+		return expr.String()
+	}
+}
+
 // checkUnfuncArithExpr validates an assume clause expression tree.
 // The top-level must be an InfixExpression with operator "=" whose LHS is a
 // ParameterCall (the produced field). RHS may contain ParameterCalls and
@@ -1409,6 +1562,10 @@ func (c *Checker) checkUnfuncArithExpr(expr ast.Expression, clause string) error
 	switch e := expr.(type) {
 	case *ast.ParameterCall:
 		return c.checkUnfuncFieldRef(e, clause)
+	case *ast.Identifier:
+		// Bare identifier references a spec-level global variable — valid in arith expressions.
+		_ = e
+		return nil
 	case *ast.IntegerLiteral, *ast.FloatLiteral:
 		return nil
 	case *ast.InfixExpression:
@@ -1446,6 +1603,8 @@ func typeable(node ast.Node) *ast.Type {
 	case *ast.Unknown:
 		return n.InferredType
 	case *ast.Whole:
+		return n.InferredType
+	case *ast.Param:
 		return n.InferredType
 	case *ast.PrefixExpression:
 		return n.InferredType

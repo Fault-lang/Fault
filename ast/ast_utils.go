@@ -7,11 +7,12 @@ import (
 	"github.com/antlr4-go/antlr/v4"
 )
 
-func GenerateToken(token string, literal string, start antlr.Token, stop antlr.Token) Token {
+func GenerateToken(token string, literal string, file string, start antlr.Token, stop antlr.Token) Token {
 	if start == nil || stop == nil { // The leave BuiltIn is artificially inserted and has no antlr tokens
 		return Token{
 			Type:    TokenType(token),
 			Literal: literal,
+			File:    file,
 			Position: []int{0,
 				0,
 				0,
@@ -23,6 +24,7 @@ func GenerateToken(token string, literal string, start antlr.Token, stop antlr.T
 	return Token{
 		Type:    TokenType(token),
 		Literal: literal,
+		File:    file,
 		Position: []int{start.GetLine(),
 			start.GetColumn(),
 			stop.GetLine(),

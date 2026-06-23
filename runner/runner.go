@@ -47,7 +47,7 @@ type ProgressUpdate struct {
 
 type CompilationConfig struct {
 	Filepath             string
-	Mode                 string // ast, ir, smt, model
+	Mode                 string // ast, ir, smt, template, model
 	Input                string // fault, ll, smt2
 	Output               string // text, smt
 	Reach                bool
@@ -63,6 +63,7 @@ type PendingModelCheck struct {
 	Uncertains map[string][]float64
 	Unknowns   []string
 	Asserts    []*ast.AssertionStatement
+	HasSynth   bool // true when the run block contains synthesis slots (__)
 	ResultLog  *scenario.Logger
 }
 
@@ -72,6 +73,7 @@ type CompilationOutput struct {
 	Warnings      []string
 	Message       string
 	SMT           string
+	ParamManifest map[string]string // non-nil when Mode == "template"
 	AST           *ast.Spec
 	IR            string
 	Error         error
@@ -259,6 +261,78 @@ func (r *Runner) probability(smt string, uncertains map[string][]float64, unknow
 	return ex, nil
 }
 
+// synthProbability solves a synthesis problem using iterative deepening to find
+// the shortest valid operation sequence. It tries k=1,2,...,n non-noop steps and
+// returns the first satisfying result, ensuring the minimal solution is returned.
+func (r *Runner) synthProbability(smt string, uncertains map[string][]float64, unknowns []string) (*execute.ModelChecker, error) {
+	noopSelectors := findNoopSelectors(smt)
+	n := len(noopSelectors)
+	if n == 0 {
+		return r.probability(smt, uncertains, unknowns)
+	}
+
+	ex, err := execute.NewModelChecker()
+	if err != nil {
+		return nil, err
+	}
+	ex.LoadModel(smt, uncertains, unknowns)
+
+	for k := 1; k <= n; k++ {
+		extra := buildMinStepAsserts(noopSelectors, n-k)
+		ok, err := ex.CheckWithAsserts(extra)
+		if err != nil {
+			return nil, fmt.Errorf("model checker has failed: %s", err)
+		}
+		if ok {
+			err = ex.SolveWithAsserts(extra)
+			if err != nil {
+				return nil, fmt.Errorf("error found fetching solution from solver: %s", err)
+			}
+			return ex, nil
+		}
+	}
+
+	ex.NoSat = true
+	return ex, nil
+}
+
+// findNoopSelectors scans the SMT formula for noop candidate selector variable
+// declarations. These are Bool variables named synth_N___noop___N that the
+// synthesis unpacker emits for each step's noop candidate.
+func findNoopSelectors(smt string) []string {
+	var selectors []string
+	for _, line := range strings.Split(smt, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "(declare-fun") && strings.Contains(trimmed, "___noop___") {
+			parts := strings.Fields(trimmed)
+			if len(parts) >= 2 {
+				selectors = append(selectors, parts[1])
+			}
+		}
+	}
+	return selectors
+}
+
+// buildMinStepAsserts returns an SMT assertion requiring at least minNoops of the
+// given noop selectors to be true, which limits the solver to at most
+// len(noopSelectors)-minNoops non-noop steps.
+func buildMinStepAsserts(noopSelectors []string, minNoops int) []string {
+	if minNoops <= 0 {
+		return nil
+	}
+	var terms []string
+	for _, sel := range noopSelectors {
+		terms = append(terms, fmt.Sprintf("(ite %s 1 0)", sel))
+	}
+	var sum string
+	if len(terms) == 1 {
+		sum = terms[0]
+	} else {
+		sum = "(+ " + strings.Join(terms, " ") + ")"
+	}
+	return []string{fmt.Sprintf("(assert (>= %s %d))", sum, minNoops)}
+}
+
 func (r *Runner) Run() *CompilationOutput {
 	output := &CompilationOutput{}
 
@@ -308,7 +382,7 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 
 		r.sendProgress(PhaseLLVM, "Generating LLVM IR...", 0.42, false)
-		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, alias, false)
 		if err != nil {
 			r.sendError(PhaseLLVM, err)
 			output.Error = err
@@ -324,15 +398,30 @@ func (r *Runner) Run() *CompilationOutput {
 			return output
 		}
 
+		if len(compiler.RawInputs.Params) > 0 && r.config.Mode != "template" && r.config.Mode != "ir" {
+			err := fmt.Errorf("spec contains param() fields but mode is %q — param() fields produce __PARAM_...__ placeholder tokens that Z3 cannot parse; use --mode=template to generate a substitutable SMT template", r.config.Mode)
+			r.sendError(PhaseSMT, err)
+			output.Error = err
+			output.ErrorPhase = PhaseSMT
+			return output
+		}
+
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
 		g := generator.Execute(compiler, generator.GeneratorOptions{
 			Timeout:       r.config.SMTTimeout,
 			MemoryMaxSize: r.config.SMTMemoryMaxSize,
 		})
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
+		output.Warnings = append(output.Warnings, g.GetWarnings()...)
 
 		if r.config.Mode == "smt" {
 			output.SMT = g.SMT()
+			return output
+		}
+
+		if r.config.Mode == "template" {
+			output.SMT = g.SMT()
+			output.ParamManifest = g.ParamManifest()
 			return output
 		}
 
@@ -365,6 +454,7 @@ func (r *Runner) Run() *CompilationOutput {
 					Uncertains: uncertains,
 					Unknowns:   unknowns,
 					Asserts:    compiler.RawInputs.Asserts,
+					HasSynth:   hasSolvableSteps(tree),
 					ResultLog:  g.ResultLog,
 				}
 				return output
@@ -388,7 +478,12 @@ func (r *Runner) Run() *CompilationOutput {
 		// Default output is "text" with full model checking
 		r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
 		r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
-		mc, err := r.probability(smt, uncertains, unknowns)
+		var mc *execute.ModelChecker
+		if hasSolvableSteps(tree) {
+			mc, err = r.synthProbability(smt, uncertains, unknowns)
+		} else {
+			mc, err = r.probability(smt, uncertains, unknowns)
+		}
 		if err != nil {
 			r.sendError(PhaseModelChecking, err)
 			output.Error = err
@@ -398,12 +493,14 @@ func (r *Runner) Run() *CompilationOutput {
 		r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
 		r.sendProgress(PhaseResults, "Processing results...", 0.85, false)
 		if mc.NoSat {
-			r.sendProgress(PhaseResults, "Fault could not find a failure case. All good!", 1.0, true)
-			output.Message = "Fault could not find a failure case. All good!"
+			msg := noSatMessage(compiler.RawInputs.Asserts, hasSolvableSteps(tree))
+			r.sendProgress(PhaseResults, msg, 1.0, true)
+			output.Message = msg
 			return output
 		}
 		mc.EvaluateViolations(compiler.RawInputs.Asserts)
 		output.Asserts = compiler.RawInputs.Asserts
+		g.ResultLog.SystemName = systemName(tree)
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Validate()
@@ -471,7 +568,13 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 
 	r.sendProgress(PhaseModelChecking, "Running model checker...", 0.70, false)
 	r.sendProgress(PhaseModelChecking, "Checking satisfiability...", 0.75, false)
-	mc, err := r.probability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	var mc *execute.ModelChecker
+	var err error
+	if pending.HasSynth {
+		mc, err = r.synthProbability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	} else {
+		mc, err = r.probability(pending.SMT, pending.Uncertains, pending.Unknowns)
+	}
 	if err != nil {
 		r.sendError(PhaseModelChecking, err)
 		output.Error = err
@@ -481,8 +584,9 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 	r.sendProgress(PhaseModelChecking, "Model checking complete", 0.85, true)
 	r.sendProgress(PhaseResults, "Processing results...", 0.85, false)
 	if mc.NoSat {
-		r.sendProgress(PhaseResults, "Fault could not find a failure case. All good!", 1.0, true)
-		output.Message = "Fault could not find a failure case. All good!"
+		msg := noSatMessage(pending.Asserts, pending.HasSynth)
+		r.sendProgress(PhaseResults, msg, 1.0, true)
+		output.Message = msg
 		return output
 	}
 	mc.EvaluateViolations(pending.Asserts)
@@ -494,4 +598,54 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 	r.sendProgress(PhaseResults, "Results ready", 1.0, true)
 	output.ResultLog = pending.ResultLog
 	return output
+}
+
+// systemName extracts the spec or system name from the top-level AST declaration.
+func systemName(tree *ast.Spec) string {
+	for _, stmt := range tree.Statements {
+		switch s := stmt.(type) {
+		case *ast.SpecDeclStatement:
+			return s.Name.Value
+		case *ast.SysDeclStatement:
+			return s.Name.Value
+		}
+	}
+	return ""
+}
+
+// hasSolvableSteps reports whether the spec's run block contains any synthesis
+// slots (__), indicating the user wants program synthesis rather than verification.
+func hasSolvableSteps(tree *ast.Spec) bool {
+	for _, stmt := range tree.Statements {
+		rs, ok := stmt.(*ast.RunStatement)
+		if !ok {
+			continue
+		}
+		for _, step := range rs.Steps {
+			if _, ok := step.(*ast.SolvableStep); ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// noSatMessage returns the appropriate user-facing message when the solver
+// returns unsat, based on whether the spec is in verification, synthesis, or
+// simulation mode.
+//
+//   - Verification (has assert statements): unsat means no assertion is ever
+//     violated — the model is correct.
+//   - Synthesis (has __ slots, no asserts): unsat means no combination of
+//     operations can satisfy all the assume constraints.
+//   - Simulation (only assumes, no __ and no asserts): unsat means the assume
+//     constraints are mutually contradictory.
+func noSatMessage(asserts []*ast.AssertionStatement, hasSynth bool) string {
+	if hasSynth {
+		return "Fault could not find a valid operation sequence that satisfies all constraints."
+	}
+	if len(asserts) > 0 {
+		return "Fault could not find a failure case. All good!"
+	}
+	return "Fault could not find a satisfying model. The assume constraints may be contradictory."
 }

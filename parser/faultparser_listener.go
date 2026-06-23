@@ -77,6 +77,9 @@ type FaultParserListener interface {
 	// EnterPropFunc is called when entering the PropFunc production.
 	EnterPropFunc(c *PropFuncContext)
 
+	// EnterPropUnfunc is called when entering the PropUnfunc production.
+	EnterPropUnfunc(c *PropUnfuncContext)
+
 	// EnterSfMisc is called when entering the sfMisc production.
 	EnterSfMisc(c *SfMiscContext)
 
@@ -305,14 +308,29 @@ type FaultParserListener interface {
 	// EnterEmitsClause is called when entering the emitsClause production.
 	EnterEmitsClause(c *EmitsClauseContext)
 
-	// EnterAssumeClause is called when entering the assumeClause production.
-	EnterAssumeClause(c *AssumeClauseContext)
+	// EnterEmitTargetParam is called when entering the EmitTargetParam production.
+	EnterEmitTargetParam(c *EmitTargetParamContext)
+
+	// EnterEmitTargetIdent is called when entering the EmitTargetIdent production.
+	EnterEmitTargetIdent(c *EmitTargetIdentContext)
+
+	// EnterEmitNegation is called when entering the EmitNegation production.
+	EnterEmitNegation(c *EmitNegationContext)
+
+	// EnterEmitBoolAssign is called when entering the EmitBoolAssign production.
+	EnterEmitBoolAssign(c *EmitBoolAssignContext)
+
+	// EnterEmitArithAssign is called when entering the EmitArithAssign production.
+	EnterEmitArithAssign(c *EmitArithAssignContext)
+
+	// EnterEmitFlowAssign is called when entering the EmitFlowAssign production.
+	EnterEmitFlowAssign(c *EmitFlowAssignContext)
+
+	// EnterEmitBare is called when entering the EmitBare production.
+	EnterEmitBare(c *EmitBareContext)
 
 	// EnterUnfuncExpr is called when entering the unfuncExpr production.
 	EnterUnfuncExpr(c *UnfuncExprContext)
-
-	// EnterUnfuncAssumeExpr is called when entering the unfuncAssumeExpr production.
-	EnterUnfuncAssumeExpr(c *UnfuncAssumeExprContext)
 
 	// EnterUnfuncArithExpr is called when entering the unfuncArithExpr production.
 	EnterUnfuncArithExpr(c *UnfuncArithExprContext)
@@ -388,6 +406,9 @@ type FaultParserListener interface {
 
 	// ExitPropFunc is called when exiting the PropFunc production.
 	ExitPropFunc(c *PropFuncContext)
+
+	// ExitPropUnfunc is called when exiting the PropUnfunc production.
+	ExitPropUnfunc(c *PropUnfuncContext)
 
 	// ExitSfMisc is called when exiting the sfMisc production.
 	ExitSfMisc(c *SfMiscContext)
@@ -617,14 +638,29 @@ type FaultParserListener interface {
 	// ExitEmitsClause is called when exiting the emitsClause production.
 	ExitEmitsClause(c *EmitsClauseContext)
 
-	// ExitAssumeClause is called when exiting the assumeClause production.
-	ExitAssumeClause(c *AssumeClauseContext)
+	// ExitEmitTargetParam is called when exiting the EmitTargetParam production.
+	ExitEmitTargetParam(c *EmitTargetParamContext)
+
+	// ExitEmitTargetIdent is called when exiting the EmitTargetIdent production.
+	ExitEmitTargetIdent(c *EmitTargetIdentContext)
+
+	// ExitEmitNegation is called when exiting the EmitNegation production.
+	ExitEmitNegation(c *EmitNegationContext)
+
+	// ExitEmitBoolAssign is called when exiting the EmitBoolAssign production.
+	ExitEmitBoolAssign(c *EmitBoolAssignContext)
+
+	// ExitEmitArithAssign is called when exiting the EmitArithAssign production.
+	ExitEmitArithAssign(c *EmitArithAssignContext)
+
+	// ExitEmitFlowAssign is called when exiting the EmitFlowAssign production.
+	ExitEmitFlowAssign(c *EmitFlowAssignContext)
+
+	// ExitEmitBare is called when exiting the EmitBare production.
+	ExitEmitBare(c *EmitBareContext)
 
 	// ExitUnfuncExpr is called when exiting the unfuncExpr production.
 	ExitUnfuncExpr(c *UnfuncExprContext)
-
-	// ExitUnfuncAssumeExpr is called when exiting the unfuncAssumeExpr production.
-	ExitUnfuncAssumeExpr(c *UnfuncAssumeExprContext)
 
 	// ExitUnfuncArithExpr is called when exiting the unfuncArithExpr production.
 	ExitUnfuncArithExpr(c *UnfuncArithExprContext)

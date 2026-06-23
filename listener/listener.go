@@ -25,9 +25,12 @@ type FaultListener struct {
 	Uncertains           map[string][]float64
 	Unknowns             []string
 	Wholes               []string
+	Params               []string
+	inFuncBody           int
 	StructsPropertyOrder map[string][]string
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node
+	pendingExtends       *ast.Identifier
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
@@ -40,6 +43,11 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 		instances:            make(map[string]*ast.Instance),
 		swaps:                make(map[string][]ast.Node),
 	}
+}
+
+// loc returns a formatted "file:line:col" string for error messages.
+func (l *FaultListener) loc(tok antlr.Token) string {
+	return fmt.Sprintf("%s:%d:%d", l.currSpec, tok.GetLine(), tok.GetColumn())
 }
 
 // Enter rules --> Validation
@@ -76,8 +84,13 @@ func (l *FaultListener) validate() {
 		return
 	}
 
+	spec := l.currSpec
+	if spec == "" {
+		spec = l.Path
+	}
+
 	if len(l.stack) < 2 {
-		panic(fmt.Sprintf("Malformed fspec or fsystem file. Too few statements (got %d).", len(l.stack)))
+		panic(fmt.Sprintf("Malformed fspec or fsystem file %q. Too few statements (got %d).", spec, len(l.stack)))
 	}
 
 	for _, v := range l.stack {
@@ -100,7 +113,7 @@ func (l *FaultListener) validate() {
 		}
 	}
 
-	panic("Malformed fspec or fsystem file. No model possible.")
+	panic(fmt.Sprintf("Malformed fspec or fsystem file %q. No model possible.", spec))
 }
 
 func (l *FaultListener) push(n ast.Node) {

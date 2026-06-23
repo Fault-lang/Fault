@@ -58,6 +58,7 @@ declaration
     | assertion
     | assumption
     | stringDecl
+    | globalDecl
     ;
 
 constDecl
@@ -113,8 +114,9 @@ structType
 
 sfProperties
     : IDENT ':' functionLit #PropFunc
+    | IDENT ':' unfuncLit   #PropUnfunc
     | structProperties      #sfMisc
-    | EXTENDS IDENT         #PropExtends
+    | EXTENDS operandName   #PropExtends
     | EXCLUDE IDENT         #PropExclude
     ;
 
@@ -282,6 +284,7 @@ faultType
     | TY_UNCERTAIN
     | TY_UNKNOWN
     | TY_WHOLE
+    | TY_PARAM
     ;
 
 solvable
@@ -376,9 +379,21 @@ unfuncBlock
     ;
 
 unfuncClause
-    : REQUIRES unfuncExpr      #requiresClause
-    | EMITS unfuncExpr         #emitsClause
-    | ASSUME unfuncAssumeExpr  #assumeClause
+    : REQUIRES unfuncExpr                                          #requiresClause
+    | EMITS unfuncEmitExpr (',' unfuncEmitExpr)* ','?              #emitsClause
+    ;
+
+emitTarget
+    : paramCall   #EmitTargetParam
+    | IDENT       #EmitTargetIdent
+    ;
+
+unfuncEmitExpr
+    : '!' emitTarget                              #EmitNegation
+    | emitTarget '=' bool_                        #EmitBoolAssign
+    | emitTarget '=' unfuncArithExpr              #EmitArithAssign
+    | emitTarget ('<-' | '->') unfuncArithExpr    #EmitFlowAssign
+    | emitTarget                                  #EmitBare
     ;
 
 unfuncExpr
@@ -387,10 +402,7 @@ unfuncExpr
     | '!' unfuncExpr
     | '(' unfuncExpr ')'
     | paramCall
-    ;
-
-unfuncAssumeExpr
-    : paramCall '=' unfuncArithExpr
+    | IDENT
     ;
 
 unfuncArithExpr
@@ -399,6 +411,7 @@ unfuncArithExpr
     | '(' unfuncArithExpr ')'
     | paramCall
     | numeric
+    | IDENT
     ;
 
 eos

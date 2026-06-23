@@ -1,0 +1,10 @@
+spec nestedimport;
+
+def generic = stock{
+    a: true,
+    b: false,
+};
+
+def level1 = stock{
+    extends generic,
+};

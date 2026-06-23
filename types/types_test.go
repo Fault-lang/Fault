@@ -4,6 +4,7 @@ import (
 	"fault/ast"
 	"fault/listener"
 	"fault/preprocess"
+	"strings"
 	"testing"
 )
 
@@ -119,7 +120,7 @@ func TestInstanceError(t *testing.T) {
 	`
 	_, err := prepTest(test, true)
 
-	actual := "can't find node [test1 fizz buzz] line:9, col:5"
+	actual := "can't find node [test1 fizz buzz] test1:9:5"
 
 	if err.Error() != actual {
 		t.Fatalf("Type checking failed to catch invalid expression. got=%s", err)
@@ -1038,7 +1039,7 @@ func TestUnfuncValidFields(t *testing.T) {
 	c := makeUnfuncChecker("name", "id")
 	uf := &ast.UnfuncLiteral{
 		Requires: paramCall("generic", "name"),
-		Emits:    paramCall("generic", "id"),
+		Emits:    []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err != nil {
@@ -1050,7 +1051,7 @@ func TestUnfuncUnknownStock(t *testing.T) {
 	c := makeUnfuncChecker("name", "id")
 	uf := &ast.UnfuncLiteral{
 		Requires: paramCall("doesNotExist", "name"),
-		Emits:    paramCall("generic", "id"),
+		Emits:    []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err == nil {
@@ -1062,7 +1063,7 @@ func TestUnfuncUnknownField(t *testing.T) {
 	c := makeUnfuncChecker("name", "id")
 	uf := &ast.UnfuncLiteral{
 		Requires: paramCall("generic", "name"),
-		Emits:    paramCall("generic", "nonexistent"),
+		Emits:    []ast.Expression{paramCall("generic", "nonexistent")},
 	}
 	_, err := c.typecheck(uf)
 	if err == nil {
@@ -1079,7 +1080,7 @@ func TestUnfuncCompoundRequiresValid(t *testing.T) {
 			Operator: "&&",
 			Right:    paramCall("generic", "joinId"),
 		},
-		Emits: paramCall("generic", "id"),
+		Emits: []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err != nil {
@@ -1097,11 +1098,229 @@ func TestUnfuncCompoundRequiresInvalidField(t *testing.T) {
 			Operator: "&&",
 			Right:    paramCall("generic", "joinId"),
 		},
-		Emits: paramCall("generic", "id"),
+		Emits: []ast.Expression{paramCall("generic", "id")},
 	}
 	_, err := c.typecheck(uf)
 	if err == nil {
 		t.Fatal("type checking should have caught missing field in compound requires")
+	}
+}
+
+func TestEmitArithRHSValid(t *testing.T) {
+	c := makeUnfuncChecker("id", "count")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "count"),
+		Operator: "+",
+		Right:    &ast.IntegerLiteral{Value: 1},
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "count"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on valid arithmetic emit: %s", err)
+	}
+}
+
+func TestEmitArithRHSUnknownField(t *testing.T) {
+	c := makeUnfuncChecker("id", "count")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "nonexistent"),
+		Operator: "+",
+		Right:    &ast.IntegerLiteral{Value: 1},
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "count"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught unknown field in emit RHS")
+	}
+}
+
+func TestEmitDuplicateTarget(t *testing.T) {
+	c := makeUnfuncChecker("id", "count")
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits: []ast.Expression{
+			paramCall("generic", "count"),
+			paramCall("generic", "count"),
+		},
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught duplicate emit target")
+	}
+	if !strings.Contains(err.Error(), "duplicate target") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}
+
+func TestUnfuncNoRequires(t *testing.T) {
+	// Requires == nil should pass type checking without error.
+	c := makeUnfuncChecker("id")
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{paramCall("generic", "id")},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking should pass with nil Requires, got: %s", err)
+	}
+}
+
+func TestEmitLiteralAssignValid(t *testing.T) {
+	// emits stock.x = 5 — literal RHS should pass type checking.
+	c := makeUnfuncChecker("id", "count")
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "count"),
+		Operator: "=",
+		Right:    &ast.IntegerLiteral{Value: 5},
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: paramCall("generic", "id"),
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on literal emit RHS: %s", err)
+	}
+}
+
+func TestEmitFieldToFieldValid(t *testing.T) {
+	// emits stock.dst = stock.src — field-to-field should pass type checking.
+	c := makeUnfuncChecker("src", "dst")
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "dst"),
+		Operator: "=",
+		Right:    paramCall("generic", "src"),
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on field-to-field emit: %s", err)
+	}
+}
+
+func TestEmitFieldArithmeticValid(t *testing.T) {
+	// emits stock.result = stock.a + stock.b — two field operands.
+	c := makeUnfuncChecker("a", "b", "result")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "a"),
+		Operator: "+",
+		Right:    paramCall("generic", "b"),
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "result"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on two-field arithmetic emit: %s", err)
+	}
+}
+
+func TestEmitFieldArithmeticUnknownField(t *testing.T) {
+	// emits stock.result = stock.a + stock.nonexistent — should fail.
+	c := makeUnfuncChecker("a", "result")
+	rhs := &ast.InfixExpression{
+		Token:    ast.Token{Type: "PLUS", Literal: "+"},
+		Left:     paramCall("generic", "a"),
+		Operator: "+",
+		Right:    paramCall("generic", "nonexistent"),
+	}
+	assign := &ast.InfixExpression{
+		Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+		Left:     paramCall("generic", "result"),
+		Operator: "=",
+		Right:    rhs,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{assign},
+	}
+	_, err := c.typecheck(uf)
+	if err == nil {
+		t.Fatal("type checking should have caught unknown field in two-operand arithmetic emit")
+	}
+}
+
+func TestEmitMultipleLiteralsValid(t *testing.T) {
+	// emits stock.x = 5, stock.y = 10 — two distinct literal assignments.
+	c := makeUnfuncChecker("x", "y")
+	makeAssign := func(field string, val int64) *ast.InfixExpression {
+		return &ast.InfixExpression{
+			Token:    ast.Token{Type: "ASSIGN", Literal: "="},
+			Left:     paramCall("generic", field),
+			Operator: "=",
+			Right:    &ast.IntegerLiteral{Value: val},
+		}
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: nil,
+		Emits:    []ast.Expression{makeAssign("x", 5), makeAssign("y", 10)},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on multiple literal emits: %s", err)
+	}
+}
+
+func TestUnfuncRequiresGroupedValid(t *testing.T) {
+	// (a.x && b.y) || !c.z — grouped expression should pass type checking.
+	c := makeUnfuncChecker("id", "joinId", "deleted")
+	inner := &ast.InfixExpression{
+		Token:    ast.Token{Type: "AND", Literal: "&&"},
+		Left:     paramCall("generic", "id"),
+		Operator: "&&",
+		Right:    paramCall("generic", "joinId"),
+	}
+	notExpr := &ast.PrefixExpression{
+		Token:    ast.Token{Type: "NOT", Literal: "!"},
+		Operator: "!",
+		Right:    paramCall("generic", "deleted"),
+	}
+	outer := &ast.InfixExpression{
+		Token:    ast.Token{Type: "OR", Literal: "||"},
+		Left:     inner,
+		Operator: "||",
+		Right:    notExpr,
+	}
+	uf := &ast.UnfuncLiteral{
+		Requires: outer,
+		Emits:    []ast.Expression{paramCall("generic", "id")},
+	}
+	_, err := c.typecheck(uf)
+	if err != nil {
+		t.Fatalf("type checking failed on grouped requires expression: %s", err)
 	}
 }
 
@@ -1284,8 +1503,7 @@ func TestUnknownRealHintInBoolAssume(t *testing.T) {
 	if err == nil {
 		t.Fatal("type checker should reject real-hinted unknown in boolean assume")
 	}
-	actual := "invalid expression: got=FLOAT && BOOL"
-	if err.Error() != actual {
+	if !strings.HasPrefix(err.Error(), "invalid expression: got=FLOAT && BOOL") {
 		t.Fatalf("wrong error message. got=%s", err)
 	}
 }
@@ -1299,8 +1517,7 @@ func TestUnknownBoolHintComparedWithNumeric(t *testing.T) {
 	if err == nil {
 		t.Fatal("type checker should reject bool-hinted unknown compared with numeric")
 	}
-	actual := "invalid expression: got=BOOL > INT"
-	if err.Error() != actual {
+	if !strings.HasPrefix(err.Error(), "invalid expression: got=BOOL > INT") {
 		t.Fatalf("wrong error message. got=%s", err)
 	}
 }
@@ -1320,6 +1537,44 @@ func TestUnknownTypedHintsValidOK(t *testing.T) {
 	_, err := prepTest(test, true)
 	if err != nil {
 		t.Fatalf("type checker rejected valid typed-unknown spec. got=%s", err)
+	}
+}
+
+func TestParamTypeHints(t *testing.T) {
+	test := `spec test1;
+		def s = stock{
+			amount: param(0.0),
+			count: param(0),
+			flagged: param(false),
+		};
+		assert s.amount >= 0.0 always;
+	`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected valid param spec. got=%s", err)
+	}
+
+	spec := checker.SpecStructs["test1"]
+	testv, _ := spec.FetchStock("s")
+
+	cases := []struct {
+		field    string
+		wantType string
+	}{
+		{"amount", "FLOAT"},
+		{"count", "INT"},
+		{"flagged", "BOOL"},
+	}
+
+	for _, tc := range cases {
+		node := testv[tc.field]
+		p, ok := node.(*ast.Param)
+		if !ok {
+			t.Fatalf("field %s: expected *ast.Param, got %T", tc.field, node)
+		}
+		if p.InferredType.Type != tc.wantType {
+			t.Fatalf("field %s: expected InferredType %s, got %s", tc.field, tc.wantType, p.InferredType.Type)
+		}
 	}
 }
 

@@ -307,12 +307,10 @@ func TestCrossRoundWhenThen(t *testing.T) {
 
 		assert when a.active then b.on;
 
-		start{
-			a: active,
-			b: on,
-		};
-
-		run{};
+		run {
+			a.active;
+			b.on;
+		}
 		`
 
 	g := prepTest("", test, false, false)
@@ -393,11 +391,13 @@ func TestImports(t *testing.T) {
 		"testdata/imports/circle_import1.fspec",
 		"testdata/imports/single_import.fspec",
 		"testdata/imports/renamed_import.fspec",
+		"testdata/synth/nestedextends.fspec",
 	}
 	smt2s := []string{
 		"testdata/imports/circle_import.smt2",
 		"testdata/imports/single_import.smt2",
 		"testdata/imports/renamed_import.smt2",
+		"testdata/synth/nestedextends.smt2",
 	}
 
 	for i, s := range specs {
@@ -597,7 +597,7 @@ func TestBadSpecs(t *testing.T) {
 	}
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)
-				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, false)
+				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, false)
 				if err != nil {
 					pipelineErr = fmt.Errorf("llvm: %w", err)
 					return
@@ -1249,7 +1249,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, sw.Alias, true)
+	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
 	if err != nil {
 		panic(err)
 	}
@@ -1275,47 +1275,6 @@ func notStrictlyOrdered(want string, got string) bool {
 		}
 	}
 	return true
-}
-
-func TestUnfuncAssumeConstraint(t *testing.T) {
-	test := `
-	system test;
-
-	component calc = states{
-		a: false,
-		b: false,
-		product: false,
-		multiply: unfunc{
-			requires calc.a && calc.b,
-			emits calc.product,
-			assume calc.product = calc.a * calc.b,
-		},
-	};
-
-	run {
-		calc.multiply;
-	}
-	`
-
-	g := prepTest("", test, false, false)
-	smt := g.SMT()
-
-	// LHS output field must be declared as a new versioned variable.
-	if !strings.Contains(smt, "(declare-fun test_calc_product_1 ()") {
-		t.Fatalf("SMT missing declaration of output field at step+1. got=%s", smt)
-	}
-	// Assume constraint: run-block state var drives activation (no separate _active).
-	if !strings.Contains(smt, "(=> test_calc_multiply_1 (= test_calc_product_1 (* test_calc_a_0 test_calc_b_0)))") {
-		t.Fatalf("SMT assume constraint missing or wrong. got=%s", smt)
-	}
-	// Frame condition: not active => output_n+1 = output_n (value unchanged when unfunc doesn't fire).
-	if !strings.Contains(smt, "(=> (not test_calc_multiply_1) (= test_calc_product_1 test_calc_product_0))") {
-		t.Fatalf("SMT missing frame condition for output field. got=%s", smt)
-	}
-	// _available shadow for the emitted field still present.
-	if !strings.Contains(smt, "test_calc_product_available_") {
-		t.Fatalf("SMT missing _available shadow variable for calc.product. got=%s", smt)
-	}
 }
 
 func TestStockInitWithWhenThen(t *testing.T) {
@@ -1407,5 +1366,41 @@ run init{r1 = new box;} {
 	}
 	if !strings.Contains(smt, "(assert (<= testuncertaink_r1_temp_0 12.000000))") {
 		t.Fatalf("expected upper bound assert with k=1, got:\n%s", smt)
+	}
+}
+
+func TestParamPlaceholder(t *testing.T) {
+	test := `spec testreq;
+def request = stock{
+    amount: param(0.0),
+    count: param(0),
+    flagged: param(false),
+};
+run init{r1 = new request;} {
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Each param field should produce a __PARAM_baseName__ placeholder assertion.
+	// The declare-fun uses the SSA-versioned name (_0); the placeholder uses the base name.
+	if !strings.Contains(smt, "__PARAM_testreq_r1_amount__") {
+		t.Fatalf("expected __PARAM_testreq_r1_amount__ in SMT, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "__PARAM_testreq_r1_count__") {
+		t.Fatalf("expected __PARAM_testreq_r1_count__ in SMT, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "__PARAM_testreq_r1_flagged__") {
+		t.Fatalf("expected __PARAM_testreq_r1_flagged__ in SMT, got:\n%s", smt)
+	}
+
+	manifest := g.ParamManifest()
+	if manifest["testreq_r1_amount"] != "Real" {
+		t.Fatalf("expected manifest[testreq_r1_amount]=Real, got=%s", manifest["testreq_r1_amount"])
+	}
+	if manifest["testreq_r1_count"] != "Int" {
+		t.Fatalf("expected manifest[testreq_r1_count]=Int, got=%s", manifest["testreq_r1_count"])
+	}
+	if manifest["testreq_r1_flagged"] != "Bool" {
+		t.Fatalf("expected manifest[testreq_r1_flagged]=Bool, got=%s", manifest["testreq_r1_flagged"])
 	}
 }

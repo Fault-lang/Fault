@@ -47,6 +47,11 @@ type Generator struct {
 	ResultLog   *scenario.Logger
 	StringRules map[string]string
 	IsCompound  map[string]bool
+	Warnings    []string
+}
+
+func (g *Generator) GetWarnings() []string {
+	return g.Warnings
 }
 
 func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, opts GeneratorOptions) *Generator {
@@ -123,6 +128,15 @@ func (g *Generator) Run(llopt string) {
 func (g *Generator) newCallgraph(m *ir.Module) {
 	g.Env.MutableVars = unroll.FindMutableVars(m.Funcs)
 	g.Env.UsedVars = unroll.FindUsedVars(m.Funcs)
+	// Variables referenced in assume/assert constraints must not be pruned
+	// as "orphaned" inits, even if no flow function loads them directly.
+	// This happens when a spec-level assume references a constant-bool field
+	// (e.g. `bgovIdAvailable: false`) that was changed from `unknown(false)`.
+	allStmtsEarly := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
+	for inst := range findAssertVarInstances(allStmtsEarly) {
+		g.Env.AssertVars[inst] = true
+	}
+	g.Env.AssumeOverrides = extractAssumeOverrides(g.RawInputs.Assumes)
 	g.Env.WriteSets = unroll.FindWriteSets(m.Funcs)
 	g.Env.StringRules = g.StringRules
 	g.constants = unroll.NewConstants(g.Env, m.Globals, g.RawInputs)
@@ -130,20 +144,32 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.Env.WhensThens = unroll.WhenThen(append(g.RawInputs.Asserts, g.RawInputs.Assumes...))
 
+	// Pre-compute Bool variable names before unrolling so that parseStore can emit
+	// correct Bool types for stores to variables that are used in boolean contexts
+	// (e.g. unfunc bodies that store 1.0 to a Bool-typed stock property).
+	allStmts := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
+	g.RawInputs.BoolVarNames = inferBoolVarNames(allStmts)
+	// Merge Bool unknowns (unknown(false) fields) into BoolVarNames so that the
+	// unroll phase declares them with Bool sort and suppresses the sentinel assert.
+	for k := range g.RawInputs.BoolUnknowns {
+		g.RawInputs.BoolVarNames[k] = true
+	}
+
 	g.RunBlock = unroll.NewLLFunc(g.Env, g.functions, g.functions["__run"])
 	g.RunBlock.Unroll()
 
 	p := unpack.NewUnpacker(g.RunBlock.Ident)
 	p.LoadStringRules(g.StringRules, g.IsCompound)
 	p.Log.Uncertains = g.RawInputs.Uncertains
+	p.AssumeOverrides = g.Env.AssumeOverrides
 
 	p.VarTypes = g.Env.VarTypes
 	smt := p.Unpack(g.constants, g.RunBlock)
+	g.Warnings = append(g.Warnings, p.Warnings...)
 
 	// Upgrade Real-typed Inits to Bool for variables used in boolean contexts
 	// in assume/assert statements (e.g. unknown() fields used with ||/&&/!).
-	allStmts := append(g.RawInputs.Asserts, g.RawInputs.Assumes...)
-	boolVars := inferBoolVarNames(allStmts)
+	boolVars := g.RawInputs.BoolVarNames
 	for _, init := range p.Inits {
 		if boolVars[init.Ident] && init.Type == "Real" {
 			init.Type = "Bool"
@@ -285,14 +311,51 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 				smt = append(smt, fmt.Sprintf("(assert (=> %s %s))", activeVar, reqSMT))
 			}
 
-			// Write effects and frame conditions on _available shadow variables
-			if uf.Emits != nil {
-				for _, fieldBase := range collectUnfuncFields(uf.Emits) {
-					next := fmt.Sprintf("%s_available_%d", fieldBase, n+1)
-					curr := fmt.Sprintf("%s_available_%d", fieldBase, n)
-					smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s true)))", activeVar, next))
-					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
+			// Write effects and frame conditions on _available shadow variables.
+			// Each emit item is either a bare ParameterCall (implicit true),
+			// an InfixExpression (paramCall = bool), an arith assignment
+			// (paramCall = arithExpr), or a flow assignment (paramCall <- arithExpr).
+			for _, emitItem := range uf.Emits {
+				var fieldBase, emitVal string
+				switch e := emitItem.(type) {
+				case *ast.ParameterCall:
+					fieldBase = unfuncVarBase(e)
+					emitVal = "true"
+				case *ast.InfixExpression:
+					if pc, ok := e.Left.(*ast.ParameterCall); ok {
+						fieldBase = resolveVarBase(pc, varTypes)
+					}
+					switch e.Operator {
+					case "=":
+						if b, ok := e.Right.(*ast.Boolean); ok {
+							if b.Value {
+								emitVal = "true"
+							} else {
+								emitVal = "false"
+							}
+						} else {
+							// Arith assign: field is being modified.
+							emitVal = "true"
+						}
+					case "<-":
+						// Flow assign sugar: field is being modified, and we emit the
+						// value constraint here (lhs_N+1 = arithExpr_N) so the user
+						// doesn't need a separate assume clause.
+						emitVal = "true"
+						lhsNext := fmt.Sprintf("%s_%d", fieldBase, n+1)
+						rhsSMT := unfuncArithExprToSMT(e.Right, n, registry, varTypes)
+						smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
+						lhsCurr := registryBestVersion(registry, fieldBase, n)
+						smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
+					}
 				}
+				if fieldBase == "" {
+					continue
+				}
+				next := fmt.Sprintf("%s_available_%d", fieldBase, n+1)
+				curr := fmt.Sprintf("%s_available_%d", fieldBase, n)
+				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, next, emitVal))
+				smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, next, curr))
 			}
 
 			// Assume constraints: postcondition arithmetic scoped to this exact firing.
@@ -305,7 +368,7 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 			// Frame condition: when the unfunc does NOT fire at step n, the output
 			// field is unchanged (carries its previous value forward).
 			for _, assume := range uf.Assumes {
-				infix, ok := assume.(*ast.InfixExpression)
+				infix, ok := assume.Expr.(*ast.InfixExpression)
 				if !ok {
 					continue
 				}
@@ -314,21 +377,29 @@ func (g *Generator) ProcessUnfuncs(unfuncs []*llvm.UnfuncInfo, rounds int, regis
 					continue
 				}
 				lhsBase := resolveVarBase(lhsPC, varTypes)
-				lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
-
-				// "curr" for the frame condition:
-				//   - at step 0, use the version declared in the main formula
-				//   - at step n>0, use the version we declared at the prior step
-				var lhsCurr string
-				if n == 0 {
-					lhsCurr = registryBestVersion(registry, lhsBase, 0)
-				} else {
-					lhsCurr = fmt.Sprintf("%s_%d", lhsBase, n)
-				}
-
 				rhsSMT := unfuncArithExprToSMT(infix.Right, n, registry, varTypes)
-				smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
-				smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
+
+				switch assume.Modifier {
+				case "eventually":
+					// Existential: the constraint holds at this step (no activation guard,
+					// no frame condition — solver picks when it fires).
+					lhsVer := registryBestVersion(registry, lhsBase, n)
+					smt = append(smt, fmt.Sprintf("(assert (= %s %s))", lhsVer, rhsSMT))
+				case "eventually-always":
+					// From step n onward: lhs equals rhs at step n+1 and is framed from there.
+					lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
+					smt = append(smt, fmt.Sprintf("(assert (= %s %s))", lhsNext, rhsSMT))
+				default: // "always" — conditional on activation, with frame condition
+					lhsNext := fmt.Sprintf("%s_%d", lhsBase, n+1)
+					var lhsCurr string
+					if n == 0 {
+						lhsCurr = registryBestVersion(registry, lhsBase, 0)
+					} else {
+						lhsCurr = fmt.Sprintf("%s_%d", lhsBase, n)
+					}
+					smt = append(smt, fmt.Sprintf("(assert (=> %s (= %s %s)))", activeVar, lhsNext, rhsSMT))
+					smt = append(smt, fmt.Sprintf("(assert (=> (not %s) (= %s %s)))", activeVar, lhsNext, lhsCurr))
+				}
 			}
 		}
 	}
@@ -368,10 +439,13 @@ func resolveVarBase(pc *ast.ParameterCall, varTypes map[string]string) string {
 
 // registryBestVersion finds the full SSA variable name for baseName at the most
 // recent round at or before maxRound. Registry keys have the form "round-N_blockId".
-// Falls back to baseName_0 if nothing is found.
+// Also matches synthesis selector variables of the form "synth_N_baseName" (generated
+// when baseName is a candidate in a synthesis slot). Falls back to baseName_0 if nothing
+// is found.
 func registryBestVersion(registry map[string][][]string, baseName string, maxRound int) string {
 	best := ""
 	bestRound := -1
+	synthSuffix := "_" + baseName
 	for key, vars := range registry {
 		var round int
 		if _, err := fmt.Sscanf(key, "round-%d_", &round); err != nil {
@@ -381,7 +455,7 @@ func registryBestVersion(registry map[string][][]string, baseName string, maxRou
 			continue
 		}
 		for _, varSSA := range vars {
-			if varSSA[0] == baseName && round >= bestRound {
+			if (varSSA[0] == baseName || strings.HasSuffix(varSSA[0], synthSuffix)) && round >= bestRound {
 				bestRound = round
 				best = strings.Join(varSSA, "_")
 			}
@@ -400,7 +474,7 @@ func collectAssumeLHSTypes(unfuncs []*llvm.UnfuncInfo, varTypes map[string]strin
 	result := make(map[string]string)
 	for _, uf := range unfuncs {
 		for _, assume := range uf.Assumes {
-			infix, ok := assume.(*ast.InfixExpression)
+			infix, ok := assume.Expr.(*ast.InfixExpression)
 			if !ok {
 				continue
 			}
@@ -482,6 +556,16 @@ func unfuncArithExprToSMT(expr ast.Expression, round int, registry map[string][]
 	case *ast.ParameterCall:
 		base := resolveVarBase(e, varTypes)
 		return registryBestVersion(registry, base, round)
+	case *ast.Identifier:
+		// Bare spec-level global variable. ProcessedName may not be set (unfuncs bypass
+		// the preprocessor), so fall back to Spec_Value.
+		var base string
+		if len(e.ProcessedName) > 0 {
+			base = e.IdString()
+		} else {
+			base = e.Spec + "_" + e.Value
+		}
+		return registryBestVersion(registry, base, round)
 	case *ast.IntegerLiteral:
 		return fmt.Sprintf("%d", e.Value)
 	case *ast.FloatLiteral:
@@ -531,7 +615,12 @@ func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
 	seen := make(map[string]bool)
 	var result []string
 	for _, uf := range unfuncs {
-		for _, expr := range []ast.Expression{uf.Requires, uf.Emits} {
+		emitExprs := make([]ast.Expression, 0, len(uf.Emits))
+		for _, e := range uf.Emits {
+			emitExprs = append(emitExprs, e)
+		}
+		allExprs := append([]ast.Expression{uf.Requires}, emitExprs...)
+		for _, expr := range allExprs {
 			if expr == nil {
 				continue
 			}
@@ -548,6 +637,29 @@ func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
 
 func (g *Generator) SMT() string {
 	return strings.Join(g.smt, "\n")
+}
+
+// ParamManifest returns a map of __PARAM_name__ token → SMT sort (Real, Int, Bool)
+// for every param() field declared in the spec. Used alongside SMT() in template mode
+// so the caller knows which tokens exist and their expected types.
+func (g *Generator) ParamManifest() map[string]string {
+	manifest := make(map[string]string)
+	for _, name := range g.RawInputs.Params {
+		sort := "Real"
+		// Prefer the TypeHint-derived type stored at compile time.
+		if ty, ok := g.RawInputs.ParamTypes[name]; ok && ty != "" {
+			sort = ty
+		} else if ty, ok := g.Env.VarTypes[name]; ok {
+			switch ty {
+			case "i32", "i64", "Int":
+				sort = "Int"
+			case "i1", "Bool":
+				sort = "Bool"
+			}
+		}
+		manifest[name] = sort
+	}
+	return manifest
 }
 
 // inferBoolVarNames scans assume/assert constraints and returns a set of
@@ -628,12 +740,14 @@ func exprIsBool(expr ast.Expression, bools map[string]bool) bool {
 		}
 		return exprIsBool(e.Right, bools)
 	case *ast.AssertVar:
+		// Instances are OR'd alternatives (same property across spec instantiations).
+		// If any instance is Bool, the expression is Bool.
 		for _, inst := range e.Instances {
-			if !bools[inst] {
-				return false
+			if bools[inst] {
+				return true
 			}
 		}
-		return len(e.Instances) > 0
+		return false
 	case *ast.Boolean:
 		return true
 	}
@@ -650,7 +764,7 @@ func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
 			if !bools[inst] {
 				bools[inst] = true
 				changed = true
-			}
+				}
 		}
 	case *ast.InfixExpression:
 		if markBoolVars(e.Left, bools) {
@@ -665,4 +779,91 @@ func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
 		}
 	}
 	return changed
+}
+
+// findAssertVarInstances collects all AssertVar instance names referenced in
+// the given assume/assert statements. These must not be pruned from the SMT
+// model even if no flow function directly loads them.
+func findAssertVarInstances(stmts []*ast.AssertionStatement) map[string]bool {
+	result := make(map[string]bool)
+	for _, a := range stmts {
+		collectAssertVarInstances(a.Constraint.Left, result)
+		collectAssertVarInstances(a.Constraint.Right, result)
+	}
+	return result
+}
+
+func collectAssertVarInstances(expr ast.Expression, out map[string]bool) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			out[inst] = true
+		}
+	case *ast.InfixExpression:
+		collectAssertVarInstances(e.Left, out)
+		collectAssertVarInstances(e.Right, out)
+	case *ast.PrefixExpression:
+		collectAssertVarInstances(e.Right, out)
+	}
+}
+
+// extractAssumeOverrides walks assume statements with operator "==" and collects
+// a map from each AssertVar instance name to the literal value the assume pins it to.
+// Only direct literal values (bool/int/float) on either side are recorded.
+func extractAssumeOverrides(assumes []*ast.AssertionStatement) map[string]string {
+	overrides := make(map[string]string)
+	for _, a := range assumes {
+		if a.Constraint.Operator != "==" {
+			continue
+		}
+		// Only non-temporal and "always" assumes override the initial value.
+		// "always" means the constraint holds at every step including t=0, so it
+		// is correct to treat it as an initial override.
+		// "eventually", "eventually-always", and time-bounded filters (nmt/nft)
+		// describe future states — the solver must find a transition to reach them,
+		// so the init assertion must remain.
+		// "available" is handled separately in ProcessAsserts and never reaches here
+		// as a value override.
+		if a.Temporal == "eventually" || a.Temporal == "eventually-always" ||
+			a.Temporal == "available" || a.TemporalFilter != "" {
+			continue
+		}
+		extractSideOverrides(a.Constraint.Left, a.Constraint.Right, overrides)
+		extractSideOverrides(a.Constraint.Right, a.Constraint.Left, overrides)
+	}
+	return overrides
+}
+
+func extractSideOverrides(varSide ast.Expression, valSide ast.Expression, out map[string]string) {
+	av, ok := varSide.(*ast.AssertVar)
+	if !ok {
+		return
+	}
+	val := assumeLiteralString(valSide)
+	if val == "" {
+		// Non-literal RHS (e.g. another variable): still suppress the init
+		// so the assume can fully constrain the value.
+		val = "(assume)"
+	}
+	for _, inst := range av.Instances {
+		out[inst] = val
+	}
+}
+
+func assumeLiteralString(e ast.Expression) string {
+	switch v := e.(type) {
+	case *ast.Boolean:
+		if v.Value {
+			return "true"
+		}
+		return "false"
+	case *ast.IntegerLiteral:
+		return fmt.Sprintf("%d", v.Value)
+	case *ast.FloatLiteral:
+		return fmt.Sprintf("%g", v.Value)
+	}
+	return ""
 }

@@ -97,7 +97,12 @@ func (mc *ModelChecker) run(command string, actions []string) (string, error) {
 }
 
 func (mc *ModelChecker) Check() (bool, error) {
-	results, err := mc.run("basic_run", []string{"(check-sat)"})
+	return mc.CheckWithAsserts(nil)
+}
+
+func (mc *ModelChecker) CheckWithAsserts(extra []string) (bool, error) {
+	actions := append(extra, "(check-sat)")
+	results, err := mc.run("basic_run", actions)
 	if err != nil {
 		return false, err
 	}
@@ -112,7 +117,12 @@ func (mc *ModelChecker) Check() (bool, error) {
 }
 
 func (mc *ModelChecker) Solve() error {
-	results, err := mc.run("basic_run", []string{"(check-sat)", "(get-model)"})
+	return mc.SolveWithAsserts(nil)
+}
+
+func (mc *ModelChecker) SolveWithAsserts(extra []string) error {
+	actions := append(extra, "(check-sat)", "(get-model)")
+	results, err := mc.run("basic_run", actions)
 	if err != nil {
 		return err
 	}

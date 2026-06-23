@@ -19,32 +19,35 @@ import (
 // in a user friendly way
 
 type Unpacker struct {
-	Inits        []*rules.Init
-	CurrentBlock string
-	Registry     map[string][][]string // current_round_current_block -> [(var_instance, ssa), (var_instance, ssa)]
-	SSA          *rules.SSA
-	Phis         map[string][]int16 // A tuple of [entry ssa, last updated ssa]
-	PhiLevel     int
-	HaveSeen     map[string]bool    // Have we seen this variable so far in this fork?
-	OnEntry      map[string][]int16 // SSA of variables on entry to a fork
-	VarTypes     map[string]string
-	Whens        map[string][]map[string]string // list of variable combinations for when/then asserts
-	Log          *scenario.Logger
-	Round        int // Current round
+	Inits           []*rules.Init
+	CurrentBlock    string
+	Registry        map[string][][]string // current_round_current_block -> [(var_instance, ssa), (var_instance, ssa)]
+	SSA             *rules.SSA
+	Phis            map[string][]int16 // A tuple of [entry ssa, last updated ssa]
+	PhiLevel        int
+	HaveSeen        map[string]bool    // Have we seen this variable so far in this fork?
+	OnEntry         map[string][]int16 // SSA of variables on entry to a fork
+	VarTypes        map[string]string
+	Whens           map[string][]map[string]string // list of variable combinations for when/then asserts
+	Log             *scenario.Logger
+	Round           int // Current round
+	AssumeOverrides map[string]string // base var name → literal value from assume == constraint
+	Warnings        []string
 }
 
 func NewUnpacker(block_id string) *Unpacker {
 	return &Unpacker{
-		SSA:          rules.NewSSA(),
-		CurrentBlock: block_id,
-		Registry:     make(map[string][][]string),
-		Phis:         make(map[string][]int16),
-		HaveSeen:     make(map[string]bool),
-		OnEntry:      make(map[string][]int16),
-		VarTypes:     make(map[string]string),
-		Whens:        make(map[string][]map[string]string),
-		Log:          scenario.NewLogger(),
-		Round:        0,
+		SSA:             rules.NewSSA(),
+		CurrentBlock:    block_id,
+		Registry:        make(map[string][][]string),
+		Phis:            make(map[string][]int16),
+		HaveSeen:        make(map[string]bool),
+		OnEntry:         make(map[string][]int16),
+		VarTypes:        make(map[string]string),
+		Whens:           make(map[string][]map[string]string),
+		Log:             scenario.NewLogger(),
+		Round:           0,
+		AssumeOverrides: make(map[string]string),
 	}
 }
 
@@ -196,11 +199,22 @@ func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
 func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 	r := []string{}
 	for _, c := range con {
-		if con, ok := c.(*rules.Init); ok {
-			con.Global = true
-			con.SSA = fmt.Sprintf("%d", u.SSA.Get(con.Ident))
-			u.Register([]*rules.Init{con})
-			c = con
+		if initRule, ok := c.(*rules.Init); ok {
+			initRule.Global = true
+			initRule.SSA = fmt.Sprintf("%d", u.SSA.Get(initRule.Ident))
+			u.Register([]*rules.Init{initRule})
+
+			if overrideVal, overridden := u.AssumeOverrides[initRule.Ident]; overridden {
+				initVal := initConstantLiteral(initRule)
+				if initVal != "" && initVal != overrideVal {
+					u.Warnings = append(u.Warnings, fmt.Sprintf(
+						"assume overrides constant init for %s: was %s, assume sets %s",
+						initRule.Ident, initVal, overrideVal))
+				}
+				initRule.SuppressValueAssertion = true
+			}
+
+			c = initRule
 		}
 		inits, finishedRules := u.unpackRule(c)
 		line := u.FormatRule(c, finishedRules)
@@ -209,6 +223,15 @@ func (u *Unpacker) unpackConstants(con []rules.Rule) []string {
 		u.Register(inits)
 	}
 	return r
+}
+
+// initConstantLiteral returns the literal string value stored in an Init rule's
+// Value field (a *rules.Wrap), or "" if it cannot be determined.
+func initConstantLiteral(i *rules.Init) string {
+	if w, ok := i.Value.(*rules.Wrap); ok {
+		return w.Value
+	}
+	return ""
 }
 
 func (u *Unpacker) LoadStringRules(StringRules map[string]string, IsCompound map[string]bool) {
@@ -226,6 +249,15 @@ func (u *Unpacker) unpackBlock(b *unroll.LLBlock) []string {
 	for _, r := range b.Rules {
 		u.InspectRule(r)
 		inits, finishedRules := u.unpackRule(r)
+		if base, suppressed := u.suppressedRunInitInfix(r); suppressed {
+			// An assume overrides this __run init assertion — keep the declaration
+			// (via AddInit) but drop the value assertion so the assume wins.
+			u.AddInit(inits)
+			u.Register(inits)
+			u.Warnings = append(u.Warnings, fmt.Sprintf(
+				"assume overrides constant init for %s; suppressing init assertion", base))
+			continue
+		}
 		line := u.FormatRule(r, finishedRules)
 		smt = append(smt, line)
 		u.AddInit(inits)
@@ -424,7 +456,11 @@ func (u *Unpacker) buildPhisOrs(phis []map[string][]int16, hasPhi map[string]boo
 					}
 				}
 				if !found {
-					ends := fmt.Sprintf("%s_%d", var_name, u.OnEntry[var_name][len(u.OnEntry[var_name])-1])
+					entryIdx := int16(0)
+					if entry := u.OnEntry[var_name]; len(entry) > 0 {
+						entryIdx = entry[len(entry)-1]
+					}
+					ends := fmt.Sprintf("%s_%d", var_name, entryIdx)
 					phi := fmt.Sprintf("%s_%d", var_name, u.SSA.Get(var_name))
 					i := rules.NewInit(var_name, u.VarTypes[var_name], int(u.SSA.Get(var_name)), nil, false, false)
 					i.SetRound(u.Round)
@@ -603,8 +639,10 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 			init, line := u2.unpackRule(l)
 			lines = append(lines, line)
 			initQue = append(initQue, InitsToList(init)...)
-			u.AddInit(init)
-			u.Register(init)
+			u.AddInit(init) // declare branch-internal vars
+			// Do NOT register branch-internal inits: they are unconstrained when
+			// this branch is not selected, so including them in the registry would
+			// let temporal constraints reference free variables.
 		}
 		rule_set = append(rule_set, lines)
 		PhiClone := u.GetPhis(u.SSA, u2.SSA)
@@ -627,7 +665,9 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 		selectors = append(selectors, selectorName)
 		selectorRule := u.Log.NewBranchSelector(o.BranchName, i, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
-		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+		if rule := selectorRule.WriteRule(); rule != "" {
+			ret = append(ret, fmt.Sprintf("(assert %s)", rule))
+		}
 
 		// Wrap branch rules in an implication from the selector
 		if len(rs) > 0 {
@@ -656,7 +696,11 @@ func (u *Unpacker) unpackOrs(o *rules.Ors) ([]*rules.Init, string) {
 
 	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
 
-	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
+	// Return only the canonical post-phi inits (phi-merge vars + selector vars).
+	// Branch-internal inits are already in u.Inits for declaration but must not
+	// be registered into the parent registry — they are unconstrained when their
+	// branch is inactive, which would make temporal constraints trivially satisfiable.
+	return inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
 // unpackSynthSlot handles a synthesis step (__).
@@ -701,8 +745,11 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 			init, line := u2.unpackRule(l)
 			lines = append(lines, line)
 			initQue = append(initQue, InitsToList(init)...)
-			u.AddInit(init)
-			u.Register(init)
+			u.AddInit(init) // declare candidate-internal vars
+			// Do NOT register candidate-internal inits: they are unconstrained when
+			// this candidate is not selected, so including them in the registry would
+			// let temporal constraints (e.g. "eventually") reference free variables
+			// and become trivially satisfiable without the function ever being called.
 		}
 		ruleSet = append(ruleSet, lines)
 		phiClone := u.GetPhis(u.SSA, u2.SSA)
@@ -726,7 +773,9 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 		selectors = append(selectors, fullSelectorName)
 		selectorRule := u.Log.NewBranchSelector(selectorName, slot.Round, caps[i], queue[i])
 		u.Log.AddBranchSelector(selectorRule)
-		ret = append(ret, fmt.Sprintf("(assert %s)", selectorRule.WriteRule()))
+		if rule := selectorRule.WriteRule(); rule != "" {
+			ret = append(ret, fmt.Sprintf("(assert %s)", rule))
+		}
 
 		for _, r := range rs {
 			if r == "" {
@@ -746,7 +795,11 @@ func (u *Unpacker) unpackSynthSlot(slot *rules.SynthSlot) ([]*rules.Init, string
 	u.Log.ExitFunction(slotName, slot.Round)
 
 	cap := fmt.Sprintf("(assert %s)", strictOr(selectors))
-	return u.Inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
+	// Return only the canonical post-phi inits (phi-merge vars + selector vars).
+	// Candidate-internal inits are already in u.Inits for declaration but must not
+	// be registered into the parent registry — they are unconstrained when their
+	// candidate is inactive, which would make temporal constraints trivially satisfiable.
+	return inits, fmt.Sprintf("%s\n%s\n%s", strings.Join(branchAssertions, "\n"), strings.Join(ret, "\n"), cap)
 }
 
 func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
@@ -785,7 +838,9 @@ func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 		inits, caps, _ := u.buildPhis(phis, nil)
 		u.AddInit(inits)
 		SelectorRule := u.Log.NewBranchSelector(u.CurrentBlock, i, caps, InitsToList((inits)))
-		rule_set = append(rule_set, fmt.Sprintf("(assert %s)", SelectorRule.WriteRule()))
+		if rule := SelectorRule.WriteRule(); rule != "" {
+			rule_set = append(rule_set, fmt.Sprintf("(assert %s)", rule))
+		}
 		u.Log.AddBranchSelector(SelectorRule)
 		u2.Inits = append(u2.Inits, rules.NewInit(u.CurrentBlock, "Bool", i, nil, false, false))
 
@@ -915,7 +970,8 @@ func (u *Unpacker) FormatRule(r rules.Rule, rule string) string {
 		return ""
 	}
 
-	if rule[0:7] == "(assert" || rule[0:8] == "\n(assert" { //Already formatted
+	trimmed := strings.TrimLeft(rule, "\n")
+	if strings.HasPrefix(trimmed, "(assert") { //Already formatted
 		return rule
 	}
 
@@ -1000,4 +1056,26 @@ func InitsToList(inits []*rules.Init) []string {
 		init_list = append(init_list, i.FullVar())
 	}
 	return init_list
+}
+
+// suppressedRunInitInfix reports whether r is a __run init-store Infix for a
+// variable overridden by an assume. When true, the assertion should be dropped
+// (the assume provides the value) and only the declaration is emitted.
+// Returns the base variable name and true when suppression applies.
+func (u *Unpacker) suppressedRunInitInfix(r rules.Rule) (string, bool) {
+	if len(u.AssumeOverrides) == 0 {
+		return "", false
+	}
+	inf, ok := r.(*rules.Infix)
+	if !ok {
+		return "", false
+	}
+	wx, ok := inf.X.(*rules.Wrap)
+	if !ok || !wx.Variable || !wx.Init || !wx.OmitFromOutput {
+		return "", false
+	}
+	if _, exists := u.AssumeOverrides[wx.Value]; exists {
+		return wx.Value, true
+	}
+	return "", false
 }

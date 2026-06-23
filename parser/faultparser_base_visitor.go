@@ -100,6 +100,10 @@ func (v *BaseFaultParserVisitor) VisitPropFunc(ctx *PropFuncContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitPropUnfunc(ctx *PropUnfuncContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitSfMisc(ctx *SfMiscContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -404,15 +408,35 @@ func (v *BaseFaultParserVisitor) VisitEmitsClause(ctx *EmitsClauseContext) inter
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseFaultParserVisitor) VisitAssumeClause(ctx *AssumeClauseContext) interface{} {
+func (v *BaseFaultParserVisitor) VisitEmitTargetParam(ctx *EmitTargetParamContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitTargetIdent(ctx *EmitTargetIdentContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitNegation(ctx *EmitNegationContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitBoolAssign(ctx *EmitBoolAssignContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitArithAssign(ctx *EmitArithAssignContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitFlowAssign(ctx *EmitFlowAssignContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEmitBare(ctx *EmitBareContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BaseFaultParserVisitor) VisitUnfuncExpr(ctx *UnfuncExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseFaultParserVisitor) VisitUnfuncAssumeExpr(ctx *UnfuncAssumeExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
