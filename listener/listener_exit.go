@@ -102,7 +102,7 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		if err != nil {
 			panic(fmt.Sprintf("spec file %s not found\n", fpath))
 		}
-		tree = l.parseImport(importId, string(importFile))
+		tree = l.parseImport(importId, string(importFile), gopath.Dir(fp))
 	}
 
 	ident := &ast.Identifier{
@@ -1908,7 +1908,7 @@ func (l *FaultListener) ExitAssumption(c *parser.AssumptionContext) {
 	})
 }
 
-func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
+func (l *FaultListener) parseImport(id string, spec string, importDir string) *ast.Spec {
 	is := antlr.NewInputStream(spec)
 	lexer := parser.NewFaultLexer(is)
 	filename := id + ".fspec"
@@ -1922,7 +1922,7 @@ func (l *FaultListener) parseImport(id string, spec string) *ast.Spec {
 	listener := NewListener("", false, true)
 	listener.currSpec = id
 	listener.specs = l.specs
-	listener.Path = l.Path
+	listener.Path = importDir
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Spec())
 
 	l.Uncertains, l.Unknowns, l.StructsPropertyOrder, l.specs = mergeListeners(l, listener)
