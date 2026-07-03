@@ -1,6 +1,7 @@
 package format
 
 import (
+	"embed"
 	"encoding/json"
 	"fault/ast"
 	"fault/generator/scenario"
@@ -10,6 +11,9 @@ import (
 	"strings"
 	"text/template"
 )
+
+//go:embed templates/*.tmpl
+var builtinTemplates embed.FS
 
 // ResultData is the template-friendly view of a CompilationOutput.
 // It is passed as the root data object (.) when rendering a user template.
@@ -209,6 +213,19 @@ func RenderTemplate(data *ResultData, tmplPath string) (string, error) {
 		return "", fmt.Errorf("reading format template %q: %w", tmplPath, err)
 	}
 	return RenderTemplateString(data, string(tmplBytes))
+}
+
+// BuiltinNames lists the available built-in format templates.
+var BuiltinNames = []string{"default", "json", "compact"}
+
+// RenderBuiltin renders one of the built-in templates by name.
+// Valid names are those in BuiltinNames.
+func RenderBuiltin(data *ResultData, name string) (string, error) {
+	b, err := builtinTemplates.ReadFile("templates/" + name + ".tmpl")
+	if err != nil {
+		return "", fmt.Errorf("unknown built-in format %q (available: default, json, compact)", name)
+	}
+	return RenderTemplateString(data, string(b))
 }
 
 // RenderTemplateString renders an inline Go template string against data.

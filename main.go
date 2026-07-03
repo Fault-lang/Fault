@@ -99,7 +99,7 @@ func main() {
 	rootCmd.Flags().StringVarP(&mode, "mode", "m", "model", "stop compiler at certain milestones: ast, ir, smt, template, or model")
 	rootCmd.Flags().StringVarP(&input, "input", "i", "fault", "format of the input file: fault, ll, or smt2")
 	rootCmd.Flags().StringVar(&output, "output", "text", "format of the output: text or smt")
-	rootCmd.Flags().StringVar(&formatTmpl, "format", "", "path to a Go template file for custom output formatting (model mode only)")
+	rootCmd.Flags().StringVar(&formatTmpl, "format", "default", `output format: built-in name (default, json, compact) or path to a Go template file (model mode only)`)
 	rootCmd.Flags().BoolVar(&reach, "complete", false, "make sure transitions to all defined states are specified")
 	rootCmd.Flags().IntVar(&smtThreshold, "smt-threshold", 0, fmt.Sprintf("warn before sending SMT formulas larger than this many lines to the solver (default: %d)", runner.LargeSMTThreshold))
 	rootCmd.Flags().IntVar(&smtTimeout, "timeout", generator.DefaultSMTTimeout, "solver timeout in milliseconds via (set-option :timeout N); 0 = no limit")
@@ -335,26 +335,18 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		}
 		fmt.Fprintf(os.Stderr, "Param manifest written to %s\n", manifestPath)
 	case "model":
-		if result.ResultLog != nil {
-			if formatTmpl != "" {
-				data := format.Build(result)
-				rendered, err := format.RenderTemplate(data, formatTmpl)
-				if err != nil {
-					return err
-				}
-				fmt.Print(rendered)
-			} else {
-				result.ResultLog.Print()
-				sysPrefix := result.ResultLog.SystemName + "_"
-				for _, a := range result.Asserts {
-					s := a.EvLogString(true)
-					if sysPrefix != "_" {
-						s = strings.ReplaceAll(s, sysPrefix, "")
-					}
-					fmt.Println(s)
-				}
-			}
+		data := format.Build(result)
+		var rendered string
+		var err error
+		if isBuiltin(formatTmpl) {
+			rendered, err = format.RenderBuiltin(data, formatTmpl)
+		} else {
+			rendered, err = format.RenderTemplate(data, formatTmpl)
 		}
+		if err != nil {
+			return err
+		}
+		fmt.Print(rendered)
 	}
 	return nil
 }
@@ -365,6 +357,16 @@ func runInteractiveMode() {
 		fmt.Fprintf(os.Stderr, "Error running TUI: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// isBuiltin reports whether name is one of the built-in format template names.
+func isBuiltin(name string) bool {
+	for _, b := range format.BuiltinNames {
+		if name == b {
+			return true
+		}
+	}
+	return false
 }
 
 // Helper function to validate filetype (used by runner)
