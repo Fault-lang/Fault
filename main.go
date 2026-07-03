@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fault/format"
 	"fault/generator"
 	"fault/runner"
 	"fault/tui"
@@ -76,7 +77,7 @@ func main() {
 		startupUpdateCheck()
 	}
 
-	var mode, input, output, filepath string
+	var mode, input, output, filepath, formatTmpl string
 	var reach bool
 	var smtThreshold, smtTimeout, smtMemory int
 
@@ -90,7 +91,7 @@ func main() {
 				runInteractiveMode()
 				return nil
 			}
-			return runTraditionalMode(filepath, mode, input, output, reach, smtThreshold, smtTimeout, smtMemory)
+			return runTraditionalMode(filepath, mode, input, output, formatTmpl, reach, smtThreshold, smtTimeout, smtMemory)
 		},
 	}
 
@@ -98,6 +99,7 @@ func main() {
 	rootCmd.Flags().StringVarP(&mode, "mode", "m", "model", "stop compiler at certain milestones: ast, ir, smt, template, or model")
 	rootCmd.Flags().StringVarP(&input, "input", "i", "fault", "format of the input file: fault, ll, or smt2")
 	rootCmd.Flags().StringVar(&output, "output", "text", "format of the output: text or smt")
+	rootCmd.Flags().StringVar(&formatTmpl, "format", "", "path to a Go template file for custom output formatting (model mode only)")
 	rootCmd.Flags().BoolVar(&reach, "complete", false, "make sure transitions to all defined states are specified")
 	rootCmd.Flags().IntVar(&smtThreshold, "smt-threshold", 0, fmt.Sprintf("warn before sending SMT formulas larger than this many lines to the solver (default: %d)", runner.LargeSMTThreshold))
 	rootCmd.Flags().IntVar(&smtTimeout, "timeout", generator.DefaultSMTTimeout, "solver timeout in milliseconds via (set-option :timeout N); 0 = no limit")
@@ -235,7 +237,7 @@ func newUpdateCmd() *cobra.Command {
 	}
 }
 
-func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThreshold, smtTimeout, smtMemoryMaxSize int) error {
+func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach bool, smtThreshold, smtTimeout, smtMemoryMaxSize int) error {
 	mode = strings.ToLower(mode)
 	switch mode {
 	case "ast", "ir", "smt", "template", "model":
@@ -334,14 +336,23 @@ func runTraditionalMode(filepath, mode, input, output string, reach bool, smtThr
 		fmt.Fprintf(os.Stderr, "Param manifest written to %s\n", manifestPath)
 	case "model":
 		if result.ResultLog != nil {
-			result.ResultLog.Print()
-			sysPrefix := result.ResultLog.SystemName + "_"
-			for _, a := range result.Asserts {
-				s := a.EvLogString(true)
-				if sysPrefix != "_" {
-					s = strings.ReplaceAll(s, sysPrefix, "")
+			if formatTmpl != "" {
+				data := format.Build(result)
+				rendered, err := format.RenderTemplate(data, formatTmpl)
+				if err != nil {
+					return err
 				}
-				fmt.Println(s)
+				fmt.Print(rendered)
+			} else {
+				result.ResultLog.Print()
+				sysPrefix := result.ResultLog.SystemName + "_"
+				for _, a := range result.Asserts {
+					s := a.EvLogString(true)
+					if sysPrefix != "_" {
+						s = strings.ReplaceAll(s, sysPrefix, "")
+					}
+					fmt.Println(s)
+				}
 			}
 		}
 	}

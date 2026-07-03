@@ -1,0 +1,15 @@
+{{- if .Warnings}}{{range .Warnings}}Warning: {{.}}
+{{end}}
+{{end -}}
+{{- if .Message}}{{.Message}}
+{{- else if .HasResults -}}
+Fault found the following scenario
+-----------------------------------
+
+{{.Trace -}}
+{{- if .Assertions}}
+Assertions
+-----------------------------------
+
+{{range .Assertions}}{{.Status}}  {{.Text}};
+{{end}}{{end}}{{end}}

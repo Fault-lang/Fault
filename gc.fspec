@@ -1,0 +1,29 @@
+spec gc;
+
+def managedObject = stock{
+    refCount: 0,
+    freed: 0,
+};
+
+def compiler = flow{
+    obj: new managedObject,
+    retain: func{
+        obj.refCount <- 1;
+    },
+    release: func{
+        obj.refCount -> 1;
+    },
+    collect: func{
+        obj.freed <- 1;
+    },
+};
+
+assert managedObject.refCount >= 0;
+assert when managedObject.freed > 0 then managedObject.refCount == 0;
+
+run init {
+    c = new compiler;
+} {
+    c.retain | c.release;
+    c.retain | c.release | c.collect;
+}
