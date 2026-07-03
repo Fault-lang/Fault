@@ -6,10 +6,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	ospath "path/filepath"
 	"runtime"
 	"strconv"
@@ -306,9 +308,11 @@ func extractFromZip(archivePath, binaryName string, dst *os.File) error {
 	return fmt.Errorf("%s not found in archive", binaryName)
 }
 
-// replaceBinary atomically replaces the target binary with the new one.
+// replaceBinary replaces the target binary with the new one.
 // On Windows it renames the old binary out of the way first since you
-// can't overwrite a running executable.
+// can't overwrite a running executable. On Unix, if the rename fails
+// with permission denied, it retries via sudo so the user is prompted
+// for their password rather than getting a cryptic error.
 func replaceBinary(newPath, targetPath string) error {
 	if err := os.Chmod(newPath, 0755); err != nil {
 		return err
@@ -322,7 +326,21 @@ func replaceBinary(newPath, targetPath string) error {
 		}
 	}
 
-	return os.Rename(newPath, targetPath)
+	err := os.Rename(newPath, targetPath)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, os.ErrPermission) || runtime.GOOS == "windows" {
+		return err
+	}
+
+	// Permission denied — retry with sudo.
+	fmt.Fprintf(os.Stderr, "Insufficient permissions to write to %s; retrying with sudo...\n", targetPath)
+	cmd := exec.Command("sudo", "install", "-m", "755", newPath, targetPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // isNewerVersion returns true if latest is strictly greater than current.
