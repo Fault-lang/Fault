@@ -45,6 +45,10 @@ type ResultData struct {
 	// Events is the structured list of scenario events after dead-branch pruning.
 	// Use this to build a completely custom trace representation.
 	Events []TraceEvent
+
+	// JSON is the pre-built structured result for the json format template.
+	// Also available to user templates via {{toJSON .JSON}}.
+	JSON *JSONResult
 }
 
 // AssertionResult represents one assert or assume statement after model checking.
@@ -89,6 +93,134 @@ type TraceEvent struct {
 	Dead bool
 }
 
+// JSONResult is the structured output for the json format.
+type JSONResult struct {
+	Sat       bool              `json:"sat"`
+	Error     *string           `json:"error"`
+	Warnings  []string          `json:"warnings"`
+	Variables map[string]string `json:"variables"`
+	Steps     map[string]string `json:"steps"`
+	Asserts   []JSONAssertion   `json:"asserts"`
+}
+
+// JSONAssertion is one assert/assume entry in JSONResult.
+type JSONAssertion struct {
+	Kind     string `json:"kind"`
+	Text     string `json:"text"`
+	Violated bool   `json:"violated"`
+}
+
+// BuildJSON converts a CompilationOutput into a JSONResult.
+func BuildJSON(output *runner.CompilationOutput) *JSONResult {
+	r := &JSONResult{
+		Warnings:  output.Warnings,
+		Variables: map[string]string{},
+		Steps:     map[string]string{},
+		Asserts:   []JSONAssertion{},
+	}
+
+	if output.Error != nil {
+		msg := output.Error.Error()
+		r.Error = &msg
+		return r
+	}
+
+	if output.ResultLog == nil {
+		// unsat — no scenario found
+		r.Sat = false
+		sysPrefix := ""
+		for _, a := range output.Asserts {
+			r.Asserts = append(r.Asserts, buildJSONAssertion(a, sysPrefix))
+		}
+		return r
+	}
+
+	r.Sat = true
+	log := output.ResultLog
+	sysPrefix := log.SystemName + "_"
+
+	// Clean variables: strip SSA suffix and system prefix, keep last value per base name.
+	seen := map[string]bool{}
+	for _, e := range log.Events {
+		var rawVar string
+		switch ev := e.(type) {
+		case *scenario.VariableUpdate:
+			if e.IsDead() || log.IsInternalVariable(ev.Variable) {
+				continue
+			}
+			rawVar = ev.Variable
+		case *scenario.Solvable:
+			if e.IsDead() || log.IsInternalVariable(ev.Variable) {
+				continue
+			}
+			rawVar = ev.Variable
+		default:
+			continue
+		}
+		base := getBase(rawVar)
+		clean := strings.TrimPrefix(base, sysPrefix)
+		if !seen[clean] {
+			seen[clean] = true
+		}
+		r.Variables[clean] = log.Results[rawVar]
+	}
+
+	// Synthesis steps: collect synth_N entry events in order.
+	for _, e := range log.Events {
+		fc, ok := e.(*scenario.FunctionCall)
+		if !ok || fc.Type != "Entry" || !strings.HasPrefix(fc.FunctionName, "synth_") {
+			continue
+		}
+		chosen := synthChoice(log, fc.FunctionName)
+		step := strings.TrimPrefix(fc.FunctionName, "synth_")
+		step = strings.TrimPrefix(step, sysPrefix)
+		if chosen != "" {
+			r.Steps[step] = chosen
+		}
+	}
+
+	for _, a := range output.Asserts {
+		r.Asserts = append(r.Asserts, buildJSONAssertion(a, sysPrefix))
+	}
+
+	return r
+}
+
+func buildJSONAssertion(a *ast.AssertionStatement, sysPrefix string) JSONAssertion {
+	ar := buildAssertion(a, sysPrefix)
+	return JSONAssertion{Kind: ar.Kind, Text: ar.Text, Violated: a.Violated}
+}
+
+// synthChoice replicates scenario.Logger.synthChoice for use in this package.
+func synthChoice(log *scenario.Logger, slotName string) string {
+	prefix := slotName + "_"
+	for varWithSSA, val := range log.Results {
+		if val != "true" {
+			continue
+		}
+		base := getBase(varWithSSA)
+		if strings.HasPrefix(base, prefix) {
+			return strings.TrimPrefix(base, prefix)
+		}
+	}
+	return ""
+}
+
+// getBase strips the SSA numeric suffix (_N) from a variable name.
+func getBase(varWithSSA string) string {
+	idx := strings.LastIndex(varWithSSA, "_")
+	if idx < 0 {
+		return varWithSSA
+	}
+	suffix := varWithSSA[idx+1:]
+	for _, c := range suffix {
+		if c < '0' || c > '9' {
+			return varWithSSA
+		}
+	}
+	return varWithSSA[:idx]
+}
+
 // Build converts a CompilationOutput into a ResultData ready for template rendering.
 // sysPrefix is used to strip the system name from assertion text; pass an empty string
 // to leave names unmodified.
@@ -111,6 +243,8 @@ func Build(output *runner.CompilationOutput) *ResultData {
 	for _, a := range output.Asserts {
 		d.Assertions = append(d.Assertions, buildAssertion(a, sysPrefix))
 	}
+
+	d.JSON = BuildJSON(output)
 
 	return d
 }

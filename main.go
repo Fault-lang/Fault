@@ -300,8 +300,12 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		}
 	}
 
-	for _, w := range result.Warnings {
-		fmt.Fprintln(os.Stderr, w)
+	// Suppress warnings to stderr when a non-default format is active;
+	// structured formats (e.g. json) include warnings in their output.
+	if formatTmpl == "default" {
+		for _, w := range result.Warnings {
+			fmt.Fprintln(os.Stderr, w)
+		}
 	}
 
 	if result.Message != "" {
@@ -340,8 +344,10 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		var err error
 		if isBuiltin(formatTmpl) {
 			rendered, err = format.RenderBuiltin(data, formatTmpl)
-		} else {
+		} else if strings.ContainsAny(formatTmpl, "/.\\.") {
 			rendered, err = format.RenderTemplate(data, formatTmpl)
+		} else {
+			return fmt.Errorf("unknown format %q (built-ins: %s; or provide a file path)", formatTmpl, strings.Join(format.BuiltinNames, ", "))
 		}
 		if err != nil {
 			return err
