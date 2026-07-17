@@ -27,6 +27,7 @@ type ResultsModel struct {
 	mode     string
 }
 
+// NewResultsModel creates a results view model for displaying solver output, assertions, warnings, and debug info.
 func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, warnings []string, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
 	return ResultsModel{
 		logger:   logger,

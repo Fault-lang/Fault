@@ -48,6 +48,7 @@ type Model struct {
 	largeSMTCursor int // 0 = Proceed, 1 = Abort
 }
 
+// NewModel creates the root TUI model that orchestrates the setup, progress, and results views.
 func NewModel() Model {
 	return Model{
 		state:    ViewSetup,
