@@ -31,6 +31,7 @@ type Logger struct {
 	SystemName string // stripped from variable and function names in output
 }
 
+// NewLogger creates an initialized Logger for tracking solver result interpretation.
 func NewLogger() *Logger {
 	return &Logger{
 		Events:        []Event{},
@@ -303,6 +304,7 @@ func (l *Logger) Validate() {
 	}
 }
 
+// Kill prunes dead branches and functions from the logger based on solver results, keeping only the live execution path.
 func (l *Logger) Kill() {
 	var dead []string
 	for _, branch := range l.BranchSelectors {
