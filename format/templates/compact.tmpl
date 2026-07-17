@@ -1,0 +1,4 @@
+{{- if .Message}}{{.Message}}
+{{- else if .HasResults -}}
+{{- range .Assertions}}{{.Status}}  {{.Text}};
+{{end}}{{end}}

@@ -103,6 +103,11 @@ func DiffStrSets(s1 *StringSet, s2 *StringSet) *StringSet {
 }
 
 func Filepath(filepath string) string {
+	if strings.HasPrefix(filepath, "~/") || filepath == "~" {
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			filepath = homeDir + filepath[1:]
+		}
+	}
 	if host, ok := os.LookupEnv("FAULT_HOST"); ok {
 		if strings.Contains(filepath, "~") {
 			return home(host, filepath)
