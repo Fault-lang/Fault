@@ -132,6 +132,7 @@ type Compiler struct {
 	IsCompound       map[string]bool
 }
 
+// NewCompiler creates an initialized Compiler with empty module, maps, and built-in functions registered.
 func NewCompiler() *Compiler {
 	c := &Compiler{
 		module: ir.NewModule(),
@@ -164,6 +165,7 @@ func NewCompiler() *Compiler {
 	return c
 }
 
+// Execute is a convenience function that creates a compiler, loads metadata, and compiles an AST spec in one call.
 func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
 	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, params, aliases, testing)
@@ -175,6 +177,7 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 	return compiler, nil
 }
 
+// LoadMeta populates the compiler with spec records, solver variable classifications (unknowns, uncertains, wholes, params), and aliases.
 func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, test bool) {
 
 	c.specStructs = structs
@@ -186,6 +189,7 @@ func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertain
 	c.Alias = aliases
 }
 
+// Compile walks the AST and emits LLVM IR, returning an error if validation or compilation fails.
 func (c *Compiler) Compile(root ast.Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2454,6 +2458,7 @@ func (c *Compiler) GetIR() string {
 	return c.module.String()
 }
 
+// GetOptimizedIR returns the LLVM IR after running opt passes (instcombine, simplifycfg, dce), falling back to unoptimized IR if opt is unavailable.
 func (c *Compiler) GetOptimizedIR() string {
 	return Optimize(c.module.String())
 }
