@@ -306,10 +306,11 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		for _, w := range result.Warnings {
 			fmt.Fprintln(os.Stderr, w)
 		}
-	}
-
-	if result.Message != "" {
-		fmt.Println(result.Message)
+		if result.Message != "" {
+			fmt.Println(result.Message)
+		}
+	} else if result.Message != "" {
+		fmt.Fprintln(os.Stderr, result.Message)
 	}
 
 	switch mode {
