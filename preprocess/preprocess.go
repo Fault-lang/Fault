@@ -811,9 +811,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		var rawid []string
 		switch ex := node.Index.(type) {
 		case *ast.InfixExpression:
+			// Check if this is an SSAN pattern like n+1 or n-1 — pass through without
+			// resolving ProcessedName, the compiler's convertAssertVariables handles it.
+			if ident, ok := ex.Left.(*ast.Identifier); ok && ident.Value == "n" {
+				rawid = node.Left.(ast.Nameable).RawId()
+			} else {
+				rawid = node.Left.(ast.Nameable).RawId()
+				idx := p.formatIndex(ex)
+				rawid = append(rawid, idx)
+			}
+		case *ast.Identifier:
+			// SSAN symbolic index `n` — pass through, compiler will convert to ast.SSAN.
 			rawid = node.Left.(ast.Nameable).RawId()
-			idx := p.formatIndex(ex)
-			rawid = append(rawid, idx)
 		case *ast.IntegerLiteral:
 			rawid = node.Left.(ast.Nameable).RawId()
 			rawid = append(rawid, node.Index.String())

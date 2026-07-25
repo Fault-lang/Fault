@@ -1313,6 +1313,36 @@ func (c *Clock) SetType(ty *Type) {
 	c.InferredType = ty
 }
 
+// SSAN represents the symbolic SSA iteration index `n` used in assert expressions
+// like x[n] > x[n+1]. Offset is 0 for [n], 1 for [n+1], -1 for [n-1], etc.
+// SSAN nodes are only produced by convertAssertVariables (compiler phase) and are
+// never present in the AST after parsing — they replace Identifier("n") index
+// expressions when found inside assert/assume IndexExpression nodes.
+type SSAN struct {
+	Token        Token
+	InferredType *Type
+	Offset       int
+}
+
+func (s *SSAN) expressionNode()      {}
+func (s *SSAN) TokenLiteral() string { return s.Token.Literal }
+func (s *SSAN) Position() []int      { return s.Token.GetPosition() }
+func (s *SSAN) String() string       { return fmt.Sprintf("n%+d", s.Offset) }
+func (s *SSAN) Type() string {
+	t := s.InferredType
+	if t != nil {
+		return t.Type
+	} else {
+		return ""
+	}
+}
+func (s *SSAN) GetToken() Token {
+	return s.Token
+}
+func (s *SSAN) SetType(ty *Type) {
+	s.InferredType = ty
+}
+
 type Nil struct {
 	Token        Token
 	InferredType *Type

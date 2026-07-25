@@ -187,13 +187,13 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound, p.Registry)
 	g.AppendSMT(unfuncSMT)
 
-	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry, p.Whens)
+	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
 	g.AppendSMT(assertSMT)
-	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens)
+	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
 	g.AppendSMT(assumeSMT)
 }
 
-func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string) []string {
+func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string, roundPhis map[string][]int16) []string {
 	var rules []string
 
 	for _, as := range assertList {
@@ -207,7 +207,7 @@ func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds 
 		if !asserts.IsRelevant(g.Env.VarTypes, as.Constraint) { //If the assert is on a variable that is not used, drop the assert
 			continue
 		}
-		c, err := asserts.NewConstraint(as, rounds, registry, whens, g.Env.VarTypes)
+		c, err := asserts.NewConstraint(as, rounds, registry, whens, g.Env.VarTypes, roundPhis)
 		if err != nil {
 			panic(err.Error())
 		}

@@ -1709,10 +1709,38 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.IndexExpression:
 		e.Left = c.convertAssertVariables(e.Left)
+		// Detect x[n], x[n+1], x[n-1] etc. — symbolic SSA iteration index.
+		if offset, ok := extractSSANOffset(e.Index); ok {
+			e.Index = &ast.SSAN{Token: e.Token, Offset: offset}
+		}
 		return e
 	default:
 		panic(fmt.Sprintf("illegal node %T in assert or assume %s", e, e.GetToken().Location()))
 	}
+}
+
+// extractSSANOffset detects whether an expression is the symbolic SSA iteration
+// index `n` (with optional integer offset) used in assert expressions like x[n+1].
+// Returns (offset, true) for Identifier("n"), InfixExpression(n ± k), else (0, false).
+func extractSSANOffset(idx ast.Expression) (int, bool) {
+	switch e := idx.(type) {
+	case *ast.Identifier:
+		if e.Value == "n" {
+			return 0, true
+		}
+	case *ast.InfixExpression:
+		if ident, ok := e.Left.(*ast.Identifier); ok && ident.Value == "n" {
+			if lit, ok2 := e.Right.(*ast.IntegerLiteral); ok2 {
+				switch e.Operator {
+				case "+":
+					return int(lit.Value), true
+				case "-":
+					return -int(lit.Value), true
+				}
+			}
+		}
+	}
+	return 0, false
 }
 
 // annotateAssertParam looks for Param nodes directly paired with an AssertVar

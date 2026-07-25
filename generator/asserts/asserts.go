@@ -5,6 +5,7 @@ import (
 	"fault/generator/rules"
 	"fault/util"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,22 +19,23 @@ type Time struct {
 }
 
 type Constraint struct {
-	Raw      *ast.InvariantClause
-	Left     *rules.VarSets
-	Right    *rules.VarSets
-	Op       string
-	On       string
-	Off      string
-	Temporal *Time
-	Then     bool
-	Assume   bool
-	Rounds   int
-	Registry map[string][][]string
-	Whens    []map[string]string
-	VarTypes map[string]string // SMT sort for each base variable name
+	Raw       *ast.InvariantClause
+	Left      *rules.VarSets
+	Right     *rules.VarSets
+	Op        string
+	On        string
+	Off       string
+	Temporal  *Time
+	Then      bool
+	Assume    bool
+	Rounds    int
+	Registry  map[string][][]string
+	Whens     []map[string]string
+	VarTypes  map[string]string // SMT sort for each base variable name
+	RoundPhis map[string][]int16 // per-variable phi SSA history for [n] iteration
 }
 
-func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string, varTypes map[string]string) (*Constraint, error) {
+func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string, varTypes map[string]string, roundPhis map[string][]int16) (*Constraint, error) {
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
 	if stateRange && (a.TemporalFilter != "" || a.Temporal != "") {
@@ -64,13 +66,14 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 			Type:   a.Temporal,
 			N:      a.TemporalN,
 		},
-		On:       on,
-		Off:      off,
-		Assume:   a.Assume,
-		Rounds:   rounds,
-		Registry: registry,
-		Whens:    whens[a.String()],
-		VarTypes: varTypes,
+		On:        on,
+		Off:       off,
+		Assume:    a.Assume,
+		Rounds:    rounds,
+		Registry:  registry,
+		Whens:     whens[a.String()],
+		VarTypes:  varTypes,
+		RoundPhis: roundPhis,
 	}, nil
 }
 
@@ -202,6 +205,8 @@ func (c *Constraint) Parse() []string {
 	var l string
 	if c.Then {
 		l = c.applyWhen()
+	} else if containsSSAN(c.Raw.Left) || containsSSAN(c.Raw.Right) {
+		return c.parseSSAIterated()
 	} else {
 		c.Left = c.parseNode(c.Raw.Left)
 		c.Right = c.parseNode(c.Raw.Right)
@@ -213,6 +218,219 @@ func (c *Constraint) Parse() []string {
 		smt = append(smt, fmt.Sprintf("(assert %s)", l))
 	}
 	return smt
+}
+
+// containsSSAN reports whether any IndexExpression in the tree uses an SSAN index.
+func containsSSAN(exp ast.Expression) bool {
+	switch e := exp.(type) {
+	case *ast.InfixExpression:
+		return containsSSAN(e.Left) || containsSSAN(e.Right)
+	case *ast.PrefixExpression:
+		return containsSSAN(e.Right)
+	case *ast.IndexExpression:
+		_, ok := e.Index.(*ast.SSAN)
+		return ok
+	}
+	return false
+}
+
+// ssanRefs maps instance name → set of offsets used in SSAN index expressions.
+type ssanRefs map[string]map[int]bool
+
+// collectSSANRefs walks the expression tree collecting (instanceName, offset) pairs
+// from all SSAN-indexed AssertVar nodes. Called after convertAssertVariables so
+// Left of IndexExpression is always an *ast.AssertVar with Instances expanded.
+func collectSSANRefs(exp ast.Expression, refs ssanRefs) {
+	switch e := exp.(type) {
+	case *ast.InfixExpression:
+		collectSSANRefs(e.Left, refs)
+		collectSSANRefs(e.Right, refs)
+	case *ast.PrefixExpression:
+		collectSSANRefs(e.Right, refs)
+	case *ast.IndexExpression:
+		if assertVar, ok := e.Left.(*ast.AssertVar); ok {
+			if ssan, ok2 := e.Index.(*ast.SSAN); ok2 {
+				for _, inst := range assertVar.Instances {
+					if refs[inst] == nil {
+						refs[inst] = make(map[int]bool)
+					}
+					refs[inst][ssan.Offset] = true
+				}
+			}
+		}
+	}
+}
+
+// orderedSSAVersions returns the sequential SSA indices for an instance variable.
+// For conditional (if/else) flows it uses RoundPhis, which contains only phi
+// outputs and excludes branch-local SSA versions (e.g. the true/false intermediates).
+// For unconditional or parallel flows where RoundPhis is not populated, it falls
+// back to scanning the registry and sorting all known SSA indices numerically.
+func (c *Constraint) orderedSSAVersions(inst string) []int16 {
+	if phis := c.RoundPhis[inst]; len(phis) > 0 {
+		return phis
+	}
+	// Fallback: collect from registry
+	seen := make(map[int16]bool)
+	for _, vars := range c.Registry {
+		for _, var_ssa := range vars {
+			if var_ssa[0] == inst {
+				if idx, err := strconv.ParseInt(var_ssa[1], 10, 16); err == nil {
+					seen[int16(idx)] = true
+				}
+			}
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	result := make([]int16, 0, len(seen))
+	for idx := range seen {
+		result = append(result, idx)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result
+}
+
+// parseSSAIterated generates one SMT assertion per consecutive SSA pair for
+// assert expressions containing [n]-indexed variables. It uses RoundPhis to
+// iterate over phi-resolved sequential values for conditional flows, skipping
+// branch-local SSA versions (x1/x2 inside an if/else). For unconditional flows
+// it falls back to the ordered registry SSA sequence. Multi-variable assertions
+// use last-value-persists clamping when variables update at different rates.
+func (c *Constraint) parseSSAIterated() []string {
+	refs := make(ssanRefs)
+	collectSSANRefs(c.Raw.Left, refs)
+	collectSSANRefs(c.Raw.Right, refs)
+
+	// Get the ordered SSA sequence per instance.
+	versions := make(map[string][]int16)
+	maxLen := 0
+	for inst := range refs {
+		phis := c.orderedSSAVersions(inst)
+		if len(phis) == 0 {
+			continue
+		}
+		versions[inst] = phis
+		if len(phis) > maxLen {
+			maxLen = len(phis)
+		}
+	}
+
+	if maxLen == 0 {
+		return nil
+	}
+
+	var result []string
+	for i := 0; i < maxLen; i++ {
+		// Build substitution: inst → offset → concrete SSA index string.
+		ssanSubs := make(map[string]map[int]string)
+		skip := false
+
+		for inst, offsets := range refs {
+			phis := versions[inst]
+			if len(phis) == 0 {
+				continue
+			}
+			ssanSubs[inst] = make(map[int]string)
+			for off := range offsets {
+				rawIdx := i + off
+				if rawIdx < 0 {
+					skip = true
+					break
+				}
+				var clampedIdx int
+				if rawIdx >= len(phis) {
+					clampedIdx = len(phis) - 1
+				} else {
+					clampedIdx = rawIdx
+				}
+				ssanSubs[inst][off] = fmt.Sprintf("%d", phis[clampedIdx])
+			}
+			if skip {
+				break
+			}
+
+			// Skip when a variable appears at both offset 0 and a positive offset
+			// and clamping has made them the same SSA version. This avoids generating
+			// trivially degenerate constraints like x[n] > x[n+1] when x is exhausted.
+			if _, hasZero := offsets[0]; hasZero {
+				for off := range offsets {
+					if off > 0 && ssanSubs[inst][0] == ssanSubs[inst][off] {
+						skip = true
+						break
+					}
+				}
+			}
+			if skip {
+				break
+			}
+		}
+
+		if skip {
+			continue
+		}
+
+		c.Left = c.parseNodeSSAN(c.Raw.Left, ssanSubs)
+		c.Right = c.parseNodeSSAN(c.Raw.Right, ssanSubs)
+		l := c.applyTemporal()
+		if l != "" {
+			result = append(result, fmt.Sprintf("(assert %s)", l))
+		}
+	}
+	return result
+}
+
+// parseNodeSSAN is like parseNode but handles IndexExpression nodes with an
+// *ast.SSAN index by looking up the pre-computed concrete SSA index in ssanSubs.
+// For non-SSAN nodes it delegates to the standard parseNode.
+func (c *Constraint) parseNodeSSAN(exp ast.Expression, ssanSubs map[string]map[int]string) *rules.VarSets {
+	switch e := exp.(type) {
+	case *ast.InfixExpression:
+		operator := smtlibOperators(e.Operator)
+		left := c.parseNodeSSAN(e.Left, ssanSubs)
+		right := c.parseNodeSSAN(e.Right, ssanSubs)
+		return c.merge(left, right, operator)
+
+	case *ast.PrefixExpression:
+		var operator string
+		right := c.parseNodeSSAN(e.Right, ssanSubs)
+		if e.Operator == "!" {
+			operator = "not"
+		} else {
+			operator = smtlibOperators(e.Operator)
+		}
+		prefix := make(map[string]*util.StringSet)
+		for k, v := range right.Vars {
+			prefix[k] = c.Prefix(v, operator)
+		}
+		return rules.NewVarSets(prefix)
+
+	case *ast.IndexExpression:
+		if assertVar, ok := e.Left.(*ast.AssertVar); ok {
+			if ssan, ok2 := e.Index.(*ast.SSAN); ok2 {
+				merged := make(map[string]*util.StringSet)
+				for _, inst := range assertVar.Instances {
+					offMap, instExists := ssanSubs[inst]
+					if !instExists {
+						continue
+					}
+					ssaIdx, offExists := offMap[ssan.Offset]
+					if !offExists {
+						continue
+					}
+					subset := c.FilterRegistryByIndex(inst, ssaIdx)
+					merged = util.MergeStringSets(merged, subset)
+				}
+				return rules.NewVarSets(merged)
+			}
+		}
+		// Non-SSAN IndexExpression: delegate to standard parseNode.
+		return c.parseNode(exp)
+
+	default:
+		return c.parseNode(exp)
+	}
 }
 
 func (c *Constraint) parseNode(exp ast.Expression) *rules.VarSets {
