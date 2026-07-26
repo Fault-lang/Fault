@@ -39,9 +39,14 @@ func (s *spec) GetSpecVarState(rawid []string) int16 {
 	return s.vars.GetState(rawid)
 }
 
-func (s *spec) GetSpecVarPointer(rawid []string) *ir.InstAlloca {
+func (s *spec) GetSpecVarPointer(rawid []string) value.Value {
 	name := strings.Join(rawid, "_")
 	return s.vars.GetPointer(name)
+}
+
+func (s *spec) SetSpecVarPointer(rawid []string, p value.Value) {
+	name := strings.Join(rawid, "_")
+	s.vars.Store(rawid, name, p)
 }
 
 func (s *spec) GetParams(rawid []string) []value.Value {

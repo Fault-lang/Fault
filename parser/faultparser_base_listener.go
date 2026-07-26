@@ -417,6 +417,12 @@ func (s *BaseFaultParserListener) EnterStateExpr(ctx *StateExprContext) {}
 // ExitStateExpr is called when production stateExpr is exited.
 func (s *BaseFaultParserListener) ExitStateExpr(ctx *StateExprContext) {}
 
+// EnterStateSimple is called when production stateSimple is entered.
+func (s *BaseFaultParserListener) EnterStateSimple(ctx *StateSimpleContext) {}
+
+// ExitStateSimple is called when production stateSimple is exited.
+func (s *BaseFaultParserListener) ExitStateSimple(ctx *StateSimpleContext) {}
+
 // EnterRunBlock is called when production runBlock is entered.
 func (s *BaseFaultParserListener) EnterRunBlock(ctx *RunBlockContext) {}
 

@@ -56,7 +56,8 @@ func TestSpecPointer(t *testing.T) {
 	s.vars.Store(id, fvn, alloc)
 
 	pointer := s.GetSpecVarPointer(id)
-	if pointer.LocalName != "test_this_func" {
+	alloca, ok := pointer.(*ir.InstAlloca)
+	if !ok || alloca.LocalName != "test_this_func" {
 		t.Fatal("spec var this.func is missing a pointer")
 	}
 }

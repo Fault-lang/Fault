@@ -20,22 +20,23 @@ import (
 // various branches of the state graph
 
 type Env struct {
-	RawInputs        *llvm.RawInputs
-	VarLoads         map[string]value.Value
-	VarTypes         map[string]string
-	MutableVars      map[string]bool        // base var names that have flow-derived state transitions
-	ConstantVals     map[string]value.Value // globals whose value never changes — safe to inline
-	StringRules      map[string]string      // string variable names — must not be inlined as numeric constants
-	UsedVars         map[string]bool        // alloca names accessed by at least one flow function
-	AssertVars       map[string]bool        // alloca names referenced in assume/assert constraints
-	AssumeOverrides  map[string]string      // base var name → literal value from assume == constraint
-	WriteSets        map[string]map[string]bool // fname → set of global base var names the function stores to
-	CurrentFunction  string
-	CurrentRound     int
-	returnVoid       *PhiState
-	ParallelGrouping string
-	ChooseGrouping   string
-	WhensThens       map[string]map[string][]string // map[variable_name][assert_id][]string{other_variables in the assert...}
+	RawInputs           *llvm.RawInputs
+	VarLoads            map[string]value.Value
+	VarTypes            map[string]string
+	MutableVars         map[string]bool        // base var names that have flow-derived state transitions
+	ConstantVals        map[string]value.Value // globals whose value never changes — safe to inline
+	StringRules         map[string]string      // string variable names — must not be inlined as numeric constants
+	UsedVars            map[string]bool        // alloca names accessed by at least one flow function
+	AssertVars          map[string]bool        // alloca names referenced in assume/assert constraints
+	AssumeOverrides     map[string]string      // base var name → literal value from assume == constraint
+	WriteSets           map[string]map[string]bool // fname → set of global base var names the function stores to
+	CurrentFunction     string
+	CurrentRound        int
+	unknownDeltaCount   int // counter for fresh delta variables introduced by unknown()/uncertain() flow ops
+	returnVoid          *PhiState
+	ParallelGrouping    string
+	ChooseGrouping      string
+	WhensThens          map[string]map[string][]string // map[variable_name][assert_id][]string{other_variables in the assert...}
 }
 
 func NewEnv(ri *llvm.RawInputs) *Env {

@@ -309,15 +309,55 @@ func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 }
 
 func (b *LLBlock) parseAdd(inst *ir.InstFAdd) []rules.Rule {
+	if inst.Y.Ident() == "0x3DA3CA8CB153A753" {
+		r := b.unknownDeltaRule(inst.X.Ident(), "+")
+		b.tempRule(inst, r)
+		return []rules.Rule{}
+	}
 	r := b.createInfixRule(inst.Ident(), inst.X.Ident(), inst.Y.Ident(), "+")
 	b.tempRule(inst, r)
 	return []rules.Rule{}
 }
 
 func (b *LLBlock) parseSub(inst *ir.InstFSub) []rules.Rule {
+	if inst.Y.Ident() == "0x3DA3CA8CB153A753" {
+		r := b.unknownDeltaRule(inst.X.Ident(), "-")
+		b.tempRule(inst, r)
+		return []rules.Rule{}
+	}
 	r := b.createInfixRule(inst.Ident(), inst.X.Ident(), inst.Y.Ident(), "-")
 	b.tempRule(inst, r)
 	return []rules.Rule{}
+}
+
+// unknownDeltaRule handles `x <- unknown(...)` / `x -> unknown(...)` by
+// introducing a fresh free Real variable (_delta_N) as the operand, preserving
+// the additive/subtractive relationship in the generated SMT:
+//
+//	(declare-fun _delta_N_0 () Real)
+//	(assert (= x_1 (+ x_0 _delta_N_0)))   ; for <-
+//	(assert (= x_1 (- x_0 _delta_N_0)))   ; for ->
+//
+// This lets the solver choose any increment/decrement while keeping x_1 ≥ x_0
+// (or x_1 ≤ x_0) expressible via additional constraints if needed.
+func (b *LLBlock) unknownDeltaRule(xIdent string, op string) rules.Rule {
+	xName, tyX, vrX := convertInfixVar(b.Env, xIdent)
+	xIs := IsIndexed(xName)
+	_, file, line, _ := runtime.Caller(1)
+
+	b.Env.unknownDeltaCount++
+	deltaName := fmt.Sprintf("_delta_%d", b.Env.unknownDeltaCount)
+	b.Env.VarTypes[deltaName] = "Real"
+
+	xWrap := rules.NewWrap(xName, tyX, vrX, file, line, false, xIs)
+	xWrap.SetOmit(b.Env.CurrentFunction)
+	xWrap.SetWhensThens(b.Env.WhensThens)
+
+	yWrap := rules.NewWrap(deltaName, "Real", true, file, line, true, false)
+	yWrap.SetOmit(b.Env.CurrentFunction)
+	yWrap.SetWhensThens(b.Env.WhensThens)
+
+	return &rules.Infix{X: xWrap, Y: yWrap, Op: op}
 }
 
 func (b *LLBlock) parseMul(inst *ir.InstFMul) []rules.Rule {

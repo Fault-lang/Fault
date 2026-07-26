@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/llir/llvm/ir"
 	irtypes "github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -50,7 +49,7 @@ func (l *LookupTable) AddParams(id []string, p []value.Value) {
 	l.params[id[1]] = append(l.params[id[1]], p...)
 }
 
-func (l *LookupTable) Store(id []string, name string, point *ir.InstAlloca) {
+func (l *LookupTable) Store(id []string, name string, point value.Value) {
 	ident := strings.Join(id, "_")
 	if l.values[ident] != nil {
 		l.pointers.store(name, point)
@@ -86,7 +85,7 @@ func (l *LookupTable) ResetState(name string) {
 	l.state[name] = 0
 }
 
-func (l *LookupTable) GetPointer(name string) *ir.InstAlloca {
+func (l *LookupTable) GetPointer(name string) value.Value {
 	return l.pointers.get(name)
 }
 
