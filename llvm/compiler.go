@@ -481,15 +481,11 @@ func (c *Compiler) compile(node ast.Node) {
 		// Pre-compile their functions so synthesis slots can enumerate them.
 		c.precompileAllFlowFunctions()
 
-		for i, step := range v.Steps {
+		for _, step := range v.Steps {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			c.compileRunStep(step)
 			if !c.hasSysRunBlock {
-				_, isActivation := step.(*ast.StateActivation)
-				isLastStep := i == len(v.Steps)-1
-				if !isActivation || isLastStep {
-					c.stateCheck()
-				}
+				c.stateCheck()
 			}
 			c.RunRound = c.RunRound + 1
 		}
@@ -547,15 +543,11 @@ func (c *Compiler) collectInitInstanceParams(inits *ast.BlockStatement) {
 // Must be called after compileRunInit and after components are compiled.
 func (c *Compiler) compileRunSteps(v *ast.RunStatement) {
 	c.contextFuncName = "__run"
-	for i, step := range v.Steps {
+	for _, step := range v.Steps {
 		c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 		c.compileRunStep(step)
 		if !c.hasSysRunBlock {
-			_, isActivation := step.(*ast.StateActivation)
-			isLastStep := i == len(v.Steps)-1
-			if !isActivation || isLastStep {
-				c.stateCheck()
-			}
+			c.stateCheck()
 		}
 		c.RunRound = c.RunRound + 1
 	}

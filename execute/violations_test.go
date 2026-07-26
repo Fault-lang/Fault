@@ -227,6 +227,70 @@ func TestViolationPartialRoundsAlways(t *testing.T) {
 	}
 }
 
+// TestViolationSSAN: assert X[n] > X[n+1]/2 stored as X[n] <= X[n+1]/2.
+// When X[0]=-3 and X[1]=-2: -3 <= -2/2=-1 holds → violated.
+func TestViolationSSAN(t *testing.T) {
+	tok := ast.Token{}
+	a := &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left: &ast.IndexExpression{
+				Left:  makeAssertVar("network_requests"),
+				Index: &ast.SSAN{Token: tok, Offset: 0},
+			},
+			Operator: "<=",
+			Right: &ast.InfixExpression{
+				Left: &ast.IndexExpression{
+					Left:  makeAssertVar("network_requests"),
+					Index: &ast.SSAN{Token: tok, Offset: 1},
+				},
+				Operator: "/",
+				Right:    makeFloat(2),
+			},
+		},
+	}
+	values := map[string]string{
+		"network_requests_0": "-3.0",
+		"network_requests_1": "-2.0",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true: X[0]=-3 <= X[1]/2=-1 satisfies stored (negated) condition")
+	}
+}
+
+// TestViolationSSANNotViolated: assert X[n] > X[n+1]/2 stored as X[n] <= X[n+1]/2.
+// When X[0]=5 and X[1]=2: 5 <= 2/2=1 is false → not violated.
+func TestViolationSSANNotViolated(t *testing.T) {
+	tok := ast.Token{}
+	a := &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left: &ast.IndexExpression{
+				Left:  makeAssertVar("network_requests"),
+				Index: &ast.SSAN{Token: tok, Offset: 0},
+			},
+			Operator: "<=",
+			Right: &ast.InfixExpression{
+				Left: &ast.IndexExpression{
+					Left:  makeAssertVar("network_requests"),
+					Index: &ast.SSAN{Token: tok, Offset: 1},
+				},
+				Operator: "/",
+				Right:    makeFloat(2),
+			},
+		},
+	}
+	values := map[string]string{
+		"network_requests_0": "5.0",
+		"network_requests_1": "2.0",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false: X[0]=5 <= X[1]/2=1 is false, stored condition does not hold")
+	}
+}
+
 // TestViolationDivisionByZeroSafe: stored condition X / Y <= 0 with Y=0 must not panic.
 func TestViolationDivisionByZeroSafe(t *testing.T) {
 	a := &ast.AssertionStatement{
