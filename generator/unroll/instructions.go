@@ -193,18 +193,25 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 						numTy = "Int"
 					}
 
+					// Detect a delta-based unknown assignment: inner Infix has a
+					// _delta_ Wrap as its Y operand (produced by unknownDeltaRule).
+					isDelta := false
+					if yw, ok := r.Y.(*rules.Wrap); ok && strings.HasPrefix(yw.Value, "_delta_") {
+						isDelta = true
+					}
+
 					if IsBoolean(r.Y.String()) {
 						wid.Type = "Bool"
-						ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "="})
+						ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "=", IsDelta: isDelta})
 					} else if IsNumeric(r.Y.String()) {
 						wid.Type = numTy
-						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "=", IsDelta: isDelta})
 					} else if isASolvable(r.X.String(), b.Env.RawInputs) {
 						wid.Type = numTy
-						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "=", IsDelta: isDelta})
 					} else {
 						wid.Type = numTy
-						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "="})
+						ru = append(ru, &rules.Infix{X: wid, Ty: numTy, Y: r, Op: "=", IsDelta: isDelta})
 					}
 					b.Env.VarTypes[base] = wid.Type
 				default:
