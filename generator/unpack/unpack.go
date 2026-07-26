@@ -895,7 +895,35 @@ func (u *Unpacker) unpackIte(ite *rules.Ite) ([]*rules.Init, string) {
 		return []*rules.Init{}, ""
 	}
 
-	_, cond := u.unpackRule(ite.Cond)
+	// For Ors conditions (e.g. `if a || b`), build a pure (or ...) SMT expression
+	// rather than routing through unpackOrs which generates selector-variable machinery
+	// meant for choice rules. The selector output is invalid as an ite condition.
+	var cond string
+	if ors, ok := ite.Cond.(*rules.Ors); ok {
+		var parts []string
+		for _, branch := range ors.X {
+			var branchParts []string
+			for _, r := range branch {
+				r.LoadContext(u.PhiLevel, u.HaveSeen, u.OnEntry, u.Log)
+				_, branchRule, _ := r.WriteRule(u.SSA)
+				if branchRule != "" {
+					branchParts = append(branchParts, branchRule)
+				}
+			}
+			if len(branchParts) == 1 {
+				parts = append(parts, branchParts[0])
+			} else if len(branchParts) > 1 {
+				parts = append(parts, fmt.Sprintf("(and %s)", strings.Join(branchParts, " ")))
+			}
+		}
+		if len(parts) == 1 {
+			cond = parts[0]
+		} else {
+			cond = fmt.Sprintf("(or %s)", strings.Join(parts, " "))
+		}
+	} else {
+		_, cond = u.unpackRule(ite.Cond)
+	}
 
 	var tPhis, fPhis []map[string][]int16
 	var tRules, fRules, aRules []string
