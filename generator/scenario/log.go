@@ -27,8 +27,11 @@ type Logger struct {
 	BranchSelectors []*BranchSelector // rules to make the solution easier to parse
 	// RoundPhis stores per-variable phi SSA history: index 0 = initial SSA (before any rounds),
 	// index N = phi output SSA after round N. Used by HistoryWrap to resolve value[now-N].
-	RoundPhis  map[string][]int16
-	SystemName string // stripped from variable and function names in output
+	// Only the last phi per round is kept: multiple phi nodes within the same run-step
+	// (e.g. from nested guards) collapse to the final value for that step.
+	RoundPhis          map[string][]int16
+	RoundPhiLastRound  map[string]int // tracks the run-step round of the last entry in RoundPhis
+	SystemName         string         // stripped from variable and function names in output
 }
 
 func NewLogger() *Logger {
@@ -45,12 +48,22 @@ func NewLogger() *Logger {
 		IsStringRule:  make(map[string]bool),
 		IsCompound:    make(map[string]bool),
 		IsPhi:         make(map[string]bool),
-		RoundPhis:     make(map[string][]int16),
+		RoundPhis:         make(map[string][]int16),
+		RoundPhiLastRound: make(map[string]int),
 	}
 }
 
-func (l *Logger) AddRoundPhi(varName string, ssa int16) {
-	l.RoundPhis[varName] = append(l.RoundPhis[varName], ssa)
+func (l *Logger) AddRoundPhi(varName string, ssa int16, round int) {
+	if lastRound, ok := l.RoundPhiLastRound[varName]; ok && lastRound == round {
+		// Same run-step round: overwrite the last entry so only the final phi
+		// per round is kept (multiple guard phis within one step collapse).
+		phis := l.RoundPhis[varName]
+		phis[len(phis)-1] = ssa
+		l.RoundPhis[varName] = phis
+	} else {
+		l.RoundPhis[varName] = append(l.RoundPhis[varName], ssa)
+		l.RoundPhiLastRound[varName] = round
+	}
 }
 
 func (l *Logger) EnterFunction(fname string, round int) {

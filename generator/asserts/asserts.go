@@ -409,7 +409,13 @@ func (c *Constraint) parseNodeSSAN(exp ast.Expression, ssanSubs map[string]map[i
 	case *ast.IndexExpression:
 		if assertVar, ok := e.Left.(*ast.AssertVar); ok {
 			if ssan, ok2 := e.Index.(*ast.SSAN); ok2 {
-				merged := make(map[string]*util.StringSet)
+				// Use a synthetic registry key recognised by List()/GetByRunRound so
+				// that merge() pairs [n] and [n+1] values across run-step boundaries.
+				// Normal registry key scoping (k == k2) would silently drop cross-round
+				// pairs because [n] and [n+1] live in different round buckets — which is
+				// the entire point of [n]/[n+1] assertions.
+				const temporalKey = "round-0_@__run"
+				merged := map[string]*util.StringSet{temporalKey: util.NewStrSet()}
 				for _, inst := range assertVar.Instances {
 					offMap, instExists := ssanSubs[inst]
 					if !instExists {
@@ -419,8 +425,7 @@ func (c *Constraint) parseNodeSSAN(exp ast.Expression, ssanSubs map[string]map[i
 					if !offExists {
 						continue
 					}
-					subset := c.FilterRegistryByIndex(inst, ssaIdx)
-					merged = util.MergeStringSets(merged, subset)
+					merged[temporalKey].Add(fmt.Sprintf("%s_%s", inst, ssaIdx))
 				}
 				return rules.NewVarSets(merged)
 			}

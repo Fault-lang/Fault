@@ -512,9 +512,9 @@ func (u *Unpacker) buildPhis(phis []map[string][]int16, hasPhi map[string]bool) 
 				// any rounds) so that RoundPhis[0] = initial, RoundPhis[N] = phi after round N.
 				if _, exists := u.Log.RoundPhis[var_name]; !exists {
 					initialSSA := u.OnEntry[var_name][len(u.OnEntry[var_name])-1]
-					u.Log.AddRoundPhi(var_name, initialSSA)
+					u.Log.AddRoundPhi(var_name, initialSSA, -1)
 				}
-				u.Log.AddRoundPhi(var_name, u.SSA.Get(var_name))
+				u.Log.AddRoundPhi(var_name, u.SSA.Get(var_name), u.Round)
 			}
 
 			rule_set = append(rule_set, fmt.Sprintf("(= %s %s)", phi, ends))
