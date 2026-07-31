@@ -13,6 +13,7 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
+// parseInstruct dispatches an LLVM IR instruction to the appropriate parse method and returns the resulting SMT rules.
 func (b *LLBlock) parseInstruct(inst ir.Instruction) []rules.Rule {
 	switch inst := inst.(type) {
 	case *ir.InstAlloca:
@@ -246,6 +247,7 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 	return ru
 }
 
+// createRule builds an Infix SMT rule for a variable assignment, wrapping the id and value as Wrap rules with type and operator.
 func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.Rule {
 	xIs := IsIndexed(id)
 	_, file, line, _ := runtime.Caller(1)
@@ -284,6 +286,7 @@ func (b *LLBlock) createRule(id string, val string, ty string, op string) rules.
 	return &rules.Infix{X: wid, Ty: ty, Y: wval, Op: op}
 }
 
+// tempRule stores an infix rule in irRefs keyed by the temp variable's refname, so it can be resolved later when the temp is referenced.
 func (b *LLBlock) tempRule(inst value.Value, r rules.Rule) {
 	// If infix rule is stored in a temp variable
 	id := inst.Ident()
@@ -448,6 +451,7 @@ func (b *LLBlock) parseBuiltIn(call *ir.InstCall) []rules.Rule {
 	return []rules.Rule{r1}
 }
 
+// parseTerms unrolls the true, false, and after blocks of a conditional branch into SMT rules.
 func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []rules.Rule, []string) {
 	var t, f, a []rules.Rule
 	block_names := []string{"", "", ""}
@@ -485,6 +489,7 @@ func (b *LLBlock) parseTerms(terms []*ir.Block) ([]rules.Rule, []rules.Rule, []r
 	return t, f, a, block_names
 }
 
+// parseCondNode converts an LLVM IR value used as a condition into an SMT rule.
 func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 	switch cnode := node.(type) {
 	case *ir.InstCall:
@@ -553,6 +558,7 @@ func (b *LLBlock) parseCondNode(node value.Value) rules.Rule {
 	return nil
 }
 
+// parseTermCon converts a conditional branch terminator into an Ite rule.
 func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	var cond rules.Rule
 	b.Env.returnVoid.In()
@@ -577,6 +583,7 @@ func (b *LLBlock) parseTermCon(term *ir.TermCondBr) []rules.Rule {
 	return []rules.Rule{ite}
 }
 
+// deferRule reports whether a rule for id should be deferred (stored in irRefs rather than emitted immediately), used for multi-clause conditionals.
 func (b *LLBlock) deferRule(id string, x value.Value) bool {
 	if b.irTemps[id] > 1 {
 		//b.irTemps[id] = b.irTemps[id] - 1
@@ -615,6 +622,7 @@ func (b *LLBlock) parseXor(inst *ir.InstXor) []rules.Rule {
 	return nil
 }
 
+// createMultiCondRule builds and stores a compound boolean rule (not/or/and/infix) in irRefs for the given id.
 func (b *LLBlock) createMultiCondRule(id string, x rules.Rule, y rules.Rule, op string) rules.Rule {
 	refname := fmt.Sprintf("%s-%s", b.Env.CurrentFunction, id)
 	if _, ok := b.irRefs[refname]; ok {
@@ -719,6 +727,7 @@ func (b *LLBlock) parseOr(inst *ir.InstOr) []rules.Rule {
 	return []rules.Rule{}
 }
 
+// parseChoose converts an Or rule into a choose (non-deterministic selection) group of possible variable sets.
 func (b *LLBlock) parseChoose(v rules.Rule) []rules.Rule {
 	//When choose the Ors need to be expanded to
 	// A && !B && !C || !A && B && !C || !A && !B && C
@@ -759,6 +768,7 @@ func (b *LLBlock) parseFNeg(inst *ir.InstFNeg) []rules.Rule {
 	panic("unimplemented FNeg")
 }
 
+// createCompareRule returns the SMT operator string and a unit rule for a comparison operation.
 func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {
 	var y *rules.Wrap
 	op = b.compareRuleOp(op)
@@ -773,6 +783,7 @@ func (b *LLBlock) createCompareRule(op string) (string, rules.Rule) {
 	return op, y
 }
 
+// compareRuleOp converts an LLVM IR comparison predicate string to its SMT-LIB2 operator.
 func (b *LLBlock) compareRuleOp(op string) string {
 	switch op {
 	case "false":

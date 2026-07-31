@@ -11,6 +11,7 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
+// SSA tracks the current SSA version number for each variable during SMT rule generation.
 type SSA struct {
 	variables map[string]int16
 }
@@ -49,6 +50,7 @@ func NewSSA() *SSA {
 	}
 }
 
+// Rule is the core interface implemented by all SMT rule types.
 type Rule interface {
 	ruleNode()
 	LoadContext(int, map[string]bool, map[string][]int16, *scenario.Logger)
@@ -62,6 +64,7 @@ type Rule interface {
 	WriteRule(ssa *SSA) ([]*Init, string, *SSA)
 }
 
+// Basic is a generic two-operand assert rule. Currently unused — may be dead code.
 type Basic struct {
 	Rule
 	X        Rule
@@ -128,6 +131,7 @@ func (b *Basic) Tag(k1 string, k2 string) {
 	}
 }
 
+// Init declares an SMT variable — its name, type, SSA version, and initial value — along with flags for solvable, whole-number, param, and indexed variants.
 type Init struct {
 	Rule
 	Ident          string //base variable name
@@ -344,6 +348,7 @@ func (e *FuncCall) Tag(k1 string, k2 string) {
 	}
 }
 
+// Ands represents a conjunction of SMT rules, written as (and ...) in SMT-LIB2.
 type Ands struct {
 	Rule
 	X        []Rule
@@ -431,6 +436,7 @@ func (a *Ands) Branch() string {
 	return a.tag.branch
 }
 
+// Ors represents a disjunction of rule branches, written as (or ...) in SMT-LIB2.
 type Ors struct {
 	Rule
 	X          [][]Rule
@@ -513,6 +519,7 @@ func (o *Ors) Branch() string {
 	return o.tag.branch
 }
 
+// AssertChain holds an SMT assertion expression built from a list of values and an operator, used in assert/assume generation.
 type AssertChain struct {
 	Op     string
 	Values []string
@@ -640,6 +647,7 @@ func (s *PossibleVars) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 // 	return a.tag.branch
 // }
 
+// Parallels represents a set of functions that can execute in any order (parallel composition), holding all permutations and their pre-unrolled rules.
 type Parallels struct {
 	Rule
 	Permutations [][]string
@@ -712,6 +720,7 @@ func (p *Parallels) Branch() string {
 	return p.tag.branch
 }
 
+// Infix represents a binary SMT expression (e.g. =, +, and, or) between two operand rules.
 type Infix struct {
 	Rule
 	X     Rule
@@ -789,6 +798,7 @@ func (i *Infix) Branch() string {
 	return i.tag.branch
 }
 
+// Prefix represents a unary SMT expression (e.g. not) applied to one operand rule.
 type Prefix struct {
 	Rule
 	X        Rule
@@ -849,6 +859,7 @@ func (pr *Prefix) Branch() string {
 	return pr.tag.branch
 }
 
+// Ite represents an if-then-else conditional in the SMT model, with separate rule lists for the true branch, false branch, and the block after the branch rejoins.
 type Ite struct {
 	Rule
 	Cond       Rule
@@ -933,6 +944,7 @@ func (ite *Ite) Tag(k1 string, k2 string) {
 	}
 }
 
+// Stay is a placeholder rule representing a no-op (the built-in `stay` function). Generates no SMT.
 type Stay struct {
 	Rule
 	Round int
@@ -1147,6 +1159,7 @@ func DefaultValue(t string) string {
 	}
 }
 
+// VarSets maps scope keys to sets of variable names, used during assert/assume generation to track which variables are in scope per round.
 type VarSets struct {
 	Rule
 	Vars map[string]*util.StringSet // [round_0_scope_name] => {this_variable_0, this_variable_1}
@@ -1228,6 +1241,7 @@ func (sg *VarSets) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	return nil, "", ssa
 }
 
+// WrapGroup holds a slice of Wrap rules representing multiple possible values for a single variable reference (e.g. across parallel branches).
 type WrapGroup struct {
 	Rule
 	Wraps    []*Wrap
@@ -1293,6 +1307,7 @@ func (wg *WrapGroup) Branch() string {
 	return wg.tag.branch
 }
 
+// Vwrap wraps a raw LLVM IR value as a Rule, used when a temp variable resolves directly to an IR value rather than a named variable.
 type Vwrap struct {
 	Rule
 	Value value.Value
@@ -1419,6 +1434,7 @@ func (h *HistoryWrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	return nil, fmt.Sprintf("%s_%d", h.Base, v), ssa
 }
 
+// branch stores the branch and block names attached to a rule via Tag(), allowing the scenario logger to attribute solver results back to specific conditional branches in the original Fault model.
 type branch struct {
 	branch string
 	block  string

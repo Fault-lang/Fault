@@ -102,6 +102,7 @@ func DiffStrSets(s1 *StringSet, s2 *StringSet) *StringSet {
 	return s3
 }
 
+// Filepath resolves ~ and FAULT_HOST-relative paths to absolute filesystem paths.
 func Filepath(filepath string) string {
 	if strings.HasPrefix(filepath, "~/") || filepath == "~" {
 		if homeDir, err := os.UserHomeDir(); err == nil {
@@ -156,6 +157,7 @@ func home(host string, filepath string) string {
 	return ospath.Join(host, filepath)
 }
 
+// FormatBlock strips the leading "%" from an LLVM IR block name and removes dashes.
 func FormatBlock(blockName string) string {
 	if len(blockName) > 0 && blockName[0] == '%' {
 		blockName = blockName[1:]
@@ -187,6 +189,7 @@ func trimSlashes(parts []string, host bool) []string {
 	return parts
 }
 
+// FormatIdent removes LLVM IR leading characters (@, %, or c") from an identifier string.
 func FormatIdent(id string) string {
 	//Removes LLVM IR specific leading characters
 	if len(id) == 0 {
@@ -202,6 +205,7 @@ func FormatIdent(id string) string {
 	return id
 }
 
+// Cartesian returns the cartesian product of two string slices as pairs.
 func Cartesian(list1 []string, list2 []string) [][]string {
 	var product [][]string
 	for _, a := range list1 {
@@ -212,6 +216,7 @@ func Cartesian(list1 []string, list2 []string) [][]string {
 	return product
 }
 
+// CartesianMulti returns the cartesian product of multiple string slices.
 func CartesianMulti(listOfLists [][]string) [][]string {
 	start := Cartesian(listOfLists[0], listOfLists[1])
 	for i := 2; i < len(listOfLists); i++ {
@@ -220,6 +225,7 @@ func CartesianMulti(listOfLists [][]string) [][]string {
 	return start
 }
 
+// CompareStringMaps reports whether two string maps have identical keys and values.
 func CompareStringMaps(m1 map[string]string, m2 map[string]string) bool {
 	if len(m1) != len(m2) {
 		return false
@@ -232,6 +238,7 @@ func CompareStringMaps(m1 map[string]string, m2 map[string]string) bool {
 	return true
 }
 
+// MergeStringMaps merges m2 into m1, returning m1 with all keys from both.
 func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 	for k, v := range m2 {
 		m1[k] = v
@@ -239,6 +246,7 @@ func MergeStringMaps(m1 map[string]string, m2 map[string]string) map[string]stri
 	return m1
 }
 
+// MergeStringSliceMaps merges two maps of string slice values, appending slices for shared keys.
 func MergeStringSliceMaps(m1 map[string][][]string, m2 map[string][][]string) map[string][][]string {
 	for k, v := range m2 {
 		m1[k] = v
@@ -246,6 +254,7 @@ func MergeStringSliceMaps(m1 map[string][][]string, m2 map[string][][]string) ma
 	return m1
 }
 
+// MergeStrSlices merges two string slices, deduplicating entries from sl2 that already appear in sl1.
 func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	var results []string
 	skip := false
@@ -266,6 +275,7 @@ func MergeStrSlices(sl1 []string, sl2 []string) []string {
 	return results
 }
 
+// MergeStringSets merges two maps of StringSets, combining sets for shared keys.
 func MergeStringSets(m1 map[string]*StringSet, m2 map[string]*StringSet) map[string]*StringSet {
 	for k, v := range m2 {
 		if _, ok := m1[k]; ok {
@@ -279,6 +289,7 @@ func MergeStringSets(m1 map[string]*StringSet, m2 map[string]*StringSet) map[str
 	return m1
 }
 
+// MergeIntSliceMaps merges two maps of int16 slices, keeping the max value per key.
 func MergeIntSliceMaps(m1 map[string][]int16, m2 map[string][]int16) map[string][]int16 {
 	// For Phis in unpacker
 	for k, v := range m2 {
@@ -329,6 +340,8 @@ func StableSortKeys(keys []string) []string {
 	return keys
 }
 
+// CaptureState parses an SSA variable name and returns the SSA version number (if any),
+// whether it is a mutable variable (more than 2 underscore-separated parts), and whether it is a constant (2 or fewer parts with no numeric suffix).
 func CaptureState(id string) (string, bool, bool) {
 	var a, c bool
 	raw := strings.Split(id, "_")
@@ -429,6 +442,7 @@ func NotInSet(o [][]string, c [][]string) [][]string {
 	return s
 }
 
+// DetectMode returns the Fault file mode ("fspec" or "fsystem") based on file extension.
 func DetectMode(filename string) string {
 	switch ospath.Ext(filename) {
 	case ".fspec":
@@ -440,6 +454,7 @@ func DetectMode(filename string) string {
 	}
 }
 
+// GetVarBase splits an SSA variable name into its base name and SSA version number.
 func GetVarBase(id string) (string, int, error) {
 	v := strings.Split(id, "_")
 	num, err := strconv.Atoi(v[len(v)-1])
@@ -449,6 +464,7 @@ func GetVarBase(id string) (string, int, error) {
 	return strings.Join(v[0:len(v)-1], "_"), num, nil
 }
 
+// Difference returns keys in s2 that are not in s1 (or all keys of s1 if s2 is empty).
 func Difference(s1 map[string]bool, s2 map[string]bool) []string {
 	vars := []string{}
 	if len(s2) == 0 {
@@ -466,6 +482,7 @@ func Difference(s1 map[string]bool, s2 map[string]bool) []string {
 	return vars
 }
 
+// Intersection returns elements in s1 not in s2, and optionally also elements in s2 not in s1.
 func Intersection(s1 []string, s2 []string, init bool) []string {
 	var s3 []string
 	for _, s := range s1 {
