@@ -306,7 +306,9 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		for _, w := range result.Warnings {
 			fmt.Fprintln(os.Stderr, w)
 		}
-		if result.Message != "" {
+		// For model mode, Message is rendered by the template; print it here
+		// only for other modes (ast, ir, smt, template) where no template runs.
+		if result.Message != "" && mode != "model" {
 			fmt.Println(result.Message)
 		}
 	} else if result.Message != "" {

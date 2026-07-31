@@ -206,6 +206,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#stateExpr.
 	VisitStateExpr(ctx *StateExprContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#stateSimple.
+	VisitStateSimple(ctx *StateSimpleContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#runBlock.
 	VisitRunBlock(ctx *RunBlockContext) interface{}
 

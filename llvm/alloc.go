@@ -137,7 +137,7 @@ func (c *Compiler) globalVariable(id []string, val value.Value, loc string) {
 
 }
 
-func (c *Compiler) storeAllocation(name string, id []string, alloc *ir.InstAlloca) {
+func (c *Compiler) storeAllocation(name string, id []string, alloc value.Value) {
 	s := c.specs[id[0]]
 	s.vars.IncrState(id)
 	s.vars.Store(id, name, alloc)

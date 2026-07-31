@@ -1109,6 +1109,22 @@ func (l *FaultListener) ExitStateExpr(c *parser.StateExprContext) {
 	l.push(e)
 }
 
+func (l *FaultListener) ExitStateSimple(c *parser.StateSimpleContext) {
+	token := ast.GenerateToken("CODE", c.GetText(), l.currSpec, c.GetStart(), c.GetStop())
+
+	x := l.pop()
+	exp, ok := x.(ast.Expression)
+	if !ok {
+		panic(fmt.Sprintf("top of stack is not an expression. got=%T", x))
+	}
+
+	e := &ast.ExpressionStatement{
+		Token:      token,
+		Expression: exp,
+	}
+	l.push(e)
+}
+
 func (l *FaultListener) ExitPrefix(c *parser.PrefixContext) {
 	if c.GetChild(0) == nil { //Bug in the grammar concerning
 		// prefixes involving MINUS and idents

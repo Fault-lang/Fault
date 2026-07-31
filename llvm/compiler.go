@@ -346,8 +346,34 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 	}
 
 	if !c.isImport { //Don't compile if the spec is being imported
+		// Three-pass to satisfy ordering constraints:
+		//   1. Non-component, non-RunStatement statements + RunStatement init block
+		//      (registers instance vars so component functions can reference them)
+		//   2. Component definitions
+		//      (creates state booleans using now-registered instance vars)
+		//   3. RunStatement steps
+		//      (activates component states using now-created state booleans)
+		var componentStmts []ast.Node
+		var runStmt *ast.RunStatement
 		for _, fileNode := range specfile.Statements {
+			if ds, ok := fileNode.(*ast.DefStatement); ok {
+				if _, isComp := ds.Value.(*ast.ComponentLiteral); isComp {
+					componentStmts = append(componentStmts, fileNode)
+					continue
+				}
+			}
+			if rs, ok := fileNode.(*ast.RunStatement); ok {
+				runStmt = rs
+				c.compileRunInit(rs)
+				continue
+			}
 			c.compile(fileNode)
+		}
+		for _, fileNode := range componentStmts {
+			c.compile(fileNode)
+		}
+		if runStmt != nil {
+			c.compileRunSteps(runStmt)
 		}
 	}
 
@@ -459,15 +485,11 @@ func (c *Compiler) compile(node ast.Node) {
 		// Pre-compile their functions so synthesis slots can enumerate them.
 		c.precompileAllFlowFunctions()
 
-		for i, step := range v.Steps {
+		for _, step := range v.Steps {
 			c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
 			c.compileRunStep(step)
 			if !c.hasSysRunBlock {
-				_, isActivation := step.(*ast.StateActivation)
-				isLastStep := i == len(v.Steps)-1
-				if !isActivation || isLastStep {
-					c.stateCheck()
-				}
+				c.stateCheck()
 			}
 			c.RunRound = c.RunRound + 1
 		}
@@ -477,6 +499,63 @@ func (c *Compiler) compile(node ast.Node) {
 	default:
 		panic(fmt.Sprintf("node type %T unimplemented %s", v, node.GetToken().Location()))
 	}
+}
+
+// compileRunInit compiles only the init block of a RunStatement, registering
+// instance variables so that component functions can reference them.
+func (c *Compiler) compileRunInit(v *ast.RunStatement) {
+	c.contextFuncName = "__run"
+	c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
+	c.compileBlock(v.Inits)
+	c.RunRound = c.RunRound + 1
+	c.precompileAllFlowFunctions()
+	// Collect instance variable params from the init block into sysGlobals so
+	// that component state functions receive them as pointer arguments.
+	c.collectInitInstanceParams(v.Inits)
+}
+
+// collectInitInstanceParams scans the init block for StructInstance nodes,
+// generates their parameters, and appends them to c.sysGlobals so that
+// component state functions can access instance variables via params.
+func (c *Compiler) collectInitInstanceParams(inits *ast.BlockStatement) {
+	if inits == nil {
+		return
+	}
+	for _, stmt := range inits.Statements {
+		exp, ok := stmt.(*ast.ExpressionStatement)
+		if !ok {
+			continue
+		}
+		inst, ok := exp.Expression.(*ast.StructInstance)
+		if !ok {
+			continue
+		}
+		rawid := c.AliasToBaseRaw(inst.RawId())
+		sr := c.specStructs[rawid[0]]
+		ty, _ := sr.GetStructType(rawid)
+		name := strings.Join(rawid[1:], "_")
+		branches, err := sr.Fetch(name, ty)
+		if err != nil {
+			continue
+		}
+		params := c.generateParameters(inst.Id(), branches, false)
+		c.sysGlobals = append(c.sysGlobals, params...)
+	}
+}
+
+// compileRunSteps compiles only the run steps of a RunStatement (not the init block).
+// Must be called after compileRunInit and after components are compiled.
+func (c *Compiler) compileRunSteps(v *ast.RunStatement) {
+	c.contextFuncName = "__run"
+	for _, step := range v.Steps {
+		c.contextBlock.NewStore(constant.NewInt(irtypes.I16, int64(c.RunRound)), c.markers[0])
+		c.compileRunStep(step)
+		if !c.hasSysRunBlock {
+			c.stateCheck()
+		}
+		c.RunRound = c.RunRound + 1
+	}
+	c.contextFuncName = ""
 }
 
 func (c *Compiler) compoundString(n ast.Expression) string {
@@ -694,7 +773,12 @@ func (c *Compiler) compileComponent(node *ast.ComponentLiteral) {
 				c.StateTransitions[childId] = target + "__state"
 				break // only the first advance() determines the next state
 			}
+			// Redirect lookupIdent to use the function's params as pointers
+			// so that stock variable loads inside the function body reference
+			// the param (a pointer argument), not the main function's alloca.
+			savedPointers := c.setParamPointers(s, params)
 			val2 := c.compileBlock(v.Body)
+			c.restoreParamPointers(s, savedPointers)
 			c.contextBlock.NewRet(val2)
 			c.contextBlock = oldBlock
 			c.contextFuncName = "__run"
@@ -1176,7 +1260,7 @@ func (c *Compiler) compileInfix(node *ast.InfixExpression) value.Value {
 				p := s.GetSpecVarPointer(id)
 				rVal := r
 				// Coerce bool (i1) → double when storing into an unknown() field
-				if r.Type() == irtypes.I1 && p.ElemType == irtypes.Double {
+				if r.Type() == irtypes.I1 && s.GetSpecType(strings.Join(id, "_")) == irtypes.Double {
 					if r == constant.NewInt(irtypes.I1, 0) {
 						rVal = constant.NewFloat(irtypes.Double, 0.0)
 					} else {
@@ -1713,10 +1797,38 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.IndexExpression:
 		e.Left = c.convertAssertVariables(e.Left)
+		// Detect x[n], x[n+1], x[n-1] etc. — symbolic SSA iteration index.
+		if offset, ok := extractSSANOffset(e.Index); ok {
+			e.Index = &ast.SSAN{Token: e.Token, Offset: offset}
+		}
 		return e
 	default:
 		panic(fmt.Sprintf("illegal node %T in assert or assume %s", e, e.GetToken().Location()))
 	}
+}
+
+// extractSSANOffset detects whether an expression is the symbolic SSA iteration
+// index `n` (with optional integer offset) used in assert expressions like x[n+1].
+// Returns (offset, true) for Identifier("n"), InfixExpression(n ± k), else (0, false).
+func extractSSANOffset(idx ast.Expression) (int, bool) {
+	switch e := idx.(type) {
+	case *ast.Identifier:
+		if e.Value == "n" {
+			return 0, true
+		}
+	case *ast.InfixExpression:
+		if ident, ok := e.Left.(*ast.Identifier); ok && ident.Value == "n" {
+			if lit, ok2 := e.Right.(*ast.IntegerLiteral); ok2 {
+				switch e.Operator {
+				case "+":
+					return int(lit.Value), true
+				case "-":
+					return -int(lit.Value), true
+				}
+			}
+		}
+	}
+	return 0, false
 }
 
 // annotateAssertParam looks for Param nodes directly paired with an AssertVar
@@ -1764,18 +1876,17 @@ func (c *Compiler) annotateAssertParam(left, right ast.Expression) {
 }
 
 func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
-	var pointer *ir.InstAlloca
 	s := c.specs[id[0]]
 	vname := strings.Join(id, "_")
 	ty := s.GetSpecType(vname)
 
 	local := s.GetSpecVar(id)
 	if local != nil {
-		pointer = s.GetSpecVarPointer(id)
-	}
-	if pointer != nil {
-		load := c.contextBlock.NewLoad(ty, pointer)
-		return load
+		pointer := s.GetSpecVarPointer(id)
+		if pointer != nil {
+			load := c.contextBlock.NewLoad(ty, pointer)
+			return load
+		}
 	}
 
 	gpointer := c.specGlobals[vname]
@@ -2189,6 +2300,46 @@ func (c *Compiler) resetParaState(p []*ir.Param) {
 	for i := 0; i < len(p); i++ {
 		id := p[i].LocalName
 		s.vars.ResetState(id)
+	}
+}
+
+// setParamPointers temporarily redirects spec var pointers to use the component
+// function's params. This ensures that lookupIdent inside the function body
+// generates loads from the param (a pointer arg), not from the main function's alloca.
+// Returns a map of variable name → original pointer for restoration.
+func (c *Compiler) setParamPointers(s *spec, params []*ir.Param) map[string]value.Value {
+	saved := make(map[string]value.Value)
+	for _, par := range params {
+		vname := par.LocalName
+		id := strings.Split(vname, "_")
+		if len(id) < 2 {
+			continue
+		}
+		specVars := c.specs[id[0]]
+		if specVars == nil || specVars.GetSpecVar(id) == nil {
+			continue
+		}
+		saved[vname] = specVars.GetSpecVarPointer(id)
+		specVars.SetSpecVarPointer(id, par)
+	}
+	return saved
+}
+
+// restoreParamPointers restores spec var pointers to their original values after
+// compiling a component function body.
+func (c *Compiler) restoreParamPointers(s *spec, saved map[string]value.Value) {
+	for vname, origPtr := range saved {
+		id := strings.Split(vname, "_")
+		if len(id) < 2 {
+			continue
+		}
+		specVars := c.specs[id[0]]
+		if specVars == nil {
+			continue
+		}
+		if origPtr != nil {
+			specVars.SetSpecVarPointer(id, origPtr)
+		}
 	}
 }
 

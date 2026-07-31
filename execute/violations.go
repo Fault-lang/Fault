@@ -192,6 +192,26 @@ func evalNumericExpr(expr ast.Expression, round int16, values map[string]string)
 			}
 			return 0, true
 		}
+
+	case *ast.IndexExpression:
+		if assertVar, ok := e.Left.(*ast.AssertVar); ok {
+			var targetRound int64
+			switch idx := e.Index.(type) {
+			case *ast.SSAN:
+				targetRound = int64(round) + int64(idx.Offset)
+			case *ast.IntegerLiteral:
+				targetRound = idx.Value
+			default:
+				return 0, false
+			}
+			for _, inst := range assertVar.Instances {
+				key := fmt.Sprintf("%s_%d", inst, targetRound)
+				if raw, ok2 := values[key]; ok2 {
+					return parseModelFloat(raw)
+				}
+			}
+		}
+		return 0, false
 	}
 	return 0, false
 }

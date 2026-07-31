@@ -723,13 +723,14 @@ func (p *Parallels) Branch() string {
 // Infix represents a binary SMT expression (e.g. =, +, and, or) between two operand rules.
 type Infix struct {
 	Rule
-	X     Rule
-	Y     Rule
-	Ty    string
-	Op    string
-	Round int //Round of the rule, used for SSA
-	tag   *branch
-	Phi   bool //Tag if this rule is a phi value capping a branch
+	X       Rule
+	Y       Rule
+	Ty      string
+	Op      string
+	Round   int //Round of the rule, used for SSA
+	tag     *branch
+	Phi     bool //Tag if this rule is a phi value capping a branch
+	IsDelta bool // True when this assigns x_N = x_old ± delta (unknown() in function body)
 	// If so we don't want to track it as a state change
 	PhiLevel int
 	HaveSeen map[string]bool
@@ -772,6 +773,9 @@ func (i *Infix) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 	result := fmt.Sprintf("(%s %s %s)", i.Op, x, y)
 	if strings.Contains(x, "divertedCurrent") && strings.Contains(y, "isStopped") {
 		fmt.Printf("DEBUG BAD INFIX: %s\nX-rule=%T(%s) Y-rule=%T(%s)\n", result, i.X, i.X.String(), i.Y, i.Y.String())
+	}
+	if i.IsDelta {
+		i.Log.UpdateSolvable(x)
 	}
 	return init, result, ssa
 }

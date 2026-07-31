@@ -1,21 +1,21 @@
 package variables
 
-import "github.com/llir/llvm/ir"
+import "github.com/llir/llvm/ir/value"
 
 type Pointers struct {
-	p map[string]*ir.InstAlloca
+	p map[string]value.Value
 }
 
 func NewPointers() *Pointers {
 	return &Pointers{
-		p: make(map[string]*ir.InstAlloca),
+		p: make(map[string]value.Value),
 	}
 }
 
-func (p *Pointers) get(name string) *ir.InstAlloca {
+func (p *Pointers) get(name string) value.Value {
 	return p.p[name]
 }
 
-func (p *Pointers) store(name string, point *ir.InstAlloca) {
+func (p *Pointers) store(name string, point value.Value) {
 	p.p[name] = point
 }

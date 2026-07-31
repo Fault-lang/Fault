@@ -272,6 +272,10 @@ func (v *BaseFaultParserVisitor) VisitStateExpr(ctx *StateExprContext) interface
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitStateSimple(ctx *StateSimpleContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitRunBlock(ctx *RunBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }

@@ -276,19 +276,36 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 	switch node := n.(type) {
 	case *ast.Spec:
-		// Process non-assertion statements first so that instances declared in
-		// run-init blocks (and globals) are registered before assume/assert
-		// statements are resolved. This lets system specs write:
-		//   run init { x = new foo.Bar; } { ... }
-		//   assume x.prop == true;
-		// without requiring explicit global declarations.
+		// Process statements in three passes so that component state functions
+		// can reference instances declared in run-init blocks:
+		//   Pass 1: everything except component declarations and assertions
+		//           (this includes imports, consts, globals, and the run/init block
+		//           which registers instances into p.Instances)
+		//   Pass 2: component declarations (instances are now registered)
+		//   Pass 3: assertions (same as before)
 		var assertIdxs []int
+		var componentIdxs []int
 		for i, v := range node.Statements {
 			if _, ok := v.(*ast.AssertionStatement); ok {
 				assertIdxs = append(assertIdxs, i)
 				continue
 			}
+			if ds, ok := v.(*ast.DefStatement); ok {
+				if _, isComp := ds.Value.(*ast.ComponentLiteral); isComp {
+					componentIdxs = append(componentIdxs, i)
+					continue
+				}
+			}
 			pro, err = p.walk(v)
+			if err = p.collect(err); err != nil {
+				return node, err
+			}
+			if pro != nil {
+				node.Statements[i] = pro.(ast.Statement)
+			}
+		}
+		for _, i := range componentIdxs {
+			pro, err = p.walk(node.Statements[i])
 			if err = p.collect(err); err != nil {
 				return node, err
 			}
@@ -813,9 +830,18 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		var rawid []string
 		switch ex := node.Index.(type) {
 		case *ast.InfixExpression:
+			// Check if this is an SSAN pattern like n+1 or n-1 — pass through without
+			// resolving ProcessedName, the compiler's convertAssertVariables handles it.
+			if ident, ok := ex.Left.(*ast.Identifier); ok && ident.Value == "n" {
+				rawid = node.Left.(ast.Nameable).RawId()
+			} else {
+				rawid = node.Left.(ast.Nameable).RawId()
+				idx := p.formatIndex(ex)
+				rawid = append(rawid, idx)
+			}
+		case *ast.Identifier:
+			// SSAN symbolic index `n` — pass through, compiler will convert to ast.SSAN.
 			rawid = node.Left.(ast.Nameable).RawId()
-			idx := p.formatIndex(ex)
-			rawid = append(rawid, idx)
 		case *ast.IntegerLiteral:
 			rawid = node.Left.(ast.Nameable).RawId()
 			rawid = append(rawid, node.Index.String())

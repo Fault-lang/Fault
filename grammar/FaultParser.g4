@@ -250,9 +250,10 @@ stateBlock
 
 stateStep
     : paramCall ('|' paramCall)? eos              #stateStepExpr
-    | 'choose'? boolExpression eos                   #builtinInfix
-    | stateChange eos                                #stateChain
+    | 'choose'? boolExpression eos                #builtinInfix
+    | stateChange eos                             #stateChain
     | ifStmtState                                 #stateExpr
+    | simpleStmt eos                              #stateSimple
     ;
 
 runBlock

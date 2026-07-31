@@ -206,6 +206,9 @@ type FaultParserListener interface {
 	// EnterStateExpr is called when entering the stateExpr production.
 	EnterStateExpr(c *StateExprContext)
 
+	// EnterStateSimple is called when entering the stateSimple production.
+	EnterStateSimple(c *StateSimpleContext)
+
 	// EnterRunBlock is called when entering the runBlock production.
 	EnterRunBlock(c *RunBlockContext)
 
@@ -535,6 +538,9 @@ type FaultParserListener interface {
 
 	// ExitStateExpr is called when exiting the stateExpr production.
 	ExitStateExpr(c *StateExprContext)
+
+	// ExitStateSimple is called when exiting the stateSimple production.
+	ExitStateSimple(c *StateSimpleContext)
 
 	// ExitRunBlock is called when exiting the runBlock production.
 	ExitRunBlock(c *RunBlockContext)
