@@ -39,6 +39,7 @@ type Env struct {
 	WhensThens          map[string]map[string][]string // map[variable_name][assert_id][]string{other_variables in the assert...}
 }
 
+// NewEnv initializes the shared environment used across all unroll passes, including variable maps, mutable var tracking, and assertion state.
 func NewEnv(ri *llvm.RawInputs) *Env {
 	return &Env{
 		RawInputs:    ri,
@@ -61,24 +62,29 @@ type PhiState struct {
 	levels int
 }
 
+// NewPhiState creates a PhiState with nesting level zero.
 func NewPhiState() *PhiState {
 	return &PhiState{
 		levels: 0,
 	}
 }
 
+// Check reports whether we are currently inside a phi node (conditional branch).
 func (p *PhiState) Check() bool {
 	return p.levels > 0
 }
 
+// Level returns the current phi nesting depth.
 func (p *PhiState) Level() int {
 	return p.levels
 }
 
+// In increments the phi nesting depth when entering a conditional branch.
 func (p *PhiState) In() {
 	p.levels = p.levels + 1
 }
 
+// Out decrements the phi nesting depth when exiting a conditional branch.
 func (p *PhiState) Out() {
 	if p.levels != 0 {
 		p.levels = p.levels - 1
@@ -105,6 +111,7 @@ type LLFunc struct {
 	rawIR          *ir.Func
 }
 
+// NewLLFunc creates an LLFunc wrapping an LLVM IR function, ready for unrolling into SMT rules.
 func NewLLFunc(e *Env, rawFunc map[string]*ir.Func, irf *ir.Func) *LLFunc {
 	return &LLFunc{
 		Ident:        irf.Ident(),
@@ -116,6 +123,7 @@ func NewLLFunc(e *Env, rawFunc map[string]*ir.Func, irf *ir.Func) *LLFunc {
 	}
 }
 
+// Unroll converts each LLVM IR block in the function into SMT rules, skipping built-in functions.
 func (f *LLFunc) Unroll() {
 
 	if isBuiltIn(f.Ident) {
@@ -136,6 +144,8 @@ func (f *LLFunc) Unroll() {
 	f.Env.returnVoid.Out()
 }
 
+// GetAllRules returns all SMT rules for this function in order, optionally bookended by FuncCall marker rules.
+// FuncCall rules generate no SMT — they are used only by the scenario logger to interpret solver results.
 func (f *LLFunc) GetAllRules(enter rules.Rule, exit rules.Rule) []rules.Rule {
 	var r []rules.Rule
 	if enter != nil {
@@ -153,6 +163,7 @@ func (f *LLFunc) GetAllRules(enter rules.Rule, exit rules.Rule) []rules.Rule {
 	return r
 }
 
+// String returns a debug representation of the function's environment and rules.
 func (f *LLFunc) String() string {
 	var sb strings.Builder
 	sb.WriteString("LLFunc:\n")
@@ -171,10 +182,12 @@ func (f *LLFunc) String() string {
 	return sb.String()
 }
 
+// AddRules appends SMT rules to the function's rule list.
 func (f *LLFunc) AddRules(r []rules.Rule) {
 	f.Rules = append(f.Rules, r...)
 }
 
+// AddBlock appends a block to the end of the function's linked block chain.
 func (f *LLFunc) AddBlock(b LLUnit) {
 	if f.Start == nil {
 		f.Start = b.(*LLBlock)
@@ -188,12 +201,14 @@ func (f *LLFunc) AddBlock(b LLUnit) {
 	}
 }
 
+// ExecuteCallstack drains the function's pending callstack and generates SMT rules for it.
 func (f *LLFunc) ExecuteCallstack() []rules.Rule {
 	stack := util.Copy(f.localCallstack)
 	f.localCallstack = []string{}
 	r := f.GenerateCallstack(stack)
 	return r
 }
+// GenerateCallstack converts a list of function names into SMT rules, generating all parallel permutations if more than one function is called.
 func (f *LLFunc) GenerateCallstack(callstack []string) []rules.Rule {
 	if len(callstack) == 0 {
 		return nil
@@ -240,6 +255,7 @@ type LLBlock struct {
 	irTemps        map[string]int        //Number of times a temp variable is referenced in the block. Used to identify when the generate a rule from a multi-clause conditional (Ors primarily)
 }
 
+// NewLLBlock creates an LLBlock wrapping an LLVM IR block, ready for unrolling into SMT rules.
 func NewLLBlock(e *Env, rawFunc map[string]*ir.Func, irb *ir.Block) *LLBlock {
 	round := e.CurrentRound
 	return &LLBlock{
@@ -255,6 +271,7 @@ func NewLLBlock(e *Env, rawFunc map[string]*ir.Func, irb *ir.Block) *LLBlock {
 	}
 }
 
+// setRuleRounds stamps all rules in ru with the current round number.
 func (b *LLBlock) setRuleRounds(ru []rules.Rule) {
 	for _, r := range ru {
 		if r == nil {
@@ -264,6 +281,7 @@ func (b *LLBlock) setRuleRounds(ru []rules.Rule) {
 	}
 }
 
+// scanTemps counts how many times each temp variable is referenced in the block, used to detect multi-clause conditionals (e.g. compound Ors).
 func (b *LLBlock) scanTemps() {
 	for _, inst := range b.rawIR.Insts {
 		switch v := inst.(type) {
@@ -311,6 +329,7 @@ func (b *LLBlock) scanTemps() {
 	}
 }
 
+// Unroll parses each LLVM IR instruction in the block into SMT rules, then handles the block terminator (conditional branch or return).
 func (b *LLBlock) Unroll() {
 	//Scan the block for temp references before parsing
 	b.scanTemps()
@@ -338,6 +357,7 @@ func (b *LLBlock) Unroll() {
 	}
 }
 
+// GetAllRules returns all SMT rules for this block in order, optionally bookended by FuncCall marker rules.
 func (b *LLBlock) GetAllRules(enter rules.Rule, exit rules.Rule) []rules.Rule {
 	var ru []rules.Rule
 	if enter != nil {
@@ -355,6 +375,7 @@ func (b *LLBlock) GetAllRules(enter rules.Rule, exit rules.Rule) []rules.Rule {
 	return ru
 }
 
+// String returns a debug representation of the block's environment and rules.
 func (b *LLBlock) String() string {
 	var sb strings.Builder
 	sb.WriteString("LLBlock:\n")
@@ -372,10 +393,12 @@ func (b *LLBlock) String() string {
 	return sb.String()
 }
 
+// AddRules appends SMT rules to the block's rule list.
 func (b *LLBlock) AddRules(r []rules.Rule) {
 	b.Rules = append(b.Rules, r...)
 }
 
+// AddBlock appends a block after this one in the linked block chain.
 func (b *LLBlock) AddBlock(after LLUnit) {
 	if b.After == nil {
 		b.After = after.(*LLBlock)
@@ -390,6 +413,7 @@ func (b *LLBlock) AddBlock(after LLUnit) {
 	}
 }
 
+// ExecuteCallstack drains the block's pending callstack and generates SMT rules for it.
 func (b *LLBlock) ExecuteCallstack() []rules.Rule {
 	stack := util.Copy(b.localCallstack)
 	b.localCallstack = []string{}
@@ -397,6 +421,7 @@ func (b *LLBlock) ExecuteCallstack() []rules.Rule {
 	return r
 }
 
+// GenerateCallstack converts a list of function names into SMT rules, generating all parallel permutations if more than one function is called.
 func (b *LLBlock) GenerateCallstack(callstack []string) []rules.Rule {
 	if len(callstack) == 0 {
 		return nil
@@ -427,6 +452,7 @@ func (b *LLBlock) GenerateCallstack(callstack []string) []rules.Rule {
 	return []rules.Rule{p}
 }
 
+// declareVar creates an Init rule for a constant or global variable, marking it as indexed if it has a version suffix.
 func declareVar(id string, ty string, val rules.Rule, solvable bool) *rules.Init {
 	var indexed bool
 	if IsIndexed(id) {
@@ -436,6 +462,7 @@ func declareVar(id string, ty string, val rules.Rule, solvable bool) *rules.Init
 	return rules.NewInit(id, ty, -1, val, solvable, indexed)
 }
 
+// tempToIdent recursively replaces temp variable references in a rule with their resolved identifiers.
 func (b *LLBlock) tempToIdent(ru rules.Rule) rules.Rule {
 	switch r := ru.(type) {
 	case *rules.Wrap:
@@ -451,6 +478,7 @@ func (b *LLBlock) tempToIdent(ru rules.Rule) rules.Rule {
 	return ru
 }
 
+// fetchIdent resolves a temp variable id to its loaded value or stored IR reference, panicking if not found.
 func (b *LLBlock) fetchIdent(id string, r rules.Rule) rules.Rule {
 	if IsTemp(id) {
 		refname := fmt.Sprintf("%s-%s", b.ParentFunction, id)
@@ -580,6 +608,7 @@ func extractLiteral(c constant.Constant) string {
 	}
 }
 
+// NewConstants processes all LLVM globals into SMT Init rules, inlining immutable constants and declaring solvable/mutable variables as free SMT variables.
 func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rules.Rule {
 	// Constants cannot be changed and therefore don't increment
 	// in SSA. So instead of return a *rule we can skip directly
@@ -620,6 +649,7 @@ func NewConstants(e *Env, globals []*ir.Global, RawInputs *llvm.RawInputs) []rul
 	return r
 }
 
+// WhenThen builds a map of variable relationships from "when/then" assertion statements, used to track SSA transitions across assertion boundaries.
 func WhenThen(aw []*ast.AssertionStatement) map[string]map[string][]string {
 	//Look for "when/then" asserts and build a map defining which
 	//variables are on the right side (then) for every variable on the left side (when)
@@ -705,6 +735,7 @@ func collectAssertVarNodes(e ast.Node) []*ast.AssertVar {
 	}
 }
 
+// extractVariables walks an expression tree and returns all identifier names, used as a fallback when no AssertVar nodes are present.
 func extractVariables(e ast.Node) []string {
 	var vars []string
 	switch v := e.(type) {
@@ -745,6 +776,7 @@ func extractVariables(e ast.Node) []string {
 	return vars
 }
 
+// constantRule converts a single LLVM global constant into an SMT Init rule, handling booleans, floats, solvable/whole/param variables, and skipping internal compiler globals.
 func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.RawInputs) rules.Rule {
 	if id == "__rounds" || id == "__parallelGroup" || id == "__choiceGroup" || id == "__synthStep" {
 		return nil
@@ -800,6 +832,7 @@ func (b *LLBlock) constantRule(id string, c constant.Constant, RawInputs *llvm.R
 	}
 }
 
+// constExpr converts a constant expression (And/Or/FNeg) into an SMT infix or prefix rule.
 func (b *LLBlock) constExpr(con constant.Constant) rules.Rule {
 	switch inst := con.(type) {
 	case *constant.ExprAnd:
@@ -823,6 +856,7 @@ func (b *LLBlock) constExpr(con constant.Constant) rules.Rule {
 	}
 }
 
+// isBuiltIn reports whether a function name is a Fault built-in (advance, stay, leave) that should not be unrolled.
 func isBuiltIn(c string) bool {
 	if c == "@advance" || c == "@stay" || c == "@leave" {
 		return true
@@ -839,6 +873,7 @@ func floatLitToInt(s string) string {
 	return s
 }
 
+// convertInfixVar resolves an SSA operand to its string value, type, and whether it is a variable reference (vs. an inlined literal).
 func convertInfixVar(e *Env, x string) (string, string, bool) {
 	if IsTemp(x) {
 		refname := fmt.Sprintf("%s-%s", e.CurrentFunction, x)
@@ -884,6 +919,7 @@ func convertInfixVar(e *Env, x string) (string, string, bool) {
 	return x, e.VarTypes[x], false
 }
 
+// createInfixRule builds an SMT Infix rule from two SSA operands and an operator, resolving temps and prior-round variable references (e.g. value[now-N]).
 func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rules.Rule {
 	var tyX, tyY string
 	var vrX, vrY bool
@@ -942,6 +978,7 @@ func (b *LLBlock) createInfixRule(id string, x string, y string, op string) rule
 	}
 }
 
+// createPrefixRule builds an SMT Prefix rule from an SSA operand and a unary operator.
 func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 	var vr bool
 	if _, ok := b.Env.VarTypes[x]; ok {
@@ -959,6 +996,7 @@ func (b *LLBlock) createPrefixRule(id string, x string, op string) rules.Rule {
 	}
 }
 
+// parallelPermutations generates all permutations of a slice of function names, used to enumerate all valid parallel execution orderings.
 func parallelPermutations(p []string) (permuts [][]string) {
 	var rc func([]string, int)
 	rc = func(a []string, k int) {
@@ -977,18 +1015,22 @@ func parallelPermutations(p []string) (permuts [][]string) {
 	return permuts
 }
 
+// isParallelGroup reports whether the block is currently inside a parallel execution group.
 func (b *LLBlock) isParallelGroup() bool {
 	return b.Env.ParallelGrouping != ""
 }
 
+// isChooseGroup reports whether the block is currently inside a choose (non-deterministic selection) group.
 func (b *LLBlock) isChooseGroup() bool {
 	return b.Env.ChooseGrouping != ""
 }
 
+// updateParallelGroup sets the current parallel group name in the environment.
 func (b *LLBlock) updateParallelGroup(name string) {
 	b.Env.ParallelGrouping = name
 }
 
+// updateChooseGroup sets the current choose group name in the environment.
 func (b *LLBlock) updateChooseGroup(name string) {
 	b.Env.ChooseGrouping = name
 }

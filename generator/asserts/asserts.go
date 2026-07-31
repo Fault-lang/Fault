@@ -35,6 +35,7 @@ type Constraint struct {
 	RoundPhis map[string][]int16 // per-variable phi SSA history for [n] iteration
 }
 
+// NewConstraint builds a Constraint from an assertion statement, resolving variable registries and when/then mappings.
 func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][][]string, whens map[string][]map[string]string, varTypes map[string]string, roundPhis map[string][]int16) (*Constraint, error) {
 	var operator string
 	stateRange := a.Constraint.Operator == "then"
@@ -77,6 +78,7 @@ func NewConstraint(a *ast.AssertionStatement, rounds int, registry map[string][]
 	}, nil
 }
 
+// IsRelevant reports whether a variable map satisfies the conditions of an invariant clause.
 func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {
 	// Check c.Left. Is it a *ast.AssertVar? If not, skip.
 	if leftAssertVar, ok := c.Left.(*ast.AssertVar); ok {
@@ -94,6 +96,7 @@ func IsRelevant(v map[string]string, c *ast.InvariantClause) bool {
 	return true
 }
 
+// HasActiveInstance reports whether any of the given variable instances appear in the vars map.
 func HasActiveInstance(insts []string, vars map[string]string) bool {
 	// Check the length of the Instances property.
 	// If len == 0 return false
@@ -194,6 +197,7 @@ func (c *Constraint) FilterRegistryByIndex(v string, idx string) map[string]*uti
 	return subset
 }
 
+// Parse generates the SMT-LIB2 assertion strings for this constraint, applying temporal and when/then logic.
 func (c *Constraint) Parse() []string {
 
 	// Then

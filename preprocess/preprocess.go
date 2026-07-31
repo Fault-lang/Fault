@@ -60,6 +60,7 @@ func NewProcesser() *Processor {
 	}
 }
 
+// Execute runs the preprocessor on a parsed AST, returning a Processor with all spec records populated.
 func Execute(l *listener.FaultListener) (pre *Processor, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -87,6 +88,7 @@ func ExecuteLint(l *listener.FaultListener) (pre *Processor, err error) {
 	return pre, nil
 }
 
+// Run walks the AST spec and applies all preprocessing transformations, returning the transformed AST.
 func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	tree, err := p.walk(n)
 	if err != nil {

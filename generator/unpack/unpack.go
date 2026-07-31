@@ -35,6 +35,7 @@ type Unpacker struct {
 	Warnings        []string
 }
 
+// NewUnpacker creates an Unpacker for converting SMT rules into SMT-LIB2 strings.
 func NewUnpacker(block_id string) *Unpacker {
 	return &Unpacker{
 		SSA:             rules.NewSSA(),
@@ -173,6 +174,7 @@ func (u *Unpacker) InitVars() []string {
 	return smt
 }
 
+// Unpack converts a slice of SMT rules into SMT-LIB2 assertion strings.
 func (u *Unpacker) Unpack(con []rules.Rule, f *unroll.LLFunc) []string {
 	//Unpack the constants
 	r := u.unpackConstants(con)
@@ -1078,6 +1080,7 @@ func strictOr(rules []string) string {
 	return fmt.Sprintf("(or %s)", strings.Join(choice, "\n"))
 }
 
+// InitsToList converts a slice of Init rules into declare-const SMT-LIB2 strings.
 func InitsToList(inits []*rules.Init) []string {
 	var init_list []string
 	for _, i := range inits {

@@ -27,6 +27,7 @@ type ProgressModel struct {
 	height       int
 }
 
+// NewProgressModel creates a progress view model for tracking compilation of the given filepath.
 func NewProgressModel(filepath string) ProgressModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
