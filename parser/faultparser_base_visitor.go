@@ -360,6 +360,10 @@ func (v *BaseFaultParserVisitor) VisitOpInstance(ctx *OpInstanceContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitOpCharacteristic(ctx *OpCharacteristicContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitPrefix(ctx *PrefixContext) interface{} {
 	return v.VisitChildren(ctx)
 }

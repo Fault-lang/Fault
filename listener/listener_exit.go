@@ -998,9 +998,10 @@ func (l *FaultListener) ExitRunInit(c *parser.RunInitContext) {
 
 	//swaps, orphanSwaps = l.filterSwaps(right, orphanSwaps)
 	inst := &ast.Instance{
-		Value: ident,
-		Name:  right,
-		Order: order,
+		Value:    ident,
+		Name:     right,
+		Order:    order,
+		Multiple: c.MULTIPLE() != nil,
 	}
 
 	l.instances[right] = inst
@@ -1402,6 +1403,19 @@ func (l *FaultListener) ExitOpInstance(c *parser.OpInstanceContext) {
 		Order: order,
 	},
 	)
+}
+
+func (l *FaultListener) ExitOpCharacteristic(c *parser.OpCharacteristicContext) {
+	token := ast.GenerateToken("IDENT", "IDENT", l.currSpec, c.GetStart(), c.GetStop())
+	idents := c.AllIDENT()
+	if len(idents) != 2 {
+		panic(fmt.Sprintf("invalid characteristic access at %s", l.loc(c.GetStart())))
+	}
+	l.push(&ast.CharacteristicAccess{
+		Token:    token,
+		Instance: idents[0].GetText(),
+		Key:      idents[1].GetText(),
+	})
 }
 
 func (l *FaultListener) ExitOpThis(c *parser.OpThisContext) {

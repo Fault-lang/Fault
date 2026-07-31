@@ -272,6 +272,9 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#OpInstance.
 	VisitOpInstance(ctx *OpInstanceContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#OpCharacteristic.
+	VisitOpCharacteristic(ctx *OpCharacteristicContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#prefix.
 	VisitPrefix(ctx *PrefixContext) interface{}
 

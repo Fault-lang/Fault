@@ -272,6 +272,9 @@ type FaultParserListener interface {
 	// EnterOpInstance is called when entering the OpInstance production.
 	EnterOpInstance(c *OpInstanceContext)
 
+	// EnterOpCharacteristic is called when entering the OpCharacteristic production.
+	EnterOpCharacteristic(c *OpCharacteristicContext)
+
 	// EnterPrefix is called when entering the prefix production.
 	EnterPrefix(c *PrefixContext)
 
@@ -604,6 +607,9 @@ type FaultParserListener interface {
 
 	// ExitOpInstance is called when exiting the OpInstance production.
 	ExitOpInstance(c *OpInstanceContext)
+
+	// ExitOpCharacteristic is called when exiting the OpCharacteristic production.
+	ExitOpCharacteristic(c *OpCharacteristicContext)
 
 	// ExitPrefix is called when exiting the prefix production.
 	ExitPrefix(c *PrefixContext)

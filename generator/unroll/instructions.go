@@ -201,6 +201,13 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 						isDelta = true
 					}
 
+					// Scale the delta by the instance count for `multiple` flows.
+					// We scale r.Y (the delta, not x_old) so the result is
+					// x_new = x_old ± (delta * N) rather than (x_old ± delta) * N.
+					if countVar := b.multipleCountVar(); countVar != "" && !IsBoolean(r.Y.String()) {
+						r.Y = b.scaledDelta(r.Y, countVar)
+					}
+
 					if IsBoolean(r.Y.String()) {
 						wid.Type = "Bool"
 						ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "=", IsDelta: isDelta})
@@ -316,6 +323,25 @@ func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 		fmt.Printf("DEBUG parseLoad: refname=%s src=%s CurrentFunction=%s\n", refname, inst.Src.Ident(), b.Env.CurrentFunction)
 	}
 	return []rules.Rule{}
+}
+
+// multipleCountVar returns the SMT count variable for the current function if
+// it is executing inside a `multiple`-instantiated flow, or "" otherwise.
+func (b *LLBlock) multipleCountVar() string {
+	for prefix, countVar := range b.Env.RawInputs.MultipleFuncPrefixes {
+		if strings.HasPrefix(b.Env.CurrentFunction, prefix+"_") || b.Env.CurrentFunction == prefix {
+			return countVar
+		}
+	}
+	return ""
+}
+
+// scaledDelta wraps a delta rule in (* delta countVar) so that mutations inside
+// a `multiple`-instantiated flow are scaled by the solver-determined instance count.
+func (b *LLBlock) scaledDelta(delta rules.Rule, countVar string) rules.Rule {
+	_, file, line, _ := runtime.Caller(1)
+	countWrap := rules.NewWrap(countVar, "Int", false, file, line, false, false)
+	return &rules.Infix{X: delta, Y: countWrap, Op: "*"}
 }
 
 func (b *LLBlock) parseAdd(inst *ir.InstFAdd) []rules.Rule {

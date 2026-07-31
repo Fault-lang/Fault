@@ -57,6 +57,15 @@ type RawInputs struct {
 	// integer constraint), warning the user that non-Z3 solvers may reject the output,
 	// or emitting both sorts and letting the solver decide.
 	IntegerMode bool
+	// MultipleInstances maps each `multiple`-instantiated flow instance name to its
+	// generated SMT count variable name (e.g. "l" → "__retries_load_count").
+	// The generator uses this to emit the Int declaration, the >= 1 constraint,
+	// and to scale stock mutations within those flows.
+	MultipleInstances map[string]string
+	// MultipleFuncPrefixes maps the LLVM function name prefix for a multiple-instance
+	// flow (e.g. "retries_l") to its count variable, so the unroll phase can check
+	// whether a mutation is inside a multiple flow by matching CurrentFunction.
+	MultipleFuncPrefixes map[string]string
 }
 
 // UnfuncInfo stores the requires/emits/assumes expression trees for an unfunc state.
@@ -79,8 +88,10 @@ func NewRawInputs() *RawInputs {
 		Params:     []string{},
 		ParamTypes:   make(map[string]string),
 		Unfuncs:      []*UnfuncInfo{},
-		BoolVarNames: make(map[string]bool),
-		BoolUnknowns: make(map[string]bool),
+		BoolVarNames:         make(map[string]bool),
+		BoolUnknowns:         make(map[string]bool),
+		MultipleInstances:    make(map[string]string),
+		MultipleFuncPrefixes: make(map[string]string),
 	}
 }
 
@@ -710,6 +721,15 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 		children = c.processStruct(node)
 	case "FLOW":
 		children = c.processStruct(node)
+		if node.Multiple {
+			// Generate the SMT count variable name: __specname_instancename_count
+			countVar := fmt.Sprintf("__%s_%s_count", node.Spec, node.Name)
+			c.RawInputs.MultipleInstances[node.Name] = countVar
+			// Also index by the LLVM function prefix (e.g. "retries_l") so the
+			// unroll phase can match CurrentFunction without string-scanning.
+			funcPrefix := node.IdString() // e.g. "retries_l"
+			c.RawInputs.MultipleFuncPrefixes[funcPrefix] = countVar
+		}
 	default:
 		panic(fmt.Sprintf("no stock or flow named %s %s", id, node.GetToken().Location()))
 	}
@@ -1772,6 +1792,16 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 
 	case *ast.AssertVar:
 		return e
+	case *ast.CharacteristicAccess:
+		// l::count resolves to the __spec_instance_count Int variable.
+		if countVar, ok := c.RawInputs.MultipleInstances[e.Instance]; ok {
+			return &ast.AssertVar{
+				Token:        e.Token,
+				InferredType: e.InferredType,
+				Instances:    []string{countVar},
+			}
+		}
+		panic(fmt.Sprintf("characteristic access on non-multiple instance %q %s", e.Instance, e.GetToken().Location()))
 	case *ast.IntegerLiteral:
 		return e
 	case *ast.FloatLiteral:

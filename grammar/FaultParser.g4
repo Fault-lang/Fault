@@ -265,7 +265,7 @@ initBlock
     ;
 
 initStep
-    : IDENT '=' 'new' (paramCall | IDENT) eos (swap eos)*  #runInit                               
+    : IDENT '=' (NEW | MULTIPLE) (paramCall | IDENT) eos (swap eos)*  #runInit
     ;
 
 runStep
@@ -320,11 +320,17 @@ operand
     ;
 
 operandName
-    : IDENT                     #OpName
-    | paramCall                 #OpParam
-    | THIS                      #OpThis
-    | CLOCK                     #OpClock
-    | 'new' IDENT ('.' IDENT)?  #OpInstance
+    : IDENT                          #OpName
+    | paramCall                      #OpParam
+    | THIS                           #OpThis
+    | CLOCK                          #OpClock
+    | 'new' IDENT ('.' IDENT)?        #OpInstance
+    // NOTE: `multiple` is currently only valid in run block initStep, not in inline
+    // property expressions. OpInstance is used when flows link to stocks (e.g.
+    // `target: new server`). A flow linking to a multiple-flow is not yet a
+    // supported use case. If that changes, uncomment:
+    // | 'multiple' IDENT ('.' IDENT)?  #OpMultipleInstance
+    | IDENT DOUBLE_COLON IDENT        #OpCharacteristic
     ;
 
 prefix

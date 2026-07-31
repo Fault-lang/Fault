@@ -125,7 +125,20 @@ func (g *Generator) Run(llopt string) {
 
 }
 
+// emitMultipleInstanceDecls emits an Int declare-const and >= 1 constraint
+// for each flow instantiated with `multiple`.
+func (g *Generator) emitMultipleInstanceDecls() []string {
+	var smt []string
+	for _, countVar := range g.RawInputs.MultipleInstances {
+		smt = append(smt, fmt.Sprintf("(declare-const %s Int)", countVar))
+		smt = append(smt, fmt.Sprintf("(assert (>= %s 1))", countVar))
+	}
+	return smt
+}
+
 func (g *Generator) newCallgraph(m *ir.Module) {
+	g.AppendSMT(g.emitMultipleInstanceDecls())
+
 	g.Env.MutableVars = unroll.FindMutableVars(m.Funcs)
 	g.Env.UsedVars = unroll.FindUsedVars(m.Funcs)
 	// Variables referenced in assume/assert constraints must not be pruned

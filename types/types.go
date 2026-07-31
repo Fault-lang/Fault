@@ -349,6 +349,16 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		// Run steps (CallStep, SolvableStep, ParallelFunctions, IfStep) are not typechecked here.
 		return node, err
 	case *ast.Instance:
+		if node.Multiple {
+			rawid := []string{node.Value.Spec, node.Value.Value}
+			if spec, ok := c.SpecStructs[rawid[0]]; ok {
+				ty, _ := spec.GetStructType(rawid[1:])
+				if ty != "FLOW" {
+					return nil, fmt.Errorf("`multiple` is only valid for flows, but %s is a %s %s",
+						node.Value.Value, strings.ToLower(ty), node.GetToken().Location())
+				}
+			}
+		}
 		return node, err
 	case *ast.StructInstance:
 		cnode, err := c.complexInstances(node)
@@ -613,6 +623,11 @@ func (c *Checker) infer(exp interface{}) (ast.Node, error) {
 			if err != nil {
 				return nil, err
 			}
+		}
+		return node, nil
+	case *ast.CharacteristicAccess:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "Int", Scope: 0, Parameters: nil}
 		}
 		return node, nil
 	case *ast.Nil:
