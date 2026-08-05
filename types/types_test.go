@@ -1594,3 +1594,34 @@ func prepTest(test string, specType bool) (*Checker, error) {
 	_, err = ty.Check(pre.Processed)
 	return ty, err
 }
+
+// --- multiple keyword type checker tests ---
+
+func TestMultipleOnFlowOK(t *testing.T) {
+	test := `spec test1;
+			def tub = stock{ level: 5, };
+			def faucet = flow{
+				water: new tub,
+				in: func{ water.level <- 10; },
+			};
+			run init{l = multiple faucet;}{l.in;}
+		`
+	_, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checking failed on valid multiple flow: %s", err)
+	}
+}
+
+func TestMultipleOnStockError(t *testing.T) {
+	test := `spec test1;
+			def tub = stock{ level: 5, };
+			run init{l = multiple tub;}{};
+		`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatalf("expected type error for `multiple` on stock, got none")
+	}
+	if !strings.Contains(err.Error(), "`multiple` is only valid for flows") {
+		t.Fatalf("expected error about multiple only valid for flows, got: %s", err)
+	}
+}

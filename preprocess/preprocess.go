@@ -1046,7 +1046,8 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				Properties:   make(map[string]*ast.StructProperty),
 				ComplexScope: node.ComplexScope,
 				Swaps:        swaps,
-				Order:        order}
+				Order:        order,
+				Multiple:     node.Multiple}
 
 			pro.Token.Literal = "STOCK"
 

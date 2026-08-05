@@ -722,8 +722,10 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 	case "FLOW":
 		children = c.processStruct(node)
 		if node.Multiple {
-			// Generate the SMT count variable name: __specname_instancename_count
-			countVar := fmt.Sprintf("__%s_%s_count", node.Spec, node.Name)
+			// Generate the SMT count variable name as an SSA-versioned variable
+			// (index 0) so the execute layer can parse it from the Z3 model.
+			// Format: __specname_instancename_count_0
+			countVar := fmt.Sprintf("__%s_%s_count_0", node.Spec, node.Name)
 			c.RawInputs.MultipleInstances[node.Name] = countVar
 			// Also index by the LLVM function prefix (e.g. "retries_l") so the
 			// unroll phase can match CurrentFunction without string-scanning.

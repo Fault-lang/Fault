@@ -592,9 +592,9 @@ func TestBadSpecs(t *testing.T) {
 					return
 				}
 				ty, err := types.Execute(pre.Processed, pre)
-	if err != nil {
-		t.Fatal(err)
-	}
+				if err != nil {
+					t.Fatal(err)
+				}
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)
 				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, false)
@@ -1537,5 +1537,103 @@ func TestSSANIterationNPlusOne(t *testing.T) {
 	// The division in x[n+1]/2 should produce a "/" SMT expression.
 	if !strings.Contains(smt, "/") {
 		t.Fatalf("SMT missing division operator from x[n+1]/2. got:\n%s", smt)
+	}
+}
+
+// TestMultipleFlow verifies that:
+//   - a multiple-instantiated flow emits an Int declare-const and a >= 1 assert
+//   - stock mutations inside the flow are scaled by the count variable
+//   - assume l::count < 5 produces an unversioned (assert (< __scalable_l_count 5))
+func TestMultipleFlow(t *testing.T) {
+	test := `spec scalable;
+
+def tub = stock{
+    level: 5,
+};
+
+def faucet = flow{
+    water: new tub,
+    in: func{
+        water.level <- 10;
+    },
+};
+
+assume l::count < 5;
+
+run init{l = multiple faucet;}{
+    l.in;
+}
+`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Count variable declared as Real (SSA version 0) with is_int constraint and >= 1 bound.
+	// Using _0 suffix so the execute layer can parse it from the Z3 model (SSA convention).
+	// Real sort + is_int mirrors the whole() encoding in QF_NRA mode.
+	if !strings.Contains(smt, "(declare-const __scalable_l_count_0 Real)") {
+		t.Fatalf("SMT missing count variable declaration, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(assert (is_int __scalable_l_count_0))") {
+		t.Fatalf("SMT missing is_int constraint on count variable, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(assert (>= __scalable_l_count_0 1))") {
+		t.Fatalf("SMT missing count variable >= 1 bound, got:\n%s", smt)
+	}
+
+	// Mutation is scaled by the count variable
+	if !strings.Contains(smt, "(* 10.0 __scalable_l_count_0)") {
+		t.Fatalf("SMT missing scaled mutation (* 10.0 __scalable_l_count_0), got:\n%s", smt)
+	}
+
+	// assume l::count < 5 emits an SSA-versioned assertion
+	if !strings.Contains(smt, "(assert (< __scalable_l_count_0 5))") {
+		t.Fatalf("SMT missing assume on count variable, got:\n%s", smt)
+	}
+}
+
+func TestMultipleFlow2(t *testing.T) {
+	test := `spec scalable;
+
+def tub = stock{
+    level: 5,
+};
+
+def faucet = flow{
+    water: new tub,
+    in: func{
+        water.level = 10 + water.level;
+    },
+};
+
+assume l::count < 5;
+
+run init{l = multiple faucet;}{
+    l.in;
+}
+`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Count variable declared as Real (SSA version 0) with is_int constraint and >= 1 bound.
+	// Using _0 suffix so the execute layer can parse it from the Z3 model (SSA convention).
+	// Real sort + is_int mirrors the whole() encoding in QF_NRA mode.
+	if !strings.Contains(smt, "(declare-const __scalable_l_count_0 Real)") {
+		t.Fatalf("SMT missing count variable declaration, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(assert (is_int __scalable_l_count_0))") {
+		t.Fatalf("SMT missing is_int constraint on count variable, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(assert (>= __scalable_l_count_0 1))") {
+		t.Fatalf("SMT missing count variable >= 1 bound, got:\n%s", smt)
+	}
+
+	// Mutation is scaled by the count variable
+	if !strings.Contains(smt, "(* 10.0 __scalable_l_count_0)") {
+		t.Fatalf("SMT missing scaled mutation (* 10.0 __scalable_l_count_0), got:\n%s", smt)
+	}
+
+	// assume l::count < 5 emits an SSA-versioned assertion
+	if !strings.Contains(smt, "(assert (< __scalable_l_count_0 5))") {
+		t.Fatalf("SMT missing assume on count variable, got:\n%s", smt)
 	}
 }

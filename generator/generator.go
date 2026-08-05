@@ -125,12 +125,23 @@ func (g *Generator) Run(llopt string) {
 
 }
 
-// emitMultipleInstanceDecls emits an Int declare-const and >= 1 constraint
-// for each flow instantiated with `multiple`.
+// emitMultipleInstanceDecls emits a declare-const and >= 1 constraint for each
+// flow instantiated with `multiple`, and registers the count variables in VarTypes.
+//
+// Count variables are whole numbers (positive integers). They follow the same
+// encoding as whole() variables: Real sort + (assert (is_int ...)) in QF_NRA mode,
+// or Int sort (no is_int) when IntegerMode is active (all free vars are whole).
 func (g *Generator) emitMultipleInstanceDecls() []string {
 	var smt []string
 	for _, countVar := range g.RawInputs.MultipleInstances {
-		smt = append(smt, fmt.Sprintf("(declare-const %s Int)", countVar))
+		if g.RawInputs.IntegerMode {
+			smt = append(smt, fmt.Sprintf("(declare-const %s Int)", countVar))
+			g.Env.VarTypes[countVar] = "Int"
+		} else {
+			smt = append(smt, fmt.Sprintf("(declare-const %s Real)", countVar))
+			smt = append(smt, fmt.Sprintf("(assert (is_int %s))", countVar))
+			g.Env.VarTypes[countVar] = "Real"
+		}
 		smt = append(smt, fmt.Sprintf("(assert (>= %s 1))", countVar))
 	}
 	return smt
@@ -195,6 +206,15 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 
 	g.ResultLog = p.Log
 
+	// Register count variables so the logger can display solver-selected
+	// instance counts in the "Initialize model" section.
+	for instanceName, countVarSSA := range g.RawInputs.MultipleInstances {
+		// countVarSSA is e.g. "__retries_load_count_0"; Results keys use the
+		// base without the _0 SSA suffix (set by splitIdent in the execute layer).
+		base := strings.TrimSuffix(countVarSSA, "_0")
+		g.ResultLog.CountVars[instanceName+" instances"] = base
+	}
+
 	// ProcessUnfuncs first: it declares _available_N shadow variables that
 	// assume/assert statements (e.g. "assume x available") may reference.
 	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound, p.Registry)
@@ -217,6 +237,13 @@ func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds 
 			rules = append(rules, availabilityAssertions(as)...)
 			continue
 		}
+		// Count variables (e.g. __scalable_l_count from `multiple` flows) are
+		// timeless constants with no SSA versions in the registry. Emit them
+		// once, unversioned, rather than going through the registry-based path.
+		if g.constraintHasCountVar(as.Constraint) {
+			rules = append(rules, g.countVarAssertions(as)...)
+			continue
+		}
 		if !asserts.IsRelevant(g.Env.VarTypes, as.Constraint) { //If the assert is on a variable that is not used, drop the assert
 			continue
 		}
@@ -227,6 +254,107 @@ func (g *Generator) ProcessAsserts(assertList []*ast.AssertionStatement, rounds 
 		rules = append(rules, c.Parse()...)
 	}
 	return rules
+}
+
+// isCountVar reports whether name is a multiple-instance count variable.
+func (g *Generator) isCountVar(name string) bool {
+	for _, cv := range g.RawInputs.MultipleInstances {
+		if cv == name {
+			return true
+		}
+	}
+	return false
+}
+
+// constraintHasCountVar reports whether either side of an invariant clause
+// references a multiple-instance count variable.
+func (g *Generator) constraintHasCountVar(c *ast.InvariantClause) bool {
+	return g.exprHasCountVar(c.Left) || g.exprHasCountVar(c.Right)
+}
+
+func (g *Generator) exprHasCountVar(expr ast.Expression) bool {
+	if expr == nil {
+		return false
+	}
+	switch e := expr.(type) {
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			if g.isCountVar(inst) {
+				return true
+			}
+		}
+	case *ast.InfixExpression:
+		return g.exprHasCountVar(e.Left) || g.exprHasCountVar(e.Right)
+	case *ast.PrefixExpression:
+		return g.exprHasCountVar(e.Right)
+	}
+	return false
+}
+
+// countVarAssertions emits SMT for constraints involving multiple-instance count
+// variables. Count variables are timeless (no SSA versions), so they are emitted
+// once as unversioned: e.g. (assert (< __scalable_l_count 5)).
+func (g *Generator) countVarAssertions(as *ast.AssertionStatement) []string {
+	smtExpr := g.countVarExprToSMT(as.Constraint.Left, as.Constraint.Right, as.Constraint.Operator)
+	if smtExpr == "" {
+		return nil
+	}
+	return []string{fmt.Sprintf("(assert %s)", smtExpr)}
+}
+
+func (g *Generator) countVarExprToSMT(left, right ast.Expression, op string) string {
+	leftSMT := g.countVarNodeToSMT(left)
+	rightSMT := g.countVarNodeToSMT(right)
+	if leftSMT == "" || rightSMT == "" {
+		return ""
+	}
+	return fmt.Sprintf("(%s %s %s)", countVarSMTOp(op), leftSMT, rightSMT)
+}
+
+func (g *Generator) countVarNodeToSMT(expr ast.Expression) string {
+	if expr == nil {
+		return ""
+	}
+	switch e := expr.(type) {
+	case *ast.AssertVar:
+		if len(e.Instances) > 0 {
+			return e.Instances[0]
+		}
+	case *ast.IntegerLiteral:
+		return fmt.Sprintf("%d", e.Value)
+	case *ast.FloatLiteral:
+		return fmt.Sprintf("%g", e.Value)
+	case *ast.Boolean:
+		return fmt.Sprintf("%v", e.Value)
+	case *ast.InfixExpression:
+		left := g.countVarNodeToSMT(e.Left)
+		right := g.countVarNodeToSMT(e.Right)
+		if left == "" || right == "" {
+			return ""
+		}
+		return fmt.Sprintf("(%s %s %s)", countVarSMTOp(e.Operator), left, right)
+	case *ast.PrefixExpression:
+		inner := g.countVarNodeToSMT(e.Right)
+		if inner == "" {
+			return ""
+		}
+		if e.Operator == "!" {
+			return fmt.Sprintf("(not %s)", inner)
+		}
+		return fmt.Sprintf("(%s %s)", countVarSMTOp(e.Operator), inner)
+	}
+	return ""
+}
+
+func countVarSMTOp(op string) string {
+	switch op {
+	case "==":
+		return "="
+	case "!=":
+		return "distinct"
+	default:
+		return op
+	}
 }
 
 // availabilityAssertions generates SMT for "assume/assert x available".

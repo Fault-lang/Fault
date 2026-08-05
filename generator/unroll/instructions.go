@@ -202,10 +202,28 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					}
 
 					// Scale the delta by the instance count for `multiple` flows.
-					// We scale r.Y (the delta, not x_old) so the result is
-					// x_new = x_old ± (delta * N) rather than (x_old ± delta) * N.
-					if countVar := b.multipleCountVar(); countVar != "" && !IsBoolean(r.Y.String()) {
-						r.Y = b.scaledDelta(r.Y, countVar)
+					// Only delta operations (x <- delta, x -> delta, or equivalently
+					// x = x_old OP delta) should be scaled. An absolute assignment
+					// (x = expr, where x_old does not appear) should not be scaled —
+					// N instances all assigning the same absolute value still yields
+					// that value, not N times it.
+					//
+					// We detect delta ops by checking whether either operand is an
+					// SSA-versioned reference to the destination variable (base_N).
+					// If x_old is on the left  → scale r.Y (the delta).
+					// If x_old is on the right → scale r.X (the delta).
+					// If x_old is absent       → absolute assignment, do not scale.
+					// Wrap values carry the base name without SSA suffix (versioning
+					// happens later during unpack), so compare by equality to base.
+					if countVar := b.multipleCountVar(); countVar != "" {
+						xIsBase := r.X.String() == base
+						yIsBase := r.Y.String() == base
+						if xIsBase && !IsBoolean(r.Y.String()) {
+							r.Y = b.scaledDelta(r.Y, countVar)
+						} else if yIsBase && !IsBoolean(r.X.String()) {
+							r.X = b.scaledDelta(r.X, countVar)
+						}
+						// Neither operand is x_old: absolute assignment — do not scale.
 					}
 
 					if IsBoolean(r.Y.String()) {

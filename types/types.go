@@ -361,6 +361,12 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		}
 		return node, err
 	case *ast.StructInstance:
+		if node.Multiple && node.Type() != "FLOW" {
+			if err = c.collect(fmt.Errorf("`multiple` is only valid for flows, but %s is a %s %s",
+				node.Name, strings.ToLower(node.Type()), node.GetToken().Location())); err != nil {
+				return nil, err
+			}
+		}
 		cnode, err := c.complexInstances(node)
 		node = cnode
 		return node, err
@@ -1034,6 +1040,11 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			Scope:      0,
 			Parameters: nil}
 		return node, err
+	case *ast.CharacteristicAccess:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "Int", Scope: 0, Parameters: nil}
+		}
+		return node, nil
 	default:
 		n := node.(ast.Node)
 		return nil, fmt.Errorf("unrecognized type: %s got=%T", n.GetToken().Location(), node)

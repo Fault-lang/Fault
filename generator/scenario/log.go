@@ -32,6 +32,10 @@ type Logger struct {
 	RoundPhis          map[string][]int16
 	RoundPhiLastRound  map[string]int // tracks the run-step round of the last entry in RoundPhis
 	SystemName         string         // stripped from variable and function names in output
+	// CountVars maps display label (e.g. "load instances") to the SSA base name
+	// (e.g. "__retries_load_count") for each `multiple`-instantiated flow.
+	// Values are read from Results and shown in the Initialize model section.
+	CountVars map[string]string
 }
 
 // NewLogger creates an initialized Logger for tracking solver result interpretation.
@@ -51,6 +55,7 @@ func NewLogger() *Logger {
 		IsPhi:         make(map[string]bool),
 		RoundPhis:         make(map[string][]int16),
 		RoundPhiLastRound: make(map[string]int),
+		CountVars:         make(map[string]string),
 	}
 }
 
@@ -741,6 +746,17 @@ func (l *Logger) String() string {
 				if event.Type == "Entry" {
 					root.WriteString("\nInitialize model\n")
 					root.WriteString("-----------------------------------\n")
+					// Show solver-selected instance counts for `multiple` flows.
+					for label, base := range l.CountVars {
+						if val, ok := l.Results[base+"_0"]; ok {
+							// Format as integer: strip trailing ".0" from Real-encoded ints.
+							display := val
+							if strings.HasSuffix(display, ".0") {
+								display = display[:len(display)-2]
+							}
+							root.WriteString(fmt.Sprintf("   %s: %s\n", label, display))
+						}
+					}
 					root.WriteString("\nStart model\n")
 					root.WriteString("-----------------------------------\n")
 				}
