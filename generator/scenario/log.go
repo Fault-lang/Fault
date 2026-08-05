@@ -294,6 +294,33 @@ func (l *Logger) Trace() {
 	}
 }
 
+// latestResult finds the most recent SSA value in Results for a base variable name.
+// Results keys have the form base_N; this returns the value for the highest N found.
+func (l *Logger) latestResult(base string) string {
+	best := -1
+	val := ""
+	prefix := base + "_"
+	for k, v := range l.Results {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		suffix := k[len(prefix):]
+		n := 0
+		for _, c := range suffix {
+			if c < '0' || c > '9' {
+				n = -1
+				break
+			}
+			n = n*10 + int(c-'0')
+		}
+		if n >= 0 && n > best {
+			best = n
+			val = v
+		}
+	}
+	return val
+}
+
 func (l *Logger) IsLoggable(id string) bool {
 	//Do not log intermediate states in compound phrases or phis
 	return !l.IsCompound[id] && !l.IsPhi[id]
@@ -756,6 +783,17 @@ func (l *Logger) String() string {
 							}
 							root.WriteString(fmt.Sprintf("   %s: %s\n", label, display))
 						}
+					}
+					// Show string-rule (docstring) variable values.
+					// Keys in StringRules are base variable names; Results keys have a _N SSA suffix.
+					for base, label := range l.StringRules {
+						// Find the most recent SSA value in Results.
+						val := l.latestResult(base)
+						if val == "" {
+							continue
+						}
+						display := strings.ToUpper(val)
+						root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
 					}
 					root.WriteString("\nStart model\n")
 					root.WriteString("-----------------------------------\n")
