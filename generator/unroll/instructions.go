@@ -215,7 +215,11 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 					// If x_old is absent       → absolute assignment, do not scale.
 					// Wrap values carry the base name without SSA suffix (versioning
 					// happens later during unpack), so compare by equality to base.
-					if countVar := b.multipleCountVar(); countVar != "" {
+					countVar := b.multipleCountVar()
+					if countVar == "" {
+						countVar = b.multipleCountVarForDest(base)
+					}
+					if countVar != "" {
 						xIsBase := r.X.String() == base
 						yIsBase := r.Y.String() == base
 						if xIsBase && !IsBoolean(r.Y.String()) {
@@ -348,6 +352,23 @@ func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 func (b *LLBlock) multipleCountVar() string {
 	for prefix, countVar := range b.Env.RawInputs.MultipleFuncPrefixes {
 		if strings.HasPrefix(b.Env.CurrentFunction, prefix+"_") || b.Env.CurrentFunction == prefix {
+			return countVar
+		}
+	}
+	return ""
+}
+
+// multipleCountVarForDest returns the SMT count variable for a destination
+// variable if that variable belongs to a `multiple`-instantiated flow,
+// regardless of which function is currently executing. This handles the case
+// where a client function (e.g. client.send) directly mutates a stock that
+// belongs to a multiple flow (e.g. load.network.requests <- 1).
+func (b *LLBlock) multipleCountVarForDest(varBase string) string {
+	for instanceName, countVar := range b.Env.RawInputs.MultipleInstances {
+		// Variable names are prefixed with the system name and instance name,
+		// e.g. "retries_load_network_requests" for instance "load" in spec "retries".
+		// We match by looking for the instance name as a path component.
+		if strings.Contains(varBase, "_"+instanceName+"_") || strings.HasPrefix(varBase, instanceName+"_") {
 			return countVar
 		}
 	}
