@@ -3527,3 +3527,71 @@ component fetch = states{
 	},
 };`)
 }
+
+// --- multiple keyword listener tests ---
+
+func TestMultipleRunInit(t *testing.T) {
+	test := `spec test1;
+			 run init{l = multiple foo;} {};
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	if spec == nil {
+		t.Fatalf("prepTest() returned nil")
+	}
+	runSt, ok := spec.Statements[1].(*ast.RunStatement)
+	if !ok {
+		t.Fatalf("spec.Statements[1] is not a RunStatement. got=%T", spec.Statements[1])
+	}
+	inst, ok := runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	if !ok {
+		t.Fatalf("init is not an Instance. got=%T", runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression)
+	}
+	if !inst.Multiple {
+		t.Fatalf("expected Instance.Multiple == true, got false")
+	}
+	if inst.Name != "l" {
+		t.Fatalf("expected instance name l, got %s", inst.Name)
+	}
+}
+
+func TestNewRunInitNotMultiple(t *testing.T) {
+	test := `spec test1;
+			 run init{l = new foo;} {};
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	runSt := spec.Statements[1].(*ast.RunStatement)
+	inst := runSt.Inits.Statements[0].(*ast.ExpressionStatement).Expression.(*ast.Instance)
+	if inst.Multiple {
+		t.Fatalf("expected Instance.Multiple == false for `new`, got true")
+	}
+}
+
+func TestCharacteristicAccess(t *testing.T) {
+	test := `spec test1;
+			 assume l::count < 10;
+			`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	if spec == nil {
+		t.Fatalf("prepTest() returned nil")
+	}
+	stmt, ok := spec.Statements[1].(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("expected AssertionStatement, got %T", spec.Statements[1])
+	}
+	ca, ok := stmt.Constraint.Left.(*ast.CharacteristicAccess)
+	if !ok {
+		t.Fatalf("expected CharacteristicAccess on left side, got %T", stmt.Constraint.Left)
+	}
+	if ca.Instance != "l" {
+		t.Fatalf("expected instance name l, got %s", ca.Instance)
+	}
+	if ca.Key != "count" {
+		t.Fatalf("expected characteristic key count, got %s", ca.Key)
+	}
+}

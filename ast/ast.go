@@ -678,6 +678,7 @@ func (av *AssertVar) SetType(ty *Type) {
 type StructInstance struct {
 	Token         Token
 	InferredType  *Type
+	Multiple      bool //If true, this was instantiated with `multiple` — solver determines count
 	Complex       bool
 	Properties    map[string]*StructProperty
 	Order         []string
@@ -767,6 +768,7 @@ type Instance struct {
 	InferredType  *Type
 	Value         *Identifier
 	Name          string
+	Multiple      bool //If true, instantiated with `multiple` — solver determines instance count
 	Complex       bool //If stock does this stock contain another stock?
 	ComplexScope  string
 	Processed     *StructInstance
@@ -809,6 +811,23 @@ func (i *Instance) IdString() string {
 func (i *Instance) RawId() []string {
 	return i.ProcessedName
 }
+
+// CharacteristicAccess represents `instance::key` — access to a type-level
+// characteristic of a multiple-instance flow (e.g. `l::count`).
+type CharacteristicAccess struct {
+	Token        Token
+	InferredType *Type
+	Instance     string // the flow instance name, e.g. "l"
+	Key          string // the characteristic name, e.g. "count"
+}
+
+func (ca *CharacteristicAccess) expressionNode()      {}
+func (ca *CharacteristicAccess) TokenLiteral() string { return ca.Token.Literal }
+func (ca *CharacteristicAccess) Position() []int      { return ca.Token.GetPosition() }
+func (ca *CharacteristicAccess) String() string       { return ca.Instance + "::" + ca.Key }
+func (ca *CharacteristicAccess) GetToken() Token      { return ca.Token }
+func (ca *CharacteristicAccess) Type() string         { return "Int" }
+func (ca *CharacteristicAccess) SetType(ty *Type)     { ca.InferredType = ty }
 
 type ExpressionStatement struct {
 	Token        Token

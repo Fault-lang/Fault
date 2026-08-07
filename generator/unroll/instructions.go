@@ -201,6 +201,35 @@ func (b *LLBlock) parseStore(inst *ir.InstStore) []rules.Rule {
 						isDelta = true
 					}
 
+					// Scale the delta by the instance count for `multiple` flows.
+					// Only delta operations (x <- delta, x -> delta, or equivalently
+					// x = x_old OP delta) should be scaled. An absolute assignment
+					// (x = expr, where x_old does not appear) should not be scaled —
+					// N instances all assigning the same absolute value still yields
+					// that value, not N times it.
+					//
+					// We detect delta ops by checking whether either operand is an
+					// SSA-versioned reference to the destination variable (base_N).
+					// If x_old is on the left  → scale r.Y (the delta).
+					// If x_old is on the right → scale r.X (the delta).
+					// If x_old is absent       → absolute assignment, do not scale.
+					// Wrap values carry the base name without SSA suffix (versioning
+					// happens later during unpack), so compare by equality to base.
+					countVar := b.multipleCountVar()
+					if countVar == "" {
+						countVar = b.multipleCountVarForDest(base)
+					}
+					if countVar != "" {
+						xIsBase := r.X.String() == base
+						yIsBase := r.Y.String() == base
+						if xIsBase && !IsBoolean(r.Y.String()) {
+							r.Y = b.scaledDelta(r.Y, countVar)
+						} else if yIsBase && !IsBoolean(r.X.String()) {
+							r.X = b.scaledDelta(r.X, countVar)
+						}
+						// Neither operand is x_old: absolute assignment — do not scale.
+					}
+
 					if IsBoolean(r.Y.String()) {
 						wid.Type = "Bool"
 						ru = append(ru, &rules.Infix{X: wid, Ty: "Bool", Y: r, Op: "=", IsDelta: isDelta})
@@ -316,6 +345,42 @@ func (b *LLBlock) parseLoad(inst *ir.InstLoad) []rules.Rule {
 		fmt.Printf("DEBUG parseLoad: refname=%s src=%s CurrentFunction=%s\n", refname, inst.Src.Ident(), b.Env.CurrentFunction)
 	}
 	return []rules.Rule{}
+}
+
+// multipleCountVar returns the SMT count variable for the current function if
+// it is executing inside a `multiple`-instantiated flow, or "" otherwise.
+func (b *LLBlock) multipleCountVar() string {
+	for prefix, countVar := range b.Env.RawInputs.MultipleFuncPrefixes {
+		if strings.HasPrefix(b.Env.CurrentFunction, prefix+"_") || b.Env.CurrentFunction == prefix {
+			return countVar
+		}
+	}
+	return ""
+}
+
+// multipleCountVarForDest returns the SMT count variable for a destination
+// variable if that variable belongs to a `multiple`-instantiated flow,
+// regardless of which function is currently executing. This handles the case
+// where a client function (e.g. client.send) directly mutates a stock that
+// belongs to a multiple flow (e.g. load.network.requests <- 1).
+func (b *LLBlock) multipleCountVarForDest(varBase string) string {
+	for instanceName, countVar := range b.Env.RawInputs.MultipleInstances {
+		// Variable names are prefixed with the system name and instance name,
+		// e.g. "retries_load_network_requests" for instance "load" in spec "retries".
+		// We match by looking for the instance name as a path component.
+		if strings.Contains(varBase, "_"+instanceName+"_") || strings.HasPrefix(varBase, instanceName+"_") {
+			return countVar
+		}
+	}
+	return ""
+}
+
+// scaledDelta wraps a delta rule in (* delta countVar) so that mutations inside
+// a `multiple`-instantiated flow are scaled by the solver-determined instance count.
+func (b *LLBlock) scaledDelta(delta rules.Rule, countVar string) rules.Rule {
+	_, file, line, _ := runtime.Caller(1)
+	countWrap := rules.NewWrap(countVar, "Int", false, file, line, false, false)
+	return &rules.Infix{X: delta, Y: countWrap, Op: "*"}
 }
 
 func (b *LLBlock) parseAdd(inst *ir.InstFAdd) []rules.Rule {

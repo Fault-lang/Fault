@@ -32,6 +32,10 @@ type Logger struct {
 	RoundPhis          map[string][]int16
 	RoundPhiLastRound  map[string]int // tracks the run-step round of the last entry in RoundPhis
 	SystemName         string         // stripped from variable and function names in output
+	// CountVars maps display label (e.g. "load instances") to the SSA base name
+	// (e.g. "__retries_load_count") for each `multiple`-instantiated flow.
+	// Values are read from Results and shown in the Initialize model section.
+	CountVars map[string]string
 }
 
 // NewLogger creates an initialized Logger for tracking solver result interpretation.
@@ -51,6 +55,7 @@ func NewLogger() *Logger {
 		IsPhi:         make(map[string]bool),
 		RoundPhis:         make(map[string][]int16),
 		RoundPhiLastRound: make(map[string]int),
+		CountVars:         make(map[string]string),
 	}
 }
 
@@ -289,9 +294,53 @@ func (l *Logger) Trace() {
 	}
 }
 
+// latestResult finds the most recent SSA value in Results for a base variable name.
+// Results keys have the form base_N; this returns the value for the highest N found.
+func (l *Logger) latestResult(base string) string {
+	best := -1
+	val := ""
+	prefix := base + "_"
+	for k, v := range l.Results {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		suffix := k[len(prefix):]
+		n := 0
+		for _, c := range suffix {
+			if c < '0' || c > '9' {
+				n = -1
+				break
+			}
+			n = n*10 + int(c-'0')
+		}
+		if n >= 0 && n > best {
+			best = n
+			val = v
+		}
+	}
+	return val
+}
+
 func (l *Logger) IsLoggable(id string) bool {
 	//Do not log intermediate states in compound phrases or phis
 	return !l.IsCompound[id] && !l.IsPhi[id]
+}
+
+// HasLiveVariableUpdates reports whether the event log contains at least one
+// non-dead VariableUpdate that is not an internal variable. Specs with empty
+// run blocks have no such events and are expected to produce no variable lines.
+func (l *Logger) HasLiveVariableUpdates() bool {
+	for _, e := range l.Events {
+		if e.IsDead() {
+			continue
+		}
+		if vu, ok := e.(*VariableUpdate); ok {
+			if !l.IsInternalVariable(vu.Variable) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (l *Logger) Validate() {
@@ -701,6 +750,22 @@ func (l *Logger) String() string {
 				}
 			}
 		}
+		// Also seed currentState from the _0 SSA solver result for each variable whose
+		// declared initial stock value is "true". This enables "old → new" transition
+		// display when a stock boolean is initialized true and then changes to false.
+		// Only seed "true" values: seeding "false" would change "Set variable X to true"
+		// output into "false → true" format, breaking statechart __state hoisting.
+		for varSSA, val := range l.Results {
+			if val != "true" || !strings.HasSuffix(varSSA, "_0") {
+				continue
+			}
+			base := varSSA[:len(varSSA)-2]
+			if !l.IsInternalVariable(varSSA) && l.IsLoggable(base) {
+				if _, already := currentState[base]; !already {
+					currentState[base] = "true"
+				}
+			}
+		}
 	}
 
 	// componentPrefix returns everything but the last underscore-segment of
@@ -741,6 +806,28 @@ func (l *Logger) String() string {
 				if event.Type == "Entry" {
 					root.WriteString("\nInitialize model\n")
 					root.WriteString("-----------------------------------\n")
+					// Show solver-selected instance counts for `multiple` flows.
+					for label, base := range l.CountVars {
+						if val, ok := l.Results[base+"_0"]; ok {
+							// Format as integer: strip trailing ".0" from Real-encoded ints.
+							display := val
+							if strings.HasSuffix(display, ".0") {
+								display = display[:len(display)-2]
+							}
+							root.WriteString(fmt.Sprintf("   %s: %s\n", label, display))
+						}
+					}
+					// Show string-rule (docstring) variable values.
+					// Keys in StringRules are base variable names; Results keys have a _N SSA suffix.
+					for base, label := range l.StringRules {
+						// Find the most recent SSA value in Results.
+						val := l.latestResult(base)
+						if val == "" {
+							continue
+						}
+						display := strings.ToUpper(val)
+						root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
+					}
 					root.WriteString("\nStart model\n")
 					root.WriteString("-----------------------------------\n")
 				}

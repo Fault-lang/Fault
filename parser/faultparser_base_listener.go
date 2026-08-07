@@ -549,6 +549,12 @@ func (s *BaseFaultParserListener) EnterOpInstance(ctx *OpInstanceContext) {}
 // ExitOpInstance is called when production OpInstance is exited.
 func (s *BaseFaultParserListener) ExitOpInstance(ctx *OpInstanceContext) {}
 
+// EnterOpCharacteristic is called when production OpCharacteristic is entered.
+func (s *BaseFaultParserListener) EnterOpCharacteristic(ctx *OpCharacteristicContext) {}
+
+// ExitOpCharacteristic is called when production OpCharacteristic is exited.
+func (s *BaseFaultParserListener) ExitOpCharacteristic(ctx *OpCharacteristicContext) {}
+
 // EnterPrefix is called when production prefix is entered.
 func (s *BaseFaultParserListener) EnterPrefix(ctx *PrefixContext) {}
 
