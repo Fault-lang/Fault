@@ -179,7 +179,7 @@ func (i *Init) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 
 	id = fmt.Sprintf("%s_%s", i.Ident, i.SSA)
 
-	if i.Global && !i.Log.IsLoggable(i.Ident) { // Do not log intermediate states in compound string rules
+	if i.Global && i.Log.IsLoggable(i.Ident) { // Do not log intermediate states in compound string rules or phis
 		i.Log.UpdateVariable(id, i.OmitFromOutput)
 	}
 
@@ -1109,6 +1109,13 @@ func (w *Wrap) WriteRule(ssa *SSA) ([]*Init, string, *SSA) {
 			i.Sigma = w.Sigma
 			i.K = w.K
 			i.SetRound(w.Round)
+			// Log this flow-body variable assignment so it appears in the result trace.
+			// Only log at PhiLevel == 0 (top-level sequential flow); inside parallel or
+			// conditional branches (PhiLevel > 0) the phi output variables handle logging.
+			// Skip __run-scope inits (OmitFromOutput) and compound/phi variables.
+			if w.Log != nil && w.PhiLevel == 0 && !w.OmitFromOutput && w.Log.IsLoggable(w.Value) {
+				w.Log.UpdateVariable(rule, false)
+			}
 			return []*Init{i}, rule, ssa
 		}
 

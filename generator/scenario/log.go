@@ -326,6 +326,23 @@ func (l *Logger) IsLoggable(id string) bool {
 	return !l.IsCompound[id] && !l.IsPhi[id]
 }
 
+// HasLiveVariableUpdates reports whether the event log contains at least one
+// non-dead VariableUpdate that is not an internal variable. Specs with empty
+// run blocks have no such events and are expected to produce no variable lines.
+func (l *Logger) HasLiveVariableUpdates() bool {
+	for _, e := range l.Events {
+		if e.IsDead() {
+			continue
+		}
+		if vu, ok := e.(*VariableUpdate); ok {
+			if !l.IsInternalVariable(vu.Variable) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (l *Logger) Validate() {
 	//Vars are in the event log but not in a branch
 	var missing []string
@@ -730,6 +747,22 @@ func (l *Logger) String() string {
 					if val := l.Results[ev.Variable]; val == "true" {
 						currentState[getBase(ev.Variable)] = val
 					}
+				}
+			}
+		}
+		// Also seed currentState from the _0 SSA solver result for each variable whose
+		// declared initial stock value is "true". This enables "old → new" transition
+		// display when a stock boolean is initialized true and then changes to false.
+		// Only seed "true" values: seeding "false" would change "Set variable X to true"
+		// output into "false → true" format, breaking statechart __state hoisting.
+		for varSSA, val := range l.Results {
+			if val != "true" || !strings.HasSuffix(varSSA, "_0") {
+				continue
+			}
+			base := varSSA[:len(varSSA)-2]
+			if !l.IsInternalVariable(varSSA) && l.IsLoggable(base) {
+				if _, already := currentState[base]; !already {
+					currentState[base] = "true"
 				}
 			}
 		}

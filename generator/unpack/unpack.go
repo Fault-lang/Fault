@@ -829,6 +829,7 @@ func (u *Unpacker) unpackParallel(p *rules.Parallels) ([]*rules.Init, string) {
 				u.AddInit(inits)
 				u.Register(inits)
 			}
+			u.Log.ExitFunction(call, p.Round)
 			rules := strings.Join(function_rules, "\n")
 			rule_set = append(rule_set, rules)
 		}

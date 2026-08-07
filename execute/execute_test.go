@@ -155,6 +155,9 @@ func TestFullSuite(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("error found fetching solution from solver: %s %s", path, err)
 		}
+		if len(ex.ResultValues) == 0 {
+			return fmt.Errorf("solver returned blank model (no variable values) for spec %s", path)
+		}
 		g.ResultLog.Results = ex.ResultValues
 		g.ResultLog.Trace()
 		g.ResultLog.Kill()
@@ -164,6 +167,21 @@ func TestFullSuite(t *testing.T) {
 		ret := g.ResultLog.String()
 		if strings.TrimSpace(ret) == "" {
 			return fmt.Errorf("All variables killed in spec %s", path)
+		}
+		// Guard against a blank template: if the event log contains variable
+		// updates but none appear in the rendered output, the rendering logic
+		// has silently dropped all variable lines (e.g. due to a regression in
+		// IsDead or the flush/frame logic in Logger.String).
+		// Only check specs that have at least one non-dead variable update;
+		// specs with empty run blocks legitimately produce no variable lines.
+		if g.ResultLog.HasLiveVariableUpdates() {
+			hasVarLine := strings.Contains(ret, "Set variable") ||
+				strings.Contains(ret, "→") ||
+				strings.Contains(ret, "Resolving variable") ||
+				strings.Contains(ret, " is ") // string-rule output: `label is VALUE`
+			if !hasVarLine {
+				return fmt.Errorf("result log rendered blank template (no variable lines) for spec %s", path)
+			}
 		}
 
 		return nil
