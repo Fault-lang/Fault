@@ -2,6 +2,7 @@
 *.spec
 
 # Binaries for programs and plugins
+fault
 *.exe
 *.exe~
 *.dll

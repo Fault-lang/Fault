@@ -238,19 +238,19 @@ func TestTemporal_Mixed(t *testing.T) {
 func TestTemporalSys(t *testing.T) {
 	test := `system test1;
 		component a = states{
-			foo: func{
+			foo: sfunc{
 				advance(b.bar);
 			},
-			zoo: func{
+			zoo: sfunc{
 				advance(this.foo);
 			},
 		};
 
 		component b = states{
-			buzz: func{
+			buzz: sfunc{
 				advance(a.foo);
 			},
-			bar: func{
+			bar: sfunc{
 				stay();
 			},
 		};
@@ -288,19 +288,19 @@ func TestCrossRoundWhenThen(t *testing.T) {
 	// Verify that `assert when A then B` fires correctly across rounds.
 	test := `system test1;
 		component a = states{
-			active: func{
+			active: sfunc{
 				stay();
 			},
-			inactive: func{
+			inactive: sfunc{
 				stay();
 			},
 		};
 
 		component b = states{
-			on: func{
+			on: sfunc{
 				stay();
 			},
-			off: func{
+			off: sfunc{
 				stay();
 			},
 		};

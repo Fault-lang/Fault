@@ -5,12 +5,12 @@ import "../simple.fspec";
 global fl = new simple.fl;
 
 component drain = states{
-    initial: func{
+    initial: sfunc{
         if !fl.active {
             advance(this.done);
         }
     },
-    done: func{
+    done: sfunc{
         stay();
     },
 };

@@ -2416,6 +2416,3 @@ func (l *FaultListener) addSwaps() {
 	}
 }
 
-func (l *FaultListener) builtInType(b *ast.BuiltIn) string {
-	return b.Function
-}

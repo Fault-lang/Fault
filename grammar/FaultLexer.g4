@@ -20,6 +20,7 @@ DEF: 'def';
 ELSE: 'else';
 FLOW: 'flow';
 FUNC: 'func';
+SFUNC: 'sfunc';
 IF: 'if';
 IMPORT: 'import';
 INIT: 'init';

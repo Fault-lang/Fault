@@ -5,6 +5,7 @@ import (
 	"fault/preprocess"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/barkimedes/go-deepcopy"
@@ -197,14 +198,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 
 			var inheritedOrder []string
 			for _, fieldName := range parentOrder {
-				excluded := false
-				for _, ex := range node.Excludes {
-					if ex == fieldName {
-						excluded = true
-						break
-					}
-				}
-				if excluded {
+				if slices.Contains(node.Excludes, fieldName) {
 					continue
 				}
 				if node.GetPropertyIdent(fieldName) != nil {
@@ -381,7 +375,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.BlockStatement:
 		var valtype *ast.Type
-		for i := 0; i < len(node.Statements); i++ {
+		for i := range node.Statements {
 			switch e := node.Statements[i].(type) {
 			case *ast.ExpressionStatement:
 				exp := e.Expression
@@ -470,7 +464,7 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 	}
 }
 
-func (c *Checker) isValue(exp interface{}) bool {
+func (c *Checker) isValue(exp any) bool {
 	switch exp.(type) {
 	case int64:
 		return true
@@ -521,7 +515,7 @@ func (c *Checker) isValue(exp interface{}) bool {
 	}
 }
 
-func (c *Checker) infer(exp interface{}) (ast.Node, error) {
+func (c *Checker) infer(exp any) (ast.Node, error) {
 	switch node := exp.(type) {
 	case *ast.IntegerLiteral:
 		if node.InferredType == nil {
@@ -764,7 +758,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			return node, err
 		}
 
-		for i := 0; i < len(body); i++ {
+		for i := range body {
 			node.Body.Statements[i].(*ast.ExpressionStatement).Expression, err = c.inferFunction(body[i].(*ast.ExpressionStatement).Expression)
 		}
 		return node, err
@@ -947,7 +941,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		}
 		node.Condition = ncond.(ast.Expression)
 
-		for i := 0; i < len(node.Consequence.Statements); i++ {
+		for i := range node.Consequence.Statements {
 			switch exp := node.Consequence.Statements[i].(type) {
 			case *ast.ExpressionStatement:
 				if c.isValue(exp.Expression) {
@@ -970,7 +964,7 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		}
 
 		if node.Alternative != nil {
-			for i := 0; i < len(node.Alternative.Statements); i++ {
+			for i := range node.Alternative.Statements {
 				switch exp := node.Alternative.Statements[i].(type) {
 				case *ast.ExpressionStatement:
 					if c.isValue(exp.Expression) {
@@ -1180,14 +1174,6 @@ func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, err
 	return base, nil
 }
 
-func (c *Checker) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
-	rawid := val.RawId()
-	node, err := c.Preprocesser.Partial(rawid[0], val)
-	if err != nil {
-		panic(fmt.Sprintf("failed to update process ids on swap %s %s", val.String(), val.GetToken().Location()))
-	}
-	return node.(*ast.StructInstance)
-}
 
 func (c *Checker) InstanceOf(node ast.Node) string {
 	switch n := node.(type) {

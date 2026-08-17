@@ -1202,7 +1202,7 @@ func (c *Compiler) compileIndex(node *ast.IndexExpression) *ir.InstLoad {
 // historyLoad declares (or reuses) a sentinel global whose name encodes the
 // history reference, and returns a load from it. The SMT generator detects the
 // "__hist_N_" prefix and resolves it to the correct prior SSA version.
-func (c *Compiler) historyLoad(id []string, offset int, pos []int) *ir.InstLoad {
+func (c *Compiler) historyLoad(id []string, offset int, _ []int) *ir.InstLoad {
 	base := strings.Join(id, "_")
 	sentinelName := fmt.Sprintf("__hist_%d_%s", offset, base)
 
@@ -1907,7 +1907,7 @@ func (c *Compiler) annotateAssertParam(left, right ast.Expression) {
 	}
 }
 
-func (c *Compiler) lookupIdent(id []string, pos []int) *ir.InstLoad {
+func (c *Compiler) lookupIdent(id []string, _ []int) *ir.InstLoad {
 	s := c.specs[id[0]]
 	vname := strings.Join(id, "_")
 	ty := s.GetSpecType(vname)
@@ -2339,7 +2339,7 @@ func (c *Compiler) resetParaState(p []*ir.Param) {
 // function's params. This ensures that lookupIdent inside the function body
 // generates loads from the param (a pointer arg), not from the main function's alloca.
 // Returns a map of variable name → original pointer for restoration.
-func (c *Compiler) setParamPointers(s *spec, params []*ir.Param) map[string]value.Value {
+func (c *Compiler) setParamPointers(_ *spec, params []*ir.Param) map[string]value.Value {
 	saved := make(map[string]value.Value)
 	for _, par := range params {
 		vname := par.LocalName
@@ -2359,7 +2359,7 @@ func (c *Compiler) setParamPointers(s *spec, params []*ir.Param) map[string]valu
 
 // restoreParamPointers restores spec var pointers to their original values after
 // compiling a component function body.
-func (c *Compiler) restoreParamPointers(s *spec, saved map[string]value.Value) {
+func (c *Compiler) restoreParamPointers(_ *spec, saved map[string]value.Value) {
 	for vname, origPtr := range saved {
 		id := strings.Split(vname, "_")
 		if len(id) < 2 {

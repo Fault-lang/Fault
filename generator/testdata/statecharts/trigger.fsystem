@@ -5,15 +5,15 @@ import simple "../simpleA.fspec";
 global fl = new simple.fl;
 
 component x = states{
-    foo: func{
+    foo: sfunc{
         fl.fn;
     },
-    bar: func{
+    bar: sfunc{
         if simple.active {
             fl.fn;
         }
     },
-    bash: func{
+    bash: sfunc{
         if simple.active {
             advance(this.foo);
         }else{

@@ -1,13 +1,17 @@
-### Current Status (6/23/2026)
+### Current Status (8/7/2026)
+Added support for multiple flows and complex clock assertions. Improved result output format with structured JSON (non-JSON output redirected to stderr to keep stdout clean). Fixed nested import path resolution and a bug in `fault update`. Various stability and correctness improvements across the SMT generation, type checker, and grammar.
+
+### History
+#### (6/23/2026)
 The command line was refactored into a modular structure with configuration now loaded from a file. Added a built-in Fault linter that runs through the preprocess stage, a version checker and auto-updater. First draft of templating (expermential) Various fixes for program synthesis. Error messages were improved with column/line info and richer parse error output. The no-solver fallback that silently dumped SMT output has been removed — Fault now returns a clear error when `SOLVERCMD`/`SOLVERARG` are not set.
 
-### (6/5/2026)
+#### (6/5/2026)
 Program synthesis support added: writeset analysis, updated grammar/listener/type checker, SMT generation wired to a runner. Replaced `start` blocks with `run` blocks and removed the `for N run{}` construction. Language additions include `available` as a temporal clause, `assume` replacing `produce`, extendable stocks, whole number constraints, and unknowns that can now be booleans. Separated variable availability from variable value and finished the `unfunc` implementation including assumption handling. On the SMT side: uncertain values now translate directly to SMT rules (weights removed), added a framework for automatically switching solver logic when all variables are integers, and added pure boolean logic model support. Fixed a long list of bugs including ITE unpacking, type issues with booleans and unknowns, sibling rule pollution, and a tricky call stack issue. Upgraded charm/Bubbletea to v2 and fixed associated TUI bugs. Added unit tests for scenarios, unpacker, and asserts.
 
-### (4/24/2026)
+#### (4/24/2026)
 Added invariant analysis and stricter syntax validation that catches more invalid specs at compile time. Fixed a bug in parallel run execution and improved component order handling. The SMT solver configuration now supports timeouts and memory limits, with warnings when solver output is unexpectedly large. Added a configurable threshold flag and an ASCII logo to the TUI.
 
-### (3/31/2026)
+#### (3/31/2026)
 Fixed two bugs in swaps related to performance and nested stock properties. Finally implemented LLVM optimization passes. Resolved some long standing bugs around phi values and especially the spec clock. Clarified the interface so that no-sat does not return an error.
 
 #### (3/25/2026)

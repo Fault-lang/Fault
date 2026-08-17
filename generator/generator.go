@@ -637,30 +637,6 @@ func collectAssumeLHSTypes(unfuncs []*llvm.UnfuncInfo, varTypes map[string]strin
 	return result
 }
 
-// unfuncExprToSMT converts an unfunc requires/emits expression to an SMT
-// string, versioning ParameterCall leaves with the given step index.
-func unfuncExprToSMT(expr ast.Expression, step int) string {
-	switch e := expr.(type) {
-	case *ast.ParameterCall:
-		return fmt.Sprintf("%s_%d", unfuncVarBase(e), step)
-	case *ast.InfixExpression:
-		left := unfuncExprToSMT(e.Left, step)
-		right := unfuncExprToSMT(e.Right, step)
-		switch e.Operator {
-		case "&&":
-			return fmt.Sprintf("(and %s %s)", left, right)
-		case "||":
-			return fmt.Sprintf("(or %s %s)", left, right)
-		default:
-			return fmt.Sprintf("(%s %s %s)", e.Operator, left, right)
-		}
-	case *ast.PrefixExpression:
-		inner := unfuncExprToSMT(e.Right, step)
-		return fmt.Sprintf("(not %s)", inner)
-	default:
-		return ""
-	}
-}
 
 // unfuncExprToSMTAvail converts an unfunc expression to an SMT string
 // referencing the _available shadow Bool variable (e.g. field_available_N).

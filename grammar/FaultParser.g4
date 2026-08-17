@@ -374,7 +374,7 @@ functionLit
     ;
 
 stateLit
-    : 'func' stateBlock
+    : 'sfunc' stateBlock
     ;
 
 unfuncLit

@@ -1655,17 +1655,17 @@ func TestSysSpec(t *testing.T) {
 			import "foo.fspec";
 
 			component c = states{
-				initial: func{
+				initial: sfunc{
 					advance(this.next);
 				},
-				close: func{
+				close: sfunc{
 					advance(this.initial);
 				},
-				next: func{
+				next: sfunc{
 					stay();
 				},
 			 };
-			
+
 			run {
 				car = new f;
 				bot = new foo.bar;
@@ -1735,16 +1735,16 @@ func TestSysRunStmt(t *testing.T) {
 			global fl = new foo.fl;
 
 			component A = states{
-				on: func{
+				on: sfunc{
 					stay();
 				},
-				off: func{
+				off: sfunc{
 					stay();
 				},
 			};
 
 			component B = states{
-				idle: func{
+				idle: sfunc{
 					stay();
 				},
 			};
@@ -1805,17 +1805,17 @@ func TestSwap(t *testing.T) {
 			import "foo.fspec";
 
 			component c = states{
-				initial: func{
+				initial: sfunc{
 					advance(this.next);
 				},
-				close: func{
+				close: sfunc{
 					advance(this.initial);
 				},
-				next: func{
+				next: sfunc{
 					stay();
 				},
 			 };
-			
+
 			run init{
 				bot = new foo.bar;
 				car = new f;
@@ -1875,19 +1875,19 @@ func TestSysStart(t *testing.T) {
 	test := `system test1;
 
 			component test = states{
-				idle: func{
+				idle: sfunc{
 					stay();
 				},
-				active: func{
+				active: sfunc{
 					stay();
 				},
 			};
 
 			component test2 = states{
-				idle: func{
+				idle: sfunc{
 					stay();
 				},
-				active: func{
+				active: sfunc{
 					stay();
 				},
 			};
@@ -1929,10 +1929,10 @@ func TestSysStart(t *testing.T) {
 func TestBoolCompound(t *testing.T) {
 	test := `system test1;
 	component test = states{
-				idle: func{
+				idle: sfunc{
 					stay() || advance(this.active);
 				},
-				active: func{
+				active: sfunc{
 					stay();
 				},
 			};
@@ -1978,10 +1978,10 @@ func TestBoolCompound(t *testing.T) {
 func TestChoose(t *testing.T) {
 	test := `system test1;
 	component test = states{
-				idle: func{
+				idle: sfunc{
 					choose stay() || advance(this.active);
 				},
-				active: func{
+				active: sfunc{
 					stay();
 				},
 			};
@@ -2030,14 +2030,14 @@ func TestChoose(t *testing.T) {
 func TestLeave(t *testing.T) {
 	test := `system test1;
 	component test = states{
-				idle: func{
+				idle: sfunc{
 					advance(this.active);
 					leave();
 				},
-				active: func{
+				active: sfunc{
 					stay() && leave(this.failure);
 				},
-				failure: func{
+				failure: sfunc{
 					stay();
 				},
 			};
@@ -2142,7 +2142,7 @@ def foo_bar = stock{
 func TestComponentDeclUnderscoreError(t *testing.T) {
 	assertUnderscoreError(t, `system test1;
 component foo_bar = states{
-	idle: func{
+	idle: sfunc{
 		stay();
 	},
 };`, false)
@@ -2161,7 +2161,7 @@ const foo_bar = 5;`, true)
 func TestStateFuncUnderscoreError(t *testing.T) {
 	assertUnderscoreError(t, `system test1;
 component foo = states{
-	foo_state: func{
+	foo_state: sfunc{
 		stay();
 	},
 };`, false)
@@ -2271,7 +2271,7 @@ func TestEmptyStateBlockError(t *testing.T) {
 	test := `system test1;
 
 component x = states{
-	foo: func{},
+	foo: sfunc{},
 };`
 	flags := make(map[string]bool)
 	flags["specType"] = false // fsystem
@@ -2541,13 +2541,13 @@ func TestMultipleComponentsStateActivation(t *testing.T) {
 	test := `system test1;
 
 component foo = states{
-	idle: func{
+	idle: sfunc{
 		stay();
 	},
 };
 
 component bar = states{
-	running: func{
+	running: sfunc{
 		stay();
 	},
 };
@@ -2925,7 +2925,7 @@ func TestUnfuncMixedWithFunc(t *testing.T) {
 	test := `system test1;
 
 component fetch = states{
-	idle: func{
+	idle: sfunc{
 		stay();
 	},
 	getByName: unfunc{

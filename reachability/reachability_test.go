@@ -33,17 +33,17 @@ func TestCorrect(t *testing.T) {
 
 	component foo = states{
 		x: 8,
-		initial: func{
+		initial: sfunc{
 			if this.x > 10{
 				stay();
 			}else{
 				advance(this.alarm);
 			}
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(this.close);
 		},
-		close: func{
+		close: sfunc{
 			stay();
 		},
 	};
@@ -64,16 +64,16 @@ func TestIncorrect(t *testing.T) {
 	system test;
 
 	component foo = states{
-		initial: func{
+		initial: sfunc{
 			advance(this.alarm);
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(this.close);
 		},
-		close: func{
+		close: sfunc{
 			stay();
 		},
-		error: func{
+		error: sfunc{
 			stay();
 		},
 	};
@@ -98,28 +98,28 @@ func TestMultiIncorrect(t *testing.T) {
 	system test;
 
 	component foo = states{
-		initial: func{
+		initial: sfunc{
 			advance(this.alarm);
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(bar.error);
 		},
 	};
 
 	component bar = states{
-		error: func{
+		error: sfunc{
 			advance(this.resolve);
 		},
-		resolve: func {
+		resolve: sfunc {
 			advance(foo.initial);
 		},
 	};
 
 	component fizz = states{
-		empty: func{
+		empty: sfunc{
 			advance(bar.error);
 		},
-		active: func{
+		active: sfunc{
 			advance(this.empty);
 		},
 	};
@@ -144,28 +144,28 @@ func TestMultiCorrect(t *testing.T) {
 	system test;
 
 	component foo = states{
-		initial: func{
+		initial: sfunc{
 			advance(this.alarm);
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(bar.error);
 		},
 	};
 
 	component bar = states{
-		error: func{
+		error: sfunc{
 			advance(this.resolve);
 		},
-		resolve: func {
+		resolve: sfunc {
 			advance(foo.initial);
 		},
 	};
 
 	component fizz = states{
-		empty: func{
+		empty: sfunc{
 			advance(bar.error);
 		},
-		active: func{
+		active: sfunc{
 			advance(this.empty);
 		},
 	};
@@ -186,19 +186,19 @@ func TestMultiPath(t *testing.T) {
 	system test;
 
 	component foo = states{
-		initial: func{
+		initial: sfunc{
 			advance(bar.alarm);
 		},
 	};
 
 	component bar = states{
-		initial: func{
+		initial: sfunc{
 			advance(this.alarm);
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(this.close);
 		},
-		close: func{
+		close: sfunc{
 			stay();
 		},
 	};

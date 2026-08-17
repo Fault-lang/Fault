@@ -495,14 +495,14 @@ func TestComponentIR(t *testing.T) {
 
 	component foo = states{
 		x: 8,
-		initial: func{
+		initial: sfunc{
 			if this.x > 10{
 				stay();
 			}else{
 				advance(this.alarm);
 			}
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(this.close);
 		},
 	};
@@ -664,13 +664,13 @@ func TestChoose(t *testing.T) {
 	system test;
 
 	component foo = states{
-		initial: func{
+		initial: sfunc{
 			choose stay() || advance(this.alarm);
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(this.close);
 		},
-		close: func{
+		close: sfunc{
 			stay();
 		},
 	};
@@ -733,10 +733,10 @@ func TestLeave(t *testing.T) {
 	system test;
 
 	component foo = states{
-		initial: func{
+		initial: sfunc{
 			advance(this.alarm) && leave();
 		},
-		alarm: func{
+		alarm: sfunc{
 			stay();
 		},
 	};
@@ -796,16 +796,16 @@ func TestSysRunBlock(t *testing.T) {
 	system test;
 
 	component a = states{
-		on: func{
+		on: sfunc{
 			stay();
 		},
-		off: func{
+		off: sfunc{
 			stay();
 		},
 	};
 
 	component b = states{
-		idle: func{
+		idle: sfunc{
 			stay();
 		},
 	};
@@ -859,16 +859,16 @@ func TestStateActivation(t *testing.T) {
 	system test;
 
 	component a = states{
-		on: func{
+		on: sfunc{
 			stay();
 		},
-		off: func{
+		off: sfunc{
 			stay();
 		},
 	};
 
 	component b = states{
-		idle: func{
+		idle: sfunc{
 			stay();
 		},
 	};

@@ -1611,17 +1611,6 @@ func (p *Processor) getSpec(name string) *SpecRecord {
 	return ret
 }
 
-func alreadyNamed(n1 []string, n2 []string) bool {
-	if len(n1) != len(n2) {
-		return false
-	}
-	for i, v := range n1 {
-		if v != n2[i] {
-			return false
-		}
-	}
-	return true
-}
 
 // evalStaticCondition returns (result, true) if cond can be evaluated at compile time.
 func evalStaticCondition(cond ast.Expression) (bool, bool) {
