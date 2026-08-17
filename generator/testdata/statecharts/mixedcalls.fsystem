@@ -5,18 +5,18 @@ import simple "../simpleA.fspec";
 global fl = new simple.fl;
 
 component a = states{
-    choice: func{
+    choice: sfunc{
         advance(this.option1) || (advance(this.option2) && advance(this.option3));
     },
-    option1: func{
+    option1: sfunc{
         (advance(this.option1) && advance(this.option2)) || advance(this.option3);
     },
-    option2: func{
+    option2: sfunc{
         if simple.active {
             advance(this.option1) || advance(this.option3);
         }
     },
-    option3: func{
+    option3: sfunc{
         if !simple.active {
             advance(this.option1) || advance(this.option2);
         }else{

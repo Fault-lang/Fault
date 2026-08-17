@@ -1,13 +1,13 @@
 system ador;
 
 component a = states{
-    choice: func{
+    choice: sfunc{
         advance(this.option1) || advance(this.option2);
     },
-    option1: func{
+    option1: sfunc{
         stay();
     },
-    option2: func{
+    option2: sfunc{
         stay();
     },
 };

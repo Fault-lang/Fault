@@ -878,14 +878,14 @@ func TestComponents(t *testing.T) {
 
 	component foo = states{
 		x: 8,
-		initial: func{
+		initial: sfunc{
 			if this.x > 10{
 				stay();
 			}else{
 				advance(this.alarm);
 			}
 		},
-		alarm: func{
+		alarm: sfunc{
 			advance(this.close);
 		},
 	};

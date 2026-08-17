@@ -5,17 +5,17 @@ import simple "../simpleA.fspec";
 global fl = new simple.fl;
 
 component drain = states{
-    initial: func{
+    initial: sfunc{
         if !simple.active {
             advance(this.open);
         }
     },
-    open: func{
+    open: sfunc{
         if fl.vault.value < 0 {
             advance(this.close);
         }
     },
-    close: func{
+    close: sfunc{
         stay();
     },
 };
