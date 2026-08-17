@@ -1180,14 +1180,6 @@ func (c *Checker) swapValues(base *ast.StructInstance) (*ast.StructInstance, err
 	return base, nil
 }
 
-func (c *Checker) swapDeepNames(val *ast.StructInstance) *ast.StructInstance {
-	rawid := val.RawId()
-	node, err := c.Preprocesser.Partial(rawid[0], val)
-	if err != nil {
-		panic(fmt.Sprintf("failed to update process ids on swap %s %s", val.String(), val.GetToken().Location()))
-	}
-	return node.(*ast.StructInstance)
-}
 
 func (c *Checker) InstanceOf(node ast.Node) string {
 	switch n := node.(type) {
