@@ -1,4 +1,8 @@
-### Current Status (8/7/2026)
+### Current Status (8/17/2026)
+Renamed `func{}` to `sfunc{}` in state chart bodies to make the distinction between state functions and flow functions explicit at the syntax level.
+
+### History
+#### (8/7/2026)
 Added support for multiple flows and complex clock assertions. Improved result output format with structured JSON (non-JSON output redirected to stderr to keep stdout clean). Fixed nested import path resolution and a bug in `fault update`. Various stability and correctness improvements across the SMT generation, type checker, and grammar.
 
 ### History
