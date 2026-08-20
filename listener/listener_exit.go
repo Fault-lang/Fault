@@ -95,14 +95,30 @@ func (l *FaultListener) ExitImportSpec(c *parser.ImportSpecContext) {
 		}
 		//Remove quotes
 		trimmedFP := fpath.Value[1 : len(fpath.Value)-1]
-		//Does file exist?
-		fp := gopath.Join(l.Path, trimmedFP)
-		fp = util.Filepath(fp)
-		importFile, err := os.ReadFile(fp)
-		if err != nil {
-			panic(fmt.Sprintf("spec file %s not found\n", fpath))
+
+		var importFile []byte
+		var importDir string
+		if isURL(trimmedFP) {
+			// Fetch content over the network (result is cached locally).
+			var fetchErr error
+			importFile, fetchErr = fetchOrCacheURL(trimmedFP)
+			if fetchErr != nil {
+				panic(fmt.Sprintf("spec file %s not found: %v\n", fpath, fetchErr))
+			}
+			// importDir is left empty; nested relative imports from URL specs are
+			// not supported and will produce a clear "file not found" error.
+		} else {
+			//Does file exist?
+			fp := gopath.Join(l.Path, trimmedFP)
+			fp = util.Filepath(fp)
+			var readErr error
+			importFile, readErr = os.ReadFile(fp)
+			if readErr != nil {
+				panic(fmt.Sprintf("spec file %s not found\n", fpath))
+			}
+			importDir = gopath.Dir(fp)
 		}
-		tree = l.parseImport(importId, string(importFile), gopath.Dir(fp))
+		tree = l.parseImport(importId, string(importFile), importDir)
 	}
 
 	ident := &ast.Identifier{
