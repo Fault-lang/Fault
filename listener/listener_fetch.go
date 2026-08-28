@@ -104,9 +104,9 @@ func fetchOrCacheURL(rawURL string) ([]byte, error) {
 	}
 
 	// Persist to cache using a restricted mode (owner read/write only).
-	if writeErr := os.WriteFile(cachePath, data, 0o600); writeErr != nil {
-		return nil, fmt.Errorf("cannot cache %q at %s: %w", rawURL, cachePath, writeErr)
-	}
+	// A write failure (e.g. read-only filesystem, full disk) is silently ignored:
+	// the data was successfully fetched and validated, so the import can proceed.
+	_ = os.WriteFile(cachePath, data, 0o600)
 
 	return data, nil
 }
