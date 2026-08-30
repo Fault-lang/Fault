@@ -9,6 +9,72 @@ Entries are ordered newest-first. Date format: YYYY-MM-DD.
 
 ---
 
+## 2026-08-30
+
+### Fix: excluded+redeclared stock properties sever parent assume/assert propagation
+
+**Area:** compiler (`llvm/compiler.go`)
+**Kind:** bug fix
+
+When a child stock excludes a parent field and immediately redeclares it as a fresh solvable (`exclude age, age,`), the parent spec's assumes and asserts on that field no longer propagate to the child's instances. Previously they did, making it impossible to replace a property from a library stock with clean semantics.
+
+**Old behavior:** `assume entity.age <= 6` in a base spec would appear in the child's SMT output even after `exclude age, age,`.
+
+**New behavior:** The parent rule is dropped. Only rules written in the child spec (e.g. `assume person.age <= 8`) apply to the redeclared property.
+
+**How it works:**
+- `compileStruct` populates `stockSeveredProps map[string]map[string]bool` — keyed by stock name (`"specName_stockName"`), value is the set of severed field names.
+- A field is severed when it appears in both `stock.Excludes` and `stock.Pairs` (i.e., excluded then redeclared).
+- `bfsFetchInstances` replaces the inline BFS in `convertAssertVariables`. When traversing the inheritance graph to resolve assert/assume targets, it skips any non-origin node that has severed the requested field, stopping propagation through that stock and its descendants.
+- The origin node is never skipped — `assume person.age <= 8` (direct reference to the child's own field) still resolves correctly.
+
+**Applies to both `assume` and `assert`:** both go through `convertAssertVariables` and `assertionRefsActive`, both of which now use `bfsFetchInstances`.
+
+**Pattern:** to cleanly replace a library stock's property with your own rules:
+```fault
+def child = stock{
+    extends base_lib.entity,
+    exclude age,
+    age,            // fresh solvable — no parent rules apply
+};
+
+assume child.age <= 8;  // only this rule applies
+```
+
+---
+
+## 2026-08-30
+
+### Named import alias required for cross-spec stock extension
+
+**Area:** syntax, imports
+**Kind:** clarification (not a code change)
+
+`import "file.fspec"` without an alias uses the **declared spec name** (the `spec foo;` at the top of the file) as the namespace — not the filename. When extending a stock from an imported spec, use a named alias that matches, or be explicit:
+
+**Correct:**
+```fault
+import baselib "02a_base_lib.fspec";   // spec inside declares: spec baselib;
+
+def child = stock{
+    extends baselib.entity,
+    ...
+};
+```
+
+**Wrong (produces resolution error):**
+```fault
+import "02a_base_lib.fspec";   // namespace is "baselib", not "02a_base_lib"
+
+def child = stock{
+    extends 02a_base_lib.entity,  // fails — no spec named "02a_base_lib"
+};
+```
+
+**Rule:** always use `import <alias> "file.fspec"` and match `<alias>` to the `spec <name>;` declaration inside the file.
+
+---
+
 ## 2026-08-17
 
 ### BREAKING: `func{}` renamed to `sfunc{}` in state chart bodies
