@@ -560,8 +560,21 @@ func collectAssertVarNodes(node ast.Expression) []*ast.AssertVar {
 	}
 }
 
-// hasRound0Entry reports whether base appears in the round-0 registry.
+// hasRound0Entry reports whether base appears in the round-0 registry, or is a
+// spec-level constant recognized via round0OrConstantSSA.
 func (c *Constraint) hasRound0Entry(base string) bool {
+	_, ok := c.round0OrConstantSSA(base)
+	return ok
+}
+
+// round0OrConstantSSA returns the SSA suffix to use for base at round 0: the
+// suffix found in the round-0 registry bucket, or — for spec-level constants
+// declared as LLVM globals and initialized outside the @__run body (never
+// assigned inside any run-block flow, so they aren't scoped to a "round-0_"
+// registry key at all) — the single SSA suffix base is registered with
+// anywhere in the registry. Constants have one fixed SSA value that's live
+// for the entire model, so wherever they were recorded is still valid.
+func (c *Constraint) round0OrConstantSSA(base string) (string, bool) {
 	for key, vars := range c.Registry {
 		var round int
 		if _, err := fmt.Sscanf(key, "round-%d_", &round); err != nil || round != 0 {
@@ -569,11 +582,32 @@ func (c *Constraint) hasRound0Entry(base string) bool {
 		}
 		for _, v := range vars {
 			if v[0] == base {
-				return true
+				return v[1], true
 			}
 		}
 	}
-	return false
+
+	// Fall back: scan every registry bucket for base. If it maps to exactly
+	// one distinct SSA value everywhere it's found, it's a constant and that
+	// single value is safe to use regardless of which key it's scoped under.
+	ssa := ""
+	found := false
+	for _, vars := range c.Registry {
+		for _, v := range vars {
+			if v[0] != base {
+				continue
+			}
+			if found && ssa != v[1] {
+				return "", false
+			}
+			ssa = v[1]
+			found = true
+		}
+	}
+	if !found {
+		return "", false
+	}
+	return ssa, true
 }
 
 // buildStaticWhens generates synthetic when/then maps for specs with no active rounds
@@ -598,8 +632,8 @@ func (c *Constraint) buildStaticWhens() []map[string]string {
 				continue
 			}
 			base := av.Instances[i]
-			if c.hasRound0Entry(base) {
-				w[base] = fmt.Sprintf("%s_0", base)
+			if ssa, ok := c.round0OrConstantSSA(base); ok {
+				w[base] = fmt.Sprintf("%s_%s", base, ssa)
 				hasReal = true
 			}
 		}

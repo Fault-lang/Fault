@@ -479,3 +479,46 @@ func TestParse_MultipleInstances(t *testing.T) {
 		t.Errorf("missing spec_inst_t_level in: %s", got)
 	}
 }
+
+// ---- Static when/then with spec-level constants (issue #78) ----
+
+// TestParse_StaticWhenThen_ConstantsNotInRound0Bucket reproduces the bug where
+// spec-level prop constants (LLVM globals initialized outside the @__run
+// body) are registered under a registry key that isn't scoped to
+// "round-0_..." at all. Since no run-block flow assigns them, c.Whens is
+// empty and applyWhen() falls back to buildStaticWhens(), which used to gate
+// each instance on hasRound0Entry() — a check that only walked "round-0_"
+// keys and therefore missed these constants entirely, silently dropping the
+// (assert ...) clause.
+func TestParse_StaticWhenThen_ConstantsNotInRound0Bucket(t *testing.T) {
+	reg := map[string][][]string{
+		// Neither key matches the "round-0_..." pattern hasRound0Entry used to
+		// require, simulating constants registered outside any run-block flow.
+		"consts": {
+			{"spec_a", "0"},
+			{"spec_b", "0"},
+		},
+	}
+	stmt := &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left:     &ast.AssertVar{Instances: []string{"spec_a"}},
+			Right:    &ast.AssertVar{Instances: []string{"spec_b"}},
+			Operator: "then",
+		},
+	}
+	c, err := NewConstraint(stmt, 1, reg, map[string][]map[string]string{}, nil, nil)
+	if err != nil {
+		t.Fatalf("NewConstraint returned error: %v", err)
+	}
+	results := c.Parse()
+	if len(results) != 1 {
+		t.Fatalf("expected 1 assertion, got %d: %v", len(results), results)
+	}
+	got := results[0]
+	if !strings.Contains(got, "spec_a_0") {
+		t.Errorf("missing spec_a_0 in: %s", got)
+	}
+	if !strings.Contains(got, "spec_b_0") {
+		t.Errorf("missing spec_b_0 in: %s", got)
+	}
+}
