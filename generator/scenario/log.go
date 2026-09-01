@@ -794,6 +794,20 @@ func (l *Logger) String() string {
 		return out
 	}
 
+	// Pre-scan: does any non-@__run, non-dead function call exist?
+	// If not, this is a static (no-step) model and the "Start model" section
+	// would be an empty duplicate of "Initialize model" — suppress it.
+	hasSteps := false
+	for _, e := range l.Events {
+		if e.IsDead() {
+			continue
+		}
+		if fc, ok := e.(*FunctionCall); ok && fc.FunctionName != "@__run" {
+			hasSteps = true
+			break
+		}
+	}
+
 	for _, e := range l.Events {
 		if e.IsDead() {
 			continue
@@ -828,8 +842,10 @@ func (l *Logger) String() string {
 						display := strings.ToUpper(val)
 						root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
 					}
-					root.WriteString("\nStart model\n")
-					root.WriteString("-----------------------------------\n")
+					if hasSteps {
+						root.WriteString("\nStart model\n")
+						root.WriteString("-----------------------------------\n")
+					}
 				}
 				// @__run exit: nothing to flush — content was written directly to root
 				continue
