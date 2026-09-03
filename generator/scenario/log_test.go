@@ -632,3 +632,130 @@ func TestString_SimulationMode_ShowsAllVars(t *testing.T) {
 		t.Errorf("Simulation mode: variable must appear when no asserts set, got:\n%s", out)
 	}
 }
+
+// ---- Phase 5: filtering tests ----
+
+// TestString_Temporal_FilterByViolatedAssert verifies that when asserts are
+// present, only variables referenced in violated asserts appear in the trace.
+func TestString_Temporal_FilterByViolatedAssert(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("spec_st_level_1", false)  // in violated assert
+	l.UpdateVariable("spec_st_other_1", false)  // NOT in any assert
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_st_level_1"] = "50"
+	l.Results["spec_st_other_1"] = "99"
+
+	l.Asserts = []*ast.AssertionStatement{
+		makeViolatedAssertion("spec_st_level"),
+	}
+
+	l.Trace()
+	out := l.String()
+
+	if !strings.Contains(out, "spec_st_level") {
+		t.Errorf("Filtered: violated assert variable must appear, got:\n%s", out)
+	}
+	if strings.Contains(out, "spec_st_other") {
+		t.Errorf("Filtered: non-assert variable must be suppressed, got:\n%s", out)
+	}
+}
+
+// TestString_Temporal_UnviolatedAssertHidesVar verifies that a variable in a
+// non-violated assert is also suppressed (only violated ones are relevant).
+func TestString_Temporal_UnviolatedAssertHidesVar(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("spec_st_safe_1", false)
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_st_safe_1"] = "5"
+
+	// Assert exists but is NOT violated.
+	l.Asserts = []*ast.AssertionStatement{
+		{
+			Constraint: &ast.InvariantClause{
+				Left:     makeAssertVar("spec_st_safe"),
+				Operator: "<",
+				Right:    &ast.FloatLiteral{Value: 100},
+			},
+			Violated: false,
+		},
+	}
+
+	l.Trace()
+	out := l.String()
+
+	if strings.Contains(out, "spec_st_safe") {
+		t.Errorf("Filtered: variable in non-violated assert must be suppressed, got:\n%s", out)
+	}
+}
+
+// TestString_BooleanLogic_FilterByViolatedAssert verifies that boolean logic
+// output only shows string rules that feed into violated asserts.
+func TestString_BooleanLogic_FilterByViolatedAssert(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.UpdateVariable("test_fish_0", false)
+	l.UpdateVariable("test_ginger_0", false)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["test_fish_0"] = "true"
+	l.Results["test_ginger_0"] = "true"
+	l.StringRules["test_fish"] = "is a fish"
+	l.IsStringRule["test_fish"] = true
+	l.StringRules["test_ginger"] = "tastes good with ginger"
+	l.IsStringRule["test_ginger"] = true
+
+	// Only test_fish is in a violated assert.
+	l.Asserts = []*ast.AssertionStatement{
+		makeViolatedAssertion("test_fish"),
+	}
+
+	l.Trace()
+	out := l.String()
+
+	if !strings.Contains(out, "is a fish") {
+		t.Errorf("Boolean logic filter: violated assert rule must appear, got:\n%s", out)
+	}
+	if strings.Contains(out, "tastes good with ginger") {
+		t.Errorf("Boolean logic filter: non-assert rule must be suppressed, got:\n%s", out)
+	}
+}
+
+// TestString_BooleanLogic_NoAsserts_ShowsAll verifies simulation mode for
+// boolean logic: when l.Asserts is empty all string rules are shown.
+func TestString_BooleanLogic_NoAsserts_ShowsAll(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.UpdateVariable("test_fish_0", false)
+	l.UpdateVariable("test_ginger_0", false)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["test_fish_0"] = "true"
+	l.Results["test_ginger_0"] = "false"
+	l.StringRules["test_fish"] = "is a fish"
+	l.IsStringRule["test_fish"] = true
+	l.StringRules["test_ginger"] = "tastes good with ginger"
+	l.IsStringRule["test_ginger"] = true
+	// No l.Asserts — simulation mode.
+
+	l.Trace()
+	out := l.String()
+
+	if !strings.Contains(out, "is a fish") {
+		t.Errorf("Boolean logic simulation: all rules must appear, got:\n%s", out)
+	}
+	if !strings.Contains(out, "tastes good with ginger") {
+		t.Errorf("Boolean logic simulation: all rules must appear, got:\n%s", out)
+	}
+}

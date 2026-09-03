@@ -657,6 +657,50 @@ func (l *Logger) PrintRaw() {
 	fmt.Print("\n")
 }
 
+// collectAssertVars recursively collects all AssertVar nodes in an expression.
+// Duplicated from execute/violations.go to avoid an import cycle.
+func collectAssertVars(expr ast.Expression) []*ast.AssertVar {
+	switch e := expr.(type) {
+	case *ast.AssertVar:
+		return []*ast.AssertVar{e}
+	case *ast.InfixExpression:
+		return append(collectAssertVars(e.Left), collectAssertVars(e.Right)...)
+	case *ast.PrefixExpression:
+		return collectAssertVars(e.Right)
+	case *ast.IndexExpression:
+		return collectAssertVars(e.Left)
+	}
+	return nil
+}
+
+// relevantVars builds a set of base variable names from a slice of assertions.
+// When violated-only is true, only violated assertions contribute.
+// Returns nil when stmts is empty — callers treat nil as "show everything"
+// (simulation mode: no asserts means no filtering).
+func relevantVars(stmts []*ast.AssertionStatement, violatedOnly bool) map[string]bool {
+	if len(stmts) == 0 {
+		return nil
+	}
+	out := make(map[string]bool)
+	for _, a := range stmts {
+		if violatedOnly && !a.Violated {
+			continue
+		}
+		for _, av := range collectAssertVars(a.Constraint.Left) {
+			for _, inst := range av.Instances {
+				// AssertVar instances are already base names (no SSA suffix).
+				out[inst] = true
+			}
+		}
+		for _, av := range collectAssertVars(a.Constraint.Right) {
+			for _, inst := range av.Instances {
+				out[inst] = true
+			}
+		}
+	}
+	return out
+}
+
 // specKind classifies the spec type based on the event log.
 type specKind int
 
@@ -711,7 +755,11 @@ func (l *Logger) String() string {
 // There is no step trace — the entire output is the Initialize model section
 // showing string-rule values resolved by the solver. No currentState tracking
 // or pre-seeding is needed because there are no transitions to narrate.
+// When l.Asserts is non-empty, only rules feeding into violated asserts are shown.
+// When l.Asserts is empty (simulation mode) all rules are shown.
 func (l *Logger) stringBooleanLogic() string {
+	filter := relevantVars(l.Asserts, true)
+
 	var root strings.Builder
 
 	root.WriteString("\nInitialize model\n")
@@ -728,6 +776,10 @@ func (l *Logger) stringBooleanLogic() string {
 	}
 
 	for base, label := range l.StringRules {
+		// Skip variables not referenced in violated asserts (when filter is active).
+		if filter != nil && !filter[base] {
+			continue
+		}
 		val := l.latestResult(base)
 		if val == "" {
 			continue
@@ -741,28 +793,32 @@ func (l *Logger) stringBooleanLogic() string {
 }
 
 // stringTemporal renders results for specs with step functions and no synthesis
-// slots. It shows a full step trace with variable transitions.
-// Phase 5 will add filtering by violated assert variables.
+// slots. It shows a full step trace filtered to variables in violated asserts.
+// When l.Asserts is empty (simulation mode) all variables are shown.
 func (l *Logger) stringTemporal() string {
-	return l.renderSteps()
+	filter := relevantVars(l.Asserts, true)
+	return l.renderSteps(filter)
 }
 
 // stringSynthesis renders results for specs containing synthesis slots (__).
-// It narrates the solver's chosen operation sequence.
-// Phase 5 will add filtering by assume variables.
+// It narrates the solver's chosen operation sequence, filtered to variables
+// referenced in assumes (the goal conditions).
+// When l.Assumes is empty all variables are shown.
 func (l *Logger) stringSynthesis() string {
-	return l.renderSteps()
+	filter := relevantVars(l.Assumes, false)
+	return l.renderSteps(filter)
 }
 
 // renderSteps is the shared step-trace renderer used by stringTemporal and
-// stringSynthesis. It handles the full event loop including synth_* narration
-// (which fires only when synthesis events are present), __state hoisting, and
-// the currentState pre-seed for true-initialized boolean stocks.
+// stringSynthesis. filter is a set of base variable names to display; nil means
+// show everything (simulation mode). It handles the full event loop including
+// synth_* narration (which fires only when synthesis events are present),
+// __state hoisting, and the currentState pre-seed for true-initialized boolean stocks.
 //
 // Each open function is buffered; on exit the buffer is only flushed to the
 // parent if it contains at least one line. This means functions with no
 // observable variable changes are silently omitted.
-func (l *Logger) renderSteps() string {
+func (l *Logger) renderSteps(filter map[string]bool) string {
 	type frame struct {
 		displayName string
 		buf         strings.Builder
@@ -978,6 +1034,13 @@ func (l *Logger) renderSteps() string {
 				continue
 			}
 			v := getBase(event.Variable)
+			// Apply filter: when filter is non-nil (assert/assume filtering active),
+			// skip variables not referenced in the relevant assertions.
+			// currentState is still updated below to keep transition tracking correct.
+			if filter != nil && !filter[v] {
+				currentState[v] = l.Results[event.Variable]
+				continue
+			}
 			s, negated := l.IsNegated(v)
 			newValue := l.Results[event.Variable]
 			oldValue, hasOldValue := currentState[v]
