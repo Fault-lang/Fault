@@ -657,12 +657,112 @@ func (l *Logger) PrintRaw() {
 	fmt.Print("\n")
 }
 
+// specKind classifies the spec type based on the event log.
+type specKind int
+
+const (
+	specKindBooleanLogic specKind = iota // empty run block — no step functions
+	specKindTemporal                     // has steps, no synthesis slots
+	specKindSynthesis                    // has steps with synth_* synthesis slots
+)
+
+func (l *Logger) specKind() specKind {
+	hasSteps := false
+	hasSynth := false
+	for _, e := range l.Events {
+		// Do NOT skip dead events: Kill() marks parallel-branch losers dead, but
+		// their presence still indicates the spec has steps. A bathtub spec with
+		// all function calls killed still has FunctionCall events in the log and
+		// must route to temporal, not boolean logic.
+		fc, ok := e.(*FunctionCall)
+		if !ok {
+			continue
+		}
+		if fc.FunctionName != "@__run" {
+			hasSteps = true
+			if strings.HasPrefix(fc.FunctionName, "synth_") {
+				hasSynth = true
+			}
+		}
+	}
+	if !hasSteps {
+		return specKindBooleanLogic
+	}
+	if hasSynth {
+		return specKindSynthesis
+	}
+	return specKindTemporal
+}
+
 // String returns the formatted output as a string instead of printing.
+// It dispatches to a type-specific renderer based on the spec kind.
+func (l *Logger) String() string {
+	switch l.specKind() {
+	case specKindBooleanLogic:
+		return l.stringBooleanLogic()
+	case specKindSynthesis:
+		return l.stringSynthesis()
+	default:
+		return l.stringTemporal()
+	}
+}
+
+// stringBooleanLogic renders results for specs with an empty run block.
+// There is no step trace — the entire output is the Initialize model section
+// showing string-rule values resolved by the solver. No currentState tracking
+// or pre-seeding is needed because there are no transitions to narrate.
+func (l *Logger) stringBooleanLogic() string {
+	var root strings.Builder
+
+	root.WriteString("\nInitialize model\n")
+	root.WriteString("-----------------------------------\n")
+
+	for label, base := range l.CountVars {
+		if val, ok := l.Results[base+"_0"]; ok {
+			display := val
+			if strings.HasSuffix(display, ".0") {
+				display = display[:len(display)-2]
+			}
+			root.WriteString(fmt.Sprintf("   %s: %s\n", label, display))
+		}
+	}
+
+	for base, label := range l.StringRules {
+		val := l.latestResult(base)
+		if val == "" {
+			continue
+		}
+		display := strings.ToUpper(val)
+		root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
+	}
+
+	root.WriteString("\n")
+	return root.String()
+}
+
+// stringTemporal renders results for specs with step functions and no synthesis
+// slots. It shows a full step trace with variable transitions.
+// Phase 5 will add filtering by violated assert variables.
+func (l *Logger) stringTemporal() string {
+	return l.renderSteps()
+}
+
+// stringSynthesis renders results for specs containing synthesis slots (__).
+// It narrates the solver's chosen operation sequence.
+// Phase 5 will add filtering by assume variables.
+func (l *Logger) stringSynthesis() string {
+	return l.renderSteps()
+}
+
+// renderSteps is the shared step-trace renderer used by stringTemporal and
+// stringSynthesis. It handles the full event loop including synth_* narration
+// (which fires only when synthesis events are present), __state hoisting, and
+// the currentState pre-seed for true-initialized boolean stocks.
 //
 // Each open function is buffered; on exit the buffer is only flushed to the
 // parent if it contains at least one line. This means functions with no
-// observable variable changes are silently omitted, regardless of model type.
-func (l *Logger) String() string {
+// observable variable changes are silently omitted.
+func (l *Logger) renderSteps() string {
 	type frame struct {
 		displayName string
 		buf         strings.Builder
@@ -802,20 +902,6 @@ func (l *Logger) String() string {
 		return out
 	}
 
-	// Pre-scan: does any non-@__run, non-dead function call exist?
-	// If not, this is a static (no-step) model and the "Start model" section
-	// would be an empty duplicate of "Initialize model" — suppress it.
-	hasSteps := false
-	for _, e := range l.Events {
-		if e.IsDead() {
-			continue
-		}
-		if fc, ok := e.(*FunctionCall); ok && fc.FunctionName != "@__run" {
-			hasSteps = true
-			break
-		}
-	}
-
 	for _, e := range l.Events {
 		if e.IsDead() {
 			continue
@@ -850,10 +936,8 @@ func (l *Logger) String() string {
 						display := strings.ToUpper(val)
 						root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
 					}
-					if hasSteps {
-						root.WriteString("\nStart model\n")
-						root.WriteString("-----------------------------------\n")
-					}
+					root.WriteString("\nStart model\n")
+					root.WriteString("-----------------------------------\n")
 				}
 				// @__run exit: nothing to flush — content was written directly to root
 				continue
