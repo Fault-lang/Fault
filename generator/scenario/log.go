@@ -863,12 +863,16 @@ func (l *Logger) renderSteps() string {
 		// display when a stock boolean is initialized true and then changes to false.
 		// Only seed "true" values: seeding "false" would change "Set variable X to true"
 		// output into "false → true" format, breaking statechart __state hoisting.
+		// Do NOT seed string-rule variables: they are boolean propositions whose
+		// initial value is already shown in the Initialize model header via latestResult().
+		// Pre-seeding them causes the step-trace display guard (hasOldValue && oldValue==newValue)
+		// to silently suppress first appearances when the rule stays true — issue #80.
 		for varSSA, val := range l.Results {
 			if val != "true" || !strings.HasSuffix(varSSA, "_0") {
 				continue
 			}
 			base := varSSA[:len(varSSA)-2]
-			if !l.IsInternalVariable(varSSA) && l.IsLoggable(base) {
+			if !l.IsInternalVariable(varSSA) && l.IsLoggable(base) && !l.IsStringRule[base] {
 				if _, already := currentState[base]; !already {
 					currentState[base] = "true"
 				}
@@ -993,15 +997,15 @@ func (l *Logger) renderSteps() string {
 				s = l.StringRules[s]
 				if hasOldValue && oldValue != newValue {
 					if negated {
-						write(fmt.Sprintf("%s not %s: %s → %s\n", indent(), s, oldValue, newValue))
+						write(fmt.Sprintf("%s not %s: %s → %s\n", indent(), s, strings.ToUpper(oldValue), strings.ToUpper(newValue)))
 					} else {
-						write(fmt.Sprintf("%s %s: %s → %s\n", indent(), s, oldValue, newValue))
+						write(fmt.Sprintf("%s %s: %s → %s\n", indent(), s, strings.ToUpper(oldValue), strings.ToUpper(newValue)))
 					}
 				} else if !hasOldValue {
 					if negated {
-						write(fmt.Sprintf("%s not %s is %s\n", indent(), s, newValue))
+						write(fmt.Sprintf("%s not %s is %s\n", indent(), s, strings.ToUpper(newValue)))
 					} else {
-						write(fmt.Sprintf("%s %s is %s\n", indent(), s, newValue))
+						write(fmt.Sprintf("%s %s is %s\n", indent(), s, strings.ToUpper(newValue)))
 					}
 				}
 			} else {
