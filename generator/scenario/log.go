@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"fault/ast"
 	"fault/util"
 	"fmt"
 	"slices"
@@ -36,6 +37,13 @@ type Logger struct {
 	// (e.g. "__retries_load_count") for each `multiple`-instantiated flow.
 	// Values are read from Results and shown in the Initialize model section.
 	CountVars map[string]string
+	// Asserts holds the spec's assertion statements with Violated flags already
+	// set by EvaluateViolations. Used to filter output to relevant variables.
+	// Nil or empty means no assertions — simulation mode, show everything.
+	Asserts []*ast.AssertionStatement
+	// Assumes holds the spec's assume statements. Used by synthesis rendering
+	// to filter output to variables that appear in goal conditions.
+	Assumes []*ast.AssertionStatement
 }
 
 // NewLogger creates an initialized Logger for tracking solver result interpretation.

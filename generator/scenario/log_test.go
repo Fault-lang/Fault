@@ -1,9 +1,27 @@
 package scenario
 
 import (
+	"fault/ast"
 	"strings"
 	"testing"
 )
+
+// ---- helpers ----
+
+func makeAssertVar(instance string) *ast.AssertVar {
+	return &ast.AssertVar{Instances: []string{instance}}
+}
+
+func makeViolatedAssertion(varName string) *ast.AssertionStatement {
+	return &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left:     makeAssertVar(varName),
+			Operator: "==",
+			Right:    &ast.BooleanLiteral{Value: true},
+		},
+		Violated: true,
+	}
+}
 
 func TestNewLogger(t *testing.T) {
 	logger := NewLogger()
