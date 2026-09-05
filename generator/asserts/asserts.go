@@ -571,9 +571,11 @@ func (c *Constraint) hasRound0Entry(base string) bool {
 // suffix found in the round-0 registry bucket, or — for spec-level constants
 // declared as LLVM globals and initialized outside the @__run body (never
 // assigned inside any run-block flow, so they aren't scoped to a "round-0_"
-// registry key at all) — the single SSA suffix base is registered with
-// anywhere in the registry. Constants have one fixed SSA value that's live
-// for the entire model, so wherever they were recorded is still valid.
+// registry key at all) — the SSA suffix base is registered with. Constant
+// status is determined by captureState's name-structure check (the same
+// invariant used elsewhere in this file), not by registry shape, since a
+// non-constant variable assigned only once would otherwise look identical
+// to a constant under a uniqueness check.
 func (c *Constraint) round0OrConstantSSA(base string) (string, bool) {
 	for key, vars := range c.Registry {
 		var round int
@@ -587,9 +589,12 @@ func (c *Constraint) round0OrConstantSSA(base string) (string, bool) {
 		}
 	}
 
-	// Fall back: scan every registry bucket for base. If it maps to exactly
-	// one distinct SSA value everywhere it's found, it's a constant and that
-	// single value is safe to use regardless of which key it's scoped under.
+	// Fall back for spec-level constants: only recognized here if base's name
+	// structure marks it as a constant (<=2 underscore-separated segments).
+	_, _, isConst := captureState(base)
+	if !isConst {
+		return "", false
+	}
 	ssa := ""
 	found := false
 	for _, vars := range c.Registry {
@@ -597,8 +602,12 @@ func (c *Constraint) round0OrConstantSSA(base string) (string, bool) {
 			if v[0] != base {
 				continue
 			}
-			if found && ssa != v[1] {
-				return "", false
+			if found && v[1] != ssa {
+				// A constant should have exactly one SSA value across the whole
+				// registry. Seeing more than one means the registry invariant
+				// this fallback depends on is broken — fail loudly instead of
+				// silently dropping the assertion or picking an arbitrary value.
+				panic(fmt.Sprintf("constant %q has conflicting SSA versions %q and %q in registry", base, ssa, v[1]))
 			}
 			ssa = v[1]
 			found = true
