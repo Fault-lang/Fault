@@ -458,18 +458,18 @@ func TestString_SynthChoiceInOutput(t *testing.T) {
 }
 
 // ============================================================
-// Phase 2: failing tests for spec-type-aware rendering split
+// Regression tests for spec-type-aware rendering split
 // ============================================================
 
 // ---- Boolean logic: true-initialized string rule appears (issue #80) ----
 
-// TestString_BooleanLogic_TrueRuleVisibleInTrace is the exact scenario from
+// TestString_Temporal_TrueRuleVisibleInTrace is the exact scenario from
 // issue #80: a string-rule variable whose _0 result is "true" is absent from
 // the step trace because the pre-seed loop sets currentState[base]="true",
 // then the display guard suppresses output when hasOldValue && oldValue==newValue.
 // A "false"-initialized rule appears correctly because it is never pre-seeded.
 // After the split the boolean logic path must not pre-seed at all.
-func TestString_BooleanLogic_TrueRuleVisibleInTrace(t *testing.T) {
+func TestString_Temporal_TrueRuleVisibleInTrace(t *testing.T) {
 	l := NewLogger()
 
 	// Temporal spec with a string rule: the step function updates the rule variable.
@@ -504,9 +504,9 @@ func TestString_BooleanLogic_TrueRuleVisibleInTrace(t *testing.T) {
 	}
 }
 
-// TestString_BooleanLogic_FalseRuleVisibleInTrace verifies that a false-initialized
+// TestString_Temporal_FalseRuleVisibleInTrace verifies that a false-initialized
 // string rule appears in the trace (this already works today — it is not pre-seeded).
-func TestString_BooleanLogic_FalseRuleVisibleInTrace(t *testing.T) {
+func TestString_Temporal_FalseRuleVisibleInTrace(t *testing.T) {
 	l := NewLogger()
 
 	l.EnterFunction("@__run", 1)

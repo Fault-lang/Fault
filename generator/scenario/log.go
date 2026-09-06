@@ -657,22 +657,6 @@ func (l *Logger) PrintRaw() {
 	fmt.Print("\n")
 }
 
-// collectAssertVars recursively collects all AssertVar nodes in an expression.
-// Duplicated from execute/violations.go to avoid an import cycle.
-func collectAssertVars(expr ast.Expression) []*ast.AssertVar {
-	switch e := expr.(type) {
-	case *ast.AssertVar:
-		return []*ast.AssertVar{e}
-	case *ast.InfixExpression:
-		return append(collectAssertVars(e.Left), collectAssertVars(e.Right)...)
-	case *ast.PrefixExpression:
-		return collectAssertVars(e.Right)
-	case *ast.IndexExpression:
-		return collectAssertVars(e.Left)
-	}
-	return nil
-}
-
 // relevantVars builds a set of base variable names from a slice of assertions.
 // When violated-only is true, only violated assertions contribute.
 // Returns nil when stmts is empty — callers treat nil as "show everything"
@@ -686,13 +670,13 @@ func relevantVars(stmts []*ast.AssertionStatement, violatedOnly bool) map[string
 		if violatedOnly && !a.Violated {
 			continue
 		}
-		for _, av := range collectAssertVars(a.Constraint.Left) {
+		for _, av := range ast.CollectAssertVars(a.Constraint.Left) {
 			for _, inst := range av.Instances {
 				// AssertVar instances are already base names (no SSA suffix).
 				out[inst] = true
 			}
 		}
-		for _, av := range collectAssertVars(a.Constraint.Right) {
+		for _, av := range ast.CollectAssertVars(a.Constraint.Right) {
 			for _, inst := range av.Instances {
 				out[inst] = true
 			}

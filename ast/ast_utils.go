@@ -106,6 +106,21 @@ func evalInt(i1 int64, i2 int64, op string) int64 {
 	}
 }
 
+// CollectAssertVars recursively collects all AssertVar nodes in an expression.
+func CollectAssertVars(expr Expression) []*AssertVar {
+	switch e := expr.(type) {
+	case *AssertVar:
+		return []*AssertVar{e}
+	case *InfixExpression:
+		return append(CollectAssertVars(e.Left), CollectAssertVars(e.Right)...)
+	case *PrefixExpression:
+		return CollectAssertVars(e.Right)
+	case *IndexExpression:
+		return CollectAssertVars(e.Left)
+	}
+	return nil
+}
+
 func IsCompare(op string) bool {
 	switch op {
 	case ">":
