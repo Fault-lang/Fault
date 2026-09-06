@@ -63,6 +63,7 @@ type PendingModelCheck struct {
 	Uncertains map[string][]float64
 	Unknowns   []string
 	Asserts    []*ast.AssertionStatement
+	Assumes    []*ast.AssertionStatement
 	HasSynth   bool // true when the run block contains synthesis slots (__)
 	ResultLog  *scenario.Logger
 }
@@ -454,6 +455,7 @@ func (r *Runner) Run() *CompilationOutput {
 					Uncertains: uncertains,
 					Unknowns:   unknowns,
 					Asserts:    compiler.RawInputs.Asserts,
+					Assumes:    compiler.RawInputs.Assumes,
 					HasSynth:   hasSolvableSteps(tree),
 					ResultLog:  g.ResultLog,
 				}
@@ -500,6 +502,8 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 		mc.EvaluateViolations(compiler.RawInputs.Asserts)
 		output.Asserts = compiler.RawInputs.Asserts
+		g.ResultLog.Asserts = compiler.RawInputs.Asserts
+		g.ResultLog.Assumes = compiler.RawInputs.Assumes
 		g.ResultLog.SystemName = systemName(tree)
 		g.ResultLog.Results = mc.ResultValues
 		g.ResultLog.Trace()
@@ -591,6 +595,8 @@ func (r *Runner) Resume(pending *PendingModelCheck) *CompilationOutput {
 	}
 	mc.EvaluateViolations(pending.Asserts)
 	output.Asserts = pending.Asserts
+	pending.ResultLog.Asserts = pending.Asserts
+	pending.ResultLog.Assumes = pending.Assumes
 	pending.ResultLog.Results = mc.ResultValues
 	pending.ResultLog.Trace()
 	pending.ResultLog.Validate()

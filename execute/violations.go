@@ -219,8 +219,8 @@ func evalNumericExpr(expr ast.Expression, round int16, values map[string]string)
 // roundsForConstraint returns all round indices present in the model for the
 // variables referenced by the constraint.
 func roundsForConstraint(c *ast.InvariantClause, values map[string]string) []int16 {
-	vars := collectAssertVars(c.Left)
-	vars = append(vars, collectAssertVars(c.Right)...)
+	vars := ast.CollectAssertVars(c.Left)
+	vars = append(vars, ast.CollectAssertVars(c.Right)...)
 
 	seen := make(map[int16]bool)
 	var rounds []int16
@@ -246,20 +246,6 @@ func roundsForConstraint(c *ast.InvariantClause, values map[string]string) []int
 	return rounds
 }
 
-// collectAssertVars recursively collects all AssertVar nodes in an expression.
-func collectAssertVars(expr ast.Expression) []*ast.AssertVar {
-	switch e := expr.(type) {
-	case *ast.AssertVar:
-		return []*ast.AssertVar{e}
-	case *ast.InfixExpression:
-		return append(collectAssertVars(e.Left), collectAssertVars(e.Right)...)
-	case *ast.PrefixExpression:
-		return collectAssertVars(e.Right)
-	case *ast.IndexExpression:
-		return collectAssertVars(e.Left)
-	}
-	return nil
-}
 
 func parseModelFloat(s string) (float64, bool) {
 	switch s {

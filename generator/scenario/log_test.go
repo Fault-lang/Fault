@@ -1,9 +1,27 @@
 package scenario
 
 import (
+	"fault/ast"
 	"strings"
 	"testing"
 )
+
+// ---- helpers ----
+
+func makeAssertVar(instance string) *ast.AssertVar {
+	return &ast.AssertVar{Instances: []string{instance}}
+}
+
+func makeViolatedAssertion(varName string) *ast.AssertionStatement {
+	return &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left:     makeAssertVar(varName),
+			Operator: "!=",
+			Right:    &ast.FloatLiteral{Value: 1},
+		},
+		Violated: true,
+	}
+}
 
 func TestNewLogger(t *testing.T) {
 	logger := NewLogger()
@@ -436,5 +454,308 @@ func TestString_SynthChoiceInOutput(t *testing.T) {
 	out := l.String()
 	if !strings.Contains(out, "Fault chose fill") {
 		t.Errorf("String() should contain 'Fault chose fill', got:\n%s", out)
+	}
+}
+
+// ============================================================
+// Regression tests for spec-type-aware rendering split
+// ============================================================
+
+// ---- Boolean logic: true-initialized string rule appears (issue #80) ----
+
+// TestString_Temporal_TrueRuleVisibleInTrace is the exact scenario from
+// issue #80: a string-rule variable whose _0 result is "true" is absent from
+// the step trace because the pre-seed loop sets currentState[base]="true",
+// then the display guard suppresses output when hasOldValue && oldValue==newValue.
+// A "false"-initialized rule appears correctly because it is never pre-seeded.
+// After the split the boolean logic path must not pre-seed at all.
+func TestString_Temporal_TrueRuleVisibleInTrace(t *testing.T) {
+	l := NewLogger()
+
+	// Temporal spec with a string rule: the step function updates the rule variable.
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("test_str1_1", false) // step fires, still true
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	// _0 is the initial value (true), _1 is after the step (still true).
+	l.Results["test_str1_0"] = "true"
+	l.Results["test_str1_1"] = "true"
+	l.StringRules["test_str1"] = "is a fish"
+	l.IsStringRule["test_str1"] = true
+
+	l.Trace()
+	out := l.String()
+
+	// The step trace must show "is a fish is TRUE" inside the step function body.
+	// The Initialize model section also shows it (via latestResult), so we must
+	// verify it appears AFTER "Run function" — i.e. in the trace, not just the header.
+	// Currently the pre-seed makes hasOldValue=true with oldValue="true", so
+	// the first-appearance branch never fires and the line is silently dropped from
+	// the trace even though Initialize model shows it correctly.
+	runIdx := strings.Index(out, "Run function")
+	ruleIdx := strings.LastIndex(out, "is a fish is TRUE")
+	if runIdx == -1 {
+		t.Fatalf("issue #80: step function not found in output:\n%s", out)
+	}
+	if ruleIdx == -1 || ruleIdx < runIdx {
+		t.Errorf("issue #80: true-initialized string rule must appear in step trace (after 'Run function'), got:\n%s", out)
+	}
+}
+
+// TestString_Temporal_FalseRuleVisibleInTrace verifies that a false-initialized
+// string rule appears in the trace (this already works today — it is not pre-seeded).
+func TestString_Temporal_FalseRuleVisibleInTrace(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("test_str1_1", false)
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["test_str1_0"] = "false"
+	l.Results["test_str1_1"] = "false"
+	l.StringRules["test_str1"] = "is a fish"
+	l.IsStringRule["test_str1"] = true
+
+	l.Trace()
+	out := l.String()
+	if !strings.Contains(out, "is a fish is FALSE") {
+		t.Errorf("false-initialized string rule must appear in step trace, got:\n%s", out)
+	}
+}
+
+// TestString_BooleanLogic_NoStartModel verifies that boolean logic specs
+// (empty run block) never emit a "Start model" section.
+func TestString_BooleanLogic_NoStartModel(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.UpdateVariable("test_str1_0", false)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["test_str1_0"] = "true"
+	l.StringRules["test_str1"] = "is a fish"
+	l.IsStringRule["test_str1"] = true
+
+	l.Trace()
+	out := l.String()
+	if strings.Contains(out, "Start model") {
+		t.Errorf("Boolean logic: 'Start model' must not appear in output, got:\n%s", out)
+	}
+}
+
+// ---- Temporal: true-initialized boolean stock still transitions true → false ----
+
+// TestString_Temporal_TrueToFalseTransition verifies that the pre-seed loop
+// is preserved for temporal specs: a stock initialized to true that later
+// becomes false should render as "true → false", not "Set variable X to false".
+func TestString_Temporal_TrueToFalseTransition(t *testing.T) {
+	l := NewLogger()
+
+	// Temporal: has a step function.
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("spec_st_value_1", false)
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	// _0 is true (initial), _1 is false (after the step).
+	l.Results["spec_st_value_0"] = "true"
+	l.Results["spec_st_value_1"] = "false"
+
+	l.Trace()
+	out := l.String()
+	if !strings.Contains(out, "true → false") {
+		t.Errorf("Temporal: true→false transition must appear, got:\n%s", out)
+	}
+}
+
+// ---- Temporal: __state hoisting ----
+
+// TestString_Temporal_StateHoisting verifies that for a function whose display
+// name ends in "__state", the first "Set variable X to value true" line is
+// hoisted out of the function body and appears before the section divider.
+func TestString_Temporal_StateHoisting(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_comp_active__state", 1)
+	l.UpdateVariable("spec_comp_active_1", false)
+	l.ExitFunction("spec_comp_active__state", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_comp_active_1"] = "true"
+
+	l.Trace()
+	out := l.String()
+
+	startModel := "Start model"
+	stateSet := "Set variable spec_comp_active to value true"
+
+	startIdx := strings.Index(out, startModel)
+	stateIdx := strings.Index(out, stateSet)
+
+	if stateIdx == -1 {
+		t.Fatalf("Temporal: hoisted state line not found in output:\n%s", out)
+	}
+	if startIdx == -1 {
+		t.Fatalf("Temporal: 'Start model' section not found in output:\n%s", out)
+	}
+	// The hoisted state line must appear before "Start model", not inside the step function body.
+	if stateIdx > startIdx {
+		t.Errorf("Temporal: hoisted state line must appear before 'Start model', got:\n%s", out)
+	}
+}
+
+// ---- Simulation mode: no asserts → show everything ----
+
+// TestString_SimulationMode_ShowsAllVars verifies that when l.Asserts is empty
+// (simulation run, no assertions), all variable updates are shown unfiltered.
+func TestString_SimulationMode_ShowsAllVars(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fill", 1)
+	l.UpdateVariable("spec_st_level_1", false)
+	l.ExitFunction("spec_fl_fill", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_st_level_1"] = "50"
+	// No l.Asserts set — simulation mode.
+
+	l.Trace()
+	out := l.String()
+	if !strings.Contains(out, "spec_st_level") {
+		t.Errorf("Simulation mode: variable must appear when no asserts set, got:\n%s", out)
+	}
+}
+
+// ---- Phase 5: filtering tests ----
+
+// TestString_Temporal_FilterByViolatedAssert verifies that when asserts are
+// present, only variables referenced in violated asserts appear in the trace.
+func TestString_Temporal_FilterByViolatedAssert(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("spec_st_level_1", false)  // in violated assert
+	l.UpdateVariable("spec_st_other_1", false)  // NOT in any assert
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_st_level_1"] = "50"
+	l.Results["spec_st_other_1"] = "99"
+
+	l.Asserts = []*ast.AssertionStatement{
+		makeViolatedAssertion("spec_st_level"),
+	}
+
+	l.Trace()
+	out := l.String()
+
+	if !strings.Contains(out, "spec_st_level") {
+		t.Errorf("Filtered: violated assert variable must appear, got:\n%s", out)
+	}
+	if strings.Contains(out, "spec_st_other") {
+		t.Errorf("Filtered: non-assert variable must be suppressed, got:\n%s", out)
+	}
+}
+
+// TestString_Temporal_UnviolatedAssertHidesVar verifies that a variable in a
+// non-violated assert is also suppressed (only violated ones are relevant).
+func TestString_Temporal_UnviolatedAssertHidesVar(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.EnterFunction("spec_fl_fn", 1)
+	l.UpdateVariable("spec_st_safe_1", false)
+	l.ExitFunction("spec_fl_fn", 1)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["spec_st_safe_1"] = "5"
+
+	// Assert exists but is NOT violated.
+	l.Asserts = []*ast.AssertionStatement{
+		{
+			Constraint: &ast.InvariantClause{
+				Left:     makeAssertVar("spec_st_safe"),
+				Operator: "<",
+				Right:    &ast.FloatLiteral{Value: 100},
+			},
+			Violated: false,
+		},
+	}
+
+	l.Trace()
+	out := l.String()
+
+	if strings.Contains(out, "spec_st_safe") {
+		t.Errorf("Filtered: variable in non-violated assert must be suppressed, got:\n%s", out)
+	}
+}
+
+// TestString_BooleanLogic_FilterByViolatedAssert verifies that boolean logic
+// output only shows string rules that feed into violated asserts.
+func TestString_BooleanLogic_FilterByViolatedAssert(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.UpdateVariable("test_fish_0", false)
+	l.UpdateVariable("test_ginger_0", false)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["test_fish_0"] = "true"
+	l.Results["test_ginger_0"] = "true"
+	l.StringRules["test_fish"] = "is a fish"
+	l.IsStringRule["test_fish"] = true
+	l.StringRules["test_ginger"] = "tastes good with ginger"
+	l.IsStringRule["test_ginger"] = true
+
+	// Only test_fish is in a violated assert.
+	l.Asserts = []*ast.AssertionStatement{
+		makeViolatedAssertion("test_fish"),
+	}
+
+	l.Trace()
+	out := l.String()
+
+	if !strings.Contains(out, "is a fish") {
+		t.Errorf("Boolean logic filter: violated assert rule must appear, got:\n%s", out)
+	}
+	if strings.Contains(out, "tastes good with ginger") {
+		t.Errorf("Boolean logic filter: non-assert rule must be suppressed, got:\n%s", out)
+	}
+}
+
+// TestString_BooleanLogic_NoAsserts_ShowsAll verifies simulation mode for
+// boolean logic: when l.Asserts is empty all string rules are shown.
+func TestString_BooleanLogic_NoAsserts_ShowsAll(t *testing.T) {
+	l := NewLogger()
+
+	l.EnterFunction("@__run", 1)
+	l.UpdateVariable("test_fish_0", false)
+	l.UpdateVariable("test_ginger_0", false)
+	l.ExitFunction("@__run", 1)
+
+	l.Results["test_fish_0"] = "true"
+	l.Results["test_ginger_0"] = "false"
+	l.StringRules["test_fish"] = "is a fish"
+	l.IsStringRule["test_fish"] = true
+	l.StringRules["test_ginger"] = "tastes good with ginger"
+	l.IsStringRule["test_ginger"] = true
+	// No l.Asserts — simulation mode.
+
+	l.Trace()
+	out := l.String()
+
+	if !strings.Contains(out, "is a fish") {
+		t.Errorf("Boolean logic simulation: all rules must appear, got:\n%s", out)
+	}
+	if !strings.Contains(out, "tastes good with ginger") {
+		t.Errorf("Boolean logic simulation: all rules must appear, got:\n%s", out)
 	}
 }

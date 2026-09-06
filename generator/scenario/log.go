@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"fault/ast"
 	"fault/util"
 	"fmt"
 	"slices"
@@ -36,6 +37,13 @@ type Logger struct {
 	// (e.g. "__retries_load_count") for each `multiple`-instantiated flow.
 	// Values are read from Results and shown in the Initialize model section.
 	CountVars map[string]string
+	// Asserts holds the spec's assertion statements with Violated flags already
+	// set by EvaluateViolations. Used to filter output to relevant variables.
+	// Nil or empty means no assertions — simulation mode, show everything.
+	Asserts []*ast.AssertionStatement
+	// Assumes holds the spec's assume statements. Used by synthesis rendering
+	// to filter output to variables that appear in goal conditions.
+	Assumes []*ast.AssertionStatement
 }
 
 // NewLogger creates an initialized Logger for tracking solver result interpretation.
@@ -649,12 +657,152 @@ func (l *Logger) PrintRaw() {
 	fmt.Print("\n")
 }
 
+// relevantVars builds a set of base variable names from a slice of assertions.
+// When violated-only is true, only violated assertions contribute.
+// Returns nil when stmts is empty — callers treat nil as "show everything"
+// (simulation mode: no asserts means no filtering).
+func relevantVars(stmts []*ast.AssertionStatement, violatedOnly bool) map[string]bool {
+	if len(stmts) == 0 {
+		return nil
+	}
+	out := make(map[string]bool)
+	for _, a := range stmts {
+		if violatedOnly && !a.Violated {
+			continue
+		}
+		for _, av := range ast.CollectAssertVars(a.Constraint.Left) {
+			for _, inst := range av.Instances {
+				// AssertVar instances are already base names (no SSA suffix).
+				out[inst] = true
+			}
+		}
+		for _, av := range ast.CollectAssertVars(a.Constraint.Right) {
+			for _, inst := range av.Instances {
+				out[inst] = true
+			}
+		}
+	}
+	return out
+}
+
+// specKind classifies the spec type based on the event log.
+type specKind int
+
+const (
+	specKindBooleanLogic specKind = iota // empty run block — no step functions
+	specKindTemporal                     // has steps, no synthesis slots
+	specKindSynthesis                    // has steps with synth_* synthesis slots
+)
+
+func (l *Logger) specKind() specKind {
+	hasSteps := false
+	hasSynth := false
+	for _, e := range l.Events {
+		// Do NOT skip dead events: Kill() marks parallel-branch losers dead, but
+		// their presence still indicates the spec has steps. A bathtub spec with
+		// all function calls killed still has FunctionCall events in the log and
+		// must route to temporal, not boolean logic.
+		fc, ok := e.(*FunctionCall)
+		if !ok {
+			continue
+		}
+		if fc.FunctionName != "@__run" {
+			hasSteps = true
+			if strings.HasPrefix(fc.FunctionName, "synth_") {
+				hasSynth = true
+			}
+		}
+	}
+	if !hasSteps {
+		return specKindBooleanLogic
+	}
+	if hasSynth {
+		return specKindSynthesis
+	}
+	return specKindTemporal
+}
+
 // String returns the formatted output as a string instead of printing.
+// It dispatches to a type-specific renderer based on the spec kind.
+func (l *Logger) String() string {
+	switch l.specKind() {
+	case specKindBooleanLogic:
+		return l.stringBooleanLogic()
+	case specKindSynthesis:
+		return l.stringSynthesis()
+	default:
+		return l.stringTemporal()
+	}
+}
+
+// stringBooleanLogic renders results for specs with an empty run block.
+// There is no step trace — the entire output is the Initialize model section
+// showing string-rule values resolved by the solver. No currentState tracking
+// or pre-seeding is needed because there are no transitions to narrate.
+// When l.Asserts is non-empty, only rules feeding into violated asserts are shown.
+// When l.Asserts is empty (simulation mode) all rules are shown.
+func (l *Logger) stringBooleanLogic() string {
+	filter := relevantVars(l.Asserts, true)
+
+	var root strings.Builder
+
+	root.WriteString("\nInitialize model\n")
+	root.WriteString("-----------------------------------\n")
+
+	for label, base := range l.CountVars {
+		if val, ok := l.Results[base+"_0"]; ok {
+			display := val
+			if strings.HasSuffix(display, ".0") {
+				display = display[:len(display)-2]
+			}
+			root.WriteString(fmt.Sprintf("   %s: %s\n", label, display))
+		}
+	}
+
+	for base, label := range l.StringRules {
+		// Skip variables not referenced in violated asserts (when filter is active).
+		if filter != nil && !filter[base] {
+			continue
+		}
+		val := l.latestResult(base)
+		if val == "" {
+			continue
+		}
+		display := strings.ToUpper(val)
+		root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
+	}
+
+	root.WriteString("\n")
+	return root.String()
+}
+
+// stringTemporal renders results for specs with step functions and no synthesis
+// slots. It shows a full step trace filtered to variables in violated asserts.
+// When l.Asserts is empty (simulation mode) all variables are shown.
+func (l *Logger) stringTemporal() string {
+	filter := relevantVars(l.Asserts, true)
+	return l.renderSteps(filter)
+}
+
+// stringSynthesis renders results for specs containing synthesis slots (__).
+// It narrates the solver's chosen operation sequence, filtered to variables
+// referenced in assumes (the goal conditions).
+// When l.Assumes is empty all variables are shown.
+func (l *Logger) stringSynthesis() string {
+	filter := relevantVars(l.Assumes, false)
+	return l.renderSteps(filter)
+}
+
+// renderSteps is the shared step-trace renderer used by stringTemporal and
+// stringSynthesis. filter is a set of base variable names to display; nil means
+// show everything (simulation mode). It handles the full event loop including
+// synth_* narration (which fires only when synthesis events are present),
+// __state hoisting, and the currentState pre-seed for true-initialized boolean stocks.
 //
 // Each open function is buffered; on exit the buffer is only flushed to the
 // parent if it contains at least one line. This means functions with no
-// observable variable changes are silently omitted, regardless of model type.
-func (l *Logger) String() string {
+// observable variable changes are silently omitted.
+func (l *Logger) renderSteps(filter map[string]bool) string {
 	type frame struct {
 		displayName string
 		buf         strings.Builder
@@ -755,12 +903,16 @@ func (l *Logger) String() string {
 		// display when a stock boolean is initialized true and then changes to false.
 		// Only seed "true" values: seeding "false" would change "Set variable X to true"
 		// output into "false → true" format, breaking statechart __state hoisting.
+		// Do NOT seed string-rule variables: they are boolean propositions whose
+		// initial value is already shown in the Initialize model header via latestResult().
+		// Pre-seeding them causes the step-trace display guard (hasOldValue && oldValue==newValue)
+		// to silently suppress first appearances when the rule stays true — issue #80.
 		for varSSA, val := range l.Results {
 			if val != "true" || !strings.HasSuffix(varSSA, "_0") {
 				continue
 			}
 			base := varSSA[:len(varSSA)-2]
-			if !l.IsInternalVariable(varSSA) && l.IsLoggable(base) {
+			if !l.IsInternalVariable(varSSA) && l.IsLoggable(base) && !l.IsStringRule[base] {
 				if _, already := currentState[base]; !already {
 					currentState[base] = "true"
 				}
@@ -792,20 +944,6 @@ func (l *Logger) String() string {
 			}
 		}
 		return out
-	}
-
-	// Pre-scan: does any non-@__run, non-dead function call exist?
-	// If not, this is a static (no-step) model and the "Start model" section
-	// would be an empty duplicate of "Initialize model" — suppress it.
-	hasSteps := false
-	for _, e := range l.Events {
-		if e.IsDead() {
-			continue
-		}
-		if fc, ok := e.(*FunctionCall); ok && fc.FunctionName != "@__run" {
-			hasSteps = true
-			break
-		}
 	}
 
 	for _, e := range l.Events {
@@ -842,10 +980,8 @@ func (l *Logger) String() string {
 						display := strings.ToUpper(val)
 						root.WriteString(fmt.Sprintf("   %s is %s\n", label, display))
 					}
-					if hasSteps {
-						root.WriteString("\nStart model\n")
-						root.WriteString("-----------------------------------\n")
-					}
+					root.WriteString("\nStart model\n")
+					root.WriteString("-----------------------------------\n")
 				}
 				// @__run exit: nothing to flush — content was written directly to root
 				continue
@@ -882,6 +1018,13 @@ func (l *Logger) String() string {
 				continue
 			}
 			v := getBase(event.Variable)
+			// Apply filter: when filter is non-nil (assert/assume filtering active),
+			// skip variables not referenced in the relevant assertions.
+			// currentState is still updated below to keep transition tracking correct.
+			if filter != nil && !filter[v] {
+				currentState[v] = l.Results[event.Variable]
+				continue
+			}
 			s, negated := l.IsNegated(v)
 			newValue := l.Results[event.Variable]
 			oldValue, hasOldValue := currentState[v]
@@ -901,15 +1044,15 @@ func (l *Logger) String() string {
 				s = l.StringRules[s]
 				if hasOldValue && oldValue != newValue {
 					if negated {
-						write(fmt.Sprintf("%s not %s: %s → %s\n", indent(), s, oldValue, newValue))
+						write(fmt.Sprintf("%s not %s: %s → %s\n", indent(), s, strings.ToUpper(oldValue), strings.ToUpper(newValue)))
 					} else {
-						write(fmt.Sprintf("%s %s: %s → %s\n", indent(), s, oldValue, newValue))
+						write(fmt.Sprintf("%s %s: %s → %s\n", indent(), s, strings.ToUpper(oldValue), strings.ToUpper(newValue)))
 					}
 				} else if !hasOldValue {
 					if negated {
-						write(fmt.Sprintf("%s not %s is %s\n", indent(), s, newValue))
+						write(fmt.Sprintf("%s not %s is %s\n", indent(), s, strings.ToUpper(newValue)))
 					} else {
-						write(fmt.Sprintf("%s %s is %s\n", indent(), s, newValue))
+						write(fmt.Sprintf("%s %s is %s\n", indent(), s, strings.ToUpper(newValue)))
 					}
 				}
 			} else {
