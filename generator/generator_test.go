@@ -284,6 +284,52 @@ func TestTemporalSys(t *testing.T) {
 	}
 }
 
+// TestWhenThenNegatedConsequentPolarity guards against a regression where
+// `assert when P then !Q` was compiled to the vacuously-true check
+// (P && !Q) instead of the correct violation check (P && !(!Q)) == (P && Q).
+// See https://github.com/Fault-lang/Fault/issues/82.
+func TestWhenThenNegatedConsequentPolarity(t *testing.T) {
+	test := `system test1;
+		component a = states{
+			foo: sfunc{
+				advance(b.bar);
+			},
+			zoo: sfunc{
+				advance(this.foo);
+			},
+		};
+
+		component b = states{
+			buzz: sfunc{
+				advance(a.foo);
+			},
+			bar: sfunc{
+				stay();
+			},
+		};
+
+		assert when a.zoo then !b.bar;
+
+		run {
+			b.buzz && a.zoo;
+		}
+		`
+	g := prepTest("", test, false, false)
+	smt := g.SMT()
+
+	// The correct violation check double-negates the consequent
+	// (not (not test1_b_bar_...)), which is equivalent to asserting bar
+	// itself — not silently cancelling the explicit "!" from the source.
+	if !strings.Contains(smt, "(not (not test1_b_bar_0))") {
+		t.Fatalf("expected violation check to double-negate the consequent, got:\n%s", smt)
+	}
+	// The buggy encoding collapsed to a single negation, checking (zoo && !bar)
+	// instead of (zoo && bar).
+	if strings.Contains(smt, "(and test1_a_zoo_0 (not test1_b_bar_0))") {
+		t.Fatalf("violation check incorrectly single-negated the consequent, got:\n%s", smt)
+	}
+}
+
 func TestCrossRoundWhenThen(t *testing.T) {
 	// Verify that `assert when A then B` fires correctly across rounds.
 	test := `system test1;

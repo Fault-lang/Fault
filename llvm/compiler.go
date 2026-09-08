@@ -1686,7 +1686,15 @@ func (c *Compiler) compileAssert(a *ast.AssertionStatement) {
 	}
 	origOp := a.Constraint.Operator
 
-	if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
+	stateRange := a.Constraint.Operator == "then"
+	if stateRange {
+		// when...then assertions encode their own violation check in
+		// applyWhen (P && !Q), so the inputs must stay un-negated here.
+		// Negating them first double-negates the consequent (cancelling
+		// out) and incorrectly flips the antecedent.
+		l = a.Constraint.Left
+		r = a.Constraint.Right
+	} else if a.TemporalFilter == "" { //If there is a temporal filter this is negated instead
 		booleanVar := a.Constraint.Operator == "&&" || a.Constraint.Operator == "||"
 		l = negate(a.Constraint.Left, booleanVar)
 		r = negate(a.Constraint.Right, booleanVar)
