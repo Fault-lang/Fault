@@ -291,6 +291,50 @@ func TestViolationSSANNotViolated(t *testing.T) {
 	}
 }
 
+// TestViolationWhenThenViolated: assert when P then Q; stored (un-negated) as
+// InvariantClause{Operator: "then", Left: P, Right: Q}. Violated when P holds
+// and Q does not in the same round.
+func TestViolationWhenThenViolated(t *testing.T) {
+	a := makeAssertion(makeAssertVar("spec1_p"), "then", makeAssertVar("spec1_q"), "")
+	values := map[string]string{
+		"spec1_p_0": "true",
+		"spec1_q_0": "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when P holds and Q does not")
+	}
+}
+
+// TestViolationWhenThenNotViolated_AntecedentFalse: P false → vacuously satisfied.
+func TestViolationWhenThenNotViolated_AntecedentFalse(t *testing.T) {
+	a := makeAssertion(makeAssertVar("spec1_p"), "then", makeAssertVar("spec1_q"), "")
+	values := map[string]string{
+		"spec1_p_0": "false",
+		"spec1_q_0": "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when P does not hold")
+	}
+}
+
+// TestViolationWhenThenNotViolated_ConsequentTrue: P and Q both hold → satisfied.
+func TestViolationWhenThenNotViolated_ConsequentTrue(t *testing.T) {
+	a := makeAssertion(makeAssertVar("spec1_p"), "then", makeAssertVar("spec1_q"), "")
+	values := map[string]string{
+		"spec1_p_0": "true",
+		"spec1_q_0": "true",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when both P and Q hold")
+	}
+}
+
 // TestViolationDivisionByZeroSafe: stored condition X / Y <= 0 with Y=0 must not panic.
 func TestViolationDivisionByZeroSafe(t *testing.T) {
 	a := &ast.AssertionStatement{

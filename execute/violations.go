@@ -52,6 +52,17 @@ func assertionViolated(a *ast.AssertionStatement, values map[string]string) bool
 // evalConstraint evaluates the top-level InvariantClause at a given round.
 func evalConstraint(c *ast.InvariantClause, round int16, values map[string]string) (bool, bool) {
 	switch c.Operator {
+	case "then":
+		// when/then assertions are not negated by the compiler (see
+		// llvm.compileAssert); Left/Right retain their original, un-negated
+		// form (the antecedent P and consequent Q). The assertion is
+		// violated when P holds and Q does not in the same round.
+		lv, lok := evalBoolExpr(c.Left, round, values)
+		rv, rok := evalBoolExpr(c.Right, round, values)
+		if !lok || !rok {
+			return false, false
+		}
+		return lv && !rv, true
 	case "||":
 		lv, lok := evalBoolExpr(c.Left, round, values)
 		rv, rok := evalBoolExpr(c.Right, round, values)
