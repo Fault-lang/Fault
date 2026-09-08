@@ -342,6 +342,10 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		}
 		fmt.Fprintf(os.Stderr, "Param manifest written to %s\n", manifestPath)
 	case "model":
+		if output == "smt" {
+			fmt.Print(result.SMT)
+			return nil
+		}
 		data := format.Build(result)
 		var rendered string
 		var err error
