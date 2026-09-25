@@ -97,17 +97,13 @@ func (c *Compiler) globalVariable(id []string, val value.Value, loc string) {
 
 	switch v := val.(type) {
 	case *constant.CharArray:
-		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		c.storeGlobal(name, alloc)
+		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
 	case *constant.Int:
-		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		c.storeGlobal(name, alloc)
+		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
 	case *constant.Float:
-		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		c.storeGlobal(name, alloc)
+		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
 	case *constant.Null:
-		alloc := c.module.NewGlobalDef(name, val.(constant.Constant))
-		c.storeGlobal(name, alloc)
+		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
 	case *ir.InstFAdd:
 		c.allocVariable(id, val, loc)
 	case *ir.InstFSub:
@@ -125,16 +121,26 @@ func (c *Compiler) globalVariable(id []string, val value.Value, loc string) {
 	case *ir.Func:
 	case *ir.InstAnd:
 		placeholder := constant.NewAnd(v.X.(constant.Expression), v.Y.(constant.Expression))
-		alloc := c.module.NewGlobalDef(name, placeholder)
-		c.storeGlobal(name, alloc)
+		c.storeGlobal(name, c.newOrUpdateGlobal(name, placeholder))
 	case *ir.InstOr:
 		placeholder := constant.NewOr(v.X.(constant.Expression), v.Y.(constant.Expression))
-		alloc := c.module.NewGlobalDef(name, placeholder)
-		c.storeGlobal(name, alloc)
+		c.storeGlobal(name, c.newOrUpdateGlobal(name, placeholder))
 	default:
 		panic(fmt.Sprintf("unknown variable type %T %s", v, loc))
 	}
 
+}
+
+// newOrUpdateGlobal returns the existing module global for name with its Init
+// updated to init, or creates and returns a new one if name is not yet defined.
+// This prevents duplicate global definitions when a later declaration (e.g. a
+// local spec) overrides an earlier one (e.g. an import).
+func (c *Compiler) newOrUpdateGlobal(name string, init constant.Constant) *ir.Global {
+	if existing, ok := c.specGlobals[name]; ok {
+		existing.Init = init
+		return existing
+	}
+	return c.module.NewGlobalDef(name, init)
 }
 
 func (c *Compiler) storeAllocation(name string, id []string, alloc value.Value) {

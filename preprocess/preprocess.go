@@ -27,11 +27,23 @@ type Processor struct {
 	Instances            map[string]*ast.StructInstance
 	lintMode             bool
 	errs                 []error
+	warnings             []string
 }
 
 // Errors returns all collected errors from a lint-mode run.
 func (p *Processor) Errors() []error {
 	return p.errs
+}
+
+// GetWarnings returns all warnings emitted during preprocessing.
+func (p *Processor) GetWarnings() []string {
+	return p.warnings
+}
+
+// warn records a non-fatal diagnostic. Warnings are always collected regardless
+// of lint mode; they do not stop compilation.
+func (p *Processor) warn(msg string) {
+	p.warnings = append(p.warnings, msg)
 }
 
 // collect records a recoverable error in lint mode, or returns it for
@@ -354,12 +366,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		spec := p.getSpec(p.trail.CurrentSpec())
 
-		// Has this already been defined?
-		_, err := spec.FetchConstant(node.Name.Value)
-		if err == nil {
-			if err = p.collect(fmt.Errorf("variable %s is a constant and cannot be modified", node.Name.Value)); err != nil {
-				return node, err
-			}
+		// Has this already been defined? Warn and let the new declaration win.
+		if _, err := spec.FetchConstant(node.Name.Value); err == nil {
+			p.warn(fmt.Sprintf("warning: %s redeclares constant %q; the new declaration takes precedence", node.Name.GetToken().Location(), node.Name.Value))
 		}
 
 		pronm, err := p.walk(node.Name)
@@ -408,6 +417,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if _, ok := node.Value.(*ast.StringLiteral); ok || node.Value.TokenLiteral() == "COMPOUND_STRING" {
 			id := node.Name.Id()
 			spec := p.getSpec(id[0])
+			if _, err := spec.FetchGlobal(id[1]); err == nil {
+				p.warn(fmt.Sprintf("warning: %s redeclares global %q; the new declaration takes precedence", node.Name.GetToken().Location(), id[1]))
+			}
 			spec.AddGlobal(id[1], node.Value)
 		} else if node.TokenLiteral() == "GLOBAL" {
 			_, isStructInstance := node.Value.(*ast.StructInstance)
@@ -416,6 +428,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				// Spec-level global with scalar value (not a struct instantiation)
 				id := node.Name.Id()
 				spec := p.getSpec(id[0])
+				if _, err := spec.FetchGlobal(id[1]); err == nil {
+					p.warn(fmt.Sprintf("warning: %s redeclares global %q; the new declaration takes precedence", node.Name.GetToken().Location(), id[1]))
+				}
 				spec.AddGlobal(id[1], node.Value)
 				if p.initialPass {
 					spec.Index("GLOBAL", id[1])

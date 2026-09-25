@@ -137,7 +137,10 @@ func TestFullSuite(t *testing.T) {
 		uncertains = compiler.RawInputs.Uncertains
 		unknowns = compiler.RawInputs.Unknowns
 
-		g := generator.Execute(compiler, generator.GeneratorOptions{})
+		g, err := generator.Execute(compiler, generator.GeneratorOptions{})
+		if err != nil {
+			return fmt.Errorf("generator: %w", err)
+		}
 		ex, err := NewModelChecker()
 		if err != nil {
 			return err

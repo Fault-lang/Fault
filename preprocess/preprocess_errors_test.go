@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestConstantsErr(t *testing.T) {
+func TestConstantsRedeclareWarning(t *testing.T) {
 	p := NewProcesser()
 	p.trail = p.trail.PushSpec("test")
 	p.Specs["test"] = NewSpecRecord()
@@ -13,16 +13,26 @@ func TestConstantsErr(t *testing.T) {
 	p.Specs["test"].AddConstant("foo", &ast.IntegerLiteral{Value: 2})
 
 	test := &ast.Spec{Statements: []ast.Statement{&ast.ConstantStatement{Name: &ast.Identifier{Spec: "test", Value: "foo"},
-		Value: &ast.IntegerLiteral{Value: 2},
+		Value: &ast.IntegerLiteral{Value: 3},
 	}}}
 
 	_, err := p.walk(test)
-	if err == nil {
-		t.Fatal("failed to error on constant redeclare")
+	if err != nil {
+		t.Fatalf("constant redeclare should warn, not error; got error: %s", err.Error())
 	}
 
-	if err.Error() != "variable foo is a constant and cannot be modified" {
-		t.Fatalf("error message on constant redeclare incorrect got=%s", err.Error())
+	warnings := p.GetWarnings()
+	if len(warnings) == 0 {
+		t.Fatal("expected a warning on constant redeclare, got none")
+	}
+
+	// The new value should win.
+	v, ferr := p.Specs["test"].FetchConstant("foo")
+	if ferr != nil {
+		t.Fatalf("constant not found after redeclare: %s", ferr.Error())
+	}
+	if v.(*ast.IntegerLiteral).Value != 3 {
+		t.Fatalf("expected new value 3 to win, got %d", v.(*ast.IntegerLiteral).Value)
 	}
 }
 
