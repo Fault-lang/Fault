@@ -315,6 +315,13 @@ func runTraditionalMode(filepath, mode, input, output, formatTmpl string, reach 
 		fmt.Fprintln(os.Stderr, result.Message)
 	}
 
+	// model mode with --output=smt prints the raw solver response instead of
+	// rendering through format.Build, same as case "smt" below.
+	if mode == "model" && output == "smt" {
+		fmt.Println(result.SMT)
+		return nil
+	}
+
 	switch mode {
 	case "ast":
 		if result.AST != nil {
