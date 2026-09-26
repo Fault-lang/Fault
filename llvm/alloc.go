@@ -96,13 +96,7 @@ func (c *Compiler) globalVariable(id []string, val value.Value, loc string) {
 	name := c.updateVariableStateName(id)
 
 	switch v := val.(type) {
-	case *constant.CharArray:
-		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
-	case *constant.Int:
-		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
-	case *constant.Float:
-		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
-	case *constant.Null:
+	case *constant.CharArray, *constant.Int, *constant.Float, *constant.Null:
 		c.storeGlobal(name, c.newOrUpdateGlobal(name, val.(constant.Constant)))
 	case *ir.InstFAdd:
 		c.allocVariable(id, val, loc)
@@ -135,8 +129,14 @@ func (c *Compiler) globalVariable(id []string, val value.Value, loc string) {
 // updated to init, or creates and returns a new one if name is not yet defined.
 // This prevents duplicate global definitions when a later declaration (e.g. a
 // local spec) overrides an earlier one (e.g. an import).
+// The caller is expected to have already emitted a user-visible warning via the
+// preprocessor; this function handles LLVM-layer deduplication only.
 func (c *Compiler) newOrUpdateGlobal(name string, init constant.Constant) *ir.Global {
 	if existing, ok := c.specGlobals[name]; ok {
+		if existing.Init.Type() != init.Type() {
+			panic(fmt.Sprintf("compiler bug: redeclaration of %q changes type from %s to %s",
+				name, existing.Init.Type(), init.Type()))
+		}
 		existing.Init = init
 		return existing
 	}

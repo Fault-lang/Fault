@@ -160,7 +160,11 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 		}
 	}
 
-	return tree, lstnr, ty, sw.Alias, pre.GetWarnings(), nil
+	var preprocWarnings []string
+	for _, w := range pre.GetWarnings() {
+		preprocWarnings = append(preprocWarnings, w.String())
+	}
+	return tree, lstnr, ty, sw.Alias, preprocWarnings, nil
 }
 
 func (r *Runner) skipCommentsNl(data string) string {
