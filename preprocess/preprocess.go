@@ -10,6 +10,18 @@ import (
 	deepcopy "github.com/barkimedes/go-deepcopy"
 )
 
+// Warning is a non-fatal diagnostic emitted during compilation.
+// Location is the source position; Message is the human-readable description
+// without any severity prefix, so callers can format or filter freely.
+type Warning struct {
+	Location string
+	Message  string
+}
+
+func (w Warning) String() string {
+	return fmt.Sprintf("warning: %s %s", w.Location, w.Message)
+}
+
 type Processor struct {
 	Specs                map[string]*SpecRecord
 	scope                string
@@ -27,11 +39,23 @@ type Processor struct {
 	Instances            map[string]*ast.StructInstance
 	lintMode             bool
 	errs                 []error
+	warnings             []Warning
 }
 
 // Errors returns all collected errors from a lint-mode run.
 func (p *Processor) Errors() []error {
 	return p.errs
+}
+
+// GetWarnings returns all warnings emitted during preprocessing.
+func (p *Processor) GetWarnings() []Warning {
+	return p.warnings
+}
+
+// warn records a non-fatal diagnostic. Warnings are always collected regardless
+// of lint mode; they do not stop compilation.
+func (p *Processor) warn(location, msg string) {
+	p.warnings = append(p.warnings, Warning{Location: location, Message: msg})
 }
 
 // collect records a recoverable error in lint mode, or returns it for
@@ -354,12 +378,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 
 		spec := p.getSpec(p.trail.CurrentSpec())
 
-		// Has this already been defined?
-		_, err := spec.FetchConstant(node.Name.Value)
-		if err == nil {
-			if err = p.collect(fmt.Errorf("variable %s is a constant and cannot be modified", node.Name.Value)); err != nil {
-				return node, err
-			}
+		// Has this already been defined? Warn and let the new declaration win.
+		if _, err := spec.FetchConstant(node.Name.Value); err == nil {
+			p.warn(node.Name.GetToken().Location(), fmt.Sprintf("redeclares constant %q; the new declaration takes precedence", node.Name.Value))
 		}
 
 		pronm, err := p.walk(node.Name)
@@ -408,6 +429,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 		if _, ok := node.Value.(*ast.StringLiteral); ok || node.Value.TokenLiteral() == "COMPOUND_STRING" {
 			id := node.Name.Id()
 			spec := p.getSpec(id[0])
+			if _, err := spec.FetchGlobal(id[1]); err == nil {
+				p.warn(node.Name.GetToken().Location(), fmt.Sprintf("redeclares global %q; the new declaration takes precedence", id[1]))
+			}
 			spec.AddGlobal(id[1], node.Value)
 		} else if node.TokenLiteral() == "GLOBAL" {
 			_, isStructInstance := node.Value.(*ast.StructInstance)
@@ -416,6 +440,9 @@ func (p *Processor) walk(n ast.Node) (ast.Node, error) {
 				// Spec-level global with scalar value (not a struct instantiation)
 				id := node.Name.Id()
 				spec := p.getSpec(id[0])
+				if _, err := spec.FetchGlobal(id[1]); err == nil {
+					p.warn(node.Name.GetToken().Location(), fmt.Sprintf("redeclares global %q; the new declaration takes precedence", id[1]))
+				}
 				spec.AddGlobal(id[1], node.Value)
 				if p.initialPass {
 					spec.Index("GLOBAL", id[1])

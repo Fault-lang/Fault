@@ -101,10 +101,12 @@ func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, 
 	}
 }
 
-func Execute(compiler *llvm.Compiler, opts GeneratorOptions) *Generator {
+func Execute(compiler *llvm.Compiler, opts GeneratorOptions) (*Generator, error) {
 	generator := NewGenerator(compiler.RawInputs, compiler.StringRules, compiler.IsCompound, opts)
-	generator.Run(compiler.GetOptimizedIR())
-	return generator
+	if err := generator.Run(compiler.GetOptimizedIR()); err != nil {
+		return nil, err
+	}
+	return generator, nil
 }
 
 func (g *Generator) AppendSMT(new_smt []string) {
@@ -115,14 +117,14 @@ func (g *Generator) AppendSMT(new_smt []string) {
 	}
 }
 
-func (g *Generator) Run(llopt string) {
+func (g *Generator) Run(llopt string) error {
 	os.WriteFile("/tmp/fault_debug.ll", []byte(llopt), 0644)
 	m, err := asm.ParseString("", llopt) //"" because ParseString has a path variable
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("invalid LLVM IR: %w", err)
 	}
 	g.newCallgraph(m)
-
+	return nil
 }
 
 // emitMultipleInstanceDecls emits a declare-const and >= 1 constraint for each

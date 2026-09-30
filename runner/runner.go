@@ -117,10 +117,10 @@ func (r *Runner) sendError(phase ProgressPhase, err error) {
 	}
 }
 
-func (r *Runner) parse(data string, path string, file string, filetype string, reach bool) (*ast.Spec, *listener.FaultListener, *types.Checker, map[string]string, error) {
+func (r *Runner) parse(data string, path string, file string, filetype string, reach bool) (*ast.Spec, *listener.FaultListener, *types.Checker, map[string]string, []string, error) {
 	// Confirm that the filetype and file declaration match
 	if !r.validateFiletype(data, filetype) {
-		return nil, nil, nil, nil, fmt.Errorf("malformatted file: declaration does not match filetype")
+		return nil, nil, nil, nil, nil, fmt.Errorf("malformatted file: declaration does not match filetype")
 	}
 
 	r.sendProgress(PhaseParsing, "Parsing AST...", 0.0, false)
@@ -131,7 +131,7 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	flags["skipRun"] = false
 	lstnr, err := listener.Execute(data, path, flags)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	r.sendProgress(PhaseParsing, "Parsing complete", 0.14, true)
@@ -139,14 +139,14 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	r.sendProgress(PhasePreprocessing, "Preprocessing...", 0.14, false)
 	pre, err := preprocess.Execute(lstnr)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	r.sendProgress(PhasePreprocessing, "Preprocessing complete", 0.28, true)
 
 	r.sendProgress(PhaseTypeChecking, "Type checking...", 0.28, false)
 	ty, err := types.Execute(pre.Processed, pre)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	r.sendProgress(PhaseTypeChecking, "Type checking complete", 0.42, true)
 
@@ -156,11 +156,15 @@ func (r *Runner) parse(data string, path string, file string, filetype string, r
 	if reach {
 		reacher := reachability.NewTracer()
 		if err := reacher.Scan(ty.Checked); err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 	}
 
-	return tree, lstnr, ty, sw.Alias, nil
+	var preprocWarnings []string
+	for _, w := range pre.GetWarnings() {
+		preprocWarnings = append(preprocWarnings, w.String())
+	}
+	return tree, lstnr, ty, sw.Alias, preprocWarnings, nil
 }
 
 func (r *Runner) skipCommentsNl(data string) string {
@@ -213,12 +217,12 @@ func (r *Runner) validateFiletype(data string, filetype string) bool {
 	return false
 }
 
-func (r *Runner) smt2(ir string, compiler *llvm.Compiler) *generator.Generator {
-	g := generator.Execute(compiler, generator.GeneratorOptions{
+func (r *Runner) smt2(ir string, compiler *llvm.Compiler) (*generator.Generator, error) {
+	g, err := generator.Execute(compiler, generator.GeneratorOptions{
 		Timeout:       r.config.SMTTimeout,
 		MemoryMaxSize: r.config.SMTMemoryMaxSize,
 	})
-	return g
+	return g, err
 }
 
 func (r *Runner) plainSolve(smt string) (string, error) {
@@ -362,13 +366,14 @@ func (r *Runner) Run() *CompilationOutput {
 
 	switch r.config.Input {
 	case "fault", "fspec":
-		tree, lstnr, ty, alias, err := r.parse(d, path, filepath, filetype, r.config.Reach)
+		tree, lstnr, ty, alias, preprocWarnings, err := r.parse(d, path, filepath, filetype, r.config.Reach)
 		if err != nil {
 			r.sendError(PhaseParsing, err)
 			output.Error = err
 			output.ErrorPhase = PhaseParsing
 			return output
 		}
+		output.Warnings = append(output.Warnings, preprocWarnings...)
 		if lstnr == nil {
 			err := fmt.Errorf("Fault parser returned nil")
 			r.sendError(PhaseParsing, err)
@@ -408,10 +413,16 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
-		g := generator.Execute(compiler, generator.GeneratorOptions{
+		g, err := generator.Execute(compiler, generator.GeneratorOptions{
 			Timeout:       r.config.SMTTimeout,
 			MemoryMaxSize: r.config.SMTMemoryMaxSize,
 		})
+		if err != nil {
+			r.sendError(PhaseSMT, err)
+			output.Error = err
+			output.ErrorPhase = PhaseSMT
+			return output
+		}
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
 		output.Warnings = append(output.Warnings, g.GetWarnings()...)
 
@@ -521,7 +532,13 @@ func (r *Runner) Run() *CompilationOutput {
 		r.sendProgress(PhaseLLVM, "LLVM IR loaded", 0.56, true)
 
 		r.sendProgress(PhaseSMT, "Generating SMT constraints...", 0.56, false)
-		g := r.smt2(d, compiler)
+		g, err := r.smt2(d, compiler)
+		if err != nil {
+			r.sendError(PhaseSMT, err)
+			output.Error = err
+			output.ErrorPhase = PhaseSMT
+			return output
+		}
 		r.sendProgress(PhaseSMT, "SMT generation complete", 0.70, true)
 
 		if r.config.Mode == "smt" {

@@ -648,7 +648,12 @@ func TestBadSpecs(t *testing.T) {
 					pipelineErr = fmt.Errorf("llvm: %w", err)
 					return
 				}
-				result = Execute(compiler, GeneratorOptions{}).SMT()
+				g, err := Execute(compiler, GeneratorOptions{})
+				if err != nil {
+					pipelineErr = fmt.Errorf("generator: %w", err)
+					return
+				}
+				result = g.SMT()
 			}()
 
 			if s.expectedErr != "" {
@@ -1300,7 +1305,10 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 		panic(err)
 	}
 
-	generator := Execute(compiler, GeneratorOptions{})
+	generator, err := Execute(compiler, GeneratorOptions{})
+	if err != nil {
+		panic(err)
+	}
 	return generator
 }
 

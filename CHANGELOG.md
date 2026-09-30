@@ -1,4 +1,8 @@
-### Current Status (8/17/2026)
+### Current Status (9/5/2026)
+Result rendering is now spec-type aware: output is split by spec kind (boolean-logic, temporal, synthesis) and filtered to variables referenced by violated assertions/assumptions. Fixes string-rule visibility bug (#80). `CollectAssertVars` extracted from `execute` and `generator/scenario` into the `ast` package to eliminate duplication.
+
+### History
+#### (8/17/2026)
 Renamed `func{}` to `sfunc{}` in state chart bodies to make the distinction between state functions and flow functions explicit at the syntax level.
 
 ### History
