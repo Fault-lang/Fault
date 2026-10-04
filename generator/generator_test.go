@@ -1691,3 +1691,177 @@ run init{l = multiple faucet;}{
 		t.Fatalf("SMT missing assume on count variable, got:\n%s", smt)
 	}
 }
+
+// --- ::inconsistent annotation generator tests ---
+
+func TestAnnotationDefineFuns(t *testing.T) {
+	// A spec with a run block and an ::inconsistent annotation.
+	// Tests that the five define-funs are emitted for each round.
+	test := `spec anntest;
+
+	def st = stock{
+		active:  true,
+		blocked: false,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			s.active  = true;
+			s.blocked = false;
+		},
+	};
+
+	x = "process ok";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	run init{f = new fl;} {
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	for _, suffix := range []string{
+		"anntest_x_supported_0",
+		"anntest_x_defeated_0",
+		"anntest_x_support_score_0",
+		"anntest_x_defeat_score_0",
+		"anntest_x_resolved_0",
+		"anntest_x_supported_1",
+		"anntest_x_defeated_1",
+		"anntest_x_support_score_1",
+		"anntest_x_defeat_score_1",
+		"anntest_x_resolved_1",
+	} {
+		if !strings.Contains(smt, suffix) {
+			t.Errorf("SMT missing define-fun %s\nSMT:\n%s", suffix, smt)
+		}
+	}
+
+	if !strings.Contains(smt, "x_resolved_0") || !strings.Contains(smt, "(ite (and") {
+		t.Errorf("SMT missing resolved ite logic:\n%s", smt)
+	}
+}
+
+func TestAnnotationWeightedDefineFuns(t *testing.T) {
+	test := `spec wtest;
+
+	def st = stock{
+		a: true,
+		b: true,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			s.a = true;
+			s.b = true;
+		},
+	};
+
+	x = "indicator";
+
+	x::inconsistent{
+		true-when  st.a 3,
+		false-when st.b 5,
+	};
+
+	run init{f = new fl;} {
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "3.0") {
+		t.Errorf("SMT missing weight 3.0 in support score:\n%s", smt)
+	}
+	if !strings.Contains(smt, "5.0") {
+		t.Errorf("SMT missing weight 5.0 in defeat score:\n%s", smt)
+	}
+}
+
+func TestAnnotationAssertTrue(t *testing.T) {
+	test := `spec atest;
+
+	def st = stock{
+		active:  true,
+		blocked: false,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			s.active  = true;
+			s.blocked = false;
+		},
+	};
+
+	x = "process ok";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	assert x = true;
+
+	run init{f = new fl;} {
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "atest_x_resolved_") {
+		t.Errorf("annotation assert x=true should reference x_resolved_N:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(not atest_x_resolved_") {
+		t.Errorf("annotation assert x=true should emit (not x_resolved_N) violation:\n%s", smt)
+	}
+}
+
+func TestAnnotationAssertBoth(t *testing.T) {
+	test := `spec btest;
+
+	def st = stock{
+		active:  true,
+		blocked: true,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			s.active  = true;
+			s.blocked = true;
+		},
+	};
+
+	x = "conflict";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	assert x = both;
+
+	run init{f = new fl;} {
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	if !strings.Contains(smt, "btest_x_supported_") || !strings.Contains(smt, "btest_x_defeated_") {
+		t.Errorf("annotation assert x=both should reference supported/defeated:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(not (and btest_x_supported_") {
+		t.Errorf("annotation assert x=both should emit (not (and ...)) violation:\n%s", smt)
+	}
+}

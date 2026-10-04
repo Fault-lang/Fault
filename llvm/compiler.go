@@ -1827,6 +1827,8 @@ func (c *Compiler) convertAssertVariables(ex ast.Expression) ast.Expression {
 		return e
 	case *ast.Boolean:
 		return e
+	case *ast.BelnapLiteral:
+		return e
 	case *ast.StringLiteral:
 		return e
 	case *ast.Natural:
