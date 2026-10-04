@@ -1044,6 +1044,108 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 	return smt
 }
 
+// collectAnnotCondDeps returns the set of annotation target names that appear
+// as evidence-condition operands in ann's true-when and false-when clauses.
+func collectAnnotCondDeps(ann *ast.AnnotationStatement, annotTargets map[string]bool) map[string]bool {
+	deps := make(map[string]bool)
+	for _, clause := range ann.TrueWhen {
+		collectExprAnnotDeps(clause.Condition, annotTargets, deps)
+	}
+	for _, clause := range ann.FalseWhen {
+		collectExprAnnotDeps(clause.Condition, annotTargets, deps)
+	}
+	return deps
+}
+
+// collectExprAnnotDeps walks expr and records every annotation target name found.
+func collectExprAnnotDeps(expr ast.Expression, annotTargets map[string]bool, deps map[string]bool) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *ast.Identifier:
+		base := e.Value
+		if e.Spec != "" {
+			base = e.Spec + "_" + e.Value
+		}
+		if annotTargets[base] {
+			deps[base] = true
+		}
+	case *ast.ParameterCall:
+		base := strings.Join(e.Value, "_")
+		if annotTargets[base] {
+			deps[base] = true
+		}
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			if annotTargets[inst] {
+				deps[inst] = true
+			}
+		}
+	case *ast.InfixExpression:
+		collectExprAnnotDeps(e.Left, annotTargets, deps)
+		collectExprAnnotDeps(e.Right, annotTargets, deps)
+	case *ast.PrefixExpression:
+		collectExprAnnotDeps(e.Right, annotTargets, deps)
+	}
+}
+
+// topoSortAnnotations returns annotations in an order such that if annotation A
+// uses annotation B's target as an evidence condition, B appears before A.
+// Falls back to the original order if a cycle is detected.
+func topoSortAnnotations(annotations []*ast.AnnotationStatement, annotTargets map[string]bool) []*ast.AnnotationStatement {
+	n := len(annotations)
+	if n <= 1 {
+		return annotations
+	}
+
+	// Map targetBase → index in annotations slice.
+	baseToIdx := make(map[string]int, n)
+	for i, ann := range annotations {
+		if base := annotationTargetBase(ann.Target); base != "" {
+			baseToIdx[base] = i
+		}
+	}
+
+	// dependents[i] = indices that depend on annotation i (i must be emitted first).
+	inDegree := make([]int, n)
+	dependents := make([][]int, n)
+
+	for i, ann := range annotations {
+		for dep := range collectAnnotCondDeps(ann, annotTargets) {
+			if j, ok := baseToIdx[dep]; ok && j != i {
+				dependents[j] = append(dependents[j], i)
+				inDegree[i]++
+			}
+		}
+	}
+
+	// Kahn's algorithm.
+	queue := make([]int, 0, n)
+	for i := 0; i < n; i++ {
+		if inDegree[i] == 0 {
+			queue = append(queue, i)
+		}
+	}
+	sorted := make([]*ast.AnnotationStatement, 0, n)
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, annotations[cur])
+		for _, dep := range dependents[cur] {
+			inDegree[dep]--
+			if inDegree[dep] == 0 {
+				queue = append(queue, dep)
+			}
+		}
+	}
+
+	if len(sorted) != n {
+		return annotations // cycle — fall back to original order
+	}
+	return sorted
+}
+
 // ProcessAnnotations emits Belnap four-valued logic define-funs for each
 // ::inconsistent annotation and specialized SMT assertions for any
 // assertion/assume statements that reference annotation targets.
@@ -1068,6 +1170,10 @@ func (g *Generator) ProcessAnnotations(
 
 	// Build the set of annotation target base names for nested lookups.
 	annotTargets := buildAnnotTargets(annotations)
+
+	// Emit annotations in dependency order so that if annotation A uses
+	// annotation B's _resolved_N as evidence, B's declare-funs appear first.
+	annotations = topoSortAnnotations(annotations, annotTargets)
 
 	var smt []string
 

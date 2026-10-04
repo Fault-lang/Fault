@@ -12,32 +12,34 @@ import (
 )
 
 type ResultsModel struct {
-	viewport viewport.Model
-	logger   *scenario.Logger
-	asserts  []*ast.AssertionStatement
-	warnings []string
-	ast      *ast.Spec
-	smt      string
-	ir       string
-	message  string
-	content  string
-	ready    bool
-	width    int
-	height   int
-	mode     string
+	viewport    viewport.Model
+	logger      *scenario.Logger
+	asserts     []*ast.AssertionStatement
+	annotations []*ast.AnnotationStatement
+	warnings    []string
+	ast         *ast.Spec
+	smt         string
+	ir          string
+	message     string
+	content     string
+	ready       bool
+	width       int
+	height      int
+	mode        string
 }
 
 // NewResultsModel creates a results view model for displaying solver output, assertions, warnings, and debug info.
-func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, warnings []string, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
+func NewResultsModel(logger *scenario.Logger, asserts []*ast.AssertionStatement, annotations []*ast.AnnotationStatement, warnings []string, astSpec *ast.Spec, smt string, ir string, message string, mode string) ResultsModel {
 	return ResultsModel{
-		logger:   logger,
-		asserts:  asserts,
-		warnings: warnings,
-		ast:      astSpec,
-		smt:      smt,
-		ir:       ir,
-		message:  message,
-		mode:     mode,
+		logger:      logger,
+		asserts:     asserts,
+		annotations: annotations,
+		warnings:    warnings,
+		ast:         astSpec,
+		smt:         smt,
+		ir:          ir,
+		message:     message,
+		mode:        mode,
 	}
 }
 
@@ -132,6 +134,14 @@ func (m ResultsModel) getContent() string {
 		content.WriteString(divider)
 		content.WriteString("\n\n")
 		content.WriteString(m.formatLoggerOutput(m.logger.String()))
+		if len(m.annotations) > 0 {
+			content.WriteString("\n")
+			content.WriteString(sectionStyle.Render("Belnap States"))
+			content.WriteString("\n")
+			content.WriteString(divider)
+			content.WriteString("\n\n")
+			content.WriteString(m.formatAnnotations(m.annotations))
+		}
 		if len(m.asserts) > 0 {
 			content.WriteString("\n")
 			content.WriteString(sectionStyle.Render("Assertions"))
@@ -167,6 +177,75 @@ func (m ResultsModel) getContent() string {
 	}
 
 	return content.String()
+}
+
+func (m ResultsModel) formatAnnotations(annotations []*ast.AnnotationStatement) string {
+	if m.logger == nil {
+		return ""
+	}
+	results := m.logger.Results
+
+	belnapStyle := func(state string) string {
+		switch state {
+		case "true":
+			return SuccessStyle.Render(state)
+		case "false":
+			return ErrorStyle.Render(state)
+		case "both":
+			return WarningStyle.Render(state)
+		default: // "neither"
+			return InfoStyle.Render(state)
+		}
+	}
+
+	var sb strings.Builder
+	for _, ann := range annotations {
+		var targetBase string
+		switch t := ann.Target.(type) {
+		case *ast.Identifier:
+			if t.Spec != "" {
+				targetBase = t.Spec + "_" + t.Value
+			} else {
+				targetBase = t.Value
+			}
+		case *ast.ParameterCall:
+			targetBase = strings.Join(t.Value, "_")
+		}
+		if targetBase == "" {
+			continue
+		}
+
+		sb.WriteString(SubtitleStyle.Render(targetBase))
+		sb.WriteString("\n")
+
+		for n := 0; ; n++ {
+			resolvedKey := fmt.Sprintf("%s_resolved_%d", targetBase, n)
+			if _, ok := results[resolvedKey]; !ok {
+				break
+			}
+			supported := results[fmt.Sprintf("%s_supported_%d", targetBase, n)] == "true"
+			defeated := results[fmt.Sprintf("%s_defeated_%d", targetBase, n)] == "true"
+			suppScore := results[fmt.Sprintf("%s_support_score_%d", targetBase, n)]
+			defScore := results[fmt.Sprintf("%s_defeat_score_%d", targetBase, n)]
+
+			var state string
+			switch {
+			case supported && defeated:
+				state = "both"
+			case supported:
+				state = "true"
+			case defeated:
+				state = "false"
+			default:
+				state = "neither"
+			}
+
+			sb.WriteString(fmt.Sprintf("  round %d: %s  (support=%-6s defeat=%s)\n",
+				n, belnapStyle(state), suppScore, defScore))
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 func (m ResultsModel) formatAssertions(asserts []*ast.AssertionStatement) string {
