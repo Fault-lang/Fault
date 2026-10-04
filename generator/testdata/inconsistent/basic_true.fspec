@@ -5,8 +5,8 @@ x        = "order is eligible";
 hasPaid  = "payment confirmed";
 hasItems = "items in stock";
 
-hasPaid  = true;
-hasItems = true;
+assume hasPaid  = true;
+assume hasItems = true;
 
 x::inconsistent{
     true-when  hasPaid,

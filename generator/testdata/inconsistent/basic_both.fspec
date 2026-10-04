@@ -6,9 +6,9 @@ hasFeathers = "has feathers";
 quacks      = "quacks";
 isPlastic   = "is made of plastic";
 
-hasFeathers = true;
-quacks      = true;
-isPlastic   = true;
+assume hasFeathers = true;
+assume quacks      = true;
+assume isPlastic   = true;
 
 x::inconsistent{
     true-when  hasFeathers 3,

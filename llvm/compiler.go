@@ -395,6 +395,14 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 	}
 
 	if !c.isImport {
+		// Resolve annotation evidence conditions after the run block has been
+		// compiled so that instance variables are populated for ParameterCall lookup.
+		for _, ann := range c.RawInputs.Annotations {
+			c.resolveAnnotationConditions(ann)
+		}
+	}
+
+	if !c.isImport {
 		for _, assert := range c.RawInputs.RawAsserts {
 			a, err := deepcopy.Anything(assert)
 			if err != nil {
@@ -1923,6 +1931,77 @@ func (c *Compiler) annotateAssertParam(left, right ast.Expression) {
 		if av, ok := right.(*ast.AssertVar); ok {
 			annotate(p, av)
 		}
+	}
+}
+
+// resolveAnnotationConditions walks every evidence clause in ann and converts
+// each condition expression through convertAssertVariables so that ParameterCall
+// and Identifier nodes get their ProcessedName set and are turned into AssertVar
+// nodes with fully-resolved instance names. This mirrors what the preprocessor
+// does for normal assert/assume statements, but for annotation evidence clauses.
+func (c *Compiler) resolveAnnotationConditions(ann *ast.AnnotationStatement) {
+	resolve := func(ex ast.Expression) ast.Expression {
+		return c.resolveAnnotCond(ex)
+	}
+	for _, clause := range ann.TrueWhen {
+		clause.Condition = resolve(clause.Condition)
+	}
+	for _, clause := range ann.FalseWhen {
+		clause.Condition = resolve(clause.Condition)
+	}
+}
+
+// resolveAnnotCond recursively resolves an evidence-clause condition expression.
+// It sets ProcessedName on bare Identifier/ParameterCall nodes before delegating
+// to convertAssertVariables, which converts them to AssertVar nodes with instance names.
+func (c *Compiler) resolveAnnotCond(ex ast.Expression) ast.Expression {
+	switch e := ex.(type) {
+	case *ast.Identifier:
+		if len(e.ProcessedName) == 0 {
+			e.ProcessedName = []string{e.Spec, e.Value}
+		}
+		if !c.isVarSetAssert(e.ProcessedName) {
+			return e
+		}
+		return c.convertAssertVariables(e)
+	case *ast.ParameterCall:
+		if len(e.ProcessedName) == 0 {
+			rawid := []string{e.Spec}
+			rawid = append(rawid, e.Value...)
+			e.ProcessedName = rawid
+		}
+		if !c.isVarSetAssert(e.ProcessedName) {
+			return e
+		}
+		// If the second segment names a struct template (self-referential in
+		// c.instances), the BFS in convertAssertVariables will only walk template
+		// children and produce the wrong name. Use fetchInstances instead to find
+		// concrete run-block instances of that struct.
+		startKey := fmt.Sprintf("%s_%s", e.ProcessedName[0], e.ProcessedName[1])
+		if inst, ok := c.instances[startKey]; ok && len(inst) > 0 && inst[0] == startKey {
+			instas := c.fetchInstances(e.ProcessedName)
+			if len(instas) == 0 {
+				// No concrete instances yet — fall back to convertAssertVariables
+				return c.convertAssertVariables(e)
+			}
+			return &ast.AssertVar{
+				Token:        e.Token,
+				InferredType: e.InferredType,
+				Instances:    instas,
+			}
+		}
+		return c.convertAssertVariables(e)
+	case *ast.InfixExpression:
+		e.Left = c.resolveAnnotCond(e.Left)
+		e.Right = c.resolveAnnotCond(e.Right)
+		return e
+	case *ast.PrefixExpression:
+		e.Right = c.resolveAnnotCond(e.Right)
+		return e
+	case *ast.AssertVar:
+		return e // already resolved
+	default:
+		return e
 	}
 }
 

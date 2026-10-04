@@ -6,9 +6,9 @@ symptomA   = "primary symptom present";
 symptomB   = "secondary symptom present";
 sideEffect = "contraindication present";
 
-symptomA   = true;
-symptomB   = true;
-sideEffect = true;
+assume symptomA   = true;
+assume symptomB   = true;
+assume sideEffect = true;
 
 x::inconsistent{
     true-when  symptomA 4,

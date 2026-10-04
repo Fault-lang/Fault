@@ -7,9 +7,9 @@ swims   = "swims";
 flies   = "flies";
 isFish  = "is a fish";
 
-swims  = true;
-flies  = false;
-isFish = false;
+assume swims  = true;
+assume flies  = false;
+assume isFish = false;
 
 duck::inconsistent{
     true-when  swims,

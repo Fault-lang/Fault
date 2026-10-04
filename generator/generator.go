@@ -162,6 +162,12 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	for inst := range findAssertVarInstances(allStmtsEarly) {
 		g.Env.AssertVars[inst] = true
 	}
+	// Annotation evidence conditions may reference variables that are never
+	// loaded/stored by any flow function (e.g. constant false fields). Register
+	// them as AssertVars so the unroller doesn't prune their initial stores.
+	for inst := range findAnnotationEvidenceInstances(g.RawInputs.Annotations) {
+		g.Env.AssertVars[inst] = true
+	}
 	g.Env.AssumeOverrides = extractAssumeOverrides(g.RawInputs.Assumes)
 	g.Env.WriteSets = unroll.FindWriteSets(m.Funcs)
 	g.Env.StringRules = g.StringRules
@@ -863,6 +869,14 @@ func annotCondToSMT(cond ast.Expression, n int, registry map[string][][]string, 
 			return fmt.Sprintf("(not %s)", right)
 		}
 		return fmt.Sprintf("(%s %s)", c.Operator, right)
+	case *ast.AssertVar:
+		if len(c.Instances) > 0 {
+			inst := c.Instances[0]
+			if annotTargets[inst] {
+				return fmt.Sprintf("%s_resolved_%d", inst, n)
+			}
+			return registryBestVersion(registry, inst, n)
+		}
 	}
 	return ""
 }
@@ -886,11 +900,13 @@ func (g *Generator) emitBoolFun(name string, clauses []*ast.EvidenceClause, n in
 	default:
 		body = fmt.Sprintf("(or %s)", strings.Join(conds, " "))
 	}
-	return fmt.Sprintf("(define-fun %s_%d () Bool %s)", name, n, body)
+	// Use declare-fun + assert so Z3 returns a concrete Bool value in its model
+	// rather than an unexpanded symbolic body (which would break result parsing).
+	return fmt.Sprintf("(declare-fun %s_%d () Bool)\n(assert (= %s_%d %s))", name, n, name, n, body)
 }
 
-// emitScoreFun emits a define-fun with Real sort for the weighted score of
-// evidence clauses at round n. Used for _support_score_N and _defeat_score_N.
+// emitScoreFun emits a declaration+assertion with Real sort for the weighted
+// score of evidence clauses at round n. Used for _support_score_N and _defeat_score_N.
 func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n int, registry map[string][][]string, annotTargets map[string]bool) string {
 	var terms []string
 	for _, clause := range clauses {
@@ -910,21 +926,25 @@ func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n i
 	default:
 		body = fmt.Sprintf("(+ %s)", strings.Join(terms, " "))
 	}
-	return fmt.Sprintf("(define-fun %s_%d () Real %s)", name, n, body)
+	return fmt.Sprintf("(declare-fun %s_%d () Real)\n(assert (= %s_%d %s))", name, n, name, n, body)
 }
 
-// emitResolvedFun emits the define-fun for _resolved_N: the weight-sensitive
-// boolean projection of the Belnap four-valued state.
+// emitResolvedFun emits the declaration+assertion for _resolved_N: the
+// weight-sensitive boolean projection of the Belnap four-valued state.
 //
 //   - TRUE state  (supported, not defeated)  → true
 //   - FALSE state (defeated, not supported)  → false
 //   - BOTH state  (supported AND defeated)   → support_score >= defeat_score
 //   - NEITHER state (neither)               → false
+//
+// Using declare-fun + assert ensures Z3 returns a concrete Bool value in its
+// model rather than leaving the body as an unexpanded symbolic expression.
 func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 	supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
 	defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
 	suppScore := fmt.Sprintf("%s_support_score_%d", targetBase, n)
 	defScore := fmt.Sprintf("%s_defeat_score_%d", targetBase, n)
+	name := fmt.Sprintf("%s_resolved_%d", targetBase, n)
 	body := fmt.Sprintf(
 		"(ite (and %s (not %s)) true (ite (and %s (not %s)) false (ite (and %s %s) (>= %s %s) false)))",
 		supported, defeated,
@@ -932,7 +952,7 @@ func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 		supported, defeated,
 		suppScore, defScore,
 	)
-	return fmt.Sprintf("(define-fun %s_resolved_%d () Bool %s)", targetBase, n, body)
+	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s %s))", name, name, body)
 }
 
 // annotViolationExpr returns the SMT expression for the VIOLATION of an
@@ -980,10 +1000,13 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 		}
 
 		// Use the original (un-negated) constraint to determine what is being tested.
-		if a.Original == nil {
-			continue
+		// For assumes, Original is not set — use the constraint directly (it's not negated).
+		var origRight ast.Expression
+		if a.Original != nil {
+			origRight = a.Original.Right
+		} else {
+			origRight = a.Constraint.Right
 		}
-		origRight := a.Original.Right
 
 		// Collect per-round violation expressions.
 		var violations []string
@@ -1213,6 +1236,22 @@ func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
 		}
 	}
 	return changed
+}
+
+// findAnnotationEvidenceInstances collects all AssertVar instance names used
+// in annotation evidence conditions. These must not be pruned from the SMT
+// model even if no flow function directly loads the corresponding variable.
+func findAnnotationEvidenceInstances(annotations []*ast.AnnotationStatement) map[string]bool {
+	result := make(map[string]bool)
+	for _, ann := range annotations {
+		for _, clause := range ann.TrueWhen {
+			collectAssertVarInstances(clause.Condition, result)
+		}
+		for _, clause := range ann.FalseWhen {
+			collectAssertVarInstances(clause.Condition, result)
+		}
+	}
+	return result
 }
 
 // findAssertVarInstances collects all AssertVar instance names referenced in

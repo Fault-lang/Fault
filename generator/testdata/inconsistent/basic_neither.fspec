@@ -1,12 +1,12 @@
 spec basic_neither;
 
 // No conditions fire — neither state
-x       = "request is approved";
-isAdmin = "user is admin";
+x        = "request is approved";
+isAdmin  = "user is admin";
 isBanned = "user is banned";
 
-isAdmin  = false;
-isBanned = false;
+assume isAdmin  = false;
+assume isBanned = false;
 
 x::inconsistent{
     true-when  isAdmin,

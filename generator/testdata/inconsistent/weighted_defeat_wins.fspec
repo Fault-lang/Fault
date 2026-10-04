@@ -5,8 +5,8 @@ x          = "medication is indicated";
 symptomA   = "mild symptom present";
 sideEffect = "severe contraindication present";
 
-symptomA   = true;
-sideEffect = true;
+assume symptomA   = true;
+assume sideEffect = true;
 
 x::inconsistent{
     true-when  symptomA,
