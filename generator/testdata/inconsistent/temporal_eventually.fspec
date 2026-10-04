@@ -1,0 +1,33 @@
+spec temporal_eventually;
+
+// Conflicting evidence appears in at least one round
+def st = stock{
+    active:  false,
+    blocked: false,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        if s.active == false {
+            s.active  = true;
+            s.blocked = true;
+        }
+    },
+};
+
+x = "process is running";
+
+x::inconsistent{
+    true-when  st.active,
+    false-when st.blocked,
+};
+
+// both fires eventually (once active and blocked both become true)
+assert x = both eventually;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

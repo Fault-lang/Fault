@@ -1,0 +1,30 @@
+spec temporal_nft;
+
+// x resolves true in at least 2 rounds
+def st = stock{
+    active:  true,
+    blocked: false,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        s.active = true;
+    },
+};
+
+x = "service is available";
+
+x::inconsistent{
+    true-when  st.active,
+    false-when st.blocked,
+};
+
+// active=true, blocked=false every round — x is true (uncontested) in all 3 rounds
+assert x = true nft 2;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

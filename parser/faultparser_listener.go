@@ -155,6 +155,27 @@ type FaultParserListener interface {
 	// EnterAssumption is called when entering the assumption production.
 	EnterAssumption(c *AssumptionContext)
 
+	// EnterAnnotationDecl is called when entering the annotationDecl production.
+	EnterAnnotationDecl(c *AnnotationDeclContext)
+
+	// EnterAnnotationParamTarget is called when entering the AnnotationParamTarget production.
+	EnterAnnotationParamTarget(c *AnnotationParamTargetContext)
+
+	// EnterAnnotationIdentTarget is called when entering the AnnotationIdentTarget production.
+	EnterAnnotationIdentTarget(c *AnnotationIdentTargetContext)
+
+	// EnterTrueWhenClause is called when entering the TrueWhenClause production.
+	EnterTrueWhenClause(c *TrueWhenClauseContext)
+
+	// EnterFalseWhenClause is called when entering the FalseWhenClause production.
+	EnterFalseWhenClause(c *FalseWhenClauseContext)
+
+	// EnterEvidenceWeight is called when entering the evidenceWeight production.
+	EnterEvidenceWeight(c *EvidenceWeightContext)
+
+	// EnterBelnapLiteral is called when entering the belnapLiteral production.
+	EnterBelnapLiteral(c *BelnapLiteralContext)
+
 	// EnterTemporal is called when entering the temporal production.
 	EnterTemporal(c *TemporalContext)
 
@@ -490,6 +511,27 @@ type FaultParserListener interface {
 
 	// ExitAssumption is called when exiting the assumption production.
 	ExitAssumption(c *AssumptionContext)
+
+	// ExitAnnotationDecl is called when exiting the annotationDecl production.
+	ExitAnnotationDecl(c *AnnotationDeclContext)
+
+	// ExitAnnotationParamTarget is called when exiting the AnnotationParamTarget production.
+	ExitAnnotationParamTarget(c *AnnotationParamTargetContext)
+
+	// ExitAnnotationIdentTarget is called when exiting the AnnotationIdentTarget production.
+	ExitAnnotationIdentTarget(c *AnnotationIdentTargetContext)
+
+	// ExitTrueWhenClause is called when exiting the TrueWhenClause production.
+	ExitTrueWhenClause(c *TrueWhenClauseContext)
+
+	// ExitFalseWhenClause is called when exiting the FalseWhenClause production.
+	ExitFalseWhenClause(c *FalseWhenClauseContext)
+
+	// ExitEvidenceWeight is called when exiting the evidenceWeight production.
+	ExitEvidenceWeight(c *EvidenceWeightContext)
+
+	// ExitBelnapLiteral is called when exiting the belnapLiteral production.
+	ExitBelnapLiteral(c *BelnapLiteralContext)
 
 	// ExitTemporal is called when exiting the temporal production.
 	ExitTemporal(c *TemporalContext)

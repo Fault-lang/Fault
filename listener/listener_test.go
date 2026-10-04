@@ -3595,3 +3595,261 @@ func TestCharacteristicAccess(t *testing.T) {
 		t.Fatalf("expected characteristic key count, got %s", ca.Key)
 	}
 }
+
+// --- ::inconsistent annotation listener tests ---
+
+func assertAnnotationParseError(t *testing.T, src string) {
+	t.Helper()
+	flags := map[string]bool{"specType": true, "testing": true}
+	_, err := Execute(src, "", flags)
+	if err == nil {
+		t.Fatal("expected parse error, got nil")
+	}
+}
+
+func TestAnnotationBasic(t *testing.T) {
+	test := `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "this is a duck";
+x::inconsistent{
+	true-when swims,
+	false-when isPlastic,
+};`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	if spec == nil {
+		t.Fatal("prepTest() returned nil")
+	}
+
+	// last statement is the annotation
+	last := spec.Statements[len(spec.Statements)-1]
+	ann, ok := last.(*ast.AnnotationStatement)
+	if !ok {
+		t.Fatalf("expected AnnotationStatement, got %T", last)
+	}
+	if ann.Kind != "inconsistent" {
+		t.Fatalf("expected kind inconsistent, got %s", ann.Kind)
+	}
+	if ann.Target.(*ast.Identifier).Value != "x" {
+		t.Fatalf("expected target x, got %s", ann.Target.(*ast.Identifier).Value)
+	}
+	if len(ann.TrueWhen) != 1 {
+		t.Fatalf("expected 1 true-when clause, got %d", len(ann.TrueWhen))
+	}
+	if len(ann.FalseWhen) != 1 {
+		t.Fatalf("expected 1 false-when clause, got %d", len(ann.FalseWhen))
+	}
+}
+
+func TestAnnotationDefaultWeight(t *testing.T) {
+	test := `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	true-when swims,
+	false-when isPlastic,
+};`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	ann := spec.Statements[len(spec.Statements)-1].(*ast.AnnotationStatement)
+	if ann.TrueWhen[0].Weight != 1.0 {
+		t.Fatalf("expected default weight 1.0, got %v", ann.TrueWhen[0].Weight)
+	}
+	if ann.FalseWhen[0].Weight != 1.0 {
+		t.Fatalf("expected default weight 1.0, got %v", ann.FalseWhen[0].Weight)
+	}
+}
+
+func TestAnnotationExplicitWeight(t *testing.T) {
+	test := `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	true-when swims 3,
+	false-when isPlastic 2,
+};`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	ann := spec.Statements[len(spec.Statements)-1].(*ast.AnnotationStatement)
+	if ann.TrueWhen[0].Weight != 3.0 {
+		t.Fatalf("expected weight 3.0, got %v", ann.TrueWhen[0].Weight)
+	}
+	if ann.FalseWhen[0].Weight != 2.0 {
+		t.Fatalf("expected weight 2.0, got %v", ann.FalseWhen[0].Weight)
+	}
+}
+
+func TestAnnotationMultipleClauses(t *testing.T) {
+	test := `spec test1;
+hasFeathers = "has feathers";
+quacks = "quacks";
+swims = "swims";
+isPlastic = "is plastic";
+isRubber = "is rubber";
+x = "duck";
+x::inconsistent{
+	true-when hasFeathers 3,
+	true-when quacks,
+	true-when swims,
+	false-when isPlastic 2,
+	false-when isRubber,
+};`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	ann := spec.Statements[len(spec.Statements)-1].(*ast.AnnotationStatement)
+	if len(ann.TrueWhen) != 3 {
+		t.Fatalf("expected 3 true-when clauses, got %d", len(ann.TrueWhen))
+	}
+	if len(ann.FalseWhen) != 2 {
+		t.Fatalf("expected 2 false-when clauses, got %d", len(ann.FalseWhen))
+	}
+	if ann.TrueWhen[0].Weight != 3.0 {
+		t.Fatalf("expected first true-when weight 3.0, got %v", ann.TrueWhen[0].Weight)
+	}
+}
+
+func TestAnnotationParameterCallTarget(t *testing.T) {
+	test := `spec test1;
+hasPaid = "has paid";
+isExpired = "is expired";
+x::inconsistent{
+	true-when hasPaid,
+	false-when isExpired,
+};`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	ann := spec.Statements[len(spec.Statements)-1].(*ast.AnnotationStatement)
+	if ann.Target == nil {
+		t.Fatal("expected non-nil target")
+	}
+}
+
+func TestAnnotationBelnapBothLiteral(t *testing.T) {
+	test := `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	true-when swims,
+	false-when isPlastic,
+};
+assert x = both;`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	last := spec.Statements[len(spec.Statements)-1]
+	assertion, ok := last.(*ast.AssertionStatement)
+	if !ok {
+		t.Fatalf("expected AssertionStatement, got %T", last)
+	}
+	bl, ok := assertion.Constraint.Right.(*ast.BelnapLiteral)
+	if !ok {
+		t.Fatalf("expected BelnapLiteral on right, got %T", assertion.Constraint.Right)
+	}
+	if bl.Value != "both" {
+		t.Fatalf("expected 'both', got %s", bl.Value)
+	}
+}
+
+func TestAnnotationBelnapNeitherLiteral(t *testing.T) {
+	test := `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	true-when swims,
+	false-when isPlastic,
+};
+assert x = neither;`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	last := spec.Statements[len(spec.Statements)-1]
+	assertion := last.(*ast.AssertionStatement)
+	bl, ok := assertion.Constraint.Right.(*ast.BelnapLiteral)
+	if !ok {
+		t.Fatalf("expected BelnapLiteral on right, got %T", assertion.Constraint.Right)
+	}
+	if bl.Value != "neither" {
+		t.Fatalf("expected 'neither', got %s", bl.Value)
+	}
+}
+
+func TestAnnotationExpressionEvidence(t *testing.T) {
+	test := `spec test1;
+def st = stock{ temp: 98.6, };
+x = "fever";
+x::inconsistent{
+	true-when st.temp > 99.0,
+	false-when st.temp < 97.0,
+};`
+	flags := map[string]bool{"specType": true}
+	_, spec := prepTest(test, flags)
+
+	ann := spec.Statements[len(spec.Statements)-1].(*ast.AnnotationStatement)
+	if _, ok := ann.TrueWhen[0].Condition.(*ast.InfixExpression); !ok {
+		t.Fatalf("expected InfixExpression condition, got %T", ann.TrueWhen[0].Condition)
+	}
+}
+
+func TestAnnotationSelfRefFails(t *testing.T) {
+	assertAnnotationParseError(t, `spec test1;
+swims = "swims";
+x = "duck";
+x::inconsistent{
+	true-when x,
+	false-when swims,
+};`)
+}
+
+func TestAnnotationNoTrueWhenFails(t *testing.T) {
+	assertAnnotationParseError(t, `spec test1;
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	false-when isPlastic,
+};`)
+}
+
+func TestAnnotationNoFalseWhenFails(t *testing.T) {
+	assertAnnotationParseError(t, `spec test1;
+swims = "swims";
+x = "duck";
+x::inconsistent{
+	true-when swims,
+};`)
+}
+
+func TestAnnotationZeroWeightFails(t *testing.T) {
+	assertAnnotationParseError(t, `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	true-when swims 0,
+	false-when isPlastic,
+};`)
+}
+
+// Negative weights cannot be expressed in Fault syntax — the grammar's evidenceWeight
+// rule only accepts unsigned numeric literals. A negative sign is parsed as a separate
+// expression and discarded, so negative weights are a grammar-level constraint, not a
+// runtime one. This test confirms that zero is rejected at the listener level.
+func TestAnnotationZeroWeightIsOnlyNumericError(t *testing.T) {
+	assertAnnotationParseError(t, `spec test1;
+swims = "swims";
+isPlastic = "is plastic";
+x = "duck";
+x::inconsistent{
+	true-when swims 0,
+	false-when isPlastic,
+};`)
+}

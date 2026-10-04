@@ -1,0 +1,16 @@
+spec basic_false;
+
+// Only false-when fires — uncontested false
+x          = "order is eligible";
+isFraud    = "flagged for fraud";
+hasPaid    = "payment confirmed";
+
+isFraud = true;
+hasPaid = false;
+
+x::inconsistent{
+    true-when  hasPaid,
+    false-when isFraud,
+};
+
+assert x = false;

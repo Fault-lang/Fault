@@ -1,0 +1,21 @@
+spec basic_both;
+
+// All conditions true — both sides fire, support wins by weight
+x           = "this is a duck";
+hasFeathers = "has feathers";
+quacks      = "quacks";
+isPlastic   = "is made of plastic";
+
+hasFeathers = true;
+quacks      = true;
+isPlastic   = true;
+
+x::inconsistent{
+    true-when  hasFeathers 3,
+    true-when  quacks,
+    false-when isPlastic,
+};
+
+// x is in state `both` (support=4, defeat=1), resolves true
+assert x = both;
+assert x = true;

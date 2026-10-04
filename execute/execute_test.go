@@ -93,7 +93,7 @@ func TestFullSuite(t *testing.T) {
 		uncertains := make(map[string][]float64)
 		unknowns := []string{}
 		//extract the extension from the path
-		if strings.Contains(path, "badspecs") {
+		if strings.Contains(path, "badspecs") || strings.Contains(path, "inconsistent") {
 			return nil
 		}
 		filetype := filepath.Ext(path)

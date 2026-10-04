@@ -1,0 +1,17 @@
+spec basic_true;
+
+// Only true-when fires — uncontested true
+x        = "order is eligible";
+hasPaid  = "payment confirmed";
+hasItems = "items in stock";
+
+hasPaid  = true;
+hasItems = true;
+
+x::inconsistent{
+    true-when  hasPaid,
+    true-when  hasItems,
+    false-when hasPaid == false,
+};
+
+assert x = true;

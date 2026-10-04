@@ -9,7 +9,7 @@ options {
 */
 
 sysSpec
-    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl)* runStmt?
+    : sysClause importDecl* (globalDecl | constDecl | componentDecl | assertion | assumption | stringDecl | annotationDecl)* runStmt?
     ;
 
 sysClause
@@ -59,6 +59,7 @@ declaration
     | assumption
     | stringDecl
     | globalDecl
+    | annotationDecl
     ;
 
 constDecl
@@ -203,6 +204,32 @@ assumption
     : 'assume' invariant temporal? eos
     ;
 
+annotationDecl
+    : annotationTarget DOUBLE_COLON INCONSISTENT '{' ( evidenceClause (',' evidenceClause)* ','? )? '}' eos
+    ;
+
+annotationTarget
+    : paramCall   #AnnotationParamTarget
+    | IDENT       #AnnotationIdentTarget
+    ;
+
+evidenceClause
+    : TRUE_WHEN  expression evidenceWeight?   #TrueWhenClause
+    | FALSE_WHEN expression evidenceWeight?   #FalseWhenClause
+    ;
+
+evidenceWeight
+    : DECIMAL_LIT
+    | OCTAL_LIT
+    | HEX_LIT
+    | FLOAT_LIT
+    ;
+
+belnapLiteral
+    : BOTH
+    | NEITHER
+    ;
+
 temporal
     : ('eventually' | 'always' | 'eventually-always' )
     | ('nmt' | 'nft') integer
@@ -314,6 +341,7 @@ operand
     | numeric
     | string_
     | bool_
+    | belnapLiteral
     | operandName
     | accessHistory
     | '(' expression ')'

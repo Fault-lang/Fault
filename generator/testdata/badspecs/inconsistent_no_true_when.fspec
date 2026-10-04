@@ -1,0 +1,11 @@
+spec inconsistent_no_true_when;
+
+// ERROR: no true-when rules — both sides required
+x        = "this is a duck";
+isPlastic = "is made of plastic";
+
+isPlastic = true;
+
+x::inconsistent{
+    false-when isPlastic,
+};

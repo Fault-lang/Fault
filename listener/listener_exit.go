@@ -2408,6 +2408,155 @@ func (l *FaultListener) packageCallsAsRunSteps(node ast.Node) ast.Node {
 	}
 }
 
+func (l *FaultListener) ExitBelnapLiteral(c *parser.BelnapLiteralContext) {
+	token := ast.GenerateToken("BELNAP", c.GetText(), l.currSpec, c.GetStart(), c.GetStop())
+	l.push(&ast.BelnapLiteral{
+		Token: token,
+		Value: c.GetText(),
+	})
+}
+
+// evidenceClauseTag is a thin wrapper pushed by ExitTrueWhenClause / ExitFalseWhenClause
+// so ExitAnnotationDecl can distinguish polarity without inspecting the stack order.
+// It implements ast.Node minimally so it can be pushed onto the listener stack.
+type evidenceClauseTag struct {
+	clause   *ast.EvidenceClause
+	trueWhen bool
+}
+
+func (e *evidenceClauseTag) TokenLiteral() string { return "EVIDENCE" }
+func (e *evidenceClauseTag) String() string       { return e.clause.String() }
+func (e *evidenceClauseTag) Position() []int      { return e.clause.Token.GetPosition() }
+func (e *evidenceClauseTag) Type() string         { return "EVIDENCE" }
+func (e *evidenceClauseTag) SetType(_ *ast.Type)  {}
+func (e *evidenceClauseTag) GetToken() ast.Token  { return e.clause.Token }
+
+func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, trueWhen bool, weightCtx parser.IEvidenceWeightContext) {
+	token := ast.GenerateToken("EVIDENCE", c.GetStart().GetText(), l.currSpec, c.GetStart(), c.GetStop())
+
+	weight := 1.0
+	if weightCtx != nil {
+		raw := weightCtx.GetText()
+		w, err := strconv.ParseFloat(raw, 64)
+		if err != nil {
+			panic(fmt.Sprintf("invalid evidence weight %q: %s", raw, l.loc(c.GetStart())))
+		}
+		if w <= 0 {
+			panic(fmt.Sprintf("evidence weight must be strictly positive, got %v: %s", w, l.loc(c.GetStart())))
+		}
+		weight = w
+	}
+
+	expr := l.pop()
+	if expr == nil {
+		panic(fmt.Sprintf("missing expression in evidence clause: %s", l.loc(c.GetStart())))
+	}
+
+	clause := &ast.EvidenceClause{
+		Token:     token,
+		Condition: expr.(ast.Expression),
+		Weight:    weight,
+	}
+	l.push(&evidenceClauseTag{clause: clause, trueWhen: trueWhen})
+}
+
+func (l *FaultListener) ExitTrueWhenClause(c *parser.TrueWhenClauseContext) {
+	l.exitEvidenceClause(c, true, c.EvidenceWeight())
+}
+
+func (l *FaultListener) ExitFalseWhenClause(c *parser.FalseWhenClauseContext) {
+	l.exitEvidenceClause(c, false, c.EvidenceWeight())
+}
+
+func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
+	token := ast.GenerateToken("INCONSISTENT", "::", l.currSpec, c.GetStart(), c.GetStop())
+
+	// Determine target name(s) for self-reference check
+	var targetNames []string
+	var target ast.Expression
+	switch tc := c.AnnotationTarget().(type) {
+	case *parser.AnnotationParamTargetContext:
+		// paramCall already on the stack — pop it
+		raw := l.pop()
+		pc := raw.(*ast.ParameterCall)
+		target = pc
+		targetNames = pc.Value
+	case *parser.AnnotationIdentTargetContext:
+		identToken := ast.GenerateToken("IDENT", tc.IDENT().GetText(), l.currSpec, c.GetStart(), c.GetStop())
+		ident := &ast.Identifier{
+			Token: identToken,
+			Value: tc.IDENT().GetText(),
+			Spec:  l.currSpec,
+		}
+		target = ident
+		targetNames = []string{tc.IDENT().GetText()}
+	default:
+		panic(fmt.Sprintf("unexpected annotation target type %T: %s", tc, l.loc(c.GetStart())))
+	}
+
+	// Collect all evidence clauses off the stack (they were pushed in order)
+	numClauses := len(c.AllEvidenceClause())
+	tags := make([]*evidenceClauseTag, numClauses)
+	for i := numClauses - 1; i >= 0; i-- {
+		raw := l.pop()
+		tag, ok := raw.(*evidenceClauseTag)
+		if !ok {
+			panic(fmt.Sprintf("expected evidence clause on stack, got %T: %s", raw, l.loc(c.GetStart())))
+		}
+		tags[i] = tag
+	}
+
+	var trueWhen []*ast.EvidenceClause
+	var falseWhen []*ast.EvidenceClause
+
+	isTargetName := func(names []string) bool {
+		for _, n := range names {
+			for _, t := range targetNames {
+				if n == t {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	for _, tag := range tags {
+		// Self-reference check
+		cond := tag.clause.Condition
+		switch cv := cond.(type) {
+		case *ast.Identifier:
+			if isTargetName([]string{cv.Value}) {
+				panic(fmt.Sprintf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+			}
+		case *ast.ParameterCall:
+			if isTargetName(cv.Value) {
+				panic(fmt.Sprintf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+			}
+		}
+
+		if tag.trueWhen {
+			trueWhen = append(trueWhen, tag.clause)
+		} else {
+			falseWhen = append(falseWhen, tag.clause)
+		}
+	}
+
+	if len(trueWhen) == 0 {
+		panic(fmt.Sprintf("::inconsistent block for %q has no true-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+	}
+	if len(falseWhen) == 0 {
+		panic(fmt.Sprintf("::inconsistent block for %q has no false-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+	}
+
+	l.push(&ast.AnnotationStatement{
+		Token:     token,
+		Kind:      "inconsistent",
+		Target:    target,
+		TrueWhen:  trueWhen,
+		FalseWhen: falseWhen,
+	})
+}
+
 func (l *FaultListener) sortSwaps(swaps []ast.Node) {
 	for _, s := range swaps {
 		if node, ok := s.(*ast.InfixExpression).Left.(*ast.ParameterCall); ok {

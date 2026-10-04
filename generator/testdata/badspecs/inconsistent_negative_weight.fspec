@@ -1,0 +1,14 @@
+spec inconsistent_negative_weight;
+
+// NOTE: negative weights cannot be expressed in Fault syntax — the evidenceWeight grammar
+// rule only accepts unsigned numeric literals. This file is kept as documentation of
+// that constraint but is not a runtime error case.
+// A negative sign before a weight is parsed as a separate expression and discarded.
+x     = "this is a duck";
+swims = "swims";
+flies = "flies";
+
+x::inconsistent{
+    true-when  swims,
+    false-when flies,
+};

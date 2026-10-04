@@ -204,6 +204,34 @@ func (v *BaseFaultParserVisitor) VisitAssumption(ctx *AssumptionContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseFaultParserVisitor) VisitAnnotationDecl(ctx *AnnotationDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitAnnotationParamTarget(ctx *AnnotationParamTargetContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitAnnotationIdentTarget(ctx *AnnotationIdentTargetContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitTrueWhenClause(ctx *TrueWhenClauseContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitFalseWhenClause(ctx *FalseWhenClauseContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitEvidenceWeight(ctx *EvidenceWeightContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseFaultParserVisitor) VisitBelnapLiteral(ctx *BelnapLiteralContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseFaultParserVisitor) VisitTemporal(ctx *TemporalContext) interface{} {
 	return v.VisitChildren(ctx)
 }

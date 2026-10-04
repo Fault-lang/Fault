@@ -1,0 +1,12 @@
+spec inconsistent_self_ref;
+
+// ERROR: annotation target appears as its own evidence
+x      = "this is a duck";
+swims  = "swims";
+
+swims = true;
+
+x::inconsistent{
+    true-when  x,
+    false-when swims,
+};

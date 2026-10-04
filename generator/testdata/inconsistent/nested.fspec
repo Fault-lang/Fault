@@ -1,0 +1,28 @@
+spec nested;
+
+// duck's resolved value is used as evidence in animal
+duck    = "this is a duck";
+animal  = "this is an animal";
+swims   = "swims";
+flies   = "flies";
+isFish  = "is a fish";
+
+swims  = true;
+flies  = false;
+isFish = false;
+
+duck::inconsistent{
+    true-when  swims,
+    true-when  flies,
+    false-when isFish,
+};
+
+animal::inconsistent{
+    true-when  duck,
+    false-when isFish,
+};
+
+// duck: supported (swims fires), not defeated — true
+// animal: true-when duck_resolved=true fires, false-when isFish=false doesn't — true
+assert duck   = true;
+assert animal = true;

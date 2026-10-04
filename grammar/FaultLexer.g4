@@ -39,6 +39,13 @@ NMT: 'nmt';
 NFT: 'nft';
 AVAILABLE: 'available';
 
+// Paraconsistent annotation keywords
+INCONSISTENT: 'inconsistent';
+TRUE_WHEN: 'true-when';
+FALSE_WHEN: 'false-when';
+BOTH: 'both';
+NEITHER: 'neither';
+
 NIL: 'nil';
 TRUE: 'true';
 FALSE: 'false';
