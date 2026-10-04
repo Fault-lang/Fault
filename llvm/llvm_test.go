@@ -1203,6 +1203,72 @@ func prepTest(test string, specType bool) (string, error) {
 	return compiler.GetIR(), err
 }
 
+// --- ::inconsistent annotation LLVM tests ---
+
+func TestAnnotationCollectedInRawInputs(t *testing.T) {
+	test := `spec test1;
+		x     = "this is a duck";
+		swims = "swims";
+		flies = "flies";
+
+		x::inconsistent{
+			true-when  swims,
+			false-when flies,
+		};
+	`
+	compiler, err := prepTestCompiler(test, true)
+	if err != nil {
+		t.Fatalf("compiler failed on valid annotation spec. got=%s", err)
+	}
+
+	if len(compiler.RawInputs.Annotations) != 1 {
+		t.Fatalf("expected 1 annotation in RawInputs, got %d", len(compiler.RawInputs.Annotations))
+	}
+
+	ann := compiler.RawInputs.Annotations[0]
+	if ann.Kind != "inconsistent" {
+		t.Fatalf("expected annotation Kind='inconsistent', got %q", ann.Kind)
+	}
+	if ann.Target.String() != "x" {
+		t.Fatalf("expected annotation Target='x', got %q", ann.Target.String())
+	}
+	if len(ann.TrueWhen) != 1 {
+		t.Fatalf("expected 1 true-when clause, got %d", len(ann.TrueWhen))
+	}
+	if len(ann.FalseWhen) != 1 {
+		t.Fatalf("expected 1 false-when clause, got %d", len(ann.FalseWhen))
+	}
+}
+
+func TestAnnotationWeightedCollected(t *testing.T) {
+	test := `spec test1;
+		x     = "this is a duck";
+		swims = "swims";
+		flies = "flies";
+
+		x::inconsistent{
+			true-when  swims  2,
+			false-when flies  3,
+		};
+	`
+	compiler, err := prepTestCompiler(test, true)
+	if err != nil {
+		t.Fatalf("compiler failed on valid weighted annotation. got=%s", err)
+	}
+
+	if len(compiler.RawInputs.Annotations) != 1 {
+		t.Fatalf("expected 1 annotation, got %d", len(compiler.RawInputs.Annotations))
+	}
+
+	ann := compiler.RawInputs.Annotations[0]
+	if ann.TrueWhen[0].Weight != 2.0 {
+		t.Fatalf("expected TrueWhen weight=2.0, got %f", ann.TrueWhen[0].Weight)
+	}
+	if ann.FalseWhen[0].Weight != 3.0 {
+		t.Fatalf("expected FalseWhen weight=3.0, got %f", ann.FalseWhen[0].Weight)
+	}
+}
+
 func validateIR(ir string) ([]byte, error) {
 	//Run LLVM optimizer to check IR is valid
 	cmd := exec.Command("opt", "-S", "--passes=mem2reg")

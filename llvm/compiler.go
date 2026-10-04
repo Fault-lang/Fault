@@ -66,6 +66,9 @@ type RawInputs struct {
 	// flow (e.g. "retries_l") to its count variable, so the unroll phase can check
 	// whether a mutation is inside a multiple flow by matching CurrentFunction.
 	MultipleFuncPrefixes map[string]string
+	// Annotations collects all ::inconsistent annotation statements from the spec.
+	// The generator uses these to emit Belnap four-valued logic SMT helpers.
+	Annotations []*ast.AnnotationStatement
 }
 
 // UnfuncInfo stores the requires/emits/assumes expression trees for an unfunc state.
@@ -92,6 +95,7 @@ func NewRawInputs() *RawInputs {
 		BoolUnknowns:         make(map[string]bool),
 		MultipleInstances:    make(map[string]string),
 		MultipleFuncPrefixes: make(map[string]string),
+		Annotations:          []*ast.AnnotationStatement{},
 	}
 }
 
@@ -264,6 +268,8 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 					c.compileConstant(n)
 				case *ast.AssertionStatement:
 					c.compile(n)
+				case *ast.AnnotationStatement:
+					c.RawInputs.Annotations = append(c.RawInputs.Annotations, n)
 				case *ast.DefStatement:
 					switch d := n.Value.(type) {
 					case *ast.StringLiteral:
@@ -483,6 +489,9 @@ func (c *Compiler) compile(node ast.Node) {
 		} else {
 			c.RawInputs.RawAsserts = append(c.RawInputs.RawAsserts, v)
 		}
+
+	case *ast.AnnotationStatement:
+		c.RawInputs.Annotations = append(c.RawInputs.Annotations, v)
 
 	case *ast.RunStatement:
 		c.contextFuncName = "__run"

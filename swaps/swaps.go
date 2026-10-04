@@ -64,6 +64,10 @@ func (c *Precompiler) walk(n ast.Node) ast.Node {
 		return node
 	case *ast.AssertionStatement:
 		return node
+	case *ast.AnnotationStatement:
+		return node
+	case *ast.BelnapLiteral:
+		return node
 	case *ast.RunStatement:
 		if node.Inits != nil {
 			var st []ast.Statement
