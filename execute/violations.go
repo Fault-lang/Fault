@@ -4,6 +4,7 @@ import (
 	"fault/ast"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // EvaluateViolations checks each assertion against the model stored in
@@ -18,10 +19,130 @@ func (mc *ModelChecker) EvaluateViolations(asserts []*ast.AssertionStatement) {
 	}
 }
 
+// annotationBase returns the annotation target base variable name if the
+// assertion is an annotation assertion (its LHS is an AssertVar and the
+// result values contain a _resolved_N key for that target). Returns "" if not.
+func annotationBase(a *ast.AssertionStatement, values map[string]string) string {
+	assertVar, ok := a.Constraint.Left.(*ast.AssertVar)
+	if !ok || len(assertVar.Instances) == 0 {
+		return ""
+	}
+	base := assertVar.Instances[0]
+	prefix := base + "_resolved_"
+	for key := range values {
+		if strings.HasPrefix(key, prefix) {
+			return base
+		}
+	}
+	return ""
+}
+
+// roundsForAnnotation returns all round indices for which the annotation
+// define-funs exist in the model (using _resolved_N as the probe key).
+func roundsForAnnotation(targetBase string, values map[string]string) []int16 {
+	prefix := targetBase + "_resolved_"
+	seen := make(map[int16]bool)
+	var rounds []int16
+	for key := range values {
+		if !strings.HasPrefix(key, prefix) {
+			continue
+		}
+		suffix := key[len(prefix):]
+		r, err := strconv.ParseInt(suffix, 10, 16)
+		if err != nil {
+			continue
+		}
+		k := int16(r)
+		if !seen[k] {
+			seen[k] = true
+			rounds = append(rounds, k)
+		}
+	}
+	return rounds
+}
+
+// annotationViolated evaluates an annotation assertion using the Belnap
+// define-fun values from the solver model. It reads _resolved_N, _supported_N,
+// and _defeated_N from values.
+//
+// The stored Constraint is the negated violation form (see ProcessAnnotations).
+// We use Original.Right to determine what was originally asserted.
+func annotationViolated(a *ast.AssertionStatement, targetBase string, values map[string]string) bool {
+	if a.TemporalFilter != "" {
+		return false
+	}
+
+	// Determine what was originally asserted from Original (un-negated) form.
+	var origRight ast.Expression
+	if a.Original != nil {
+		origRight = a.Original.Right
+	} else {
+		origRight = a.Constraint.Right
+	}
+
+	rounds := roundsForAnnotation(targetBase, values)
+	if len(rounds) == 0 {
+		return false
+	}
+
+	// violationHolds returns true if the Belnap state at round n constitutes a
+	// violation of the original assertion.
+	violationHolds := func(n int16) bool {
+		resolvedKey := fmt.Sprintf("%s_resolved_%d", targetBase, n)
+		supportedKey := fmt.Sprintf("%s_supported_%d", targetBase, n)
+		defeatedKey := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+
+		switch r := origRight.(type) {
+		case *ast.Boolean:
+			resolved, ok := values[resolvedKey]
+			if !ok {
+				return false
+			}
+			if r.Value {
+				// assert x = true → violation when resolved is false
+				return resolved == "false"
+			}
+			// assert x = false → violation when resolved is true
+			return resolved == "true"
+		case *ast.BelnapLiteral:
+			supported := values[supportedKey] == "true"
+			defeated := values[defeatedKey] == "true"
+			switch r.Value {
+			case "both":
+				// violation: NOT (supported AND defeated)
+				return !(supported && defeated)
+			case "neither":
+				// violation: (supported OR defeated)
+				return supported || defeated
+			}
+		}
+		return false
+	}
+
+	violatedCount := 0
+	for _, round := range rounds {
+		if violationHolds(round) {
+			violatedCount++
+		}
+	}
+
+	switch a.Temporal {
+	case "eventually":
+		return violatedCount == len(rounds)
+	default:
+		return violatedCount > 0
+	}
+}
+
 func assertionViolated(a *ast.AssertionStatement, values map[string]string) bool {
 	if a.TemporalFilter != "" {
 		// nft/nmt filters require combinatorial counting; not yet supported.
 		return false
+	}
+
+	// Annotation assertions are evaluated using Belnap define-fun values.
+	if base := annotationBase(a, values); base != "" {
+		return annotationViolated(a, base, values)
 	}
 
 	rounds := roundsForConstraint(a.Constraint, values)
