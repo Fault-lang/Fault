@@ -771,14 +771,34 @@ func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
 	return result
 }
 
+// identifierBase returns the SMT base variable name for an Identifier,
+// prefixing with the spec name when present.
+func identifierBase(id *ast.Identifier) string {
+	if id.Spec != "" {
+		return id.Spec + "_" + id.Value
+	}
+	return id.Value
+}
+
+// smtJoinTerms builds an SMT expression from a slice of string terms using op.
+// Returns zeroVal when len(terms)==0, terms[0] when len==1,
+// and "(op t1 t2 ...)" otherwise.
+func smtJoinTerms(terms []string, op string, zeroVal string) string {
+	switch len(terms) {
+	case 0:
+		return zeroVal
+	case 1:
+		return terms[0]
+	default:
+		return fmt.Sprintf("(%s %s)", op, strings.Join(terms, " "))
+	}
+}
+
 // annotationTargetBase returns the SMT base variable name for an annotation target.
 func annotationTargetBase(target ast.Expression) string {
 	switch t := target.(type) {
 	case *ast.Identifier:
-		if t.Spec != "" {
-			return t.Spec + "_" + t.Value
-		}
-		return t.Value
+		return identifierBase(t)
 	case *ast.ParameterCall:
 		return strings.Join(t.Value, "_")
 	}
@@ -830,12 +850,7 @@ func isAnnotationAssert(a *ast.AssertionStatement, annotTargets map[string]bool)
 func annotCondToSMT(cond ast.Expression, n int, registry map[string][][]string, annotTargets map[string]bool) string {
 	switch c := cond.(type) {
 	case *ast.Identifier:
-		var base string
-		if c.Spec != "" {
-			base = c.Spec + "_" + c.Value
-		} else {
-			base = c.Value
-		}
+		base := identifierBase(c)
 		if annotTargets[base] {
 			return fmt.Sprintf("%s_resolved_%d", base, n)
 		}
@@ -896,16 +911,7 @@ func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n i
 		weight := fmt.Sprintf("%.1f", clause.Weight)
 		terms = append(terms, fmt.Sprintf("(ite %s %s 0.0)", c, weight))
 	}
-	var body string
-	switch len(terms) {
-	case 0:
-		body = "0.0"
-	case 1:
-		body = terms[0]
-	default:
-		body = fmt.Sprintf("(+ %s)", strings.Join(terms, " "))
-	}
-	return fmt.Sprintf("(define-fun %s_%d () Real %s)", name, n, body)
+	return fmt.Sprintf("(define-fun %s_%d () Real %s)", name, n, smtJoinTerms(terms, "+", "0.0"))
 }
 
 // emitSupportedFun emits a declare-fun + assert for _supported_N: true when
@@ -1023,18 +1029,10 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 		switch a.Temporal {
 		case "eventually":
 			// Violation = the state is NEVER achieved across all rounds.
-			if len(violations) == 1 {
-				expr = violations[0]
-			} else {
-				expr = fmt.Sprintf("(and %s)", strings.Join(violations, " "))
-			}
+			expr = smtJoinTerms(violations, "and", "")
 		default:
 			// "always" and no-temporal: violation = the state fails at ANY round.
-			if len(violations) == 1 {
-				expr = violations[0]
-			} else {
-				expr = fmt.Sprintf("(or %s)", strings.Join(violations, " "))
-			}
+			expr = smtJoinTerms(violations, "or", "")
 		}
 
 		smt = append(smt, fmt.Sprintf("(assert %s)", expr))
@@ -1062,10 +1060,7 @@ func collectExprAnnotDeps(expr ast.Expression, annotTargets map[string]bool, dep
 	}
 	switch e := expr.(type) {
 	case *ast.Identifier:
-		base := e.Value
-		if e.Spec != "" {
-			base = e.Spec + "_" + e.Value
-		}
+		base := identifierBase(e)
 		if annotTargets[base] {
 			deps[base] = true
 		}
