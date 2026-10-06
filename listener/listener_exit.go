@@ -2439,17 +2439,20 @@ func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, trueWhen b
 		raw := weightCtx.GetText()
 		w, err := strconv.ParseFloat(raw, 64)
 		if err != nil {
-			panic(fmt.Sprintf("invalid evidence weight %q: %s", raw, l.loc(c.GetStart())))
+			l.addErr(fmt.Errorf("invalid evidence weight %q: %s", raw, l.loc(c.GetStart())))
+			return
 		}
 		if w <= 0 {
-			panic(fmt.Sprintf("evidence weight must be strictly positive, got %v: %s", w, l.loc(c.GetStart())))
+			l.addErr(fmt.Errorf("evidence weight must be strictly positive, got %v: %s", w, l.loc(c.GetStart())))
+			return
 		}
 		weight = w
 	}
 
 	expr := l.pop()
 	if expr == nil {
-		panic(fmt.Sprintf("missing expression in evidence clause: %s", l.loc(c.GetStart())))
+		l.addErr(fmt.Errorf("missing expression in evidence clause: %s", l.loc(c.GetStart())))
+		return
 	}
 
 	clause := &ast.EvidenceClause{
@@ -2458,6 +2461,43 @@ func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, trueWhen b
 		Weight:    weight,
 	}
 	l.push(&evidenceClauseTag{clause: clause, trueWhen: trueWhen})
+}
+
+// condContainsSelfRef reports whether expr contains a reference to any of the
+// target names, walking the full expression tree recursively.
+func condContainsSelfRef(expr ast.Expression, targetNames []string) bool {
+	if expr == nil {
+		return false
+	}
+	isTarget := func(name string) bool {
+		for _, t := range targetNames {
+			if name == t {
+				return true
+			}
+		}
+		return false
+	}
+	switch e := expr.(type) {
+	case *ast.Identifier:
+		return isTarget(e.Value)
+	case *ast.ParameterCall:
+		for _, v := range e.Value {
+			if isTarget(v) {
+				return true
+			}
+		}
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			if isTarget(inst) {
+				return true
+			}
+		}
+	case *ast.InfixExpression:
+		return condContainsSelfRef(e.Left, targetNames) || condContainsSelfRef(e.Right, targetNames)
+	case *ast.PrefixExpression:
+		return condContainsSelfRef(e.Right, targetNames)
+	}
+	return false
 }
 
 func (l *FaultListener) ExitTrueWhenClause(c *parser.TrueWhenClauseContext) {
@@ -2509,31 +2549,11 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 	var trueWhen []*ast.EvidenceClause
 	var falseWhen []*ast.EvidenceClause
 
-	isTargetName := func(names []string) bool {
-		for _, n := range names {
-			for _, t := range targetNames {
-				if n == t {
-					return true
-				}
-			}
-		}
-		return false
-	}
-
 	for _, tag := range tags {
-		// Self-reference check
-		cond := tag.clause.Condition
-		switch cv := cond.(type) {
-		case *ast.Identifier:
-			if isTargetName([]string{cv.Value}) {
-				panic(fmt.Sprintf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
-			}
-		case *ast.ParameterCall:
-			if isTargetName(cv.Value) {
-				panic(fmt.Sprintf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
-			}
+		if condContainsSelfRef(tag.clause.Condition, targetNames) {
+			l.addErr(fmt.Errorf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+			return
 		}
-
 		if tag.trueWhen {
 			trueWhen = append(trueWhen, tag.clause)
 		} else {
@@ -2542,10 +2562,12 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 	}
 
 	if len(trueWhen) == 0 {
-		panic(fmt.Sprintf("::inconsistent block for %q has no true-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		l.addErr(fmt.Errorf("::inconsistent block for %q has no true-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		return
 	}
 	if len(falseWhen) == 0 {
-		panic(fmt.Sprintf("::inconsistent block for %q has no false-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		l.addErr(fmt.Errorf("::inconsistent block for %q has no false-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		return
 	}
 
 	l.push(&ast.AnnotationStatement{

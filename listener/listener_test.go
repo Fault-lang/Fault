@@ -3810,6 +3810,18 @@ x::inconsistent{
 };`)
 }
 
+func TestAnnotationSelfRefInCompoundFails(t *testing.T) {
+	// Self-reference inside a compound expression — the old top-level-only
+	// check missed this case.
+	assertAnnotationParseError(t, `spec test1;
+swims = "swims";
+x = "duck";
+x::inconsistent{
+	true-when swims == x,
+	false-when swims,
+};`)
+}
+
 func TestAnnotationNoTrueWhenFails(t *testing.T) {
 	assertAnnotationParseError(t, `spec test1;
 isPlastic = "is plastic";
