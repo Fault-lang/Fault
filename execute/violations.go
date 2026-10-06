@@ -37,10 +37,9 @@ func annotationBase(a *ast.AssertionStatement, values map[string]string) string 
 	return ""
 }
 
-// roundsForAnnotation returns all round indices for which the annotation
-// define-funs exist in the model (using _resolved_N as the probe key).
-func roundsForAnnotation(targetBase string, values map[string]string) []int16 {
-	prefix := targetBase + "_resolved_"
+// roundsForPrefix returns all round indices present in values whose keys
+// start with prefix and whose remaining suffix parses as an int16.
+func roundsForPrefix(prefix string, values map[string]string) []int16 {
 	seen := make(map[int16]bool)
 	var rounds []int16
 	for key := range values {
@@ -59,6 +58,12 @@ func roundsForAnnotation(targetBase string, values map[string]string) []int16 {
 		}
 	}
 	return rounds
+}
+
+// roundsForAnnotation returns all round indices for which the annotation
+// define-funs exist in the model (using _resolved_N as the probe key).
+func roundsForAnnotation(targetBase string, values map[string]string) []int16 {
+	return roundsForPrefix(targetBase+"_resolved_", values)
 }
 
 // annotationViolated evaluates an annotation assertion using the Belnap
@@ -358,19 +363,10 @@ func roundsForConstraint(c *ast.InvariantClause, values map[string]string) []int
 	var rounds []int16
 	for _, av := range vars {
 		for _, inst := range av.Instances {
-			for key := range values {
-				roundStr, base := splitIdent(key)
-				if base != inst {
-					continue
-				}
-				r, err := strconv.ParseInt(roundStr, 10, 16)
-				if err != nil {
-					continue
-				}
-				k := int16(r)
-				if !seen[k] {
-					seen[k] = true
-					rounds = append(rounds, k)
+			for _, r := range roundsForPrefix(inst+"_", values) {
+				if !seen[r] {
+					seen[r] = true
+					rounds = append(rounds, r)
 				}
 			}
 		}
