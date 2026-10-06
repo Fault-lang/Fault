@@ -1709,3 +1709,21 @@ func TestAnnotationWeightedOK(t *testing.T) {
 		t.Fatalf("type checker rejected valid weighted annotation. got=%s", err)
 	}
 }
+
+func TestAnnotationNonBoolEvidenceFails(t *testing.T) {
+	// A Real-typed constant used as evidence should be a type error.
+	test := `spec test1;
+		body_temp = 36.5;
+		x         = "feverish";
+		swims      = "swims";
+
+		x::inconsistent{
+			true-when  body_temp,
+			false-when swims,
+		};
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("expected type error for non-boolean evidence, got nil")
+	}
+}
