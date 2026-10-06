@@ -233,7 +233,10 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	annotTargets := buildAnnotTargets(g.RawInputs.Annotations)
 	normalAsserts, annotAsserts := splitAnnotAsserts(g.RawInputs.Asserts, annotTargets)
 	normalAssumes, annotAssumes := splitAnnotAsserts(g.RawInputs.Assumes, annotTargets)
-	annotSMT := g.ProcessAnnotations(g.RawInputs.Annotations, annotAsserts, annotAssumes, g.Env.CurrentRound, p.Registry)
+	annotSMT, err := g.ProcessAnnotations(g.RawInputs.Annotations, annotAsserts, annotAssumes, g.Env.CurrentRound, p.Registry)
+	if err != nil {
+		panic(err.Error())
+	}
 	g.AppendSMT(annotSMT)
 
 	assertSMT := g.ProcessAsserts(normalAsserts, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
@@ -881,31 +884,7 @@ func annotCondToSMT(cond ast.Expression, n int, registry map[string][][]string, 
 	return ""
 }
 
-// emitBoolFun emits a define-fun with Bool sort that is the OR of the given
-// evidence clauses' conditions at round n. Used for _supported_N and _defeated_N.
-func (g *Generator) emitBoolFun(name string, clauses []*ast.EvidenceClause, n int, registry map[string][][]string, annotTargets map[string]bool) string {
-	var conds []string
-	for _, clause := range clauses {
-		c := annotCondToSMT(clause.Condition, n, registry, annotTargets)
-		if c != "" {
-			conds = append(conds, c)
-		}
-	}
-	var body string
-	switch len(conds) {
-	case 0:
-		body = "false"
-	case 1:
-		body = conds[0]
-	default:
-		body = fmt.Sprintf("(or %s)", strings.Join(conds, " "))
-	}
-	// Use declare-fun + assert so Z3 returns a concrete Bool value in its model
-	// rather than an unexpanded symbolic body (which would break result parsing).
-	return fmt.Sprintf("(declare-fun %s_%d () Bool)\n(assert (= %s_%d %s))", name, n, name, n, body)
-}
-
-// emitScoreFun emits a declaration+assertion with Real sort for the weighted
+// emitScoreFun emits a define-fun with Real sort for the weighted
 // score of evidence clauses at round n. Used for _support_score_N and _defeat_score_N.
 func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n int, registry map[string][][]string, annotTargets map[string]bool) string {
 	var terms []string
@@ -926,19 +905,34 @@ func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n i
 	default:
 		body = fmt.Sprintf("(+ %s)", strings.Join(terms, " "))
 	}
-	return fmt.Sprintf("(declare-fun %s_%d () Real)\n(assert (= %s_%d %s))", name, n, name, n, body)
+	return fmt.Sprintf("(define-fun %s_%d () Real %s)", name, n, body)
 }
 
-// emitResolvedFun emits the declaration+assertion for _resolved_N: the
+// emitSupportedFun emits a declare-fun + assert for _supported_N: true when
+// support_score > 0. Uses declare-fun so Z3 returns a concrete Bool in its
+// model (needed by the execute package's result parser).
+func emitSupportedFun(targetBase string, n int) string {
+	name := fmt.Sprintf("%s_supported_%d", targetBase, n)
+	score := fmt.Sprintf("%s_support_score_%d", targetBase, n)
+	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s (> %s 0.0)))", name, name, score)
+}
+
+// emitDefeatedFun emits a declare-fun + assert for _defeated_N: true when
+// defeat_score > 0. Uses declare-fun so Z3 returns a concrete Bool in its
+// model (needed by the execute package's result parser).
+func emitDefeatedFun(targetBase string, n int) string {
+	name := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+	score := fmt.Sprintf("%s_defeat_score_%d", targetBase, n)
+	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s (> %s 0.0)))", name, name, score)
+}
+
+// emitResolvedFun emits the define-fun for _resolved_N: the
 // weight-sensitive boolean projection of the Belnap four-valued state.
 //
 //   - TRUE state  (supported, not defeated)  → true
 //   - FALSE state (defeated, not supported)  → false
 //   - BOTH state  (supported AND defeated)   → support_score >= defeat_score
 //   - NEITHER state (neither)               → false
-//
-// Using declare-fun + assert ensures Z3 returns a concrete Bool value in its
-// model rather than leaving the body as an unexpanded symbolic expression.
 func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 	supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
 	defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
@@ -952,6 +946,9 @@ func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 		supported, defeated,
 		suppScore, defScore,
 	)
+	// Use declare-fun + assert so Z3 returns a concrete Bool value in its
+	// model rather than leaving the body as an unexpanded symbolic expression
+	// (which would break the execute package's result parser).
 	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s %s))", name, name, body)
 }
 
@@ -959,18 +956,19 @@ func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 // annotation assertion at round n. It reads the original (un-negated) right-hand
 // side to derive the correct define-fun reference.
 //
-//	assert x = true   → violation: (not x_resolved_N)
-//	assert x = false  → violation: x_resolved_N
-//	assert x = both   → violation: (not (and x_supported_N x_defeated_N))
+//	assert x = true    → violation: (not (and x_supported_N (not x_defeated_N)))
+//	assert x = false   → violation: (not (and (not x_supported_N) x_defeated_N))
+//	assert x = both    → violation: (not (and x_supported_N x_defeated_N))
 //	assert x = neither → violation: (or x_supported_N x_defeated_N)
 func annotViolationExpr(originalRight ast.Expression, targetBase string, n int) string {
 	switch r := originalRight.(type) {
 	case *ast.Boolean:
-		resolved := fmt.Sprintf("%s_resolved_%d", targetBase, n)
+		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
+		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
 		if r.Value {
-			return fmt.Sprintf("(not %s)", resolved)
+			return fmt.Sprintf("(not (and %s (not %s)))", supported, defeated)
 		}
-		return resolved
+		return fmt.Sprintf("(not (and (not %s) %s))", supported, defeated)
 	case *ast.BelnapLiteral:
 		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
 		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
@@ -1092,11 +1090,11 @@ func collectExprAnnotDeps(expr ast.Expression, annotTargets map[string]bool, dep
 
 // topoSortAnnotations returns annotations in an order such that if annotation A
 // uses annotation B's target as an evidence condition, B appears before A.
-// Falls back to the original order if a cycle is detected.
-func topoSortAnnotations(annotations []*ast.AnnotationStatement, annotTargets map[string]bool) []*ast.AnnotationStatement {
+// Returns an error if a cycle is detected.
+func topoSortAnnotations(annotations []*ast.AnnotationStatement, annotTargets map[string]bool) ([]*ast.AnnotationStatement, error) {
 	n := len(annotations)
 	if n <= 1 {
-		return annotations
+		return annotations, nil
 	}
 
 	// Map targetBase → index in annotations slice.
@@ -1141,9 +1139,9 @@ func topoSortAnnotations(annotations []*ast.AnnotationStatement, annotTargets ma
 	}
 
 	if len(sorted) != n {
-		return annotations // cycle — fall back to original order
+		return nil, fmt.Errorf("::inconsistent annotations contain a circular dependency")
 	}
-	return sorted
+	return sorted, nil
 }
 
 // ProcessAnnotations emits Belnap four-valued logic define-funs for each
@@ -1152,10 +1150,10 @@ func topoSortAnnotations(annotations []*ast.AnnotationStatement, annotTargets ma
 //
 // For each annotation target x and each round N it emits five define-funs:
 //
-//	x_supported_N      Bool  — OR of true-when condition activations
-//	x_defeated_N       Bool  — OR of false-when condition activations
 //	x_support_score_N  Real  — weighted sum of true-when activations
 //	x_defeat_score_N   Real  — weighted sum of false-when activations
+//	x_supported_N      Bool  — true when support_score > 0
+//	x_defeated_N       Bool  — true when defeat_score > 0
 //	x_resolved_N       Bool  — weight-sensitive boolean projection
 func (g *Generator) ProcessAnnotations(
 	annotations []*ast.AnnotationStatement,
@@ -1163,9 +1161,9 @@ func (g *Generator) ProcessAnnotations(
 	annotAssumes []*ast.AssertionStatement,
 	rounds int,
 	registry map[string][][]string,
-) []string {
+) ([]string, error) {
 	if len(annotations) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Build the set of annotation target base names for nested lookups.
@@ -1173,7 +1171,11 @@ func (g *Generator) ProcessAnnotations(
 
 	// Emit annotations in dependency order so that if annotation A uses
 	// annotation B's _resolved_N as evidence, B's declare-funs appear first.
-	annotations = topoSortAnnotations(annotations, annotTargets)
+	var err error
+	annotations, err = topoSortAnnotations(annotations, annotTargets)
+	if err != nil {
+		return nil, err
+	}
 
 	var smt []string
 
@@ -1184,10 +1186,10 @@ func (g *Generator) ProcessAnnotations(
 		}
 
 		for n := 0; n <= rounds; n++ {
-			smt = append(smt, g.emitBoolFun(targetBase+"_supported", ann.TrueWhen, n, registry, annotTargets))
-			smt = append(smt, g.emitBoolFun(targetBase+"_defeated", ann.FalseWhen, n, registry, annotTargets))
 			smt = append(smt, g.emitScoreFun(targetBase+"_support_score", ann.TrueWhen, n, registry, annotTargets))
 			smt = append(smt, g.emitScoreFun(targetBase+"_defeat_score", ann.FalseWhen, n, registry, annotTargets))
+			smt = append(smt, emitSupportedFun(targetBase, n))
+			smt = append(smt, emitDefeatedFun(targetBase, n))
 			smt = append(smt, g.emitResolvedFun(targetBase, n))
 		}
 	}
@@ -1195,7 +1197,7 @@ func (g *Generator) ProcessAnnotations(
 	smt = append(smt, g.emitAnnotAssertions(annotAsserts, annotTargets, rounds, false)...)
 	smt = append(smt, g.emitAnnotAssertions(annotAssumes, annotTargets, rounds, true)...)
 
-	return smt
+	return smt, nil
 }
 
 func (g *Generator) SMT() string {

@@ -6,8 +6,8 @@ y = "this is a bird";
 a = "has wings";
 b = "has feathers";
 
-a = true;
-b = true;
+assume a = true;
+assume b = true;
 
 x::inconsistent{
     true-when  y,

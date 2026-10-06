@@ -600,6 +600,7 @@ func TestBadSpecs(t *testing.T) {
 		{"testdata/badspecs/deep.fspec", true, ""},
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
 		{"testdata/badspecs/aliaschain.fspec", true, "swapped more than once"},
+		{"testdata/badspecs/inconsistent_cycle.fspec", true, "circular dependency"},
 	}
 
 	for _, s := range specs {
@@ -1870,10 +1871,10 @@ func TestAnnotationAssertTrue(t *testing.T) {
 	smt := g.SMT()
 
 	if !strings.Contains(smt, "atest_x_resolved_") {
-		t.Errorf("annotation assert x=true should reference x_resolved_N:\n%s", smt)
+		t.Errorf("annotation assert x=true should emit _resolved_N define-fun:\n%s", smt)
 	}
-	if !strings.Contains(smt, "(not atest_x_resolved_") {
-		t.Errorf("annotation assert x=true should emit (not x_resolved_N) violation:\n%s", smt)
+	if !strings.Contains(smt, "(not (and atest_x_supported_") {
+		t.Errorf("annotation assert x=true should emit (not (and x_supported (not x_defeated))) violation:\n%s", smt)
 	}
 }
 
