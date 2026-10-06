@@ -2416,12 +2416,20 @@ func (l *FaultListener) ExitBelnapLiteral(c *parser.BelnapLiteralContext) {
 	})
 }
 
+// evidencePolarity distinguishes true-when from false-when evidence clauses.
+type evidencePolarity bool
+
+const (
+	polarityTrueWhen  evidencePolarity = true
+	polarityFalseWhen evidencePolarity = false
+)
+
 // evidenceClauseTag is a thin wrapper pushed by ExitTrueWhenClause / ExitFalseWhenClause
 // so ExitAnnotationDecl can distinguish polarity without inspecting the stack order.
 // It implements ast.Node minimally so it can be pushed onto the listener stack.
 type evidenceClauseTag struct {
 	clause   *ast.EvidenceClause
-	trueWhen bool
+	polarity evidencePolarity
 }
 
 func (e *evidenceClauseTag) TokenLiteral() string { return "EVIDENCE" }
@@ -2431,7 +2439,7 @@ func (e *evidenceClauseTag) Type() string         { return "EVIDENCE" }
 func (e *evidenceClauseTag) SetType(_ *ast.Type)  {}
 func (e *evidenceClauseTag) GetToken() ast.Token  { return e.clause.Token }
 
-func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, trueWhen bool, weightCtx parser.IEvidenceWeightContext) {
+func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, polarity evidencePolarity, weightCtx parser.IEvidenceWeightContext) {
 	token := ast.GenerateToken("EVIDENCE", c.GetStart().GetText(), l.currSpec, c.GetStart(), c.GetStop())
 
 	weight := 1.0
@@ -2460,7 +2468,7 @@ func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, trueWhen b
 		Condition: expr.(ast.Expression),
 		Weight:    weight,
 	}
-	l.push(&evidenceClauseTag{clause: clause, trueWhen: trueWhen})
+	l.push(&evidenceClauseTag{clause: clause, polarity: polarity})
 }
 
 // condContainsSelfRef reports whether expr contains a reference to any of the
@@ -2501,11 +2509,11 @@ func condContainsSelfRef(expr ast.Expression, targetNames []string) bool {
 }
 
 func (l *FaultListener) ExitTrueWhenClause(c *parser.TrueWhenClauseContext) {
-	l.exitEvidenceClause(c, true, c.EvidenceWeight())
+	l.exitEvidenceClause(c, polarityTrueWhen, c.EvidenceWeight())
 }
 
 func (l *FaultListener) ExitFalseWhenClause(c *parser.FalseWhenClauseContext) {
-	l.exitEvidenceClause(c, false, c.EvidenceWeight())
+	l.exitEvidenceClause(c, polarityFalseWhen, c.EvidenceWeight())
 }
 
 func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
@@ -2554,7 +2562,7 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 			l.addErr(fmt.Errorf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
 			return
 		}
-		if tag.trueWhen {
+		if tag.polarity == polarityTrueWhen {
 			trueWhen = append(trueWhen, tag.clause)
 		} else {
 			falseWhen = append(falseWhen, tag.clause)
