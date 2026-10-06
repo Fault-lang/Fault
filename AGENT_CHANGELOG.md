@@ -9,6 +9,91 @@ Entries are ordered newest-first. Date format: YYYY-MM-DD.
 
 ---
 
+## 2026-10-05
+
+### `::inconsistent` annotation added (paraconsistent logic)
+
+**Area:** grammar, AST, type checker, LLVM, SMT generator, execute, TUI
+**Kind:** additive (new syntax)
+
+Adds a `::inconsistent` annotation that attaches Belnap four-valued logic to an existing boolean variable. The variable type becomes `INCONSISTENT`, which behaves as `bool` everywhere except in `assert`/`assume` context where `both` and `neither` literals are additionally valid on the RHS.
+
+**Syntax:**
+```fault
+target::inconsistent{
+    true-when  <evidence> [<weight>],
+    false-when <evidence> [<weight>],
+};
+```
+
+- `target` — a bare `IDENT` or dotted path (`x`, `x.y`, `orders.eligible`); covers imported names
+- `true-when` — evidence that supports the claim being true
+- `false-when` — evidence that supports the claim being false
+- `<weight>` — optional bare positive numeric literal after the evidence (default: 1.0); no keyword
+- Trailing comma on every rule including the last (consistent with `stock{}` / `flow{}`)
+- Semicolon after the closing brace
+
+**New keywords:** `inconsistent`, `true-when`, `false-when`, `both`, `neither`
+
+**Full example:**
+```fault
+x           = "this is a duck";
+hasFeathers = "has feathers";
+quacks      = "quacks";
+isPlastic   = "is made of plastic";
+
+x::inconsistent{
+    true-when  hasFeathers 3,
+    true-when  quacks,
+    false-when isPlastic 2,
+};
+
+assert x = both;    // conflicting evidence?
+assert x = true;    // resolves true by weight?
+assume x = neither; // no evidence fires?
+```
+
+**Belnap states:**
+
+| `supported` | `defeated` | State     |
+|---|---|---|
+| true  | false | `true`    |
+| false | true  | `false`   |
+| true  | true  | `both`    |
+| false | false | `neither` |
+
+**Boolean projection (used for `true`/`false` assert/assume):**
+- `both` → resolves `true` if `support_score >= defeat_score`, else `false`
+- `neither` → resolves `false`
+- `true`/`false` → direct (no conflict)
+
+**assert/assume RHS expansions per round N:**
+
+| Literal   | SMT expansion |
+|---|---|
+| `true`    | `(not x_resolved_N)` (violation check) |
+| `false`   | `x_resolved_N` (violation check) |
+| `both`    | `(and x_supported_N x_defeated_N)` |
+| `neither` | `(not x_supported_N) (not x_defeated_N)` (neither state) |
+
+All temporal modifiers (`always`, `eventually`, `eventually-always`, `nmt`, `nft`) apply and combine across rounds the same way as regular `assert`/`assume`.
+
+**Nesting:** An `INCONSISTENT`-typed variable may be evidence in another annotation; its `_resolved_N` value is used as the bool condition. Annotation dependency graph must be acyclic (cycles are a compile-time error). Annotations are emitted in topological order.
+
+**Constraints:**
+- Both `true-when` and `false-when` sides must each have at least one rule
+- Weights must be bare strictly-positive numeric literals (not `const` references)
+- Annotation target may not appear as evidence in its own block (self-reference is a compile-time error)
+- Later redeclaration overrides with a compiler warning
+
+**Valid in both `.fspec` and `.fsystem` files**, at the top level alongside `assume`/`assert`.
+
+**SMT encoding:** five `declare-fun` + `assert` entries per annotation per round: `x_supported_N`, `x_defeated_N`, `x_support_score_N`, `x_defeat_score_N`, `x_resolved_N`.
+
+**Output:** TUI displays per-round Belnap state and score summary using the variable's string declaration as the label.
+
+---
+
 ## 2026-08-30
 
 ### Fix: excluded+redeclared stock properties sever parent assume/assert propagation
