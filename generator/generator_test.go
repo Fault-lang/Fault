@@ -1692,6 +1692,57 @@ run init{l = multiple faucet;}{
 	}
 }
 
+// ---- Inconsistent annotation golden file tests ----
+
+func TestInconsistent(t *testing.T) {
+	specs := []string{
+		"testdata/inconsistent/basic_true.fspec",
+		"testdata/inconsistent/basic_false.fspec",
+		"testdata/inconsistent/basic_neither.fspec",
+		"testdata/inconsistent/basic_both.fspec",
+		"testdata/inconsistent/nested.fspec",
+		"testdata/inconsistent/weighted_defeat_wins.fspec",
+		"testdata/inconsistent/weighted_support_wins.fspec",
+		"testdata/inconsistent/temporal_always.fspec",
+		"testdata/inconsistent/temporal_eventually.fspec",
+		"testdata/inconsistent/temporal_eventually_always.fspec",
+		"testdata/inconsistent/temporal_nft.fspec",
+		"testdata/inconsistent/temporal_nmt.fspec",
+	}
+	smt2s := []string{
+		"testdata/inconsistent/basic_true.smt2",
+		"testdata/inconsistent/basic_false.smt2",
+		"testdata/inconsistent/basic_neither.smt2",
+		"testdata/inconsistent/basic_both.smt2",
+		"testdata/inconsistent/nested.smt2",
+		"testdata/inconsistent/weighted_defeat_wins.smt2",
+		"testdata/inconsistent/weighted_support_wins.smt2",
+		"testdata/inconsistent/temporal_always.smt2",
+		"testdata/inconsistent/temporal_eventually.smt2",
+		"testdata/inconsistent/temporal_eventually_always.smt2",
+		"testdata/inconsistent/temporal_nft.smt2",
+		"testdata/inconsistent/temporal_nmt.smt2",
+	}
+	for i, s := range specs {
+		data, err := os.ReadFile(s)
+		if err != nil {
+			panic(fmt.Sprintf("spec %s is not valid", s))
+		}
+		expecting, err := os.ReadFile(smt2s[i])
+		if err != nil {
+			panic(fmt.Sprintf("compiled spec %s is not valid", smt2s[i]))
+		}
+		g := prepTest(s, string(data), true, false)
+
+		err = compareResults(s, g.SMT(), string(expecting))
+
+		if err != nil {
+			fmt.Println(g.SMT())
+			t.Fatal(err.Error())
+		}
+	}
+}
+
 // --- ::inconsistent annotation generator tests ---
 
 func TestAnnotationDefineFuns(t *testing.T) {
