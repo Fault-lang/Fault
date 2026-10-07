@@ -821,7 +821,7 @@ func annotationTargetBase(target ast.Expression) string {
 	case *ast.Identifier:
 		return identifierBase(t)
 	case *ast.ParameterCall:
-		return strings.Join(t.Value, "_")
+		return parameterCallBase(t)
 	}
 	return ""
 }
@@ -1118,7 +1118,7 @@ func collectExprAnnotDeps(expr ast.Expression, annotTargets map[string]bool, dep
 			deps[base] = true
 		}
 	case *ast.ParameterCall:
-		base := strings.Join(e.Value, "_")
+		base := parameterCallBase(e)
 		if annotTargets[base] {
 			deps[base] = true
 		}

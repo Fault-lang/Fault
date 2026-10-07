@@ -2472,39 +2472,28 @@ func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, polarity e
 	l.push(&evidenceClauseTag{clause: clause, polarity: polarity})
 }
 
-// condContainsSelfRef reports whether expr contains a reference to any of the
-// target names, walking the full expression tree recursively.
-func condContainsSelfRef(expr ast.Expression, targetNames []string) bool {
+// condContainsSelfRef reports whether expr contains a reference to the
+// annotation target, walking the full expression tree recursively.
+// targetPath is the canonical dot-joined target path (e.g. "x" or "st.temperature").
+func condContainsSelfRef(expr ast.Expression, targetPath string) bool {
 	if expr == nil {
-		return false
-	}
-	isTarget := func(name string) bool {
-		for _, t := range targetNames {
-			if name == t {
-				return true
-			}
-		}
 		return false
 	}
 	switch e := expr.(type) {
 	case *ast.Identifier:
-		return isTarget(e.Value)
+		return e.Value == targetPath
 	case *ast.ParameterCall:
-		for _, v := range e.Value {
-			if isTarget(v) {
-				return true
-			}
-		}
+		return strings.Join(e.Value, ".") == targetPath
 	case *ast.AssertVar:
 		for _, inst := range e.Instances {
-			if isTarget(inst) {
+			if inst == targetPath {
 				return true
 			}
 		}
 	case *ast.InfixExpression:
-		return condContainsSelfRef(e.Left, targetNames) || condContainsSelfRef(e.Right, targetNames)
+		return condContainsSelfRef(e.Left, targetPath) || condContainsSelfRef(e.Right, targetPath)
 	case *ast.PrefixExpression:
-		return condContainsSelfRef(e.Right, targetNames)
+		return condContainsSelfRef(e.Right, targetPath)
 	}
 	return false
 }
@@ -2534,7 +2523,8 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 		}
 		if _, isParam := c.AnnotationTarget().(*parser.AnnotationParamTargetContext); isParam {
 			if top := l.peek(); top != nil {
-				if _, ok := top.(*ast.ParameterCall); ok {
+				switch top.(type) {
+				case *ast.ParameterCall, *ast.Identifier:
 					l.pop()
 				}
 			}
@@ -2544,16 +2534,37 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 
 	token := ast.GenerateToken("INCONSISTENT", "::", l.currSpec, c.GetStart(), c.GetStop())
 
-	// Determine target name(s) for self-reference check
+	// Collect all evidence clauses off the stack first (they were pushed after
+	// the target, so they sit on top). The target pop comes after.
+	numClauses := len(c.AllEvidenceClause())
+	tags := make([]*evidenceClauseTag, numClauses)
+	for i := numClauses - 1; i >= 0; i-- {
+		raw := l.pop()
+		tag, ok := raw.(*evidenceClauseTag)
+		if !ok {
+			panic(fmt.Sprintf("expected evidence clause on stack, got %T: %s", raw, l.loc(c.GetStart())))
+		}
+		tags[i] = tag
+	}
+
+	// Now pop and resolve the annotation target.
 	var targetNames []string
 	var target ast.Expression
 	switch tc := c.AnnotationTarget().(type) {
 	case *parser.AnnotationParamTargetContext:
-		// paramCall already on the stack — pop it
+		// ExitParamCall may have lowered this to *ast.Identifier or left it as
+		// *ast.ParameterCall depending on path length and import resolution.
 		raw := l.pop()
-		pc := raw.(*ast.ParameterCall)
-		target = pc
-		targetNames = pc.Value
+		switch r := raw.(type) {
+		case *ast.ParameterCall:
+			target = r
+			targetNames = r.Value
+		case *ast.Identifier:
+			target = r
+			targetNames = []string{r.Value}
+		default:
+			panic(fmt.Sprintf("unexpected annotation target type %T on stack: %s", raw, l.loc(c.GetStart())))
+		}
 	case *parser.AnnotationIdentTargetContext:
 		identToken := ast.GenerateToken("IDENT", tc.IDENT().GetText(), l.currSpec, c.GetStart(), c.GetStop())
 		ident := &ast.Identifier{
@@ -2567,24 +2578,14 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 		panic(fmt.Sprintf("unexpected annotation target type %T: %s", tc, l.loc(c.GetStart())))
 	}
 
-	// Collect all evidence clauses off the stack (they were pushed in order)
-	numClauses := len(c.AllEvidenceClause())
-	tags := make([]*evidenceClauseTag, numClauses)
-	for i := numClauses - 1; i >= 0; i-- {
-		raw := l.pop()
-		tag, ok := raw.(*evidenceClauseTag)
-		if !ok {
-			panic(fmt.Sprintf("expected evidence clause on stack, got %T: %s", raw, l.loc(c.GetStart())))
-		}
-		tags[i] = tag
-	}
+	targetPath := strings.Join(targetNames, ".")
 
 	var trueWhen []*ast.EvidenceClause
 	var falseWhen []*ast.EvidenceClause
 
 	for _, tag := range tags {
-		if condContainsSelfRef(tag.clause.Condition, targetNames) {
-			l.addErr(fmt.Errorf("annotation target %q may not appear as its own evidence: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		if condContainsSelfRef(tag.clause.Condition, targetPath) {
+			l.addErr(fmt.Errorf("annotation target %q may not appear as its own evidence: %s", targetPath, l.loc(c.GetStart())))
 			return
 		}
 		if tag.polarity == polarityTrueWhen {
@@ -2595,11 +2596,11 @@ func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
 	}
 
 	if len(trueWhen) == 0 {
-		l.addErr(fmt.Errorf("::inconsistent block for %q has no true-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		l.addErr(fmt.Errorf("::inconsistent block for %q has no true-when rules — both sides required: %s", targetPath, l.loc(c.GetStart())))
 		return
 	}
 	if len(falseWhen) == 0 {
-		l.addErr(fmt.Errorf("::inconsistent block for %q has no false-when rules — both sides required: %s", strings.Join(targetNames, "."), l.loc(c.GetStart())))
+		l.addErr(fmt.Errorf("::inconsistent block for %q has no false-when rules — both sides required: %s", targetPath, l.loc(c.GetStart())))
 		return
 	}
 

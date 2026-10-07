@@ -231,6 +231,12 @@ func (m ResultsModel) formatAnnotations(annotations []*ast.AnnotationStatement) 
 			defeated := results[fmt.Sprintf("%s_defeated_%d", targetBase, n)] == "true"
 			suppScore := results[fmt.Sprintf("%s_support_score_%d", targetBase, n)]
 			defScore := results[fmt.Sprintf("%s_defeat_score_%d", targetBase, n)]
+			if suppScore == "" || suppScore == "__compound__" {
+				suppScore = "—"
+			}
+			if defScore == "" || defScore == "__compound__" {
+				defScore = "—"
+			}
 
 			var state string
 			var callout string

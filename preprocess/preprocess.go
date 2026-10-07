@@ -135,6 +135,22 @@ func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 	return spec
 }
 
+// annotationTargetKey returns a stable, spec-qualified key for an annotation
+// target, safe for use as a map key. Identifier.String() drops Spec, so we
+// must qualify it explicitly.
+func annotationTargetKey(target ast.Expression) string {
+	switch t := target.(type) {
+	case *ast.Identifier:
+		if t.Spec != "" {
+			return t.Spec + "." + t.Value
+		}
+		return t.Value
+	case *ast.ParameterCall:
+		return strings.Join(t.Value, ".")
+	}
+	return target.String()
+}
+
 // dedupeAnnotations removes duplicate ::inconsistent declarations for the same
 // target, keeping the last declaration and emitting a warning for each earlier one.
 func (p *Processor) dedupeAnnotations(spec *ast.Spec) {
@@ -147,7 +163,7 @@ func (p *Processor) dedupeAnnotations(spec *ast.Spec) {
 		if !ok {
 			continue
 		}
-		key := ann.Target.String()
+		key := annotationTargetKey(ann.Target)
 		if prev, seen := firstIdx[key]; seen {
 			// Earlier occurrence loses; warn and mark it for removal.
 			p.warn(ann.Token.Location(),

@@ -1608,28 +1608,42 @@ func emitTargetKey(expr ast.Expression) string {
 // lookupEvidenceCallType resolves the type of a ParameterCall that appears
 // inside an annotation evidence clause. These ParameterCalls have not been
 // processed by the preprocessor, so ProcessedName is empty and LookupType
-// would panic. Instead, we walk SpecStructs using the raw Value path, trying
-// both the bare path and the path prefixed with each spec name.
+// would panic. Instead, we resolve against pc.Spec when set (deterministic),
+// falling back to searching all specs only when pc.Spec is empty.
 func (c *Checker) lookupEvidenceCallType(pc *ast.ParameterCall) *ast.Type {
 	path := pc.Value
 	if len(path) == 0 {
 		return nil
 	}
-	for specName, spec := range c.SpecStructs {
-		// Try [specName, path[0], path[1], ...] (e.g. ["myspec", "st", "temperature"])
+
+	trySpec := func(specName string) *ast.Type {
+		spec, ok := c.SpecStructs[specName]
+		if !ok {
+			return nil
+		}
 		full := append([]string{specName}, path...)
 		ty, _ := spec.GetStructType(full)
-		if ty != "" && ty != "NIL" {
-			v, err := spec.FetchVar(full, ty)
-			if err != nil {
-				continue
-			}
-			if v.TokenLiteral() == "COMPOUND_STRING" {
-				return &ast.Type{Type: "BOOL"}
-			}
-			if t := typeable(v); t != nil {
-				return t
-			}
+		if ty == "" || ty == "NIL" {
+			return nil
+		}
+		v, err := spec.FetchVar(full, ty)
+		if err != nil {
+			return nil
+		}
+		if v.TokenLiteral() == "COMPOUND_STRING" {
+			return &ast.Type{Type: "BOOL"}
+		}
+		return typeable(v)
+	}
+
+	// Prefer the owning spec recorded by the listener.
+	if pc.Spec != "" {
+		return trySpec(pc.Spec)
+	}
+	// Fallback: search all specs (single-spec files where Spec field isn't set).
+	for specName := range c.SpecStructs {
+		if t := trySpec(specName); t != nil {
+			return t
 		}
 	}
 	return nil
