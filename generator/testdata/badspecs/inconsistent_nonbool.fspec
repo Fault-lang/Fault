@@ -1,0 +1,13 @@
+spec inconsistent_nonbool;
+
+// ERROR: evidence is a Real-typed stock property, not bool
+def st = stock{
+    temperature: 98.6,
+};
+
+x = "patient has fever";
+
+x::inconsistent{
+    true-when  st.temperature,
+    false-when st.temperature == 98.6,
+};

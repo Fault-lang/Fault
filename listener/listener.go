@@ -31,6 +31,15 @@ type FaultListener struct {
 	instances            map[string]*ast.Instance
 	swaps                map[string][]ast.Node
 	pendingExtends       *ast.Identifier
+	errs                 []error
+}
+
+func (l *FaultListener) addErr(err error) {
+	l.errs = append(l.errs, err)
+}
+
+func (l *FaultListener) Errors() []error {
+	return l.errs
 }
 
 func NewListener(path string, testing bool, skipRun bool) *FaultListener {
@@ -75,6 +84,9 @@ func Execute(spec string, path string, flags map[string]bool /*specType bool, te
 		antlr.ParseTreeWalkerDefault.Walk(l, p.Spec())
 	} else {
 		antlr.ParseTreeWalkerDefault.Walk(l, p.SysSpec())
+	}
+	if len(l.errs) > 0 {
+		return l, l.errs[0]
 	}
 	return l, nil
 }

@@ -1625,3 +1625,105 @@ func TestMultipleOnStockError(t *testing.T) {
 		t.Fatalf("expected error about multiple only valid for flows, got: %s", err)
 	}
 }
+
+// --- ::inconsistent annotation type checker tests ---
+
+func TestAnnotationTypeCheckOK(t *testing.T) {
+	test := `spec test1;
+		x     = "this is a duck";
+		swims = "swims";
+		flies = "flies";
+
+		x::inconsistent{
+			true-when  swims,
+			false-when flies,
+		};
+	`
+	checker, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected valid annotation. got=%s", err)
+	}
+	// Target should be registered as INCONSISTENT in temps after type check.
+	ty, ok := checker.temps["x"]
+	if !ok {
+		t.Fatal("expected 'x' to be marked INCONSISTENT in type checker temps")
+	}
+	if ty.Type != "INCONSISTENT" {
+		t.Fatalf("expected INCONSISTENT type for 'x', got %s", ty.Type)
+	}
+}
+
+func TestAnnotationAssertBoolOK(t *testing.T) {
+	// assert x = true/false against an INCONSISTENT variable should type-check fine.
+	test := `spec test1;
+		x     = "this is a duck";
+		swims = "swims";
+		flies = "flies";
+
+		x::inconsistent{
+			true-when  swims,
+			false-when flies,
+		};
+
+		assert x = true always;
+	`
+	_, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected assert x = true on INCONSISTENT variable. got=%s", err)
+	}
+}
+
+func TestAnnotationAssertBelnapOK(t *testing.T) {
+	// assert x = both/neither against an INCONSISTENT variable should type-check fine.
+	test := `spec test1;
+		x     = "this is a duck";
+		swims = "swims";
+		flies = "flies";
+
+		x::inconsistent{
+			true-when  swims,
+			false-when flies,
+		};
+
+		assert x = both always;
+	`
+	_, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected assert x = both on INCONSISTENT variable. got=%s", err)
+	}
+}
+
+func TestAnnotationWeightedOK(t *testing.T) {
+	test := `spec test1;
+		x     = "this is a duck";
+		swims = "swims";
+		flies = "flies";
+
+		x::inconsistent{
+			true-when  swims  2,
+			false-when flies  3,
+		};
+	`
+	_, err := prepTest(test, true)
+	if err != nil {
+		t.Fatalf("type checker rejected valid weighted annotation. got=%s", err)
+	}
+}
+
+func TestAnnotationNonBoolEvidenceFails(t *testing.T) {
+	// A Real-typed constant used as evidence should be a type error.
+	test := `spec test1;
+		body_temp = 36.5;
+		x         = "feverish";
+		swims      = "swims";
+
+		x::inconsistent{
+			true-when  body_temp,
+			false-when swims,
+		};
+	`
+	_, err := prepTest(test, true)
+	if err == nil {
+		t.Fatal("expected type error for non-boolean evidence, got nil")
+	}
+}

@@ -109,6 +109,12 @@ func (l *SMTListener) ExitFunction_def(c *parser.Function_defContext) {
 
 	l.Values[symVal] = t
 
+	if t == "__compound__" {
+		// Compound define-fun body (e.g. ite/>/+) — skip silently.
+		// The execute package only needs concrete values for model variables;
+		// intermediate define-fun computations are not results.
+		return
+	}
 	value, err := convertTerm(sortVal, t)
 	if err != nil {
 		l.err = err
@@ -160,8 +166,19 @@ func (l *SMTListener) ExitTerm(c *parser.TermContext) {
 	term := c.GetText()
 
 	if c.GetChildCount() > 1 {
+		allTerms := c.AllTerm()
+		if len(allTerms) > 2 {
+			// Compound expression with 3+ sub-terms (e.g. ite, and, or).
+			// Pop all child terms off the stack to keep it balanced, then push
+			// a sentinel so ExitFunction_def can detect and skip this entry.
+			for range allTerms {
+				l.pop()
+			}
+			l.push("__compound__")
+			return
+		}
 		parts := []string{}
-		for range c.AllTerm() {
+		for range allTerms {
 			p, ok := l.popString("term/part")
 			if !ok {
 				return

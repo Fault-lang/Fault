@@ -1,0 +1,14 @@
+spec inconsistent_zero_weight;
+
+// ERROR: weight of zero is not permitted
+x     = "this is a duck";
+swims = "swims";
+flies = "flies";
+
+assume swims = true;
+assume flies = false;
+
+x::inconsistent{
+    true-when  swims 0,
+    false-when flies,
+};

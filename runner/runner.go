@@ -71,6 +71,7 @@ type PendingModelCheck struct {
 type CompilationOutput struct {
 	ResultLog     *scenario.Logger
 	Asserts       []*ast.AssertionStatement
+	Annotations   []*ast.AnnotationStatement
 	Warnings      []string
 	Message       string
 	SMT           string
@@ -513,6 +514,7 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 		mc.EvaluateViolations(compiler.RawInputs.Asserts)
 		output.Asserts = compiler.RawInputs.Asserts
+		output.Annotations = compiler.RawInputs.Annotations
 		g.ResultLog.Asserts = compiler.RawInputs.Asserts
 		g.ResultLog.Assumes = compiler.RawInputs.Assumes
 		g.ResultLog.SystemName = systemName(tree)

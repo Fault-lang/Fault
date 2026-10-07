@@ -1,0 +1,32 @@
+spec temporal_eventually_always;
+
+// Once resolved true, stays true for all subsequent rounds
+def st = stock{
+    approved: false,
+    rejected: false,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        if s.approved == false {
+            s.approved = true;
+        }
+    },
+};
+
+x = "application is approved";
+
+x::inconsistent{
+    true-when  st.approved,
+    false-when st.rejected,
+};
+
+// x resolves true eventually and stays true (rejected never fires)
+assume x = true eventually-always;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

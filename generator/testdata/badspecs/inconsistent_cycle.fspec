@@ -1,0 +1,20 @@
+spec inconsistent_cycle;
+
+// ERROR: x depends on y, y depends on x — cycle
+x = "this is a duck";
+y = "this is a bird";
+a = "has wings";
+b = "has feathers";
+
+assume a = true;
+assume b = true;
+
+x::inconsistent{
+    true-when  y,
+    false-when a,
+};
+
+y::inconsistent{
+    true-when  x,
+    false-when b,
+};

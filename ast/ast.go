@@ -58,14 +58,15 @@ var OPS = map[string]TokenType{
 }
 
 var TYPES = map[string]int{ //Convertible Types
-	"STRING":    0, //Not convertible
-	"BOOL":      1,
-	"NATURAL":   2,
-	"FLOAT":     3,
-	"INT":       4,
-	"UNCERTAIN": 5,
-	"UNKNOWN":   6,
-	"WHOLE":     7,
+	"STRING":       0, //Not convertible
+	"BOOL":         1,
+	"INCONSISTENT": 1, // behaves as BOOL in all non-annotation contexts
+	"NATURAL":      2,
+	"FLOAT":        3,
+	"INT":          4,
+	"UNCERTAIN":    5,
+	"UNKNOWN":      6,
+	"WHOLE":        7,
 }
 
 type Type struct {
@@ -1918,4 +1919,75 @@ func (ul *UnfuncLiteral) IdString() string {
 }
 func (ul *UnfuncLiteral) RawId() []string {
 	return ul.ProcessedName
+}
+
+// BelnapLiteral represents the `both` or `neither` Belnap truth-state literals.
+// `true` and `false` in Belnap context remain as *ast.Boolean nodes and are
+// distinguished by the type checker when the LHS is INCONSISTENT-typed.
+type BelnapLiteral struct {
+	Token        Token
+	InferredType *Type
+	Value        string // "both" or "neither"
+}
+
+func (bl *BelnapLiteral) expressionNode()      {}
+func (bl *BelnapLiteral) TokenLiteral() string { return bl.Token.Literal }
+func (bl *BelnapLiteral) Position() []int      { return bl.Token.GetPosition() }
+func (bl *BelnapLiteral) String() string       { return bl.Value }
+func (bl *BelnapLiteral) GetToken() Token      { return bl.Token }
+func (bl *BelnapLiteral) Type() string {
+	if bl.InferredType != nil {
+		return bl.InferredType.Type
+	}
+	return "BELNAP"
+}
+func (bl *BelnapLiteral) SetType(ty *Type) { bl.InferredType = ty }
+
+// EvidenceClause is a single true-when or false-when rule inside an AnnotationStatement.
+// Weight defaults to 1.0 if not specified; must be strictly positive.
+type EvidenceClause struct {
+	Token      Token
+	Condition  Expression
+	Weight     float64
+}
+
+func (ec *EvidenceClause) String() string {
+	return fmt.Sprintf("%s %v", ec.Condition.String(), ec.Weight)
+}
+
+// AnnotationStatement represents a `target::kind{ ... }` block.
+// Kind is "inconsistent" for now; reserved for future "obligation", "permission", etc.
+// Target is either an *Identifier (bare name) or *ParameterCall (dotted path).
+type AnnotationStatement struct {
+	Token     Token      // the '::' token
+	Kind      string     // "inconsistent"
+	Target    Expression // *Identifier or *ParameterCall
+	TrueWhen  []*EvidenceClause
+	FalseWhen []*EvidenceClause
+}
+
+func (an *AnnotationStatement) statementNode()       {}
+func (an *AnnotationStatement) TokenLiteral() string { return an.Token.Literal }
+func (an *AnnotationStatement) Position() []int      { return an.Token.GetPosition() }
+func (an *AnnotationStatement) GetToken() Token      { return an.Token }
+func (an *AnnotationStatement) Type() string         { return "INCONSISTENT" }
+func (an *AnnotationStatement) SetType(ty *Type)     {} // type is fixed
+func (an *AnnotationStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(an.Target.String())
+	out.WriteString("::")
+	out.WriteString(an.Kind)
+	out.WriteString("{")
+	for _, e := range an.TrueWhen {
+		out.WriteString(" true-when ")
+		out.WriteString(e.String())
+		out.WriteString(",")
+	}
+	for _, e := range an.FalseWhen {
+		out.WriteString(" false-when ")
+		out.WriteString(e.String())
+		out.WriteString(",")
+	}
+	out.WriteString("};")
+	return out.String()
 }

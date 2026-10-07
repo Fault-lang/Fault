@@ -359,3 +359,188 @@ func TestViolationDivisionByZeroSafe(t *testing.T) {
 		t.Fatal("expected Violated=false when division by zero yields indeterminate result")
 	}
 }
+
+// --- ::inconsistent annotation violation tests ---
+
+// makeAnnotAssert builds an AssertionStatement for an annotation target.
+// original is what was written (e.g. "x = true"), stored is the negated form.
+// This mirrors what compileAssert produces.
+func makeAnnotAssert(targetInst string, storedOp string, storedRight ast.Expression, origRight ast.Expression, temporal string) *ast.AssertionStatement {
+	return &ast.AssertionStatement{
+		Constraint: &ast.InvariantClause{
+			Left:     &ast.AssertVar{Instances: []string{targetInst}},
+			Operator: storedOp,
+			Right:    storedRight,
+		},
+		Original: &ast.InvariantClause{
+			Left:     &ast.AssertVar{Instances: []string{targetInst}},
+			Operator: "==",
+			Right:    origRight,
+		},
+		Temporal: temporal,
+	}
+}
+
+func makeBelnap(val string) *ast.BelnapLiteral {
+	return &ast.BelnapLiteral{Value: val}
+}
+
+// TestAnnotationViolationAssertTrueViolated: assert x = true, resolved=false → violated.
+func TestAnnotationViolationAssertTrueViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", &ast.Boolean{Value: true}, &ast.Boolean{Value: true}, "")
+	values := map[string]string{
+		"spec_x_resolved_0": "false",
+		"spec_x_supported_0": "false",
+		"spec_x_defeated_0":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when x_resolved_0 is false and assert x=true")
+	}
+}
+
+// TestAnnotationViolationAssertTrueNotViolated: assert x = true, resolved=true → not violated.
+func TestAnnotationViolationAssertTrueNotViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", &ast.Boolean{Value: true}, &ast.Boolean{Value: true}, "")
+	values := map[string]string{
+		"spec_x_resolved_0":  "true",
+		"spec_x_supported_0": "true",
+		"spec_x_defeated_0":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when x_resolved_0 is true and assert x=true")
+	}
+}
+
+// TestAnnotationViolationAssertFalseViolated: assert x = false, resolved=true → violated.
+func TestAnnotationViolationAssertFalseViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", &ast.Boolean{Value: false}, &ast.Boolean{Value: false}, "")
+	values := map[string]string{
+		"spec_x_resolved_0":  "true",
+		"spec_x_supported_0": "false",
+		"spec_x_defeated_0":  "true",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when x_resolved_0 is true and assert x=false")
+	}
+}
+
+// TestAnnotationViolationAssertBothViolated: assert x = both, not both → violated.
+func TestAnnotationViolationAssertBothViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", makeBelnap("both"), makeBelnap("both"), "")
+	values := map[string]string{
+		"spec_x_resolved_0":  "true",
+		"spec_x_supported_0": "true",
+		"spec_x_defeated_0":  "false", // not BOTH
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when x is not in BOTH state and assert x=both")
+	}
+}
+
+// TestAnnotationViolationAssertBothNotViolated: assert x = both, is both → not violated.
+func TestAnnotationViolationAssertBothNotViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", makeBelnap("both"), makeBelnap("both"), "")
+	values := map[string]string{
+		"spec_x_resolved_0":  "true",
+		"spec_x_supported_0": "true",
+		"spec_x_defeated_0":  "true",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when x is in BOTH state and assert x=both")
+	}
+}
+
+// TestAnnotationViolationAssertNeitherViolated: assert x = neither, is supported → violated.
+func TestAnnotationViolationAssertNeitherViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", makeBelnap("neither"), makeBelnap("neither"), "")
+	values := map[string]string{
+		"spec_x_resolved_0":  "true",
+		"spec_x_supported_0": "true",
+		"spec_x_defeated_0":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when x is supported and assert x=neither")
+	}
+}
+
+// TestAnnotationViolationAssertNeitherNotViolated: assert x = neither, truly neither → not violated.
+func TestAnnotationViolationAssertNeitherNotViolated(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", makeBelnap("neither"), makeBelnap("neither"), "")
+	values := map[string]string{
+		"spec_x_resolved_0":  "false",
+		"spec_x_supported_0": "false",
+		"spec_x_defeated_0":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when x is in NEITHER state and assert x=neither")
+	}
+}
+
+// TestAnnotationViolationAlwaysMixed: "always" with mixed rounds — violated if any fails.
+func TestAnnotationViolationAlwaysMixed(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", &ast.Boolean{Value: true}, &ast.Boolean{Value: true}, "always")
+	values := map[string]string{
+		"spec_x_resolved_0":  "true",  // ok
+		"spec_x_supported_0": "true",
+		"spec_x_defeated_0":  "false",
+		"spec_x_resolved_1":  "false", // violation in round 1
+		"spec_x_supported_1": "false",
+		"spec_x_defeated_1":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when x_resolved is false in round 1 (always)")
+	}
+}
+
+// TestAnnotationViolationEventuallyNeverTrue: "eventually" violated only when NEVER true.
+func TestAnnotationViolationEventuallyNeverTrue(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", &ast.Boolean{Value: true}, &ast.Boolean{Value: true}, "eventually")
+	// Both rounds fail: x is never true → violated.
+	values := map[string]string{
+		"spec_x_resolved_0":  "false",
+		"spec_x_supported_0": "false",
+		"spec_x_defeated_0":  "false",
+		"spec_x_resolved_1":  "false",
+		"spec_x_supported_1": "false",
+		"spec_x_defeated_1":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if !a.Violated {
+		t.Fatal("expected Violated=true when x is never true (eventually never satisfied)")
+	}
+}
+
+// TestAnnotationViolationEventuallySatisfied: "eventually" not violated if true in at least one round.
+func TestAnnotationViolationEventuallySatisfied(t *testing.T) {
+	a := makeAnnotAssert("spec_x", "!=", &ast.Boolean{Value: true}, &ast.Boolean{Value: true}, "eventually")
+	values := map[string]string{
+		"spec_x_resolved_0":  "false",
+		"spec_x_supported_0": "false",
+		"spec_x_defeated_0":  "false",
+		"spec_x_resolved_1":  "true",
+		"spec_x_supported_1": "true",
+		"spec_x_defeated_1":  "false",
+	}
+	mc := &ModelChecker{ResultValues: values}
+	mc.EvaluateViolations([]*ast.AssertionStatement{a})
+	if a.Violated {
+		t.Fatal("expected Violated=false when x is true in round 1 (eventually satisfied)")
+	}
+}

@@ -1,0 +1,17 @@
+spec weighted_defeat_wins;
+
+// both state: support_score=1, defeat_score=5 — resolves false
+x          = "medication is indicated";
+symptomA   = "mild symptom present";
+sideEffect = "severe contraindication present";
+
+assume symptomA   = true;
+assume sideEffect = true;
+
+x::inconsistent{
+    true-when  symptomA,
+    false-when sideEffect 5,
+};
+
+assert x = both;
+assert x = false;

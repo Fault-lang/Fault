@@ -157,6 +157,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.results = NewResultsModel(
 			msg.Output.ResultLog,
 			msg.Output.Asserts,
+			msg.Output.Annotations,
 			msg.Output.Warnings,
 			msg.Output.AST,
 			msg.Output.SMT,

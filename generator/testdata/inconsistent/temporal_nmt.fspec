@@ -1,0 +1,34 @@
+spec temporal_nmt;
+
+// neither state occurs at most once
+def st = stock{
+    active:  false,
+    blocked: false,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        if s.active == false {
+            s.active = true;
+        }
+    },
+};
+
+x = "service is available";
+
+x::inconsistent{
+    true-when  st.active,
+    false-when st.blocked,
+};
+
+// round 0: neither (active=false, blocked=false)
+// round 1+: true (active=true, blocked=false)
+// neither occurs at most 1 time
+assert x = neither nmt 1;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

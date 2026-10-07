@@ -1,0 +1,31 @@
+spec temporal_always;
+
+// Conflicting evidence present in every round
+def st = stock{
+    active: true,
+    blocked: true,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        s.active  = true;
+        s.blocked = true;
+    },
+};
+
+x = "process is running";
+
+x::inconsistent{
+    true-when  st.active,
+    false-when st.blocked,
+};
+
+// both fires in every round — active and blocked always true
+assert x = both always;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

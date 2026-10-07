@@ -155,6 +155,27 @@ type FaultParserVisitor interface {
 	// Visit a parse tree produced by FaultParser#assumption.
 	VisitAssumption(ctx *AssumptionContext) interface{}
 
+	// Visit a parse tree produced by FaultParser#annotationDecl.
+	VisitAnnotationDecl(ctx *AnnotationDeclContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#AnnotationParamTarget.
+	VisitAnnotationParamTarget(ctx *AnnotationParamTargetContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#AnnotationIdentTarget.
+	VisitAnnotationIdentTarget(ctx *AnnotationIdentTargetContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#TrueWhenClause.
+	VisitTrueWhenClause(ctx *TrueWhenClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#FalseWhenClause.
+	VisitFalseWhenClause(ctx *FalseWhenClauseContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#evidenceWeight.
+	VisitEvidenceWeight(ctx *EvidenceWeightContext) interface{}
+
+	// Visit a parse tree produced by FaultParser#belnapLiteral.
+	VisitBelnapLiteral(ctx *BelnapLiteralContext) interface{}
+
 	// Visit a parse tree produced by FaultParser#temporal.
 	VisitTemporal(ctx *TemporalContext) interface{}
 

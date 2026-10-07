@@ -11,6 +11,7 @@ import (
 	"fault/util"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/llir/llvm/asm"
@@ -162,6 +163,12 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	for inst := range findAssertVarInstances(allStmtsEarly) {
 		g.Env.AssertVars[inst] = true
 	}
+	// Annotation evidence conditions may reference variables that are never
+	// loaded/stored by any flow function (e.g. constant false fields). Register
+	// them as AssertVars so the unroller doesn't prune their initial stores.
+	for inst := range findAnnotationEvidenceInstances(g.RawInputs.Annotations) {
+		g.Env.AssertVars[inst] = true
+	}
 	g.Env.AssumeOverrides = extractAssumeOverrides(g.RawInputs.Assumes)
 	g.Env.WriteSets = unroll.FindWriteSets(m.Funcs)
 	g.Env.StringRules = g.StringRules
@@ -222,9 +229,20 @@ func (g *Generator) newCallgraph(m *ir.Module) {
 	unfuncSMT := g.ProcessUnfuncs(g.RawInputs.Unfuncs, g.Env.CurrentRound, p.Registry)
 	g.AppendSMT(unfuncSMT)
 
-	assertSMT := g.ProcessAsserts(g.RawInputs.Asserts, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
+	// ProcessAnnotations: emit Belnap define-funs and specialized annotation assertions.
+	// Annotation-targeted asserts are intercepted here so ProcessAsserts never sees them.
+	annotTargets := buildAnnotTargets(g.RawInputs.Annotations)
+	normalAsserts, annotAsserts := splitAnnotAsserts(g.RawInputs.Asserts, annotTargets)
+	normalAssumes, annotAssumes := splitAnnotAsserts(g.RawInputs.Assumes, annotTargets)
+	annotSMT, err := g.ProcessAnnotations(g.RawInputs.Annotations, annotAsserts, annotAssumes, g.Env.CurrentRound, p.Registry)
+	if err != nil {
+		panic(err.Error())
+	}
+	g.AppendSMT(annotSMT)
+
+	assertSMT := g.ProcessAsserts(normalAsserts, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
 	g.AppendSMT(assertSMT)
-	assumeSMT := g.ProcessAsserts(g.RawInputs.Assumes, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
+	assumeSMT := g.ProcessAsserts(normalAssumes, g.Env.CurrentRound, p.Registry, p.Whens, p.Log.RoundPhis)
 	g.AppendSMT(assumeSMT)
 }
 
@@ -754,6 +772,482 @@ func collectAllUnfuncFields(unfuncs []*llvm.UnfuncInfo) []string {
 	return result
 }
 
+// identifierBase returns the SMT base variable name for an Identifier,
+// prefixing with the spec name when present.
+func identifierBase(id *ast.Identifier) string {
+	if id.Spec != "" {
+		return id.Spec + "_" + id.Value
+	}
+	return id.Value
+}
+
+// parameterCallBase returns the SMT base variable name for a ParameterCall,
+// joining path segments with "_" and including the spec prefix.
+func parameterCallBase(call *ast.ParameterCall) string {
+	parts := call.Value
+	if len(parts) > 0 && call.Spec != "" && parts[0] != call.Spec {
+		parts = append([]string{call.Spec}, parts...)
+	}
+	return strings.Join(parts, "_")
+}
+
+// smtRealLiteral formats a float64 as an SMT Real literal, ensuring a
+// decimal point is always present (e.g. 1.0 not 1, 1.25 not 1.2).
+func smtRealLiteral(v float64) string {
+	s := strconv.FormatFloat(v, 'f', -1, 64)
+	if !strings.Contains(s, ".") {
+		s += ".0"
+	}
+	return s
+}
+
+// smtJoinTerms builds an SMT expression from a slice of string terms using op.
+// Returns zeroVal when len(terms)==0, terms[0] when len==1,
+// and "(op t1 t2 ...)" otherwise.
+func smtJoinTerms(terms []string, op string, zeroVal string) string {
+	switch len(terms) {
+	case 0:
+		return zeroVal
+	case 1:
+		return terms[0]
+	default:
+		return fmt.Sprintf("(%s %s)", op, strings.Join(terms, " "))
+	}
+}
+
+// annotationTargetBase returns the SMT base variable name for an annotation target.
+func annotationTargetBase(target ast.Expression) string {
+	switch t := target.(type) {
+	case *ast.Identifier:
+		return identifierBase(t)
+	case *ast.ParameterCall:
+		return parameterCallBase(t)
+	}
+	return ""
+}
+
+// buildAnnotTargets returns a set of annotation target base names derived from
+// a list of AnnotationStatement nodes.
+func buildAnnotTargets(annotations []*ast.AnnotationStatement) map[string]bool {
+	out := make(map[string]bool)
+	for _, ann := range annotations {
+		if base := annotationTargetBase(ann.Target); base != "" {
+			out[base] = true
+		}
+	}
+	return out
+}
+
+// splitAnnotAsserts partitions a list of assertion statements into those that
+// target an annotation variable (which are handled by ProcessAnnotations) and
+// those that do not (handled by ProcessAsserts as normal).
+func splitAnnotAsserts(stmts []*ast.AssertionStatement, annotTargets map[string]bool) (normal, annot []*ast.AssertionStatement) {
+	for _, a := range stmts {
+		if isAnnotationAssert(a, annotTargets) {
+			annot = append(annot, a)
+		} else {
+			normal = append(normal, a)
+		}
+	}
+	return
+}
+
+// isAnnotationAssert reports whether an assertion's left-hand side references
+// an annotation target variable.
+func isAnnotationAssert(a *ast.AssertionStatement, annotTargets map[string]bool) bool {
+	if assertVar, ok := a.Constraint.Left.(*ast.AssertVar); ok {
+		for _, inst := range assertVar.Instances {
+			if annotTargets[inst] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// annotCondToSMT converts an evidence-clause condition expression to an SMT
+// string at the given round. If the condition references another annotation
+// target, it uses that target's _resolved_N define-fun.
+func annotCondToSMT(cond ast.Expression, n int, registry map[string][][]string, annotTargets map[string]bool) string {
+	switch c := cond.(type) {
+	case *ast.Identifier:
+		base := identifierBase(c)
+		if annotTargets[base] {
+			return fmt.Sprintf("%s_resolved_%d", base, n)
+		}
+		return registryBestVersion(registry, base, n)
+	case *ast.ParameterCall:
+		base := parameterCallBase(c)
+		if annotTargets[base] {
+			return fmt.Sprintf("%s_resolved_%d", base, n)
+		}
+		return registryBestVersion(registry, base, n)
+	case *ast.Boolean:
+		if c.Value {
+			return "true"
+		}
+		return "false"
+	case *ast.IntegerLiteral:
+		return c.String()
+	case *ast.FloatLiteral:
+		return smtRealLiteral(c.Value)
+	case *ast.InfixExpression:
+		left := annotCondToSMT(c.Left, n, registry, annotTargets)
+		right := annotCondToSMT(c.Right, n, registry, annotTargets)
+		switch c.Operator {
+		case "==":
+			return fmt.Sprintf("(= %s %s)", left, right)
+		case "!=":
+			return fmt.Sprintf("(distinct %s %s)", left, right)
+		case "&&":
+			return fmt.Sprintf("(and %s %s)", left, right)
+		case "||":
+			return fmt.Sprintf("(or %s %s)", left, right)
+		default:
+			return fmt.Sprintf("(%s %s %s)", c.Operator, left, right)
+		}
+	case *ast.PrefixExpression:
+		right := annotCondToSMT(c.Right, n, registry, annotTargets)
+		if c.Operator == "!" {
+			return fmt.Sprintf("(not %s)", right)
+		}
+		return fmt.Sprintf("(%s %s)", c.Operator, right)
+	case *ast.AssertVar:
+		if len(c.Instances) > 0 {
+			inst := c.Instances[0]
+			if annotTargets[inst] {
+				return fmt.Sprintf("%s_resolved_%d", inst, n)
+			}
+			return registryBestVersion(registry, inst, n)
+		}
+	}
+	return ""
+}
+
+// emitScoreFun emits a define-fun with Real sort for the weighted
+// score of evidence clauses at round n. Used for _support_score_N and _defeat_score_N.
+func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n int, registry map[string][][]string, annotTargets map[string]bool) string {
+	var terms []string
+	for _, clause := range clauses {
+		c := annotCondToSMT(clause.Condition, n, registry, annotTargets)
+		if c == "" {
+			continue
+		}
+		weight := smtRealLiteral(clause.Weight)
+		terms = append(terms, fmt.Sprintf("(ite %s %s 0.0)", c, weight))
+	}
+	return fmt.Sprintf("(define-fun %s_%d () Real %s)", name, n, smtJoinTerms(terms, "+", "0.0"))
+}
+
+// emitSupportedFun emits a declare-fun + assert for _supported_N: true when
+// support_score > 0. Uses declare-fun so Z3 returns a concrete Bool in its
+// model (needed by the execute package's result parser).
+func emitSupportedFun(targetBase string, n int) string {
+	name := fmt.Sprintf("%s_supported_%d", targetBase, n)
+	score := fmt.Sprintf("%s_support_score_%d", targetBase, n)
+	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s (> %s 0.0)))", name, name, score)
+}
+
+// emitDefeatedFun emits a declare-fun + assert for _defeated_N: true when
+// defeat_score > 0. Uses declare-fun so Z3 returns a concrete Bool in its
+// model (needed by the execute package's result parser).
+func emitDefeatedFun(targetBase string, n int) string {
+	name := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+	score := fmt.Sprintf("%s_defeat_score_%d", targetBase, n)
+	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s (> %s 0.0)))", name, name, score)
+}
+
+// emitResolvedFun emits the define-fun for _resolved_N: the
+// weight-sensitive boolean projection of the Belnap four-valued state.
+//
+//   - TRUE state  (supported, not defeated)  → true
+//   - FALSE state (defeated, not supported)  → false
+//   - BOTH state  (supported AND defeated)   → support_score >= defeat_score
+//   - NEITHER state (neither)               → false
+func (g *Generator) emitResolvedFun(targetBase string, n int) string {
+	supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
+	defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+	suppScore := fmt.Sprintf("%s_support_score_%d", targetBase, n)
+	defScore := fmt.Sprintf("%s_defeat_score_%d", targetBase, n)
+	name := fmt.Sprintf("%s_resolved_%d", targetBase, n)
+	body := fmt.Sprintf(
+		"(ite (and %s (not %s)) true (ite (and %s (not %s)) false (ite (and %s %s) (>= %s %s) false)))",
+		supported, defeated,
+		defeated, supported,
+		supported, defeated,
+		suppScore, defScore,
+	)
+	// Use declare-fun + assert so Z3 returns a concrete Bool value in its
+	// model rather than leaving the body as an unexpanded symbolic expression
+	// (which would break the execute package's result parser).
+	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s %s))", name, name, body)
+}
+
+// annotViolationExpr returns the SMT expression for the VIOLATION of an
+// annotation assertion at round n. It reads the original (un-negated) right-hand
+// side to derive the correct define-fun reference.
+//
+//	assert x = true    → violation: (not (and x_supported_N (not x_defeated_N)))
+//	assert x = false   → violation: (not (and (not x_supported_N) x_defeated_N))
+//	assert x = both    → violation: (not (and x_supported_N x_defeated_N))
+//	assert x = neither → violation: (or x_supported_N x_defeated_N)
+func annotViolationExpr(originalRight ast.Expression, targetBase string, n int) string {
+	switch r := originalRight.(type) {
+	case *ast.Boolean:
+		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
+		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+		if r.Value {
+			return fmt.Sprintf("(not (and %s (not %s)))", supported, defeated)
+		}
+		return fmt.Sprintf("(not (and (not %s) %s))", supported, defeated)
+	case *ast.BelnapLiteral:
+		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
+		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+		switch r.Value {
+		case "both":
+			return fmt.Sprintf("(not (and %s %s))", supported, defeated)
+		case "neither":
+			return fmt.Sprintf("(or %s %s)", supported, defeated)
+		}
+	}
+	return ""
+}
+
+// emitAnnotAssertions emits the SMT assertions for annotation-targeted
+// assert/assume statements. The violation expressions reference the annotation's
+// define-funs rather than the raw SSA variable versions.
+func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTargets map[string]bool, rounds int, isAssume bool) []string {
+	var smt []string
+	for _, a := range stmts {
+		assertVar, ok := a.Constraint.Left.(*ast.AssertVar)
+		if !ok || len(assertVar.Instances) == 0 {
+			continue
+		}
+		targetBase := assertVar.Instances[0]
+		if !annotTargets[targetBase] {
+			continue
+		}
+
+		// Use the original (un-negated) constraint to determine what is being tested.
+		// For assumes, Original is not set — use the constraint directly (it's not negated).
+		var origRight ast.Expression
+		if a.Original != nil {
+			origRight = a.Original.Right
+		} else {
+			origRight = a.Constraint.Right
+		}
+
+		// Collect per-round violation and satisfaction expressions.
+		var violations []string
+		var satisfied []string
+		for n := 0; n <= rounds; n++ {
+			v := annotViolationExpr(origRight, targetBase, n)
+			if v != "" {
+				violations = append(violations, v)
+				// satisfaction is the logical negation of the violation expression
+				satisfied = append(satisfied, fmt.Sprintf("(not %s)", v))
+			}
+		}
+		if len(violations) == 0 {
+			continue
+		}
+
+		// Temporal logic determines how per-round states are combined.
+		var expr string
+		if a.TemporalFilter != "" {
+			// nmt/nft count rounds where the assertion is satisfied.
+			terms := make([]string, len(satisfied))
+			for i, s := range satisfied {
+				terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", s)
+			}
+			sum := smtJoinTerms(terms, "+", "0.0")
+			countLit := smtRealLiteral(float64(a.TemporalN))
+			switch a.TemporalFilter {
+			case "nmt":
+				expr = fmt.Sprintf("(<= %s %s)", sum, countLit)
+			case "nft":
+				expr = fmt.Sprintf("(>= %s %s)", sum, countLit)
+			default:
+				continue
+			}
+		} else {
+			switch a.Temporal {
+			case "eventually":
+				// Violation = the state is NEVER achieved across all rounds.
+				expr = smtJoinTerms(violations, "and", "")
+			case "eventually-always":
+				// Violation = there is no suffix where the state holds in every round.
+				var suffixes []string
+				for i := range violations {
+					suffixes = append(suffixes, smtJoinTerms(violations[i:], "or", ""))
+				}
+				expr = smtJoinTerms(suffixes, "and", "")
+			default:
+				// "always" and no-temporal: violation = the state fails at ANY round.
+				expr = smtJoinTerms(violations, "or", "")
+			}
+		}
+
+		smt = append(smt, fmt.Sprintf("(assert %s)", expr))
+	}
+	return smt
+}
+
+// collectAnnotCondDeps returns the set of annotation target names that appear
+// as evidence-condition operands in ann's true-when and false-when clauses.
+func collectAnnotCondDeps(ann *ast.AnnotationStatement, annotTargets map[string]bool) map[string]bool {
+	deps := make(map[string]bool)
+	for _, clause := range ann.TrueWhen {
+		collectExprAnnotDeps(clause.Condition, annotTargets, deps)
+	}
+	for _, clause := range ann.FalseWhen {
+		collectExprAnnotDeps(clause.Condition, annotTargets, deps)
+	}
+	return deps
+}
+
+// collectExprAnnotDeps walks expr and records every annotation target name found.
+func collectExprAnnotDeps(expr ast.Expression, annotTargets map[string]bool, deps map[string]bool) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *ast.Identifier:
+		base := identifierBase(e)
+		if annotTargets[base] {
+			deps[base] = true
+		}
+	case *ast.ParameterCall:
+		base := parameterCallBase(e)
+		if annotTargets[base] {
+			deps[base] = true
+		}
+	case *ast.AssertVar:
+		for _, inst := range e.Instances {
+			if annotTargets[inst] {
+				deps[inst] = true
+			}
+		}
+	case *ast.InfixExpression:
+		collectExprAnnotDeps(e.Left, annotTargets, deps)
+		collectExprAnnotDeps(e.Right, annotTargets, deps)
+	case *ast.PrefixExpression:
+		collectExprAnnotDeps(e.Right, annotTargets, deps)
+	}
+}
+
+// topoSortAnnotations returns annotations in an order such that if annotation A
+// uses annotation B's target as an evidence condition, B appears before A.
+// Returns an error if a cycle is detected.
+func topoSortAnnotations(annotations []*ast.AnnotationStatement, annotTargets map[string]bool) ([]*ast.AnnotationStatement, error) {
+	n := len(annotations)
+	if n <= 1 {
+		return annotations, nil
+	}
+
+	// Map targetBase → index in annotations slice.
+	baseToIdx := make(map[string]int, n)
+	for i, ann := range annotations {
+		if base := annotationTargetBase(ann.Target); base != "" {
+			baseToIdx[base] = i
+		}
+	}
+
+	// dependents[i] = indices that depend on annotation i (i must be emitted first).
+	inDegree := make([]int, n)
+	dependents := make([][]int, n)
+
+	for i, ann := range annotations {
+		for dep := range collectAnnotCondDeps(ann, annotTargets) {
+			if j, ok := baseToIdx[dep]; ok && j != i {
+				dependents[j] = append(dependents[j], i)
+				inDegree[i]++
+			}
+		}
+	}
+
+	// Kahn's algorithm.
+	queue := make([]int, 0, n)
+	for i := 0; i < n; i++ {
+		if inDegree[i] == 0 {
+			queue = append(queue, i)
+		}
+	}
+	sorted := make([]*ast.AnnotationStatement, 0, n)
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, annotations[cur])
+		for _, dep := range dependents[cur] {
+			inDegree[dep]--
+			if inDegree[dep] == 0 {
+				queue = append(queue, dep)
+			}
+		}
+	}
+
+	if len(sorted) != n {
+		return nil, fmt.Errorf("::inconsistent annotations contain a circular dependency")
+	}
+	return sorted, nil
+}
+
+// ProcessAnnotations emits Belnap four-valued logic define-funs for each
+// ::inconsistent annotation and specialized SMT assertions for any
+// assertion/assume statements that reference annotation targets.
+//
+// For each annotation target x and each round N it emits five define-funs:
+//
+//	x_support_score_N  Real  — weighted sum of true-when activations
+//	x_defeat_score_N   Real  — weighted sum of false-when activations
+//	x_supported_N      Bool  — true when support_score > 0
+//	x_defeated_N       Bool  — true when defeat_score > 0
+//	x_resolved_N       Bool  — weight-sensitive boolean projection
+func (g *Generator) ProcessAnnotations(
+	annotations []*ast.AnnotationStatement,
+	annotAsserts []*ast.AssertionStatement,
+	annotAssumes []*ast.AssertionStatement,
+	rounds int,
+	registry map[string][][]string,
+) ([]string, error) {
+	if len(annotations) == 0 {
+		return nil, nil
+	}
+
+	// Build the set of annotation target base names for nested lookups.
+	annotTargets := buildAnnotTargets(annotations)
+
+	// Emit annotations in dependency order so that if annotation A uses
+	// annotation B's _resolved_N as evidence, B's declare-funs appear first.
+	var err error
+	annotations, err = topoSortAnnotations(annotations, annotTargets)
+	if err != nil {
+		return nil, err
+	}
+
+	var smt []string
+
+	for _, ann := range annotations {
+		targetBase := annotationTargetBase(ann.Target)
+		if targetBase == "" {
+			continue
+		}
+
+		for n := 0; n <= rounds; n++ {
+			smt = append(smt, g.emitScoreFun(targetBase+"_support_score", ann.TrueWhen, n, registry, annotTargets))
+			smt = append(smt, g.emitScoreFun(targetBase+"_defeat_score", ann.FalseWhen, n, registry, annotTargets))
+			smt = append(smt, emitSupportedFun(targetBase, n))
+			smt = append(smt, emitDefeatedFun(targetBase, n))
+			smt = append(smt, g.emitResolvedFun(targetBase, n))
+		}
+	}
+
+	smt = append(smt, g.emitAnnotAssertions(annotAsserts, annotTargets, rounds, false)...)
+	smt = append(smt, g.emitAnnotAssertions(annotAssumes, annotTargets, rounds, true)...)
+
+	return smt, nil
+}
+
 func (g *Generator) SMT() string {
 	return strings.Join(g.smt, "\n")
 }
@@ -898,6 +1392,22 @@ func markBoolVars(expr ast.Expression, bools map[string]bool) bool {
 		}
 	}
 	return changed
+}
+
+// findAnnotationEvidenceInstances collects all AssertVar instance names used
+// in annotation evidence conditions. These must not be pruned from the SMT
+// model even if no flow function directly loads the corresponding variable.
+func findAnnotationEvidenceInstances(annotations []*ast.AnnotationStatement) map[string]bool {
+	result := make(map[string]bool)
+	for _, ann := range annotations {
+		for _, clause := range ann.TrueWhen {
+			collectAssertVarInstances(clause.Condition, result)
+		}
+		for _, clause := range ann.FalseWhen {
+			collectAssertVarInstances(clause.Condition, result)
+		}
+	}
+	return result
 }
 
 // findAssertVarInstances collects all AssertVar instance names referenced in

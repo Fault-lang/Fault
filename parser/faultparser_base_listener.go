@@ -315,6 +315,48 @@ func (s *BaseFaultParserListener) EnterAssumption(ctx *AssumptionContext) {}
 // ExitAssumption is called when production assumption is exited.
 func (s *BaseFaultParserListener) ExitAssumption(ctx *AssumptionContext) {}
 
+// EnterAnnotationDecl is called when production annotationDecl is entered.
+func (s *BaseFaultParserListener) EnterAnnotationDecl(ctx *AnnotationDeclContext) {}
+
+// ExitAnnotationDecl is called when production annotationDecl is exited.
+func (s *BaseFaultParserListener) ExitAnnotationDecl(ctx *AnnotationDeclContext) {}
+
+// EnterAnnotationParamTarget is called when production AnnotationParamTarget is entered.
+func (s *BaseFaultParserListener) EnterAnnotationParamTarget(ctx *AnnotationParamTargetContext) {}
+
+// ExitAnnotationParamTarget is called when production AnnotationParamTarget is exited.
+func (s *BaseFaultParserListener) ExitAnnotationParamTarget(ctx *AnnotationParamTargetContext) {}
+
+// EnterAnnotationIdentTarget is called when production AnnotationIdentTarget is entered.
+func (s *BaseFaultParserListener) EnterAnnotationIdentTarget(ctx *AnnotationIdentTargetContext) {}
+
+// ExitAnnotationIdentTarget is called when production AnnotationIdentTarget is exited.
+func (s *BaseFaultParserListener) ExitAnnotationIdentTarget(ctx *AnnotationIdentTargetContext) {}
+
+// EnterTrueWhenClause is called when production TrueWhenClause is entered.
+func (s *BaseFaultParserListener) EnterTrueWhenClause(ctx *TrueWhenClauseContext) {}
+
+// ExitTrueWhenClause is called when production TrueWhenClause is exited.
+func (s *BaseFaultParserListener) ExitTrueWhenClause(ctx *TrueWhenClauseContext) {}
+
+// EnterFalseWhenClause is called when production FalseWhenClause is entered.
+func (s *BaseFaultParserListener) EnterFalseWhenClause(ctx *FalseWhenClauseContext) {}
+
+// ExitFalseWhenClause is called when production FalseWhenClause is exited.
+func (s *BaseFaultParserListener) ExitFalseWhenClause(ctx *FalseWhenClauseContext) {}
+
+// EnterEvidenceWeight is called when production evidenceWeight is entered.
+func (s *BaseFaultParserListener) EnterEvidenceWeight(ctx *EvidenceWeightContext) {}
+
+// ExitEvidenceWeight is called when production evidenceWeight is exited.
+func (s *BaseFaultParserListener) ExitEvidenceWeight(ctx *EvidenceWeightContext) {}
+
+// EnterBelnapLiteral is called when production belnapLiteral is entered.
+func (s *BaseFaultParserListener) EnterBelnapLiteral(ctx *BelnapLiteralContext) {}
+
+// ExitBelnapLiteral is called when production belnapLiteral is exited.
+func (s *BaseFaultParserListener) ExitBelnapLiteral(ctx *BelnapLiteralContext) {}
+
 // EnterTemporal is called when production temporal is entered.
 func (s *BaseFaultParserListener) EnterTemporal(ctx *TemporalContext) {}
 

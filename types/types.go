@@ -459,6 +459,22 @@ func (c *Checker) typecheck(n ast.Node) (ast.Node, error) {
 		return node, err
 	case *ast.InvariantClause:
 		return c.inferFunction(node)
+	case *ast.BelnapLiteral:
+		return c.infer(node)
+	case *ast.AnnotationStatement:
+		for _, clause := range node.TrueWhen {
+			if err = c.collect(c.validateEvidenceCondition(clause.Condition)); err != nil {
+				return node, err
+			}
+		}
+		for _, clause := range node.FalseWhen {
+			if err = c.collect(c.validateEvidenceCondition(clause.Condition)); err != nil {
+				return node, err
+			}
+		}
+		// Mark the target as INCONSISTENT so subsequent type lookups see it.
+		c.temps[node.Target.String()] = &ast.Type{Type: "INCONSISTENT", Scope: 0, Parameters: nil}
+		return node, nil
 	default:
 		return node, fmt.Errorf("unimplemented: %s type %T", node, node)
 	}
@@ -509,6 +525,8 @@ func (c *Checker) isValue(exp any) bool {
 	case *ast.UnfuncLiteral:
 		return true
 	case *ast.IndexExpression:
+		return true
+	case *ast.BelnapLiteral:
 		return true
 	default:
 		return false
@@ -667,6 +685,11 @@ func (c *Checker) infer(exp any) (ast.Node, error) {
 		}
 		return node, nil
 	case *ast.This:
+		return node, nil
+	case *ast.BelnapLiteral:
+		if node.InferredType == nil {
+			node.InferredType = &ast.Type{Type: "BELNAP", Scope: 0, Parameters: nil}
+		}
 		return node, nil
 	default:
 		n := node.(ast.Node)
@@ -894,9 +917,13 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 		if COMPARE[node.Operator] {
 			if left != nil && right != nil {
 				if (left.Type == "BOOL" || right.Type == "BOOL") && left.Type != right.Type {
-					// UNKNOWN and STRING are compatible with BOOL in comparisons
+					// UNKNOWN, STRING, INCONSISTENT, and BELNAP are compatible with BOOL
+					// in comparisons: INCONSISTENT resolves to bool; BELNAP covers
+					// both/neither states; STRING acts as a boolean label.
 					if left.Type != "STRING" && right.Type != "STRING" &&
-						left.Type != "UNKNOWN" && right.Type != "UNKNOWN" {
+						left.Type != "UNKNOWN" && right.Type != "UNKNOWN" &&
+						left.Type != "INCONSISTENT" && right.Type != "INCONSISTENT" &&
+						left.Type != "BELNAP" && right.Type != "BELNAP" {
 						return nil, fmt.Errorf("invalid expression: got=%s %s %s %s", left.Type, node.Operator, right.Type, node.GetToken().Location())
 					}
 				}
@@ -905,6 +932,15 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 				Scope:      0,
 				Parameters: nil}
 			return node, err
+		}
+
+		// INCONSISTENT variables (::inconsistent annotations) may be compared against
+		// BOOL (their resolved projection) or BELNAP (raw Belnap state: both/neither).
+		if node.Operator == "=" && left != nil && left.Type == "INCONSISTENT" {
+			if right != nil && (right.Type == "BOOL" || right.Type == "BELNAP") {
+				node.InferredType = &ast.Type{Type: "BOOL", Scope: 0, Parameters: nil}
+				return node, err
+			}
 		}
 
 		_, nilL := node.Left.(*ast.Nil)
@@ -1039,6 +1075,9 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 			node.InferredType = &ast.Type{Type: "Int", Scope: 0, Parameters: nil}
 		}
 		return node, nil
+	case *ast.BelnapLiteral:
+		exp, err := c.infer(node)
+		return exp.(ast.Expression), err
 	default:
 		n := node.(ast.Node)
 		return nil, fmt.Errorf("unrecognized type: %s got=%T", n.GetToken().Location(), node)
@@ -1566,6 +1605,110 @@ func emitTargetKey(expr ast.Expression) string {
 	}
 }
 
+// lookupEvidenceCallType resolves the type of a ParameterCall that appears
+// inside an annotation evidence clause. These ParameterCalls have not been
+// processed by the preprocessor, so ProcessedName is empty and LookupType
+// would panic. Instead, we resolve against pc.Spec when set (deterministic),
+// falling back to searching all specs only when pc.Spec is empty.
+func (c *Checker) lookupEvidenceCallType(pc *ast.ParameterCall) *ast.Type {
+	path := pc.Value
+	if len(path) == 0 {
+		return nil
+	}
+
+	trySpec := func(specName string) *ast.Type {
+		spec, ok := c.SpecStructs[specName]
+		if !ok {
+			return nil
+		}
+		full := append([]string{specName}, path...)
+		ty, _ := spec.GetStructType(full)
+		if ty == "" || ty == "NIL" {
+			return nil
+		}
+		v, err := spec.FetchVar(full, ty)
+		if err != nil {
+			return nil
+		}
+		if v.TokenLiteral() == "COMPOUND_STRING" {
+			return &ast.Type{Type: "BOOL"}
+		}
+		return typeable(v)
+	}
+
+	// Prefer the owning spec recorded by the listener.
+	if pc.Spec != "" {
+		return trySpec(pc.Spec)
+	}
+	// Fallback: search all specs (single-spec files where Spec field isn't set).
+	for specName := range c.SpecStructs {
+		if t := trySpec(specName); t != nil {
+			return t
+		}
+	}
+	return nil
+}
+
+// validateEvidenceCondition checks that an evidence clause condition is a
+// boolean-compatible expression (BOOL, STRING-label, UNKNOWN, or INCONSISTENT).
+// Bare identifiers used as string-label conditions (e.g. `swims = "swims"`) may
+// not carry a spec context here — the listener already validates that they exist,
+// so we skip unresolvable lookups rather than erroring.
+func (c *Checker) validateEvidenceCondition(expr ast.Expression) (retErr error) {
+	if expr == nil {
+		return nil
+	}
+	// Bare identifiers act as string-label booleans; their spec context may not be
+	// set within an annotation body, so treat them as valid without lookup.
+	if ident, ok := expr.(*ast.Identifier); ok {
+		if ident.Spec == "" {
+			return nil
+		}
+	}
+	// ParameterCall conditions (e.g. st.temperature) may not have ProcessedName
+	// set because the preprocessor does not visit annotation bodies. Resolve the
+	// type by walking SpecStructs directly using the raw Value path.
+	if pc, ok := expr.(*ast.ParameterCall); ok {
+		if ty := c.lookupEvidenceCallType(pc); ty != nil {
+			switch ty.Type {
+			case "BOOL", "STRING", "INCONSISTENT", "UNKNOWN":
+				return nil
+			default:
+				return fmt.Errorf("evidence condition must be a boolean expression, got %s", ty.Type)
+			}
+		}
+		// Unresolvable — listener already validated existence; treat as valid.
+		return nil
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			// LookupType can panic when rawid[0] is not in SpecStructs (e.g. unscoped
+			// identifiers in annotation bodies). The listener already validated them.
+			retErr = nil
+		}
+	}()
+	var n ast.Node
+	var err error
+	if c.isValue(expr) {
+		n, err = c.infer(expr)
+	} else {
+		n, err = c.inferFunction(expr)
+	}
+	if err != nil {
+		return fmt.Errorf("evidence condition: %w", err)
+	}
+	ty := typeable(n)
+	if ty == nil {
+		return nil
+	}
+	switch ty.Type {
+	case "BOOL", "STRING", "INCONSISTENT", "UNKNOWN":
+		return nil
+	default:
+		return fmt.Errorf("evidence condition must be a boolean expression, got %s", ty.Type)
+	}
+}
+
 // checkUnfuncArithExpr validates an assume clause expression tree.
 // The top-level must be an InfixExpression with operator "=" whose LHS is a
 // ParameterCall (the produced field). RHS may contain ParameterCalls and
@@ -1647,6 +1790,8 @@ func typeable(node ast.Node) *ast.Type {
 	case *ast.FlowLiteral:
 		return n.InferredType
 	case *ast.InvariantClause:
+		return n.InferredType
+	case *ast.BelnapLiteral:
 		return n.InferredType
 	default:
 		return nil

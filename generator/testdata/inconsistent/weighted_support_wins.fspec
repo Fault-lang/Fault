@@ -1,0 +1,20 @@
+spec weighted_support_wins;
+
+// both state: support_score=6, defeat_score=1 — resolves true
+x          = "medication is indicated";
+symptomA   = "primary symptom present";
+symptomB   = "secondary symptom present";
+sideEffect = "contraindication present";
+
+assume symptomA   = true;
+assume symptomB   = true;
+assume sideEffect = true;
+
+x::inconsistent{
+    true-when  symptomA 4,
+    true-when  symptomB 2,
+    false-when sideEffect,
+};
+
+assert x = both;
+assert x = true;
