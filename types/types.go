@@ -1605,6 +1605,36 @@ func emitTargetKey(expr ast.Expression) string {
 	}
 }
 
+// lookupEvidenceCallType resolves the type of a ParameterCall that appears
+// inside an annotation evidence clause. These ParameterCalls have not been
+// processed by the preprocessor, so ProcessedName is empty and LookupType
+// would panic. Instead, we walk SpecStructs using the raw Value path, trying
+// both the bare path and the path prefixed with each spec name.
+func (c *Checker) lookupEvidenceCallType(pc *ast.ParameterCall) *ast.Type {
+	path := pc.Value
+	if len(path) == 0 {
+		return nil
+	}
+	for specName, spec := range c.SpecStructs {
+		// Try [specName, path[0], path[1], ...] (e.g. ["myspec", "st", "temperature"])
+		full := append([]string{specName}, path...)
+		ty, _ := spec.GetStructType(full)
+		if ty != "" && ty != "NIL" {
+			v, err := spec.FetchVar(full, ty)
+			if err != nil {
+				continue
+			}
+			if v.TokenLiteral() == "COMPOUND_STRING" {
+				return &ast.Type{Type: "BOOL"}
+			}
+			if t := typeable(v); t != nil {
+				return t
+			}
+		}
+	}
+	return nil
+}
+
 // validateEvidenceCondition checks that an evidence clause condition is a
 // boolean-compatible expression (BOOL, STRING-label, UNKNOWN, or INCONSISTENT).
 // Bare identifiers used as string-label conditions (e.g. `swims = "swims"`) may
@@ -1620,6 +1650,21 @@ func (c *Checker) validateEvidenceCondition(expr ast.Expression) (retErr error) 
 		if ident.Spec == "" {
 			return nil
 		}
+	}
+	// ParameterCall conditions (e.g. st.temperature) may not have ProcessedName
+	// set because the preprocessor does not visit annotation bodies. Resolve the
+	// type by walking SpecStructs directly using the raw Value path.
+	if pc, ok := expr.(*ast.ParameterCall); ok {
+		if ty := c.lookupEvidenceCallType(pc); ty != nil {
+			switch ty.Type {
+			case "BOOL", "STRING", "INCONSISTENT", "UNKNOWN":
+				return nil
+			default:
+				return fmt.Errorf("evidence condition must be a boolean expression, got %s", ty.Type)
+			}
+		}
+		// Unresolvable — listener already validated existence; treat as valid.
+		return nil
 	}
 	defer func() {
 		if r := recover(); r != nil {

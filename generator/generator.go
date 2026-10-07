@@ -11,6 +11,7 @@ import (
 	"fault/util"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/llir/llvm/asm"
@@ -780,6 +781,26 @@ func identifierBase(id *ast.Identifier) string {
 	return id.Value
 }
 
+// parameterCallBase returns the SMT base variable name for a ParameterCall,
+// joining path segments with "_" and including the spec prefix.
+func parameterCallBase(call *ast.ParameterCall) string {
+	parts := call.Value
+	if len(parts) > 0 && call.Spec != "" && parts[0] != call.Spec {
+		parts = append([]string{call.Spec}, parts...)
+	}
+	return strings.Join(parts, "_")
+}
+
+// smtRealLiteral formats a float64 as an SMT Real literal, ensuring a
+// decimal point is always present (e.g. 1.0 not 1, 1.25 not 1.2).
+func smtRealLiteral(v float64) string {
+	s := strconv.FormatFloat(v, 'f', -1, 64)
+	if !strings.Contains(s, ".") {
+		s += ".0"
+	}
+	return s
+}
+
 // smtJoinTerms builds an SMT expression from a slice of string terms using op.
 // Returns zeroVal when len(terms)==0, terms[0] when len==1,
 // and "(op t1 t2 ...)" otherwise.
@@ -856,7 +877,7 @@ func annotCondToSMT(cond ast.Expression, n int, registry map[string][][]string, 
 		}
 		return registryBestVersion(registry, base, n)
 	case *ast.ParameterCall:
-		base := strings.Join(c.Value, "_")
+		base := parameterCallBase(c)
 		if annotTargets[base] {
 			return fmt.Sprintf("%s_resolved_%d", base, n)
 		}
@@ -866,6 +887,10 @@ func annotCondToSMT(cond ast.Expression, n int, registry map[string][][]string, 
 			return "true"
 		}
 		return "false"
+	case *ast.IntegerLiteral:
+		return c.String()
+	case *ast.FloatLiteral:
+		return smtRealLiteral(c.Value)
 	case *ast.InfixExpression:
 		left := annotCondToSMT(c.Left, n, registry, annotTargets)
 		right := annotCondToSMT(c.Right, n, registry, annotTargets)
@@ -908,7 +933,7 @@ func (g *Generator) emitScoreFun(name string, clauses []*ast.EvidenceClause, n i
 		if c == "" {
 			continue
 		}
-		weight := fmt.Sprintf("%.1f", clause.Weight)
+		weight := smtRealLiteral(clause.Weight)
 		terms = append(terms, fmt.Sprintf("(ite %s %s 0.0)", c, weight))
 	}
 	return fmt.Sprintf("(define-fun %s_%d () Real %s)", name, n, smtJoinTerms(terms, "+", "0.0"))
@@ -1012,27 +1037,55 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 			origRight = a.Constraint.Right
 		}
 
-		// Collect per-round violation expressions.
+		// Collect per-round violation and satisfaction expressions.
 		var violations []string
+		var satisfied []string
 		for n := 0; n <= rounds; n++ {
 			v := annotViolationExpr(origRight, targetBase, n)
 			if v != "" {
 				violations = append(violations, v)
+				// satisfaction is the logical negation of the violation expression
+				satisfied = append(satisfied, fmt.Sprintf("(not %s)", v))
 			}
 		}
 		if len(violations) == 0 {
 			continue
 		}
 
-		// Temporal logic determines how violations are combined.
+		// Temporal logic determines how per-round states are combined.
 		var expr string
-		switch a.Temporal {
-		case "eventually":
-			// Violation = the state is NEVER achieved across all rounds.
-			expr = smtJoinTerms(violations, "and", "")
-		default:
-			// "always" and no-temporal: violation = the state fails at ANY round.
-			expr = smtJoinTerms(violations, "or", "")
+		if a.TemporalFilter != "" {
+			// nmt/nft count rounds where the assertion is satisfied.
+			terms := make([]string, len(satisfied))
+			for i, s := range satisfied {
+				terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", s)
+			}
+			sum := smtJoinTerms(terms, "+", "0.0")
+			countLit := smtRealLiteral(float64(a.TemporalN))
+			switch a.TemporalFilter {
+			case "nmt":
+				expr = fmt.Sprintf("(<= %s %s)", sum, countLit)
+			case "nft":
+				expr = fmt.Sprintf("(>= %s %s)", sum, countLit)
+			default:
+				continue
+			}
+		} else {
+			switch a.Temporal {
+			case "eventually":
+				// Violation = the state is NEVER achieved across all rounds.
+				expr = smtJoinTerms(violations, "and", "")
+			case "eventually-always":
+				// Violation = there is no suffix where the state holds in every round.
+				var suffixes []string
+				for i := range violations {
+					suffixes = append(suffixes, smtJoinTerms(violations[i:], "or", ""))
+				}
+				expr = smtJoinTerms(suffixes, "and", "")
+			default:
+				// "always" and no-temporal: violation = the state fails at ANY round.
+				expr = smtJoinTerms(violations, "or", "")
+			}
 		}
 
 		smt = append(smt, fmt.Sprintf("(assert %s)", expr))

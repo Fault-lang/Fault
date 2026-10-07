@@ -5,8 +5,8 @@ x     = "this is a duck";
 swims = "swims";
 flies = "flies";
 
-swims = true;
-flies = false;
+assume swims = true;
+assume flies = false;
 
 x::inconsistent{
     true-when  swims 0,

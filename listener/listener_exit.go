@@ -2442,6 +2442,13 @@ func (e *evidenceClauseTag) GetToken() ast.Token  { return e.clause.Token }
 func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, polarity evidencePolarity, weightCtx parser.IEvidenceWeightContext) {
 	token := ast.GenerateToken("EVIDENCE", c.GetStart().GetText(), l.currSpec, c.GetStart(), c.GetStop())
 
+	// Pop the expression first so the stack stays consistent even on error.
+	expr := l.pop()
+	if expr == nil {
+		l.addErr(fmt.Errorf("missing expression in evidence clause: %s", l.loc(c.GetStart())))
+		return
+	}
+
 	weight := 1.0
 	if weightCtx != nil {
 		raw := weightCtx.GetText()
@@ -2455,12 +2462,6 @@ func (l *FaultListener) exitEvidenceClause(c antlr.ParserRuleContext, polarity e
 			return
 		}
 		weight = w
-	}
-
-	expr := l.pop()
-	if expr == nil {
-		l.addErr(fmt.Errorf("missing expression in evidence clause: %s", l.loc(c.GetStart())))
-		return
 	}
 
 	clause := &ast.EvidenceClause{
@@ -2517,6 +2518,30 @@ func (l *FaultListener) ExitFalseWhenClause(c *parser.FalseWhenClauseContext) {
 }
 
 func (l *FaultListener) ExitAnnotationDecl(c *parser.AnnotationDeclContext) {
+	// If a child rule already recorded an error (e.g. invalid weight), pop
+	// any successfully-pushed clause tags and the target (if on the stack),
+	// then bail out so the stack stays consistent for the parent rule.
+	if len(l.errs) > 0 {
+		numClauses := len(c.AllEvidenceClause())
+		for i := 0; i < numClauses; i++ {
+			if top := l.peek(); top == nil {
+				break
+			}
+			if _, ok := l.peek().(*evidenceClauseTag); !ok {
+				break
+			}
+			l.pop()
+		}
+		if _, isParam := c.AnnotationTarget().(*parser.AnnotationParamTargetContext); isParam {
+			if top := l.peek(); top != nil {
+				if _, ok := top.(*ast.ParameterCall); ok {
+					l.pop()
+				}
+			}
+		}
+		return
+	}
+
 	token := ast.GenerateToken("INCONSISTENT", "::", l.currSpec, c.GetStart(), c.GetStop())
 
 	// Determine target name(s) for self-reference check

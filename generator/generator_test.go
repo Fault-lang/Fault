@@ -601,6 +601,11 @@ func TestBadSpecs(t *testing.T) {
 		{"testdata/badspecs/emptyfunc.fspec", true, "A function cannot be empty"},
 		{"testdata/badspecs/aliaschain.fspec", true, "swapped more than once"},
 		{"testdata/badspecs/inconsistent_cycle.fspec", true, "circular dependency"},
+		{"testdata/badspecs/inconsistent_nonbool.fspec", true, "evidence condition must be a boolean expression"},
+		{"testdata/badspecs/inconsistent_no_false_when.fspec", true, "has no false-when rules"},
+		{"testdata/badspecs/inconsistent_no_true_when.fspec", true, "has no true-when rules"},
+		{"testdata/badspecs/inconsistent_zero_weight.fspec", true, "weight must be strictly positive"},
+		{"testdata/badspecs/inconsistent_self_ref.fspec", true, "may not appear as its own evidence"},
 	}
 
 	for _, s := range specs {
@@ -640,7 +645,8 @@ func TestBadSpecs(t *testing.T) {
 				}
 				ty, err := types.Execute(pre.Processed, pre)
 				if err != nil {
-					t.Fatal(err)
+					pipelineErr = fmt.Errorf("type checker: %w", err)
+					return
 				}
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)

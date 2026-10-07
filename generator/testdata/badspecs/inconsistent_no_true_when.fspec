@@ -4,7 +4,7 @@ spec inconsistent_no_true_when;
 x        = "this is a duck";
 isPlastic = "is made of plastic";
 
-isPlastic = true;
+assume isPlastic = true;
 
 x::inconsistent{
     false-when isPlastic,

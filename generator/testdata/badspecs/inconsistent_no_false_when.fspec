@@ -4,7 +4,7 @@ spec inconsistent_no_false_when;
 x     = "this is a duck";
 swims = "swims";
 
-swims = true;
+assume swims = true;
 
 x::inconsistent{
     true-when swims,
