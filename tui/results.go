@@ -215,7 +215,7 @@ func (m ResultsModel) formatAnnotations(annotations []*ast.AnnotationStatement) 
 			continue
 		}
 
-		sb.WriteString(SubtitleStyle.Render(targetBase))
+		sb.WriteString(SubtitleStyle.Render(fmt.Sprintf("%s  ::%s", targetBase, ann.Kind)))
 		sb.WriteString("\n")
 
 		for n := 0; ; n++ {
@@ -229,19 +229,22 @@ func (m ResultsModel) formatAnnotations(annotations []*ast.AnnotationStatement) 
 			defScore := results[fmt.Sprintf("%s_defeat_score_%d", targetBase, n)]
 
 			var state string
+			var callout string
 			switch {
 			case supported && defeated:
 				state = "both"
+				callout = "  ← contradictory evidence"
 			case supported:
 				state = "true"
 			case defeated:
 				state = "false"
 			default:
 				state = "neither"
+				callout = "  ← no evidence"
 			}
 
-			sb.WriteString(fmt.Sprintf("  round %d: %s  (support=%-6s defeat=%s)\n",
-				n, belnapStyle(state), suppScore, defScore))
+			sb.WriteString(fmt.Sprintf("  round %d: %s  (support=%-6s defeat=%s)%s\n",
+				n, belnapStyle(state), suppScore, defScore, callout))
 		}
 		sb.WriteString("\n")
 	}
