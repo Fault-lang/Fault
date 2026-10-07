@@ -1,4 +1,8 @@
-### Current Status (9/5/2026)
+### Current Status (10/6/2026)
+Added `::inconsistent` annotations implementing Belnap four-valued paraconsistent logic (#91). Annotating a variable with `x::inconsistent{ true-when ..., false-when ... }` attaches a four-valued evidence layer (`true`, `false`, `both`, `neither`) computed per round from weighted evidence rules. The boolean projection (`_resolved`) feeds back into the rest of the model. `assert`/`assume` statements accept `both` and `neither` as RHS literals when the LHS is `INCONSISTENT`-typed, and all temporal modifiers (`always`, `eventually`, `eventually-always`, `nmt`, `nft`) apply. Annotations can be chained — an `INCONSISTENT`-typed variable may serve as evidence in another annotation, with topological sort enforcing emission order and cycle detection as a compile-time error. Redeclaring an annotation target emits a warning and keeps the later declaration. The TUI displays per-round Belnap states with docstring labels and callouts for `both` (contradictory evidence) and `neither` (no evidence).
+
+### History
+#### (9/5/2026)
 Result rendering is now spec-type aware: output is split by spec kind (boolean-logic, temporal, synthesis) and filtered to variables referenced by violated assertions/assumptions. Fixes string-rule visibility bug (#80). `CollectAssertVars` extracted from `execute` and `generator/scenario` into the `ast` package to eliminate duplication.
 
 ### History
