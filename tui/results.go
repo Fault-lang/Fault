@@ -215,7 +215,11 @@ func (m ResultsModel) formatAnnotations(annotations []*ast.AnnotationStatement) 
 			continue
 		}
 
-		sb.WriteString(SubtitleStyle.Render(fmt.Sprintf("%s  ::%s", targetBase, ann.Kind)))
+		label := targetBase
+		if docstring, ok := m.logger.StringRules[targetBase]; ok && docstring != "" {
+			label = docstring
+		}
+		sb.WriteString(SubtitleStyle.Render(fmt.Sprintf("%s  ::%s", label, ann.Kind)))
 		sb.WriteString("\n")
 
 		for n := 0; ; n++ {
