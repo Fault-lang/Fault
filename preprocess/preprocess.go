@@ -130,8 +130,46 @@ func (p *Processor) Run(n *ast.Spec) *ast.Spec {
 		}
 	}
 	spec := tree.(*ast.Spec)
+	p.dedupeAnnotations(spec)
 	p.Processed = spec
 	return spec
+}
+
+// dedupeAnnotations removes duplicate ::inconsistent declarations for the same
+// target, keeping the last declaration and emitting a warning for each earlier one.
+func (p *Processor) dedupeAnnotations(spec *ast.Spec) {
+	// Map target string → index of the first (earliest) occurrence.
+	firstIdx := make(map[string]int)
+	toRemove := make(map[int]bool)
+
+	for i, stmt := range spec.Statements {
+		ann, ok := stmt.(*ast.AnnotationStatement)
+		if !ok {
+			continue
+		}
+		key := ann.Target.String()
+		if prev, seen := firstIdx[key]; seen {
+			// Earlier occurrence loses; warn and mark it for removal.
+			p.warn(ann.Token.Location(),
+				fmt.Sprintf("annotation target %q redeclared; the later declaration takes precedence", key))
+			toRemove[prev] = true
+			firstIdx[key] = i
+		} else {
+			firstIdx[key] = i
+		}
+	}
+
+	if len(toRemove) == 0 {
+		return
+	}
+
+	kept := spec.Statements[:0]
+	for i, stmt := range spec.Statements {
+		if !toRemove[i] {
+			kept = append(kept, stmt)
+		}
+	}
+	spec.Statements = kept
 }
 
 func (p *Processor) Partial(spec string, node ast.Node) (ast.Node, error) {

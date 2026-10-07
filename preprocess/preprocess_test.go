@@ -1117,6 +1117,51 @@ func TestDeadBranchElimFalse(t *testing.T) {
 	}
 }
 
+func TestAnnotationRedeclarationWarning(t *testing.T) {
+	test := `spec redecl;
+x     = "this is a duck";
+swims = "swims";
+flies = "flies";
+
+assume swims = true;
+assume flies = true;
+
+x::inconsistent{
+    true-when  swims,
+    false-when flies,
+};
+
+x::inconsistent{
+    true-when  flies,
+    false-when swims,
+};`
+	pre := prepTest(test, true)
+	warnings := pre.GetWarnings()
+	if len(warnings) == 0 {
+		t.Fatal("expected a redeclaration warning, got none")
+	}
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w.Message, "redeclared") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected warning about redeclared annotation, got: %v", warnings)
+	}
+	// Only the later declaration should remain.
+	var annCount int
+	for _, stmt := range pre.Processed.Statements {
+		if _, ok := stmt.(*ast.AnnotationStatement); ok {
+			annCount++
+		}
+	}
+	if annCount != 1 {
+		t.Fatalf("expected 1 annotation after dedup, got %d", annCount)
+	}
+}
+
 func prepTestWithError(test string, specType bool) (*Processor, error) {
 	flags := map[string]bool{"specType": specType, "testing": true}
 	l, _ := listener.Execute(test, "", flags)
