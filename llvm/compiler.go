@@ -236,6 +236,9 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		if _, ok := n.(*ast.RunStatement); ok {
 			return
 		}
+		if _, ok := n.(*ast.AssertionStatement); ok {
+			return
+		}
 		if d, ok := n.(*ast.DefStatement); ok {
 			if _, str := d.Value.(*ast.StringLiteral); str {
 				return
@@ -243,7 +246,7 @@ func (c *Compiler) validate(specfile *ast.Spec) {
 		}
 	}
 
-	panic(fmt.Sprintf("Fault found nothing to run. Missing run block %s", specfile.GetToken().Location()))
+	panic(Panic(fmt.Sprintf("Fault found nothing to run. Missing run block or assertion %s", specfile.GetToken().Location())))
 }
 
 func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast.AssertionStatement) {
