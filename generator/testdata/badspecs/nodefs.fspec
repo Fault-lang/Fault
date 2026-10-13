@@ -10,6 +10,3 @@ def f = flow{
         target.v <- target.v - 1;
     },
 };
-
-assert s.v > 0;
-assume s.v < 100;
