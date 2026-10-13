@@ -594,7 +594,7 @@ func TestBadSpecs(t *testing.T) {
 		expectedErr string // non-empty: expect an error containing this string
 	}
 	specs := []specCase{
-		{"testdata/badspecs/nodefs.fspec", true, "Missing run block"},
+		{"testdata/badspecs/nodefs.fspec", true, "Missing run block or assertion"},
 		{"testdata/badspecs/doubleswap.fspec", true, "swapped more than once"},
 		{"testdata/badspecs/sharedstate.fspec", true, ""},
 		{"testdata/badspecs/deep.fspec", true, ""},
