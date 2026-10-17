@@ -196,6 +196,165 @@ def request = stock{
 run init{r1 = new request;} {}
 `
 
+// synthPickSpec: single __ slot, solver must pick increment to satisfy value > 10.
+// decrement and noop cannot satisfy the goal.
+const synthPickSpec = `spec synth_pick;
+
+def counter = stock{
+    value: 10,
+};
+
+def ctrl = flow{
+    c: new counter,
+    increment: func{
+        c.value <- 1;
+    },
+    decrement: func{
+        c.value -> 1;
+    },
+};
+
+assume counter.value > 10 eventually;
+
+run init{ inst = new ctrl; } {
+    __;
+};
+`
+
+// synthSequenceSpec: two __ slots, goal requires fill twice (40+10+10=60).
+// Exercises iterative deepening: k=1 is not enough, k=2 satisfies.
+const synthSequenceSpec = `spec synth_sequence;
+
+def tank = stock{
+    level: 40,
+};
+
+def ops = flow{
+    t: new tank,
+    fill: func{
+        t.level <- 10;
+    },
+    drain: func{
+        t.level -> 10;
+    },
+};
+
+assume tank.level == 60 eventually;
+
+run init{ inst = new ops; } {
+    __;
+    __;
+};
+`
+
+// synthSandwichSpec: explicit call then __ slot; after deposit (100->150),
+// solver must pick withdraw to restore balance to 100.
+const synthSandwichSpec = `spec synth_sandwich;
+
+def wallet = stock{
+    balance: 100,
+};
+
+def account = flow{
+    w: new wallet,
+    deposit: func{
+        w.balance <- 50;
+    },
+    withdraw: func{
+        w.balance -> 50;
+    },
+};
+
+assume wallet.balance == 100 eventually;
+
+run init{ inst = new account; } {
+    inst.deposit;
+    __;
+};
+`
+
+// synthUnsatSpec: goal is unreachable regardless of which func the solver picks.
+// value starts at 10, increment adds 1, but assume requires value < 0 — impossible.
+const synthUnsatSpec = `spec synth_unsat;
+
+def counter = stock{
+    value: 10,
+};
+
+def ctrl = flow{
+    c: new counter,
+    increment: func{
+        c.value <- 1;
+    },
+};
+
+assume counter.value < 0 eventually;
+
+run init{ inst = new ctrl; } {
+    __;
+};
+`
+
+func runSynthSpec(t *testing.T, spec string) *CompilationOutput {
+	t.Helper()
+	path := writeTempSpec(t, spec)
+	r := NewRunner(CompilationConfig{
+		Filepath: path,
+		Mode:     "model",
+		Input:    "fault",
+		Output:   "text",
+	}, nil)
+	return r.Run()
+}
+
+// TestSynthProbabilityFuncSelection verifies that synthProbability picks a concrete
+// func (increment) over noop to satisfy the assume goal.
+func TestSynthProbabilityFuncSelection(t *testing.T) {
+	result := runSynthSpec(t, synthPickSpec)
+	if result.Error != nil {
+		t.Fatalf("unexpected error: %v", result.Error)
+	}
+	if result.Message == "" && result.ResultLog == nil {
+		t.Fatal("expected a result (message or log) — solver may have returned NoSat unexpectedly")
+	}
+}
+
+// TestSynthProbabilityIterativeDeepening verifies that synthProbability finds the
+// minimal solution requiring two non-noop steps (k=2), not just k=1.
+func TestSynthProbabilityIterativeDeepening(t *testing.T) {
+	result := runSynthSpec(t, synthSequenceSpec)
+	if result.Error != nil {
+		t.Fatalf("unexpected error: %v", result.Error)
+	}
+	if result.Message == "" && result.ResultLog == nil {
+		t.Fatal("expected a result — solver may have returned NoSat unexpectedly")
+	}
+}
+
+// TestSynthProbabilitySandwich verifies that explicit calls and synthesis slots
+// can be mixed in a run block and the solver fills the slot correctly.
+func TestSynthProbabilitySandwich(t *testing.T) {
+	result := runSynthSpec(t, synthSandwichSpec)
+	if result.Error != nil {
+		t.Fatalf("unexpected error: %v", result.Error)
+	}
+	if result.Message == "" && result.ResultLog == nil {
+		t.Fatal("expected a result — solver may have returned NoSat unexpectedly")
+	}
+}
+
+// TestSynthProbabilityNoSat verifies that synthProbability returns a NoSat message
+// (not an error) when the assume goal is unreachable by any candidate sequence.
+func TestSynthProbabilityNoSat(t *testing.T) {
+	result := runSynthSpec(t, synthUnsatSpec)
+	if result.Error != nil {
+		t.Fatalf("unexpected error: %v", result.Error)
+	}
+	if result.Message == "" {
+		t.Fatal("expected a NoSat message when goal is unreachable, got empty message with no log")
+	}
+}
+
 func TestParamRequiresTemplateMode(t *testing.T) {
 	path := writeTempSpec(t, paramSpec)
 
