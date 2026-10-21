@@ -185,6 +185,14 @@ func (l *SMTListener) ExitTerm(c *parser.TermContext) {
 			}
 			parts = append([]string{p}, parts...)
 		}
+		// Propagate compound sentinel from compound operands, e.g.
+		// (+ (ite ...) (ite ...)).
+		for _, p := range parts {
+			if p == "__compound__" {
+				l.push("__compound__")
+				return
+			}
+		}
 		merge, err := mergeTermParts(parts)
 		if err != nil {
 			l.err = err
