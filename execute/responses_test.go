@@ -378,6 +378,31 @@ func TestUnknownSortInResults(t *testing.T) {
 	_ = l
 }
 
+// --- Regression: issue #96 — binary compound sentinel propagation ---
+
+// TestParseBinaryCompoundTerm is a regression test for issue #96.
+// When a proposition has exactly 2 false-when entries, Z3 returns a binary
+// addition of two ite expressions: (+ (ite ...) (ite ...)). Each ite has 3
+// sub-terms and is correctly pushed as __compound__. Without the fix, the outer
+// (+) operator received parts=["__compound__","__compound__"], mergeTermParts
+// tried to ParseFloat("__compound__"), failed, and concatenated both sentinels
+// into "__compound____compound__", causing a fatal SMT parse error.
+// With the fix, any compound operand propagates the sentinel upward and the
+// define-fun is silently skipped.
+func TestParseBinaryCompoundTerm(t *testing.T) {
+	model := `(model
+		(define-fun bug_score_0 () Real
+		  (+ (ite true 1.0 0.0) (ite false 1.0 0.0)))
+	)`
+	l := prepTestListener(model)
+	if l.err != nil {
+		t.Fatalf("issue #96 regression: expected no error for binary ite sum, got: %s", l.err)
+	}
+	if l.Results["bug_score"] != nil {
+		t.Fatalf("compound define-fun should be silently skipped, but found entry in Results: %v", l.Results["bug_score"])
+	}
+}
+
 // --- mergeTermParts: negative-prefix fast path ---
 
 func TestMergeTermPartsNegativePrefix(t *testing.T) {

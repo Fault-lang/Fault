@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(python3 -m json.tool)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
