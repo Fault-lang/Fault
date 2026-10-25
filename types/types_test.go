@@ -1710,6 +1710,36 @@ func TestAnnotationWeightedOK(t *testing.T) {
 	}
 }
 
+func TestUnfuncCallFromRunBlockErrors(t *testing.T) {
+	// Calling an unfunc directly (e.g. t.fn in a run block) should produce a
+	// clear error rather than a nil-dereference panic.
+	sr := preprocess.NewSpecRecord()
+	sr.SpecName = "test1"
+	sr.Index("FLOW", "myFlow")
+	sr.AddFlow("myFlow", map[string]ast.Node{
+		"fn": &ast.UnfuncLiteral{
+			ProcessedName: []string{"test1", "myFlow", "fn"},
+		},
+	})
+
+	c := &Checker{
+		SpecStructs: map[string]*preprocess.SpecRecord{"test1": sr},
+		Instances:   make(map[string]*ast.StructInstance),
+		temps:       make(map[string]*ast.Type),
+	}
+
+	pc := &ast.ParameterCall{
+		ProcessedName: []string{"test1", "myFlow", "fn"},
+	}
+	_, err := c.lookupCallType(pc)
+	if err == nil {
+		t.Fatal("expected error when calling an unfunc, got nil")
+	}
+	if !strings.Contains(err.Error(), "is an unimplemented function and cannot be called") {
+		t.Fatalf("unexpected error message: %s", err)
+	}
+}
+
 func TestAnnotationNonBoolEvidenceFails(t *testing.T) {
 	// A Real-typed constant used as evidence should be a type error.
 	test := `spec test1;

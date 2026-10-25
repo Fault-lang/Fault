@@ -788,8 +788,13 @@ func (c *Checker) inferFunction(f ast.Expression) (ast.Expression, error) {
 	case *ast.BuiltIn:
 		return node, err
 
+	case *ast.UnfuncLiteral:
+		return nil, fmt.Errorf("%q is an unimplemented function and cannot be called; unfuncs are solver-controlled", node.IdString())
 	case *ast.ParameterCall:
 		exp, err := c.infer(node)
+		if err != nil {
+			return nil, err
+		}
 		return exp.(ast.Expression), err
 	case *ast.Instance:
 		node.InferredType = &ast.Type{Type: node.Type(),
@@ -1334,6 +1339,9 @@ func (c *Checker) lookupCallType(base ast.Node) (*ast.Type, error) {
 		p, err := spec.FetchVar(rawid, ty)
 		if err != nil {
 			return nil, err
+		}
+		if _, isUnfunc := p.(*ast.UnfuncLiteral); isUnfunc {
+			return nil, fmt.Errorf("%q is an unimplemented function and cannot be called; unfuncs are solver-controlled", rawid[len(rawid)-1])
 		}
 		return c.lookupCallType(p)
 	default:
