@@ -3865,3 +3865,35 @@ x::inconsistent{
 	false-when isPlastic,
 };`)
 }
+
+// --- reserved keyword as identifier error hint tests ---
+
+func TestReservedKeywordAsDefNameHint(t *testing.T) {
+	flags := map[string]bool{"specType": true, "testing": false}
+	_, err := Execute(`spec test1;
+def flow = stock{
+	x: 1.0,
+};
+`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for reserved keyword as def name, got nil")
+	}
+	if !strings.Contains(err.Error(), "is a reserved keyword and cannot be used as a variable name") {
+		t.Fatalf("expected keyword hint in error, got: %q", err.Error())
+	}
+}
+
+func TestReservedKeywordAsPropNameHint(t *testing.T) {
+	flags := map[string]bool{"specType": true, "testing": false}
+	_, err := Execute(`spec test1;
+def myFlow = flow{
+	func: 1.0,
+};
+`, "", flags)
+	if err == nil {
+		t.Fatal("expected error for reserved keyword as property name, got nil")
+	}
+	if !strings.Contains(err.Error(), "is a reserved keyword and cannot be used as a variable name") {
+		t.Fatalf("expected keyword hint in error, got: %q", err.Error())
+	}
+}
