@@ -1879,8 +1879,8 @@ func TestAnnotationAssertTrue(t *testing.T) {
 	if !strings.Contains(smt, "atest_x_resolved_") {
 		t.Errorf("annotation assert x=true should emit _resolved_N define-fun:\n%s", smt)
 	}
-	if !strings.Contains(smt, "(not (and atest_x_supported_") {
-		t.Errorf("annotation assert x=true should emit (not (and x_supported (not x_defeated))) violation:\n%s", smt)
+	if !strings.Contains(smt, "(not atest_x_resolved_") {
+		t.Errorf("annotation assert x=true should emit (not x_resolved_N) as violation:\n%s", smt)
 	}
 }
 

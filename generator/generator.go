@@ -987,19 +987,18 @@ func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 // annotation assertion at round n. It reads the original (un-negated) right-hand
 // side to derive the correct define-fun reference.
 //
-//	assert x = true    → violation: (not (and x_supported_N (not x_defeated_N)))
-//	assert x = false   → violation: (not (and (not x_supported_N) x_defeated_N))
+//	assert x = true    → violation: (not x_resolved_N)
+//	assert x = false   → violation: x_resolved_N
 //	assert x = both    → violation: (not (and x_supported_N x_defeated_N))
 //	assert x = neither → violation: (or x_supported_N x_defeated_N)
 func annotViolationExpr(originalRight ast.Expression, targetBase string, n int) string {
 	switch r := originalRight.(type) {
 	case *ast.Boolean:
-		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
-		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+		resolved := fmt.Sprintf("%s_resolved_%d", targetBase, n)
 		if r.Value {
-			return fmt.Sprintf("(not (and %s (not %s)))", supported, defeated)
+			return fmt.Sprintf("(not %s)", resolved)
 		}
-		return fmt.Sprintf("(not (and (not %s) %s))", supported, defeated)
+		return resolved
 	case *ast.BelnapLiteral:
 		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
 		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)

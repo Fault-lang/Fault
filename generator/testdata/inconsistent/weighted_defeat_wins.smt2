@@ -11,6 +11,6 @@
 (declare-fun weighted_defeat_wins_x_resolved_0 () Bool)
 (assert (= weighted_defeat_wins_x_resolved_0 (ite (and weighted_defeat_wins_x_supported_0 (not weighted_defeat_wins_x_defeated_0)) true (ite (and weighted_defeat_wins_x_defeated_0 (not weighted_defeat_wins_x_supported_0)) false (ite (and weighted_defeat_wins_x_supported_0 weighted_defeat_wins_x_defeated_0) (>= weighted_defeat_wins_x_support_score_0 weighted_defeat_wins_x_defeat_score_0) false)))))
 (assert (not (and weighted_defeat_wins_x_supported_0 weighted_defeat_wins_x_defeated_0)))
-(assert (not (and (not weighted_defeat_wins_x_supported_0) weighted_defeat_wins_x_defeated_0)))
+(assert weighted_defeat_wins_x_resolved_0)
 (assert (= weighted_defeat_wins_symptomA_0 true))
 (assert (= weighted_defeat_wins_sideEffect_0 true))
