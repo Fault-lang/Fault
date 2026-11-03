@@ -1884,6 +1884,56 @@ func TestAnnotationAssertTrue(t *testing.T) {
 	}
 }
 
+// TestWeightedAnnotationAssertTrueUsesResolved guards against the bug reported
+// in https://github.com/Fault-lang/Fault/issues/98: when an ::inconsistent
+// variable has weighted evidence and is in the BOTH Belnap state (supported AND
+// defeated), `assert x = true` must check the _resolved_N variable — which
+// encodes weight-sensitive logic — rather than the raw TRUE-state predicate
+// (not (and x_supported_N (not x_defeated_N))).
+//
+// Setup: symptomA (weight 4) and symptomB (weight 2) trigger support;
+// sideEffect (weight 1) triggers defeat. support_score=6 > defeat_score=1, so
+// _resolved should be true. The violation for `assert x = true` must therefore
+// be `(not x_resolved_N)`, which is false → no violation → UNSAT. The old
+// buggy encoding would instead check the TRUE Belnap state directly, see
+// x_defeated is set, and report a spurious violation.
+func TestWeightedAnnotationAssertTrueUsesResolved(t *testing.T) {
+	test := `spec weighted_assert_true;
+
+	symptomA   = "primary symptom present";
+	symptomB   = "secondary symptom present";
+	sideEffect = "contraindication present";
+	x          = "medication is indicated";
+
+	assume symptomA   = true;
+	assume symptomB   = true;
+	assume sideEffect = true;
+
+	x::inconsistent{
+		true-when  symptomA 4,
+		true-when  symptomB 2,
+		false-when sideEffect,
+	};
+
+	assert x = true;
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// The violation expression for assert x = true must reference _resolved_N,
+	// not the raw Belnap TRUE-state predicate. With weights, resolved already
+	// encodes the support_score >= defeat_score logic.
+	if !strings.Contains(smt, "(not weighted_assert_true_x_resolved_") {
+		t.Errorf("assert x=true on weighted ::inconsistent must use (not x_resolved_N) as violation, got:\n%s", smt)
+	}
+
+	// The old buggy encoding checked the raw TRUE Belnap state: this is wrong
+	// for the BOTH state because it ignores weights entirely.
+	if strings.Contains(smt, "(not (and weighted_assert_true_x_supported_") {
+		t.Errorf("assert x=true on weighted ::inconsistent must NOT use the raw TRUE-state predicate (not (and x_supported (not x_defeated))), got:\n%s", smt)
+	}
+}
+
 func TestAnnotationAssertBoth(t *testing.T) {
 	test := `spec btest;
 
