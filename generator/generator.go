@@ -1088,7 +1088,19 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 		}
 
 		if isAssume {
-			smt = append(smt, fmt.Sprintf("(assert (not %s))", expr))
+			if a.TemporalFilter != "" {
+				// The LLVM compiler does not call negateTemporal for assumes
+				// (it returns early for a.Assume==true), so TemporalFilter and
+				// TemporalN are still in their original form. The expr built
+				// from the satisfied-round count is already the satisfaction
+				// expression — assert it directly without negation.
+				smt = append(smt, fmt.Sprintf("(assert %s)", expr))
+			} else {
+				// For non-filter temporal cases (always, eventually, etc.),
+				// expr is the violation expression. Negate it to constrain
+				// the solver to satisfying paths.
+				smt = append(smt, fmt.Sprintf("(assert (not %s))", expr))
+			}
 		} else {
 			smt = append(smt, fmt.Sprintf("(assert %s)", expr))
 		}
