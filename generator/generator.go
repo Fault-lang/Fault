@@ -1087,7 +1087,11 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 			}
 		}
 
-		smt = append(smt, fmt.Sprintf("(assert %s)", expr))
+		if isAssume {
+			smt = append(smt, fmt.Sprintf("(assert (not %s))", expr))
+		} else {
+			smt = append(smt, fmt.Sprintf("(assert %s)", expr))
+		}
 	}
 	return smt
 }
