@@ -983,39 +983,72 @@ func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s %s))", name, name, body)
 }
 
-// annotViolationExpr returns the SMT expression for the VIOLATION of an
-// annotation assertion at round n. It reads the original (un-negated) right-hand
-// side to derive the correct define-fun reference.
+// annotExpr returns the SMT expression for an annotation assertion at round n.
+// operator is taken from a.Constraint.Operator after compile-time negation:
 //
-//	assert x = true    → violation: (not x_resolved_N)
-//	assert x = false   → violation: x_resolved_N
-//	assert x = both    → violation: (not (and x_supported_N x_defeated_N))
-//	assert x = neither → violation: (or x_supported_N x_defeated_N)
-func annotViolationExpr(originalRight ast.Expression, targetBase string, n int) string {
-	switch r := originalRight.(type) {
+//   - "==" produces satisfaction expressions (holds when condition is met)
+//   - "!=" produces violation expressions (holds when condition is not met)
+//
+// For boolean right-hand sides the effective polarity is r.Value XOR negated:
+//
+//	op==, true  → x_resolved_N
+//	op==, false → (not x_resolved_N)
+//	op!=, true  → (not x_resolved_N)
+//	op!=, false → x_resolved_N
+//
+// For Belnap literals, negation flips the expression:
+//
+//	op==, both    → (and x_supported_N x_defeated_N)
+//	op==, neither → (not (or x_supported_N x_defeated_N))
+//	op!=, both    → (not (and x_supported_N x_defeated_N))
+//	op!=, neither → (or x_supported_N x_defeated_N)
+func annotExpr(operator string, right ast.Expression, targetBase string, n int) string {
+	negated := operator == "!="
+	switch r := right.(type) {
 	case *ast.Boolean:
 		resolved := fmt.Sprintf("%s_resolved_%d", targetBase, n)
-		if r.Value {
-			return fmt.Sprintf("(not %s)", resolved)
+		if r.Value != negated { // XOR: positive when value and negated agree
+			return resolved
 		}
-		return resolved
+		return fmt.Sprintf("(not %s)", resolved)
 	case *ast.BelnapLiteral:
 		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
 		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
 		switch r.Value {
 		case "both":
-			return fmt.Sprintf("(not (and %s %s))", supported, defeated)
+			base := fmt.Sprintf("(and %s %s)", supported, defeated)
+			if negated {
+				return fmt.Sprintf("(not %s)", base)
+			}
+			return base
 		case "neither":
-			return fmt.Sprintf("(or %s %s)", supported, defeated)
+			// Avoid double-negation: (not (not (or ...))) → (or ...)
+			orExpr := fmt.Sprintf("(or %s %s)", supported, defeated)
+			if negated {
+				return orExpr
+			}
+			return fmt.Sprintf("(not %s)", orExpr)
 		}
 	}
 	return ""
 }
 
 // emitAnnotAssertions emits the SMT assertions for annotation-targeted
-// assert/assume statements. The violation expressions reference the annotation's
+// assert/assume statements. The expressions reference the annotation's
 // define-funs rather than the raw SSA variable versions.
-func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTargets map[string]bool, rounds int, isAssume bool) []string {
+//
+// Negation is encoded in a.Constraint.Operator by compileAssert:
+//   - asserts without a temporal filter: operator flipped to "!=" → annotExpr
+//     produces violation expressions; temporal operators use the violation dual
+//     (always=or, eventually=and).
+//   - asserts with a temporal filter: compileAssert negates the filter itself
+//     (nft→nmt etc.) but leaves the operator as "=="; annotExpr produces
+//     satisfaction expressions; the negated filter encodes the violation direction.
+//   - assumes: operator always "=="; annotExpr produces satisfaction expressions;
+//     temporal operators use satisfaction form (always=and, eventually=or).
+//
+// All cases emit (assert <expr>) with no additional wrapper.
+func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTargets map[string]bool, rounds int) []string {
 	var smt []string
 	for _, a := range stmts {
 		assertVar, ok := a.Constraint.Left.(*ast.AssertVar)
@@ -1027,37 +1060,31 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 			continue
 		}
 
-		// Use the original (un-negated) constraint to determine what is being tested.
-		// For assumes, Original is not set — use the constraint directly (it's not negated).
-		var origRight ast.Expression
-		if a.Original != nil {
-			origRight = a.Original.Right
-		} else {
-			origRight = a.Constraint.Right
-		}
+		operator := a.Constraint.Operator
 
-		// Collect per-round violation and satisfaction expressions.
-		var violations []string
-		var satisfied []string
+		// Collect per-round expressions. For asserts without a temporal filter
+		// the operator is "!=" (negated by compileAssert), producing violation
+		// expressions. For all other cases the operator is "==", producing
+		// satisfaction expressions.
+		var perRound []string
 		for n := 0; n <= rounds; n++ {
-			v := annotViolationExpr(origRight, targetBase, n)
-			if v != "" {
-				violations = append(violations, v)
-				// satisfaction is the logical negation of the violation expression
-				satisfied = append(satisfied, fmt.Sprintf("(not %s)", v))
+			e := annotExpr(operator, a.Constraint.Right, targetBase, n)
+			if e != "" {
+				perRound = append(perRound, e)
 			}
 		}
-		if len(violations) == 0 {
+		if len(perRound) == 0 {
 			continue
 		}
 
-		// Temporal logic determines how per-round states are combined.
 		var expr string
 		if a.TemporalFilter != "" {
-			// nmt/nft count rounds where the assertion is satisfied.
-			terms := make([]string, len(satisfied))
-			for i, s := range satisfied {
-				terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", s)
+			// nmt/nft: count rounds where the per-round expression holds.
+			// operator is always "==" here (compileAssert negates the filter,
+			// not the operands), so perRound contains satisfaction expressions.
+			terms := make([]string, len(perRound))
+			for i, e := range perRound {
+				terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", e)
 			}
 			sum := smtJoinTerms(terms, "+", "0.0")
 			countLit := smtRealLiteral(float64(a.TemporalN))
@@ -1069,41 +1096,43 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 			default:
 				continue
 			}
-		} else {
+		} else if operator == "!=" {
+			// Violation expressions: use the violation-dual temporal operators.
+			// "always" violation = fails at any round → or
+			// "eventually" violation = fails in all rounds → and
+			// "eventually-always" violation = every suffix has a failing round
 			switch a.Temporal {
 			case "eventually":
-				// Violation = the state is NEVER achieved across all rounds.
-				expr = smtJoinTerms(violations, "and", "")
+				expr = smtJoinTerms(perRound, "and", "")
 			case "eventually-always":
-				// Violation = there is no suffix where the state holds in every round.
 				var suffixes []string
-				for i := range violations {
-					suffixes = append(suffixes, smtJoinTerms(violations[i:], "or", ""))
+				for i := range perRound {
+					suffixes = append(suffixes, smtJoinTerms(perRound[i:], "or", ""))
 				}
 				expr = smtJoinTerms(suffixes, "and", "")
-			default:
-				// "always" and no-temporal: violation = the state fails at ANY round.
-				expr = smtJoinTerms(violations, "or", "")
+			default: // "always"
+				expr = smtJoinTerms(perRound, "or", "")
+			}
+		} else {
+			// Satisfaction expressions (operator "=="): use standard temporal operators.
+			// "always" = holds in every round → and
+			// "eventually" = holds in at least one round → or
+			// "eventually-always" = there exists a suffix where all rounds hold
+			switch a.Temporal {
+			case "eventually":
+				expr = smtJoinTerms(perRound, "or", "")
+			case "eventually-always":
+				var suffixes []string
+				for i := range perRound {
+					suffixes = append(suffixes, smtJoinTerms(perRound[i:], "and", ""))
+				}
+				expr = smtJoinTerms(suffixes, "or", "")
+			default: // "always"
+				expr = smtJoinTerms(perRound, "and", "")
 			}
 		}
 
-		if isAssume {
-			if a.TemporalFilter != "" {
-				// The LLVM compiler does not call negateTemporal for assumes
-				// (it returns early for a.Assume==true), so TemporalFilter and
-				// TemporalN are still in their original form. The expr built
-				// from the satisfied-round count is already the satisfaction
-				// expression — assert it directly without negation.
-				smt = append(smt, fmt.Sprintf("(assert %s)", expr))
-			} else {
-				// For non-filter temporal cases (always, eventually, etc.),
-				// expr is the violation expression. Negate it to constrain
-				// the solver to satisfying paths.
-				smt = append(smt, fmt.Sprintf("(assert (not %s))", expr))
-			}
-		} else {
-			smt = append(smt, fmt.Sprintf("(assert %s)", expr))
-		}
+		smt = append(smt, fmt.Sprintf("(assert %s)", expr))
 	}
 	return smt
 }
@@ -1257,8 +1286,8 @@ func (g *Generator) ProcessAnnotations(
 		}
 	}
 
-	smt = append(smt, g.emitAnnotAssertions(annotAsserts, annotTargets, rounds, false)...)
-	smt = append(smt, g.emitAnnotAssertions(annotAssumes, annotTargets, rounds, true)...)
+	smt = append(smt, g.emitAnnotAssertions(annotAsserts, annotTargets, rounds)...)
+	smt = append(smt, g.emitAnnotAssertions(annotAssumes, annotTargets, rounds)...)
 
 	return smt, nil
 }
