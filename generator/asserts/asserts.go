@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"gonum.org/v1/gonum/stat/combin"
 )
 
 type Time struct {
@@ -1049,98 +1048,34 @@ func (c *Constraint) applyTemporal() string {
 	}
 }
 
-// NoFew returns the disjuncts needed to assert that at least n of the merged
-// predicates hold. Called by applyTemporal for the nft (no-fewer-than) case.
+// countSum builds the SMT arithmetic sum counting how many of the merged
+// boolean expressions hold: (+ (ite e0 1.0 0.0) (ite e1 1.0 0.0) ...).
+func countSum(merged []string) string {
+	if len(merged) == 0 {
+		return "0.0"
+	}
+	terms := make([]string, len(merged))
+	for i, e := range merged {
+		terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", e)
+	}
+	if len(terms) == 1 {
+		return terms[0]
+	}
+	return fmt.Sprintf("(+ %s)", strings.Join(terms, " "))
+}
+
+// NoFew asserts that at least n of the merged predicates hold.
+// Encoded as: (>= (+ (ite e0 1.0 0.0) ...) n.0)
 func NoFew(merged []string, n int) []string {
-	if len(merged) < n {
-		return []string{strings.Join(merged, " ")}
-	}
-
-	if n == 1 {
-		return merged
-	}
-
-	if n == 0 {
-		return []string{}
-	}
-
-	if merged[0][0:4] == "(and" {
-		return merged
-	}
-
-	combos := combin.Combinations(len(merged), n)
-
-	var ret []string
-	for _, combo := range combos {
-		var clause []string
-		for _, i := range combo {
-			clause = append(clause, merged[i])
-		}
-		if len(clause) == 1 {
-			ret = append(ret, clause[0])
-		} else if clause[0][0:4] == "(and" {
-			ret = append(ret, clause...)
-		} else {
-			ret = append(ret, fmt.Sprintf("(and %s)", strings.Join(clause, " ")))
-		}
-	}
-	return ret
+	return []string{fmt.Sprintf("(>= %s %d.0)", countSum(merged), n)}
 }
 
 func (c *Constraint) NoFew(merged []string, n int) []string { return NoFew(merged, n) }
 
-// NoMore returns the disjuncts needed to assert that at most n of the merged
-// predicates hold. Called by applyTemporal for the nmt (no-more-than) case.
+// NoMore asserts that at most n of the merged predicates hold.
+// Encoded as: (<= (+ (ite e0 1.0 0.0) ...) n.0)
 func NoMore(merged []string, n int) []string {
-	if len(merged) < n {
-		return []string{strings.Join(merged, " ")}
-	}
-
-	if n == 1 {
-		return merged
-	}
-
-	if n == 0 {
-		return []string{}
-	}
-
-	if merged[0][0:4] == "(and" {
-		return merged
-	}
-
-	combos := combin.Combinations(len(merged), n)
-
-	var ret []string
-	for _, combo := range combos {
-		inverse, err := util.SliceOfIndex(len(merged))
-		if err != nil {
-			panic(err) // len() is always >= 0; this cannot happen
-		}
-
-		var clause []string
-		var nots []string
-		for _, i := range combo {
-			inverse[i] = -1
-			clause = append(clause, merged[i])
-		}
-
-		for _, i := range inverse {
-			if i > -1 {
-				nots = append(nots, fmt.Sprintf("(not %s)", merged[i]))
-			}
-		}
-
-		if len(clause) == 1 {
-			ret = append(ret, clause[0])
-		} else if clause[0][0:4] == "(and" {
-			ret = append(ret, clause...)
-		} else {
-			on := fmt.Sprintf("(or %s)", strings.Join(clause, " "))
-			off := fmt.Sprintf("(and %s)", strings.Join(nots, " "))
-			ret = append(ret, fmt.Sprintf("(and %s %s)", on, off))
-		}
-	}
-	return ret
+	return []string{fmt.Sprintf("(<= %s %d.0)", countSum(merged), n)}
 }
 
 func (c *Constraint) NoMore(merged []string, n int) []string { return NoMore(merged, n) }

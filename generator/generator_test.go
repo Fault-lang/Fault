@@ -180,9 +180,9 @@ func TestTemporal_NMT(t *testing.T) {
 	if !strings.Contains(smt, "(<= test1_t_foo_value_") {
 		t.Fatalf("SMT missing nmt assertion. got:\n%s", smt)
 	}
-	// nmt 1 produces (or ...) of single-term combinations (no (and) needed for n=1)
-	if !strings.Contains(smt, "(assert (or") {
-		t.Fatalf("nmt 1 should produce (assert (or ...)), got:\n%s", smt)
+	// nmt 1 produces count-based encoding: (assert (<= (+ (ite ...) ...) 2.0))
+	if !strings.Contains(smt, "(assert (>=") {
+		t.Fatalf("nmt 1 should produce (assert (>= ...)) count encoding, got:\n%s", smt)
 	}
 }
 
@@ -225,9 +225,9 @@ func TestTemporal_Mixed(t *testing.T) {
 	if !strings.Contains(smt, "(not (= test1_t_u_x_") {
 		t.Fatalf("assert eventually should contain negated equality, got:\n%s", smt)
 	}
-	// assume nft 3 → (and ...) triples
-	if !strings.Contains(smt, "(and (>= test1_t_u_x_") {
-		t.Fatalf("assume nft should produce (and >= ...) conjunctions, got:\n%s", smt)
+	// assume nft 3 → count-based: (>= (+ (ite ...) ...) 3.0)
+	if !strings.Contains(smt, "(>= (+ (ite") {
+		t.Fatalf("assume nft should produce (>= (+ (ite ...)) count encoding, got:\n%s", smt)
 	}
 	// both a and b constants present
 	if !strings.Contains(smt, "test1_a_0") || !strings.Contains(smt, "test1_b_0") {
@@ -1976,9 +1976,9 @@ func TestAssumeAnnotNftEmitsSatisfaction(t *testing.T) {
 	g := prepTest("", test, true, false)
 	smt := g.SMT()
 
-	// Must emit combinatorial satisfaction form: OR of AND pairs (at-least-N encoding).
-	if !strings.Contains(smt, "(or (and nft_assume_x_resolved_") {
-		t.Errorf("assume x=true nft 2 must emit combinatorial (or (and ...)) satisfaction assertion, got:\n%s", smt)
+	// Must emit count-based satisfaction form: (>= (+ (ite resolved_N 1.0 0.0) ...) 2.0)
+	if !strings.Contains(smt, "(>= (+ (ite nft_assume_x_resolved_") {
+		t.Errorf("assume x=true nft 2 must emit count-based (>= ...) satisfaction assertion, got:\n%s", smt)
 	}
 	// Must NOT wrap the entire expression in (not ...) — the assume should
 	// assert the satisfied condition directly, not negate it.
@@ -2032,9 +2032,9 @@ func TestAssumeAnnotNmtEmitsSatisfaction(t *testing.T) {
 	g := prepTest("", test, true, false)
 	smt := g.SMT()
 
-	// Must emit combinatorial satisfaction form: OR of per-round neither-state expressions.
-	if !strings.Contains(smt, "(or (not (or nmt_assume_x_supported_") {
-		t.Errorf("assume x=neither nmt 1 must emit combinatorial (or (not (or ...))) satisfaction assertion, got:\n%s", smt)
+	// Must emit count-based satisfaction form: (<= (+ (ite (not (or supported defeated)) 1.0 0.0) ...) 1.0)
+	if !strings.Contains(smt, "(<= (+ (ite (not (or nmt_assume_x_supported_") {
+		t.Errorf("assume x=neither nmt 1 must emit count-based (<= ...) satisfaction assertion, got:\n%s", smt)
 	}
 	// Must NOT wrap in (not ...) at the top level — the assume should assert satisfaction directly.
 	if strings.Contains(smt, "(assert (not ") {

@@ -42,4 +42,4 @@
 (assert (= temporal_nft_x_defeated_3 (> temporal_nft_x_defeat_score_3 0.0)))
 (declare-fun temporal_nft_x_resolved_3 () Bool)
 (assert (= temporal_nft_x_resolved_3 (ite (and temporal_nft_x_supported_3 (not temporal_nft_x_defeated_3)) true (ite (and temporal_nft_x_defeated_3 (not temporal_nft_x_supported_3)) false (ite (and temporal_nft_x_supported_3 temporal_nft_x_defeated_3) (>= temporal_nft_x_support_score_3 temporal_nft_x_defeat_score_3) false)))))
-(assert (or temporal_nft_x_resolved_0 temporal_nft_x_resolved_1 temporal_nft_x_resolved_2 temporal_nft_x_resolved_3))
+(assert (<= (+ (ite temporal_nft_x_resolved_0 1.0 0.0) (ite temporal_nft_x_resolved_1 1.0 0.0) (ite temporal_nft_x_resolved_2 1.0 0.0) (ite temporal_nft_x_resolved_3 1.0 0.0)) 1.0))
