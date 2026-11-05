@@ -1007,10 +1007,9 @@ func (c *Constraint) applyTemporal() string {
 	}
 }
 
-func (c *Constraint) NoFew(merged []string, n int) []string {
-	// No more than n times
-	// No fewer than n times
-	// If n is 1, then it is just a single assert
+// NoFew returns the disjuncts needed to assert that at least n of the merged
+// predicates hold. Called by applyTemporal for the nft (no-fewer-than) case.
+func NoFew(merged []string, n int) []string {
 	if len(merged) < n {
 		return []string{strings.Join(merged, " ")}
 	}
@@ -1029,7 +1028,6 @@ func (c *Constraint) NoFew(merged []string, n int) []string {
 
 	combos := combin.Combinations(len(merged), n)
 
-	//Assembling combinations
 	var ret []string
 	for _, combo := range combos {
 		var clause []string
@@ -1047,10 +1045,11 @@ func (c *Constraint) NoFew(merged []string, n int) []string {
 	return ret
 }
 
-func (c *Constraint) NoMore(merged []string, n int) []string {
-	// No more than n times
-	// No fewer than n times
-	// If n is 1, then it is just a single assert
+func (c *Constraint) NoFew(merged []string, n int) []string { return NoFew(merged, n) }
+
+// NoMore returns the disjuncts needed to assert that at most n of the merged
+// predicates hold. Called by applyTemporal for the nmt (no-more-than) case.
+func NoMore(merged []string, n int) []string {
 	if len(merged) < n {
 		return []string{strings.Join(merged, " ")}
 	}
@@ -1069,10 +1068,8 @@ func (c *Constraint) NoMore(merged []string, n int) []string {
 
 	combos := combin.Combinations(len(merged), n)
 
-	//Assembling combinations
 	var ret []string
 	for _, combo := range combos {
-		// Create inverse of the combination
 		inverse, err := util.SliceOfIndex(len(merged))
 		if err != nil {
 			panic(err) // len() is always >= 0; this cannot happen
@@ -1081,9 +1078,7 @@ func (c *Constraint) NoMore(merged []string, n int) []string {
 		var clause []string
 		var nots []string
 		for _, i := range combo {
-			// Remove the index from the inverse
 			inverse[i] = -1
-
 			clause = append(clause, merged[i])
 		}
 
@@ -1100,12 +1095,13 @@ func (c *Constraint) NoMore(merged []string, n int) []string {
 		} else {
 			on := fmt.Sprintf("(or %s)", strings.Join(clause, " "))
 			off := fmt.Sprintf("(and %s)", strings.Join(nots, " "))
-
 			ret = append(ret, fmt.Sprintf("(and %s %s)", on, off))
 		}
 	}
 	return ret
 }
+
+func (c *Constraint) NoMore(merged []string, n int) []string { return NoMore(merged, n) }
 
 func (c *Constraint) eventuallyAlways(values []string) string {
 	var clause string

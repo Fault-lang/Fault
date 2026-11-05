@@ -1079,23 +1079,22 @@ func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTa
 
 		var expr string
 		if a.TemporalFilter != "" {
-			// nmt/nft: count rounds where the per-round expression holds.
+			// nmt/nft: use the same combinatorial encoding as the consistent path.
 			// operator is always "==" here (compileAssert negates the filter,
 			// not the operands), so perRound contains satisfaction expressions.
-			terms := make([]string, len(perRound))
-			for i, e := range perRound {
-				terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", e)
-			}
-			sum := smtJoinTerms(terms, "+", "0.0")
-			countLit := smtRealLiteral(float64(a.TemporalN))
+			var disjuncts []string
 			switch a.TemporalFilter {
-			case "nmt":
-				expr = fmt.Sprintf("(<= %s %s)", sum, countLit)
 			case "nft":
-				expr = fmt.Sprintf("(>= %s %s)", sum, countLit)
+				disjuncts = asserts.NoFew(perRound, a.TemporalN)
+			case "nmt":
+				disjuncts = asserts.NoMore(perRound, a.TemporalN)
 			default:
 				continue
 			}
+			if len(disjuncts) == 0 || disjuncts[0] == "" {
+				continue
+			}
+			expr = smtJoinTerms(disjuncts, "or", "")
 		} else if operator == "!=" {
 			// Violation expressions: use the violation-dual temporal operators.
 			// "always" violation = fails at any round → or

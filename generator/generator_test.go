@@ -1976,13 +1976,13 @@ func TestAssumeAnnotNftEmitsSatisfaction(t *testing.T) {
 	g := prepTest("", test, true, false)
 	smt := g.SMT()
 
-	// Must emit a >= comparison (at-least N rounds satisfied), not <=.
-	if !strings.Contains(smt, "(>= ") {
-		t.Errorf("assume x=true nft 2 must emit (>= ...) satisfaction assertion, got:\n%s", smt)
+	// Must emit combinatorial satisfaction form: OR of AND pairs (at-least-N encoding).
+	if !strings.Contains(smt, "(or (and nft_assume_x_resolved_") {
+		t.Errorf("assume x=true nft 2 must emit combinatorial (or (and ...)) satisfaction assertion, got:\n%s", smt)
 	}
 	// Must NOT wrap the entire expression in (not ...) — the assume should
-	// assert the satisfied count directly, not negate it.
-	if strings.Contains(smt, "(assert (not (>= ") {
+	// assert the satisfied condition directly, not negate it.
+	if strings.Contains(smt, "(assert (not ") {
 		t.Errorf("assume x=true nft 2 must NOT negate the satisfaction expression, got:\n%s", smt)
 	}
 	// Resolved vars must be referenced (not raw free bools).
@@ -2032,12 +2032,12 @@ func TestAssumeAnnotNmtEmitsSatisfaction(t *testing.T) {
 	g := prepTest("", test, true, false)
 	smt := g.SMT()
 
-	// Must emit a <= comparison (at-most N rounds in state), not >=.
-	if !strings.Contains(smt, "(<= ") {
-		t.Errorf("assume x=neither nmt 1 must emit (<= ...) satisfaction assertion, got:\n%s", smt)
+	// Must emit combinatorial satisfaction form: OR of per-round neither-state expressions.
+	if !strings.Contains(smt, "(or (not (or nmt_assume_x_supported_") {
+		t.Errorf("assume x=neither nmt 1 must emit combinatorial (or (not (or ...))) satisfaction assertion, got:\n%s", smt)
 	}
-	// Must NOT wrap in (not ...) — the assume should assert the count directly.
-	if strings.Contains(smt, "(assert (not (<= ") {
+	// Must NOT wrap in (not ...) at the top level — the assume should assert satisfaction directly.
+	if strings.Contains(smt, "(assert (not ") {
 		t.Errorf("assume x=neither nmt 1 must NOT negate the satisfaction expression, got:\n%s", smt)
 	}
 	// supported/defeated vars must be referenced (neither-state detection).
