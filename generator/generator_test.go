@@ -1715,6 +1715,8 @@ func TestInconsistent(t *testing.T) {
 		"testdata/inconsistent/temporal_eventually_always.fspec",
 		"testdata/inconsistent/temporal_nft.fspec",
 		"testdata/inconsistent/temporal_nmt.fspec",
+		"testdata/inconsistent/assume_temporal_nft.fspec",
+		"testdata/inconsistent/assume_temporal_nmt.fspec",
 	}
 	smt2s := []string{
 		"testdata/inconsistent/basic_true.smt2",
@@ -1729,6 +1731,8 @@ func TestInconsistent(t *testing.T) {
 		"testdata/inconsistent/temporal_eventually_always.smt2",
 		"testdata/inconsistent/temporal_nft.smt2",
 		"testdata/inconsistent/temporal_nmt.smt2",
+		"testdata/inconsistent/assume_temporal_nft.smt2",
+		"testdata/inconsistent/assume_temporal_nmt.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)
@@ -1931,6 +1935,114 @@ func TestWeightedAnnotationAssertTrueUsesResolved(t *testing.T) {
 	// for the BOTH state because it ignores weights entirely.
 	if strings.Contains(smt, "(not (and weighted_assert_true_x_supported_") {
 		t.Errorf("assert x=true on weighted ::inconsistent must NOT use the raw TRUE-state predicate (not (and x_supported (not x_defeated))), got:\n%s", smt)
+	}
+}
+
+// TestAssumeAnnotNftEmitsSatisfaction guards the fix where assume x = true nft N
+// must assert that x is satisfied at least N times (a satisfaction expression),
+// NOT the double-negated violation used by assertions after LLVM negation.
+func TestAssumeAnnotNftEmitsSatisfaction(t *testing.T) {
+	test := `spec nft_assume;
+
+	def st = stock{
+		active:  true,
+		blocked: false,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			s.active = true;
+		},
+	};
+
+	x = "service is available";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	// active=true every round — x resolves true in all rounds
+	// assume: x is true at least 2 of the 4 rounds (should satisfy)
+	assume x = true nft 2;
+
+	run init{f = new fl;} {
+		f.step;
+		f.step;
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Must emit a >= comparison (at-least N rounds satisfied), not <=.
+	if !strings.Contains(smt, "(>= ") {
+		t.Errorf("assume x=true nft 2 must emit (>= ...) satisfaction assertion, got:\n%s", smt)
+	}
+	// Must NOT wrap the entire expression in (not ...) — the assume should
+	// assert the satisfied count directly, not negate it.
+	if strings.Contains(smt, "(assert (not (>= ") {
+		t.Errorf("assume x=true nft 2 must NOT negate the satisfaction expression, got:\n%s", smt)
+	}
+	// Resolved vars must be referenced (not raw free bools).
+	if !strings.Contains(smt, "nft_assume_x_resolved_") {
+		t.Errorf("assume nft must reference _resolved_N, got:\n%s", smt)
+	}
+}
+
+// TestAssumeAnnotNmtEmitsSatisfaction guards the fix where assume x = neither nmt N
+// must assert that x is in neither state at most N times (a satisfaction expression),
+// NOT the double-negated violation form.
+func TestAssumeAnnotNmtEmitsSatisfaction(t *testing.T) {
+	test := `spec nmt_assume;
+
+	def st = stock{
+		active:  false,
+		blocked: false,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			if s.active == false {
+				s.active = true;
+			}
+		},
+	};
+
+	x = "service is available";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	// round 0: neither (active=false, blocked=false)
+	// round 1+: true (active=true, blocked=false)
+	// assume: x is in neither state at most 1 of the 4 rounds (should satisfy)
+	assume x = neither nmt 1;
+
+	run init{f = new fl;} {
+		f.step;
+		f.step;
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Must emit a <= comparison (at-most N rounds in state), not >=.
+	if !strings.Contains(smt, "(<= ") {
+		t.Errorf("assume x=neither nmt 1 must emit (<= ...) satisfaction assertion, got:\n%s", smt)
+	}
+	// Must NOT wrap in (not ...) — the assume should assert the count directly.
+	if strings.Contains(smt, "(assert (not (<= ") {
+		t.Errorf("assume x=neither nmt 1 must NOT negate the satisfaction expression, got:\n%s", smt)
+	}
+	// supported/defeated vars must be referenced (neither-state detection).
+	if !strings.Contains(smt, "nmt_assume_x_supported_") || !strings.Contains(smt, "nmt_assume_x_defeated_") {
+		t.Errorf("assume nmt must reference _supported_N and _defeated_N, got:\n%s", smt)
 	}
 }
 
