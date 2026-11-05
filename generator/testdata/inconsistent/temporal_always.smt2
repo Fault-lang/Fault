@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun temporal_always_f_s_active_0 () Bool)
 (declare-fun temporal_always_f_s_blocked_0 () Bool)
 (declare-fun temporal_always_f_s_active_1 () Bool)

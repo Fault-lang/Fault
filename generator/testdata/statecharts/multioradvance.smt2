@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun ador_a_choice_0 () Bool)
 (declare-fun ador_a_option1_0 () Bool)
 (declare-fun ador_a_option2_0 () Bool)

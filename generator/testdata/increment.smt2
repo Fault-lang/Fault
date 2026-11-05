@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun increment_f_place_value_0 () Real)
 (declare-fun increment_f_place_value_1 () Real)
 (declare-fun increment_f_place_value_2 () Real)

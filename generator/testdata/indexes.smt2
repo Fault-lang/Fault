@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun indexes_gee_bash_a_0 () Real)
 (declare-fun indexes_gee_bash_a_1 ()Real)
 (declare-fun indexes_gee_bash_a_2 ()Real)

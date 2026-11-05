@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun trigger_fl_vault_value_0 () Real)
 (declare-fun trigger_x_foo_0 () Bool)
 (declare-fun trigger_x_bar_0 () Bool)

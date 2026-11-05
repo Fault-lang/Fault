@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun statechart_fl_vault_value_0 () Real)
 (declare-fun statechart_drain_initial_0 () Bool)
 (declare-fun statechart_drain_open_0 () Bool)

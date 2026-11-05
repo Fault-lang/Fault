@@ -1,4 +1,4 @@
-(set-logicQF_NRA)
+(set-logicQF_LRA)
 (declare-funimports_fl3_vault_value_1()Real)
 (declare-funimports_fl3_vault_value_0()Real)
 (declare-funimports_fl3_vault_value_2()Real)

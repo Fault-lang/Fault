@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun history4_s_place_value_0 () Real)
 (declare-fun history4_s_place_A_0 () Bool)
 (declare-fun history4_s_place_B_0 () Bool)

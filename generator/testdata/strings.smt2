@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun test_str1_0 () Bool)
 (declare-fun test_str2_0 () Bool)
 (declare-fun test_str3_0 () Bool)

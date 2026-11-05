@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun history1_c_place_value_0 () Real)
 (declare-fun history1_c_place_value_1 () Real)
 (declare-fun history1_c_place_value_2 () Real)

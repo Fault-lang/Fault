@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun temporal_eventually_always_f_s_approved_0 () Bool)
 (declare-fun temporal_eventually_always_f_s_rejected_0 () Bool)
 (declare-fun temporal_eventually_always_f_s_approved_1 () Bool)
