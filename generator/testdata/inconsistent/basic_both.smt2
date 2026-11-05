@@ -12,7 +12,7 @@
 (declare-fun basic_both_x_resolved_0 () Bool)
 (assert (= basic_both_x_resolved_0 (ite (and basic_both_x_supported_0 (not basic_both_x_defeated_0)) true (ite (and basic_both_x_defeated_0 (not basic_both_x_supported_0)) false (ite (and basic_both_x_supported_0 basic_both_x_defeated_0) (>= basic_both_x_support_score_0 basic_both_x_defeat_score_0) false)))))
 (assert (not (and basic_both_x_supported_0 basic_both_x_defeated_0)))
-(assert (not (and basic_both_x_supported_0 (not basic_both_x_defeated_0))))
+(assert (not basic_both_x_resolved_0))
 (assert (= basic_both_hasFeathers_0 true))
 (assert (= basic_both_quacks_0 true))
 (assert (= basic_both_isPlastic_0 true))

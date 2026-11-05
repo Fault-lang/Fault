@@ -1,0 +1,31 @@
+spec assume_nft;
+
+// x resolves true in every round (active=true, blocked=false)
+def st = stock{
+    active:  true,
+    blocked: false,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        s.active = true;
+    },
+};
+
+x = "service is available";
+
+x::inconsistent{
+    true-when  st.active,
+    false-when st.blocked,
+};
+
+// active=true, blocked=false every round — x is true in all 4 rounds
+// assume: x is true at least 2 of the 4 rounds (satisfaction, not violation)
+assume x = true nft 2;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

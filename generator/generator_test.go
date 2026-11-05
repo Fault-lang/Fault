@@ -180,9 +180,9 @@ func TestTemporal_NMT(t *testing.T) {
 	if !strings.Contains(smt, "(<= test1_t_foo_value_") {
 		t.Fatalf("SMT missing nmt assertion. got:\n%s", smt)
 	}
-	// nmt 1 produces (or ...) of single-term combinations (no (and) needed for n=1)
-	if !strings.Contains(smt, "(assert (or") {
-		t.Fatalf("nmt 1 should produce (assert (or ...)), got:\n%s", smt)
+	// nmt 1 produces count-based encoding: (assert (<= (+ (ite ...) ...) 2.0))
+	if !strings.Contains(smt, "(assert (>=") {
+		t.Fatalf("nmt 1 should produce (assert (>= ...)) count encoding, got:\n%s", smt)
 	}
 }
 
@@ -225,9 +225,9 @@ func TestTemporal_Mixed(t *testing.T) {
 	if !strings.Contains(smt, "(not (= test1_t_u_x_") {
 		t.Fatalf("assert eventually should contain negated equality, got:\n%s", smt)
 	}
-	// assume nft 3 → (and ...) triples
-	if !strings.Contains(smt, "(and (>= test1_t_u_x_") {
-		t.Fatalf("assume nft should produce (and >= ...) conjunctions, got:\n%s", smt)
+	// assume nft 3 → count-based: (>= (+ (ite ...) ...) 3.0)
+	if !strings.Contains(smt, "(>= (+ (ite") {
+		t.Fatalf("assume nft should produce (>= (+ (ite ...)) count encoding, got:\n%s", smt)
 	}
 	// both a and b constants present
 	if !strings.Contains(smt, "test1_a_0") || !strings.Contains(smt, "test1_b_0") {
@@ -1715,6 +1715,8 @@ func TestInconsistent(t *testing.T) {
 		"testdata/inconsistent/temporal_eventually_always.fspec",
 		"testdata/inconsistent/temporal_nft.fspec",
 		"testdata/inconsistent/temporal_nmt.fspec",
+		"testdata/inconsistent/assume_temporal_nft.fspec",
+		"testdata/inconsistent/assume_temporal_nmt.fspec",
 	}
 	smt2s := []string{
 		"testdata/inconsistent/basic_true.smt2",
@@ -1729,6 +1731,8 @@ func TestInconsistent(t *testing.T) {
 		"testdata/inconsistent/temporal_eventually_always.smt2",
 		"testdata/inconsistent/temporal_nft.smt2",
 		"testdata/inconsistent/temporal_nmt.smt2",
+		"testdata/inconsistent/assume_temporal_nft.smt2",
+		"testdata/inconsistent/assume_temporal_nmt.smt2",
 	}
 	for i, s := range specs {
 		data, err := os.ReadFile(s)
@@ -1879,8 +1883,166 @@ func TestAnnotationAssertTrue(t *testing.T) {
 	if !strings.Contains(smt, "atest_x_resolved_") {
 		t.Errorf("annotation assert x=true should emit _resolved_N define-fun:\n%s", smt)
 	}
-	if !strings.Contains(smt, "(not (and atest_x_supported_") {
-		t.Errorf("annotation assert x=true should emit (not (and x_supported (not x_defeated))) violation:\n%s", smt)
+	if !strings.Contains(smt, "(not atest_x_resolved_") {
+		t.Errorf("annotation assert x=true should emit (not x_resolved_N) as violation:\n%s", smt)
+	}
+}
+
+// TestWeightedAnnotationAssertTrueUsesResolved guards against the bug reported
+// in https://github.com/Fault-lang/Fault/issues/98: when an ::inconsistent
+// variable has weighted evidence and is in the BOTH Belnap state (supported AND
+// defeated), `assert x = true` must check the _resolved_N variable — which
+// encodes weight-sensitive logic — rather than the raw TRUE-state predicate
+// (not (and x_supported_N (not x_defeated_N))).
+//
+// Setup: symptomA (weight 4) and symptomB (weight 2) trigger support;
+// sideEffect (weight 1) triggers defeat. support_score=6 > defeat_score=1, so
+// _resolved should be true. The violation for `assert x = true` must therefore
+// be `(not x_resolved_N)`, which is false → no violation → UNSAT. The old
+// buggy encoding would instead check the TRUE Belnap state directly, see
+// x_defeated is set, and report a spurious violation.
+func TestWeightedAnnotationAssertTrueUsesResolved(t *testing.T) {
+	test := `spec weighted_assert_true;
+
+	symptomA   = "primary symptom present";
+	symptomB   = "secondary symptom present";
+	sideEffect = "contraindication present";
+	x          = "medication is indicated";
+
+	assume symptomA   = true;
+	assume symptomB   = true;
+	assume sideEffect = true;
+
+	x::inconsistent{
+		true-when  symptomA 4,
+		true-when  symptomB 2,
+		false-when sideEffect,
+	};
+
+	assert x = true;
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// The violation expression for assert x = true must reference _resolved_N,
+	// not the raw Belnap TRUE-state predicate. With weights, resolved already
+	// encodes the support_score >= defeat_score logic.
+	if !strings.Contains(smt, "(not weighted_assert_true_x_resolved_") {
+		t.Errorf("assert x=true on weighted ::inconsistent must use (not x_resolved_N) as violation, got:\n%s", smt)
+	}
+
+	// The old buggy encoding checked the raw TRUE Belnap state: this is wrong
+	// for the BOTH state because it ignores weights entirely.
+	if strings.Contains(smt, "(not (and weighted_assert_true_x_supported_") {
+		t.Errorf("assert x=true on weighted ::inconsistent must NOT use the raw TRUE-state predicate (not (and x_supported (not x_defeated))), got:\n%s", smt)
+	}
+}
+
+// TestAssumeAnnotNftEmitsSatisfaction guards the fix where assume x = true nft N
+// must assert that x is satisfied at least N times (a satisfaction expression),
+// NOT the double-negated violation used by assertions after LLVM negation.
+func TestAssumeAnnotNftEmitsSatisfaction(t *testing.T) {
+	test := `spec nft_assume;
+
+	def st = stock{
+		active:  true,
+		blocked: false,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			s.active = true;
+		},
+	};
+
+	x = "service is available";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	// active=true every round — x resolves true in all rounds
+	// assume: x is true at least 2 of the 4 rounds (should satisfy)
+	assume x = true nft 2;
+
+	run init{f = new fl;} {
+		f.step;
+		f.step;
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Must emit count-based satisfaction form: (>= (+ (ite resolved_N 1.0 0.0) ...) 2.0)
+	if !strings.Contains(smt, "(>= (+ (ite nft_assume_x_resolved_") {
+		t.Errorf("assume x=true nft 2 must emit count-based (>= ...) satisfaction assertion, got:\n%s", smt)
+	}
+	// Must NOT wrap the entire expression in (not ...) — the assume should
+	// assert the satisfied condition directly, not negate it.
+	if strings.Contains(smt, "(assert (not ") {
+		t.Errorf("assume x=true nft 2 must NOT negate the satisfaction expression, got:\n%s", smt)
+	}
+	// Resolved vars must be referenced (not raw free bools).
+	if !strings.Contains(smt, "nft_assume_x_resolved_") {
+		t.Errorf("assume nft must reference _resolved_N, got:\n%s", smt)
+	}
+}
+
+// TestAssumeAnnotNmtEmitsSatisfaction guards the fix where assume x = neither nmt N
+// must assert that x is in neither state at most N times (a satisfaction expression),
+// NOT the double-negated violation form.
+func TestAssumeAnnotNmtEmitsSatisfaction(t *testing.T) {
+	test := `spec nmt_assume;
+
+	def st = stock{
+		active:  false,
+		blocked: false,
+	};
+
+	def fl = flow{
+		s: new st,
+		step: func{
+			if s.active == false {
+				s.active = true;
+			}
+		},
+	};
+
+	x = "service is available";
+
+	x::inconsistent{
+		true-when  st.active,
+		false-when st.blocked,
+	};
+
+	// round 0: neither (active=false, blocked=false)
+	// round 1+: true (active=true, blocked=false)
+	// assume: x is in neither state at most 1 of the 4 rounds (should satisfy)
+	assume x = neither nmt 1;
+
+	run init{f = new fl;} {
+		f.step;
+		f.step;
+		f.step;
+	}
+	`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+
+	// Must emit count-based satisfaction form: (<= (+ (ite (not (or supported defeated)) 1.0 0.0) ...) 1.0)
+	if !strings.Contains(smt, "(<= (+ (ite (not (or nmt_assume_x_supported_") {
+		t.Errorf("assume x=neither nmt 1 must emit count-based (<= ...) satisfaction assertion, got:\n%s", smt)
+	}
+	// Must NOT wrap in (not ...) at the top level — the assume should assert satisfaction directly.
+	if strings.Contains(smt, "(assert (not ") {
+		t.Errorf("assume x=neither nmt 1 must NOT negate the satisfaction expression, got:\n%s", smt)
+	}
+	// supported/defeated vars must be referenced (neither-state detection).
+	if !strings.Contains(smt, "nmt_assume_x_supported_") || !strings.Contains(smt, "nmt_assume_x_defeated_") {
+		t.Errorf("assume nmt must reference _supported_N and _defeated_N, got:\n%s", smt)
 	}
 }
 

@@ -983,115 +983,6 @@ func (g *Generator) emitResolvedFun(targetBase string, n int) string {
 	return fmt.Sprintf("(declare-fun %s () Bool)\n(assert (= %s %s))", name, name, body)
 }
 
-// annotViolationExpr returns the SMT expression for the VIOLATION of an
-// annotation assertion at round n. It reads the original (un-negated) right-hand
-// side to derive the correct define-fun reference.
-//
-//	assert x = true    → violation: (not (and x_supported_N (not x_defeated_N)))
-//	assert x = false   → violation: (not (and (not x_supported_N) x_defeated_N))
-//	assert x = both    → violation: (not (and x_supported_N x_defeated_N))
-//	assert x = neither → violation: (or x_supported_N x_defeated_N)
-func annotViolationExpr(originalRight ast.Expression, targetBase string, n int) string {
-	switch r := originalRight.(type) {
-	case *ast.Boolean:
-		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
-		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
-		if r.Value {
-			return fmt.Sprintf("(not (and %s (not %s)))", supported, defeated)
-		}
-		return fmt.Sprintf("(not (and (not %s) %s))", supported, defeated)
-	case *ast.BelnapLiteral:
-		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
-		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
-		switch r.Value {
-		case "both":
-			return fmt.Sprintf("(not (and %s %s))", supported, defeated)
-		case "neither":
-			return fmt.Sprintf("(or %s %s)", supported, defeated)
-		}
-	}
-	return ""
-}
-
-// emitAnnotAssertions emits the SMT assertions for annotation-targeted
-// assert/assume statements. The violation expressions reference the annotation's
-// define-funs rather than the raw SSA variable versions.
-func (g *Generator) emitAnnotAssertions(stmts []*ast.AssertionStatement, annotTargets map[string]bool, rounds int, isAssume bool) []string {
-	var smt []string
-	for _, a := range stmts {
-		assertVar, ok := a.Constraint.Left.(*ast.AssertVar)
-		if !ok || len(assertVar.Instances) == 0 {
-			continue
-		}
-		targetBase := assertVar.Instances[0]
-		if !annotTargets[targetBase] {
-			continue
-		}
-
-		// Use the original (un-negated) constraint to determine what is being tested.
-		// For assumes, Original is not set — use the constraint directly (it's not negated).
-		var origRight ast.Expression
-		if a.Original != nil {
-			origRight = a.Original.Right
-		} else {
-			origRight = a.Constraint.Right
-		}
-
-		// Collect per-round violation and satisfaction expressions.
-		var violations []string
-		var satisfied []string
-		for n := 0; n <= rounds; n++ {
-			v := annotViolationExpr(origRight, targetBase, n)
-			if v != "" {
-				violations = append(violations, v)
-				// satisfaction is the logical negation of the violation expression
-				satisfied = append(satisfied, fmt.Sprintf("(not %s)", v))
-			}
-		}
-		if len(violations) == 0 {
-			continue
-		}
-
-		// Temporal logic determines how per-round states are combined.
-		var expr string
-		if a.TemporalFilter != "" {
-			// nmt/nft count rounds where the assertion is satisfied.
-			terms := make([]string, len(satisfied))
-			for i, s := range satisfied {
-				terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", s)
-			}
-			sum := smtJoinTerms(terms, "+", "0.0")
-			countLit := smtRealLiteral(float64(a.TemporalN))
-			switch a.TemporalFilter {
-			case "nmt":
-				expr = fmt.Sprintf("(<= %s %s)", sum, countLit)
-			case "nft":
-				expr = fmt.Sprintf("(>= %s %s)", sum, countLit)
-			default:
-				continue
-			}
-		} else {
-			switch a.Temporal {
-			case "eventually":
-				// Violation = the state is NEVER achieved across all rounds.
-				expr = smtJoinTerms(violations, "and", "")
-			case "eventually-always":
-				// Violation = there is no suffix where the state holds in every round.
-				var suffixes []string
-				for i := range violations {
-					suffixes = append(suffixes, smtJoinTerms(violations[i:], "or", ""))
-				}
-				expr = smtJoinTerms(suffixes, "and", "")
-			default:
-				// "always" and no-temporal: violation = the state fails at ANY round.
-				expr = smtJoinTerms(violations, "or", "")
-			}
-		}
-
-		smt = append(smt, fmt.Sprintf("(assert %s)", expr))
-	}
-	return smt
-}
 
 // collectAnnotCondDeps returns the set of annotation target names that appear
 // as evidence-condition operands in ann's true-when and false-when clauses.
@@ -1242,8 +1133,8 @@ func (g *Generator) ProcessAnnotations(
 		}
 	}
 
-	smt = append(smt, g.emitAnnotAssertions(annotAsserts, annotTargets, rounds, false)...)
-	smt = append(smt, g.emitAnnotAssertions(annotAssumes, annotTargets, rounds, true)...)
+	smt = append(smt, asserts.EmitAnnotAssertions(annotAsserts, annotTargets, rounds)...)
+	smt = append(smt, asserts.EmitAnnotAssertions(annotAssumes, annotTargets, rounds)...)
 
 	return smt, nil
 }

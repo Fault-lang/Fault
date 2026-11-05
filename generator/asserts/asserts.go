@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"gonum.org/v1/gonum/stat/combin"
 )
 
 type Time struct {
@@ -19,20 +18,21 @@ type Time struct {
 }
 
 type Constraint struct {
-	Raw       *ast.InvariantClause
-	Left      *rules.VarSets
-	Right     *rules.VarSets
-	Op        string
-	On        string
-	Off       string
-	Temporal  *Time
-	Then      bool
-	Assume    bool
-	Rounds    int
-	Registry  map[string][][]string
-	Whens     []map[string]string
-	VarTypes  map[string]string // SMT sort for each base variable name
-	RoundPhis map[string][]int16 // per-variable phi SSA history for [n] iteration
+	Raw            *ast.InvariantClause
+	Left           *rules.VarSets
+	Right          *rules.VarSets
+	Op             string
+	On             string
+	Off            string
+	Temporal       *Time
+	Then           bool
+	Assume         bool
+	Rounds         int
+	Registry       map[string][][]string
+	Whens          []map[string]string
+	VarTypes       map[string]string   // SMT sort for each base variable name
+	RoundPhis      map[string][]int16  // per-variable phi SSA history for [n] iteration
+	PrebuiltRounds []string            // pre-built per-round expressions (annotation path)
 }
 
 // NewConstraint builds a Constraint from an assertion statement, resolving variable registries and when/then mappings.
@@ -207,7 +207,10 @@ func (c *Constraint) Parse() []string {
 	// Temporals
 	// If left and right are instances of the same variable
 	var l string
-	if c.Then {
+	if len(c.PrebuiltRounds) > 0 {
+		// Annotation path: per-round expressions already built; skip AST parsing.
+		l = c.applyTemporal()
+	} else if c.Then {
 		l = c.applyWhen()
 	} else if containsSSAN(c.Raw.Left) || containsSSAN(c.Raw.Right) {
 		return c.parseSSAIterated()
@@ -947,28 +950,66 @@ func (c *Constraint) Package(x [][]string, op string) *util.StringSet {
 	return product
 }
 
+// varSetsFromList builds a VarSets whose List() returns exprs in order,
+// using the "round-N_@__run" key convention that VarSets.List() expects.
+func varSetsFromList(exprs []string) *rules.VarSets {
+	vars := make(map[string]*util.StringSet, len(exprs))
+	for i, e := range exprs {
+		key := fmt.Sprintf("round-%d_@__run", i)
+		s := util.NewStrSet()
+		s.Add(e)
+		vars[key] = s
+	}
+	return rules.NewVarSets(vars)
+}
+
+// prebuiltClause returns a VarSets from PrebuiltRounds when set.
+func (c *Constraint) prebuiltClause() *rules.VarSets {
+	return varSetsFromList(c.PrebuiltRounds)
+}
+
 func (c *Constraint) applyTemporal() string {
 	switch c.Temporal.Type {
 	case "eventually": // At least one state is true
-		m := c.merge(c.Left, c.Right, c.Op)
+		var m *rules.VarSets
+		if len(c.PrebuiltRounds) > 0 {
+			m = c.prebuiltClause()
+		} else {
+			m = c.merge(c.Left, c.Right, c.Op)
+		}
 		if len(m.List()) == 0 {
 			return ""
 		}
 		return fmt.Sprintf("(%s %s)", c.On, strings.Join(m.List(), " "))
 	case "always": // Every state is true
-		m := c.mergeSameIndex(c.Left, c.Right, c.Op)
+		var m *rules.VarSets
+		if len(c.PrebuiltRounds) > 0 {
+			m = c.prebuiltClause()
+		} else {
+			m = c.mergeSameIndex(c.Left, c.Right, c.Op)
+		}
 		if len(m.List()) == 0 {
 			return ""
 		}
 		return fmt.Sprintf("(%s %s)", c.Off, strings.Join(m.List(), " "))
 	case "eventually-always": // Once the statement is true, it stays true
-		m := c.merge(c.Left, c.Right, c.Op)
+		var m *rules.VarSets
+		if len(c.PrebuiltRounds) > 0 {
+			m = c.prebuiltClause()
+		} else {
+			m = c.merge(c.Left, c.Right, c.Op)
+		}
 		or := c.eventuallyAlways(m.List())
 		return or
 
 	default:
 		var op string
-		clause := c.merge(c.Left, c.Right, c.Op)
+		var clause *rules.VarSets
+		if len(c.PrebuiltRounds) > 0 {
+			clause = c.prebuiltClause()
+		} else {
+			clause = c.merge(c.Left, c.Right, c.Op)
+		}
 
 		switch c.Temporal.Filter {
 		case "nft": // True no fewer than X times
@@ -1007,105 +1048,37 @@ func (c *Constraint) applyTemporal() string {
 	}
 }
 
-func (c *Constraint) NoFew(merged []string, n int) []string {
-	// No more than n times
-	// No fewer than n times
-	// If n is 1, then it is just a single assert
-	if len(merged) < n {
-		return []string{strings.Join(merged, " ")}
+// countSum builds the SMT arithmetic sum counting how many of the merged
+// boolean expressions hold: (+ (ite e0 1.0 0.0) (ite e1 1.0 0.0) ...).
+func countSum(merged []string) string {
+	if len(merged) == 0 {
+		return "0.0"
 	}
-
-	if n == 1 {
-		return merged
+	terms := make([]string, len(merged))
+	for i, e := range merged {
+		terms[i] = fmt.Sprintf("(ite %s 1.0 0.0)", e)
 	}
-
-	if n == 0 {
-		return []string{}
+	if len(terms) == 1 {
+		return terms[0]
 	}
-
-	if merged[0][0:4] == "(and" {
-		return merged
-	}
-
-	combos := combin.Combinations(len(merged), n)
-
-	//Assembling combinations
-	var ret []string
-	for _, combo := range combos {
-		var clause []string
-		for _, i := range combo {
-			clause = append(clause, merged[i])
-		}
-		if len(clause) == 1 {
-			ret = append(ret, clause[0])
-		} else if clause[0][0:4] == "(and" {
-			ret = append(ret, clause...)
-		} else {
-			ret = append(ret, fmt.Sprintf("(and %s)", strings.Join(clause, " ")))
-		}
-	}
-	return ret
+	return fmt.Sprintf("(+ %s)", strings.Join(terms, " "))
 }
 
-func (c *Constraint) NoMore(merged []string, n int) []string {
-	// No more than n times
-	// No fewer than n times
-	// If n is 1, then it is just a single assert
-	if len(merged) < n {
-		return []string{strings.Join(merged, " ")}
-	}
-
-	if n == 1 {
-		return merged
-	}
-
-	if n == 0 {
-		return []string{}
-	}
-
-	if merged[0][0:4] == "(and" {
-		return merged
-	}
-
-	combos := combin.Combinations(len(merged), n)
-
-	//Assembling combinations
-	var ret []string
-	for _, combo := range combos {
-		// Create inverse of the combination
-		inverse, err := util.SliceOfIndex(len(merged))
-		if err != nil {
-			panic(err) // len() is always >= 0; this cannot happen
-		}
-
-		var clause []string
-		var nots []string
-		for _, i := range combo {
-			// Remove the index from the inverse
-			inverse[i] = -1
-
-			clause = append(clause, merged[i])
-		}
-
-		for _, i := range inverse {
-			if i > -1 {
-				nots = append(nots, fmt.Sprintf("(not %s)", merged[i]))
-			}
-		}
-
-		if len(clause) == 1 {
-			ret = append(ret, clause[0])
-		} else if clause[0][0:4] == "(and" {
-			ret = append(ret, clause...)
-		} else {
-			on := fmt.Sprintf("(or %s)", strings.Join(clause, " "))
-			off := fmt.Sprintf("(and %s)", strings.Join(nots, " "))
-
-			ret = append(ret, fmt.Sprintf("(and %s %s)", on, off))
-		}
-	}
-	return ret
+// NoFew asserts that at least n of the merged predicates hold.
+// Encoded as: (>= (+ (ite e0 1.0 0.0) ...) n.0)
+func NoFew(merged []string, n int) []string {
+	return []string{fmt.Sprintf("(>= %s %d.0)", countSum(merged), n)}
 }
+
+func (c *Constraint) NoFew(merged []string, n int) []string { return NoFew(merged, n) }
+
+// NoMore asserts that at most n of the merged predicates hold.
+// Encoded as: (<= (+ (ite e0 1.0 0.0) ...) n.0)
+func NoMore(merged []string, n int) []string {
+	return []string{fmt.Sprintf("(<= %s %d.0)", countSum(merged), n)}
+}
+
+func (c *Constraint) NoMore(merged []string, n int) []string { return NoMore(merged, n) }
 
 func (c *Constraint) eventuallyAlways(values []string) string {
 	var clause string
@@ -1138,4 +1111,117 @@ func smtlibOperators(op string) string {
 	default:
 		return op
 	}
+}
+
+// annotExpr builds the per-round SMT expression for an assertion on an
+// ::inconsistent annotation variable. operator is a.Constraint.Operator
+// (already negated by compileAssert for asserts without a temporal filter).
+//
+// For boolean right-hand sides the effective polarity is r.Value XOR negated:
+//
+//	op==, true  → x_resolved_N
+//	op==, false → (not x_resolved_N)
+//	op!=, true  → (not x_resolved_N)
+//	op!=, false → x_resolved_N
+//
+// For Belnap literals negation flips the expression:
+//
+//	op==, both    → (and x_supported_N x_defeated_N)
+//	op==, neither → (not (or x_supported_N x_defeated_N))
+//	op!=, both    → (not (and x_supported_N x_defeated_N))
+//	op!=, neither → (or x_supported_N x_defeated_N)
+func annotExpr(operator string, right ast.Expression, targetBase string, n int) string {
+	negated := operator == "!="
+	switch r := right.(type) {
+	case *ast.Boolean:
+		resolved := fmt.Sprintf("%s_resolved_%d", targetBase, n)
+		if r.Value != negated {
+			return resolved
+		}
+		return fmt.Sprintf("(not %s)", resolved)
+	case *ast.BelnapLiteral:
+		supported := fmt.Sprintf("%s_supported_%d", targetBase, n)
+		defeated := fmt.Sprintf("%s_defeated_%d", targetBase, n)
+		switch r.Value {
+		case "both":
+			base := fmt.Sprintf("(and %s %s)", supported, defeated)
+			if negated {
+				return fmt.Sprintf("(not %s)", base)
+			}
+			return base
+		case "neither":
+			orExpr := fmt.Sprintf("(or %s %s)", supported, defeated)
+			if negated {
+				return orExpr
+			}
+			return fmt.Sprintf("(not %s)", orExpr)
+		}
+	}
+	return ""
+}
+
+// NewAnnotConstraint builds a Constraint for an assertion/assumption on an
+// ::inconsistent annotation variable. It pre-builds the per-round SMT
+// expressions via annotExpr and routes them through the standard
+// applyTemporal pipeline, unifying the annotation and consistent paths.
+func NewAnnotConstraint(a *ast.AssertionStatement, annotTargets map[string]bool, rounds int) (*Constraint, error) {
+	assertVar, ok := a.Constraint.Left.(*ast.AssertVar)
+	if !ok || len(assertVar.Instances) == 0 {
+		return nil, nil
+	}
+	targetBase := assertVar.Instances[0]
+	if !annotTargets[targetBase] {
+		return nil, nil
+	}
+
+	operator := a.Constraint.Operator
+	var prebuilt []string
+	for n := 0; n <= rounds; n++ {
+		e := annotExpr(operator, a.Constraint.Right, targetBase, n)
+		if e != "" {
+			prebuilt = append(prebuilt, e)
+		}
+	}
+	if len(prebuilt) == 0 {
+		return nil, nil
+	}
+
+	var on, off string
+	if a.Assume {
+		on = "or"
+		off = "and"
+	} else {
+		on = "and"
+		off = "or"
+	}
+
+	return &Constraint{
+		PrebuiltRounds: prebuilt,
+		Op:             operator,
+		Temporal: &Time{
+			Filter: a.TemporalFilter,
+			Type:   a.Temporal,
+			N:      a.TemporalN,
+		},
+		On:     on,
+		Off:    off,
+		Assume: a.Assume,
+		Rounds: rounds,
+	}, nil
+}
+
+// EmitAnnotAssertions generates SMT assertions for annotation-targeted
+// assert/assume statements by routing them through the standard Constraint
+// pipeline. This unifies the annotation and consistent-variable paths so
+// all temporal combining logic lives in one place.
+func EmitAnnotAssertions(stmts []*ast.AssertionStatement, annotTargets map[string]bool, rounds int) []string {
+	var smt []string
+	for _, a := range stmts {
+		c, err := NewAnnotConstraint(a, annotTargets, rounds)
+		if err != nil || c == nil {
+			continue
+		}
+		smt = append(smt, c.Parse()...)
+	}
+	return smt
 }

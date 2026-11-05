@@ -1,0 +1,33 @@
+spec assume_nmt;
+
+// round 0: neither (active=false, blocked=false)
+// round 1+: true (active=true, blocked=false)
+def st = stock{
+    active:  false,
+    blocked: false,
+};
+
+def fl = flow{
+    s: new st,
+    step: func{
+        if s.active == false {
+            s.active = true;
+        }
+    },
+};
+
+x = "service is available";
+
+x::inconsistent{
+    true-when  st.active,
+    false-when st.blocked,
+};
+
+// neither occurs exactly once (round 0); assume: at most 1 round in neither state
+assume x = neither nmt 1;
+
+run init{f = new fl;} {
+    f.step;
+    f.step;
+    f.step;
+}

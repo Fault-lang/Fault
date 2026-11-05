@@ -289,9 +289,14 @@ func TestNoFew_N1(t *testing.T) {
 	c := &Constraint{}
 	terms := []string{"(> x_0 5)", "(> x_1 5)", "(> x_2 5)"}
 	result := c.NoFew(terms, 1)
-	// n=1 → return all terms unchanged
-	if len(result) != 3 {
-		t.Errorf("NoFew n=1: got %d results, want 3", len(result))
+	if len(result) != 1 {
+		t.Fatalf("NoFew: got %d results, want 1", len(result))
+	}
+	if !strings.HasPrefix(result[0], "(>= ") {
+		t.Errorf("NoFew n=1: expected (>= ...), got %q", result[0])
+	}
+	if !strings.Contains(result[0], "1.0)") {
+		t.Errorf("NoFew n=1: expected bound 1.0, got %q", result[0])
 	}
 }
 
@@ -299,14 +304,29 @@ func TestNoFew_N2(t *testing.T) {
 	c := &Constraint{}
 	terms := []string{"(> x_0 5)", "(> x_1 5)", "(> x_2 5)"}
 	result := c.NoFew(terms, 2)
-	// C(3,2)=3 pairs, each wrapped in (and ...)
-	if len(result) != 3 {
-		t.Errorf("NoFew n=2 of 3: got %d results, want 3", len(result))
+	if len(result) != 1 {
+		t.Fatalf("NoFew: got %d results, want 1", len(result))
 	}
-	for _, r := range result {
-		if !strings.HasPrefix(r, "(and ") {
-			t.Errorf("NoFew n=2: expected (and ...), got %q", r)
-		}
+	if !strings.HasPrefix(result[0], "(>= ") {
+		t.Errorf("NoFew n=2: expected (>= ...), got %q", result[0])
+	}
+	if !strings.Contains(result[0], "2.0)") {
+		t.Errorf("NoFew n=2: expected bound 2.0, got %q", result[0])
+	}
+}
+
+func TestNoMore_N0(t *testing.T) {
+	c := &Constraint{}
+	terms := []string{"(= x_0 5)", "(= x_1 5)", "(= x_2 5)"}
+	result := c.NoMore(terms, 0)
+	if len(result) != 1 {
+		t.Fatalf("NoMore n=0: got %d results, want 1", len(result))
+	}
+	if !strings.HasPrefix(result[0], "(<= ") {
+		t.Errorf("NoMore n=0: expected (<= ...), got %q", result[0])
+	}
+	if !strings.Contains(result[0], "0.0)") {
+		t.Errorf("NoMore n=0: expected bound 0.0, got %q", result[0])
 	}
 }
 
@@ -314,9 +334,14 @@ func TestNoMore_N1(t *testing.T) {
 	c := &Constraint{}
 	terms := []string{"(= x_0 5)", "(= x_1 5)", "(= x_2 5)"}
 	result := c.NoMore(terms, 1)
-	// n=1 → return terms unchanged
-	if len(result) != 3 {
-		t.Errorf("NoMore n=1: got %d results, want 3", len(result))
+	if len(result) != 1 {
+		t.Fatalf("NoMore: got %d results, want 1", len(result))
+	}
+	if !strings.HasPrefix(result[0], "(<= ") {
+		t.Errorf("NoMore n=1: expected (<= ...), got %q", result[0])
+	}
+	if !strings.Contains(result[0], "1.0)") {
+		t.Errorf("NoMore n=1: expected bound 1.0, got %q", result[0])
 	}
 }
 
@@ -324,9 +349,14 @@ func TestNoMore_N2(t *testing.T) {
 	c := &Constraint{}
 	terms := []string{"(= x_0 5)", "(= x_1 5)", "(= x_2 5)"}
 	result := c.NoMore(terms, 2)
-	// C(3,2)=3 combinations, each (and (or chosen) (and nots))
-	if len(result) != 3 {
-		t.Errorf("NoMore n=2 of 3: got %d results, want 3", len(result))
+	if len(result) != 1 {
+		t.Fatalf("NoMore: got %d results, want 1", len(result))
+	}
+	if !strings.HasPrefix(result[0], "(<= ") {
+		t.Errorf("NoMore n=2: expected (<= ...), got %q", result[0])
+	}
+	if !strings.Contains(result[0], "2.0)") {
+		t.Errorf("NoMore n=2: expected bound 2.0, got %q", result[0])
 	}
 }
 
