@@ -133,13 +133,14 @@ func (g *Generator) Run(llopt string) error {
 	// Linearity detection: downgrade logic to QF_LRA/QF_LIA when the listener
 	// detected no nonlinear arithmetic during the parse walk.
 	//
-	// Keep the broader nonlinear logic when any (is_int x) assertions were
-	// emitted, since is_int is outside QF_LRA/QF_LIA:
-	//   - whole() variables in non-integer mode emit (is_int x)
-	//   - multiple-instance count variables in non-integer mode also emit (is_int x)
+	// Keep the broader nonlinear logic when:
+	//   - is_int assertions are present (whole()/multiple in non-integer mode)
+	//   - multiple instances exist in integer mode: scaledDelta generates (* delta countVar)
+	//     — var×var — after the listener has finished, so ri.IsLinear cannot see it.
 	ri := g.RawInputs
 	hasIsInt := !ri.IntegerMode && (len(ri.Wholes) > 0 || len(ri.MultipleInstances) > 0)
-	if !hasIsInt && ri.IsLinear {
+	isLinear := ri.IsLinear && len(ri.MultipleInstances) == 0
+	if !hasIsInt && isLinear {
 		if ri.IntegerMode {
 			g.smt[g.logicIdx] = "(set-logic QF_LIA)"
 		} else {

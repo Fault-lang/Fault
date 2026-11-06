@@ -1486,6 +1486,25 @@ func TestLinearityDetectionMultipleInstance(t *testing.T) {
 	}
 }
 
+func TestLinearityDetectionMultipleInstanceIntegerMode(t *testing.T) {
+	// multiple + whole() triggers integer mode (all free vars are whole) AND
+	// generates scaledDelta: (* delta countVar) — var×var — after the listener
+	// has finished. The listener sees no nonlinear user code and sets IsLinear=true,
+	// but the generated product is nonlinear, so the logic must stay QF_NIA.
+	data, err := os.ReadFile("testdata/multiple_whole.fspec")
+	if err != nil {
+		t.Fatalf("could not read multiple_whole.fspec: %v", err)
+	}
+	g := prepTest("testdata/multiple_whole.fspec", string(data), true, false)
+	smt := g.SMT()
+	if strings.Contains(smt, "(set-logic QF_LIA)") {
+		t.Fatalf("multiple-instance integer-mode model must not downgrade to QF_LIA (scaledDelta is nonlinear), got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(set-logic QF_NIA)") {
+		t.Fatalf("expected QF_NIA for multiple-instance integer-mode model, got:\n%s", smt)
+	}
+}
+
 func TestUncertainBoundsDefault(t *testing.T) {
 	// uncertain(mean, sigma) with no k should emit bounds using default k=3.0
 	test := `spec testuncertain;

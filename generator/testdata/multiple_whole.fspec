@@ -1,0 +1,16 @@
+spec scalablewhole;
+
+def tank = stock{
+    level: whole(),
+};
+
+def fill = flow{
+    water: new tank,
+    fn: func{
+        water.level <- 1;
+    },
+};
+
+run init{l = multiple fill;}{
+    l.fn;
+}
