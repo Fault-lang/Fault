@@ -1053,32 +1053,33 @@ func splitAsserts(s string) []string {
 	return results
 }
 
+// strictOr encodes "exactly one of rules is true" as an SMT expression.
+//
+// n=1: identity — the single rule must hold.
+// n=2: (distinct a b) — Bool variables are different, i.e. exactly one is true.
+//      Replaces the previous O(n²) (or (and a (not b)) (and (not a) b)) form.
+// n>2: at-least-one disjunction + pairwise at-most-one binary clauses.
+//      Binary AMO clauses are propagated efficiently by CDCL solvers, unlike
+//      the previous O(n²)-literal nested conjunction structure.
 func strictOr(rules []string) string {
-	//Return rules where only ONE possible rules can be true
-	var choice []string
-	for i, _ := range rules {
-		var ands []string
-		for j := 0; j < len(rules); j++ {
-			if i != j {
-				ands = append(ands, fmt.Sprintf("(not %s)", rules[j]))
-			} else {
-				ands = append(ands, rules[j])
+	switch len(rules) {
+	case 0:
+		return "false"
+	case 1:
+		return rules[0]
+	case 2:
+		return fmt.Sprintf("(distinct %s %s)", rules[0], rules[1])
+	default:
+		// at-least-one
+		terms := []string{fmt.Sprintf("(or %s)", strings.Join(rules, " "))}
+		// pairwise at-most-one (binary clauses)
+		for i := 0; i < len(rules); i++ {
+			for j := i + 1; j < len(rules); j++ {
+				terms = append(terms, fmt.Sprintf("(not (and %s %s))", rules[i], rules[j]))
 			}
 		}
-		var a string
-		if len(ands) == 1 {
-			a = ands[0]
-		} else {
-			a = fmt.Sprintf("(and %s)", strings.Join(ands, "\n"))
-		}
-		choice = append(choice, a)
+		return fmt.Sprintf("(and %s)", strings.Join(terms, "\n"))
 	}
-
-	if len(choice) == 1 {
-		return choice[0]
-	}
-
-	return fmt.Sprintf("(or %s)", strings.Join(choice, "\n"))
 }
 
 // InitsToList converts a slice of Init rules into declare-const SMT-LIB2 strings.

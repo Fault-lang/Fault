@@ -6,12 +6,16 @@
 (declare-fun test_str5_0 () Bool)
 (declare-fun test_str6_0 () Bool)
 (declare-fun test_str3_test_str4_0 () Bool)
-(declare-fun test_str1_test_str2_0 () Bool)
-(declare-fun test_str7_0 () Bool)
-(declare-fun test_str5_test_str1_0 () Bool)
-(declare-fun test_str8_0 () Bool)
 (assert (= test_str3_test_str4_0 (and test_str3_0 test_str4_0)))
+
+(declare-fun test_str1_test_str2_0 () Bool)
 (assert (= test_str1_test_str2_0 (and test_str1_0 test_str2_0)))
+
+(declare-fun test_str7_0 () Bool)
 (assert (= test_str7_0 (or test_str3_test_str4_0 test_str1_test_str2_0)))
-(assert (= test_str5_test_str1_0 (and test_str5_0test_str1_0)))
+
+(declare-fun test_str5_test_str1_0 () Bool)
+(assert (= test_str5_test_str1_0 (and test_str5_0 test_str1_0)))
+
+(declare-fun test_str8_0 () Bool)
 (assert (= test_str8_0 (or test_str5_test_str1_0 test_str6_0)))

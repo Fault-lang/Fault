@@ -3,7 +3,6 @@ package unpack
 import (
 	"fault/generator/rules"
 	"fault/generator/scenario"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -25,31 +24,26 @@ func TestStrictOr_Single(t *testing.T) {
 
 func TestStrictOr_Two(t *testing.T) {
 	result := strictOr([]string{"A", "B"})
-	// Expect: (or (and A (not B)) (and B (not A)))
-	if !strings.HasPrefix(result, "(or ") {
-		t.Errorf("two-element strictOr should start with (or ...), got: %s", result)
-	}
-	if !strings.Contains(result, "(not A)") {
-		t.Errorf("strictOr should negate A in B's branch, got: %s", result)
-	}
-	if !strings.Contains(result, "(not B)") {
-		t.Errorf("strictOr should negate B in A's branch, got: %s", result)
+	// n=2: (distinct A B) — Bool variables differ, so exactly one is true.
+	if result != "(distinct A B)" {
+		t.Errorf("two-element strictOr = %q, want \"(distinct A B)\"", result)
 	}
 }
 
 func TestStrictOr_Three(t *testing.T) {
 	result := strictOr([]string{"A", "B", "C"})
-	// Each branch uses (and X (not Y) (not Z))
-	if !strings.HasPrefix(result, "(or ") {
-		t.Errorf("three-element strictOr should start with (or ...), got: %s", result)
+	// n>2: ALO disjunction + pairwise AMO binary clauses inside (and ...).
+	if !strings.HasPrefix(result, "(and ") {
+		t.Errorf("three-element strictOr should start with (and ...), got: %s", result)
 	}
-	// Each element appears both bare and negated
-	for _, name := range []string{"A", "B", "C"} {
-		if !strings.Contains(result, name) {
-			t.Errorf("strictOr result missing %q: %s", name, result)
-		}
-		if !strings.Contains(result, fmt.Sprintf("(not %s)", name)) {
-			t.Errorf("strictOr result missing (not %s): %s", name, result)
+	// at-least-one clause
+	if !strings.Contains(result, "(or A B C)") {
+		t.Errorf("strictOr missing ALO (or A B C): %s", result)
+	}
+	// pairwise AMO clauses
+	for _, pair := range []string{"(not (and A B))", "(not (and A C))", "(not (and B C))"} {
+		if !strings.Contains(result, pair) {
+			t.Errorf("strictOr missing AMO clause %s: %s", pair, result)
 		}
 	}
 }
@@ -266,9 +260,9 @@ func TestUnpackSynthSlot_TwoCandidates_SelectorsCreated(t *testing.T) {
 	if !strings.Contains(rule, "synth_1_fill") {
 		t.Errorf("expected selector synth_1_fill in output, got:\n%s", rule)
 	}
-	// The XOR (strictOr) constraint: one true, one false
-	if !strings.Contains(rule, "(not synth_1_drain") && !strings.Contains(rule, "(not synth_1_fill") {
-		t.Errorf("expected strictOr negations in output, got:\n%s", rule)
+	// n=2: exactly-one encoded as (distinct A B)
+	if !strings.Contains(rule, "(distinct synth_1_drain") && !strings.Contains(rule, "(distinct synth_1_fill") {
+		t.Errorf("expected (distinct ...) exactly-one constraint in output, got:\n%s", rule)
 	}
 }
 
