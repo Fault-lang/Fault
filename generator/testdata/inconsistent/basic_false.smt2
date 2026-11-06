@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun basic_false_x_0 () Bool)
 (declare-fun basic_false_isFraud_0 () Bool)
 (declare-fun basic_false_hasPaid_0 () Bool)

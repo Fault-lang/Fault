@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun circle2_b_0 () Bool)
 (declare-fun circle1_a_0 () Bool)
 (assert (or (not circle1_a_0) (not circle2_b_0)))

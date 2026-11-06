@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun basic_neither_x_0 () Bool)
 (declare-fun basic_neither_isAdmin_0 () Bool)
 (declare-fun basic_neither_isBanned_0 () Bool)

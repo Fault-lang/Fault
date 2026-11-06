@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun weighted_support_wins_x_0 () Bool)
 (declare-fun weighted_support_wins_symptomA_0 () Bool)
 (declare-fun weighted_support_wins_symptomB_0 () Bool)

@@ -45,6 +45,7 @@ type Generator struct {
 	RawInputs   *llvm.RawInputs
 	RunBlock    *unroll.LLFunc
 	smt         []string
+	logicIdx    int // index in smt where the (set-logic ...) line lives
 	ResultLog   *scenario.Logger
 	StringRules map[string]string
 	IsCompound  map[string]bool
@@ -91,11 +92,13 @@ func NewGenerator(ri *llvm.RawInputs, sr map[string]string, is map[string]bool, 
 	if opts.MemoryMaxSize > 0 {
 		preamble = append(preamble, fmt.Sprintf("(set-option :memory_max_size %d)", opts.MemoryMaxSize))
 	}
+	logicIdx := len(preamble) // record before appending so Run() can patch it
 	preamble = append(preamble, fmt.Sprintf("(set-logic %s)", logic))
 	return &Generator{
 		functions:   make(map[string]*ir.Func),
 		Env:         unroll.NewEnv(ri),
 		smt:         preamble,
+		logicIdx:    logicIdx,
 		RawInputs:   ri,
 		StringRules: sr,
 		IsCompound:  is,
@@ -124,7 +127,27 @@ func (g *Generator) Run(llopt string) error {
 	if err != nil {
 		return fmt.Errorf("invalid LLVM IR: %w", err)
 	}
+
 	g.newCallgraph(m)
+
+	// Linearity detection: downgrade logic to QF_LRA/QF_LIA when the listener
+	// detected no nonlinear arithmetic during the parse walk.
+	//
+	// Keep the broader nonlinear logic when:
+	//   - is_int assertions are present (whole()/multiple in non-integer mode)
+	//   - multiple instances exist in integer mode: scaledDelta generates (* delta countVar)
+	//     — var×var — after the listener has finished, so ri.IsLinear cannot see it.
+	ri := g.RawInputs
+	hasIsInt := !ri.IntegerMode && (len(ri.Wholes) > 0 || len(ri.MultipleInstances) > 0)
+	isLinear := ri.IsLinear && len(ri.MultipleInstances) == 0
+	if !hasIsInt && isLinear {
+		if ri.IntegerMode {
+			g.smt[g.logicIdx] = "(set-logic QF_LIA)"
+		} else {
+			g.smt[g.logicIdx] = "(set-logic QF_LRA)"
+		}
+	}
+
 	return nil
 }
 

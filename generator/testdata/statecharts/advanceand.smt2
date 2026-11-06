@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun adand_a_choice_0 () Bool)
 (declare-fun adand_a_option1_0 () Bool)
 (declare-fun adand_a_option2_0 () Bool)
@@ -10,59 +10,36 @@
 (declare-fun adand_a_option1_2 () Bool)
 (declare-fun adand_a_option2_2 () Bool)
 (declare-fun adand_a_option3_2 () Bool)
-(declare-fun block52true_1 () Bool)
-(declare-fun block52false_1 () Bool)
+(declare-fun block150true_1 () Bool)
+(declare-fun block150false_1 () Bool)
 (declare-fun adand_a_option1_3 () Bool)
 (declare-fun adand_a_option1_4 () Bool)
-(declare-fun block56true_1 () Bool)
-(declare-fun block56false_1 () Bool)
+(declare-fun block154true_1 () Bool)
+(declare-fun block154false_1 () Bool)
 (declare-fun adand_a_option2_3 () Bool)
 (declare-fun adand_a_option2_4 () Bool)
-(declare-fun block60true_1 () Bool)
-(declare-fun block60false_1 () Bool)
+(declare-fun block158true_1 () Bool)
+(declare-fun block158false_1 () Bool)
 (declare-fun adand_a_option3_3 () Bool)
 (declare-fun adand_a_option3_4 () Bool)
-(declare-fun block63true_1 () Bool)
-(declare-fun block63false_1 () Bool)
+(declare-fun block161true_1 () Bool)
+(declare-fun block161false_1 () Bool)
 (assert (= adand_a_choice_0 false))
 (assert (= adand_a_option1_0 false))
 (assert (= adand_a_option2_0 false))
 (assert (= adand_a_option3_0 false))
 (assert (= adand_a_choice_1 true))
-
 (assert (and (= adand_a_option1_1 true) (= adand_a_option2_1 true) (= adand_a_option3_1 true)))
-
-(assert (ite (= adand_a_choice_1 true) (and (= block52true_1 true) (= block52false_1 false) (and (= adand_a_option1_2 adand_a_option1_1) (= adand_a_option2_2 adand_a_option2_1) (= adand_a_option3_2 adand_a_option3_1))) (and (= block52true_1 false) (= block52false_1 true) (and (= adand_a_option1_2 adand_a_option1_0)
+(assert (ite (= adand_a_choice_1 true) (and (= block150true_1 true) (= block150false_1 false) (and (= adand_a_option1_2 adand_a_option1_1) (= adand_a_option2_2 adand_a_option2_1) (= adand_a_option3_2 adand_a_option3_1))) (and (= block150true_1 false) (= block150false_1 true) (and (= adand_a_option1_2 adand_a_option1_0)
 (= adand_a_option2_2 adand_a_option2_0)
 (= adand_a_option3_2 adand_a_option3_0)))))
-(assert (or (and block52true_1
-(not block52false_1))
-(and (not block52true_1)
-block52false_1)))
-
-
+(assert (distinct block150true_1 block150false_1))
 (assert (= adand_a_option1_3 true))
-
-(assert (ite (= adand_a_option1_2 true) (and (= block56true_1 true) (= block56false_1 false) (= adand_a_option1_4 adand_a_option1_3)) (and (= block56true_1 false) (= block56false_1 true) (= adand_a_option1_4 adand_a_option1_2))))
-(assert (or (and block56true_1
-(not block56false_1))
-(and (not block56true_1)
-block56false_1)))
-
-
+(assert (ite (= adand_a_option1_2 true) (and (= block154true_1 true) (= block154false_1 false) (= adand_a_option1_4 adand_a_option1_3)) (and (= block154true_1 false) (= block154false_1 true) (= adand_a_option1_4 adand_a_option1_2))))
+(assert (distinct block154true_1 block154false_1))
 (assert (= adand_a_option2_3 true))
-
-(assert (ite (= adand_a_option2_2 true) (and (= block60true_1 true) (= block60false_1 false) (= adand_a_option2_4 adand_a_option2_3)) (and (= block60true_1 false) (= block60false_1 true) (= adand_a_option2_4 adand_a_option2_2))))
-(assert (or (and block60true_1
-(not block60false_1))
-(and (not block60true_1)
-block60false_1)))
-
-
+(assert (ite (= adand_a_option2_2 true) (and (= block158true_1 true) (= block158false_1 false) (= adand_a_option2_4 adand_a_option2_3)) (and (= block158true_1 false) (= block158false_1 true) (= adand_a_option2_4 adand_a_option2_2))))
+(assert (distinct block158true_1 block158false_1))
 (assert (= adand_a_option3_3 true))
-
-(assert (ite (= adand_a_option3_2 true) (and (= block63true_1 true) (= block63false_1 false) (= adand_a_option3_4 adand_a_option3_3)) (and (= block63true_1 false) (= block63false_1 true) (= adand_a_option3_4 adand_a_option3_2))))
-(assert (or (and block63true_1
-(not block63false_1))
-(and (not block63true_1)
-block63false_1)))
+(assert (ite (= adand_a_option3_2 true) (and (= block161true_1 true) (= block161false_1 false) (= adand_a_option3_4 adand_a_option3_3)) (and (= block161true_1 false) (= block161false_1 true) (= adand_a_option3_4 adand_a_option3_2))))
+(assert (distinct block161true_1 block161false_1))

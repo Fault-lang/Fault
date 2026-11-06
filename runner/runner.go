@@ -389,7 +389,7 @@ func (r *Runner) Run() *CompilationOutput {
 		}
 
 		r.sendProgress(PhaseLLVM, "Generating LLVM IR...", 0.42, false)
-		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, alias, lstnr.IsLinear, false)
 		if err != nil {
 			r.sendError(PhaseLLVM, err)
 			output.Error = err

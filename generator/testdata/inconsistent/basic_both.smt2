@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun basic_both_x_0 () Bool)
 (declare-fun basic_both_hasFeathers_0 () Bool)
 (declare-fun basic_both_quacks_0 () Bool)

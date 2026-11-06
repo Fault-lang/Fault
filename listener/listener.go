@@ -32,6 +32,7 @@ type FaultListener struct {
 	swaps                map[string][]ast.Node
 	pendingExtends       *ast.Identifier
 	errs                 []error
+	IsLinear             bool
 }
 
 func (l *FaultListener) addErr(err error) {
@@ -47,6 +48,7 @@ func NewListener(path string, testing bool, skipRun bool) *FaultListener {
 		Path:                 path,
 		testing:              testing,
 		skipRun:              skipRun,
+		IsLinear:             true,
 		Uncertains:           make(map[string][]float64),
 		StructsPropertyOrder: make(map[string][]string),
 		instances:            make(map[string]*ast.Instance),

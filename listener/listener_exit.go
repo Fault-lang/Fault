@@ -807,7 +807,8 @@ func (l *FaultListener) ExitMiscAssign(c *parser.MiscAssignContext) {
 }
 
 func (l *FaultListener) ExitLrExpr(c *parser.LrExprContext) {
-	token := ast.GenerateToken(string(ast.OPS[c.GetChild(1).(antlr.TerminalNode).GetText()]), c.GetChild(1).(antlr.TerminalNode).GetText(), l.currSpec, c.GetStart(), c.GetStop())
+	op := c.GetChild(1).(antlr.TerminalNode).GetText()
+	token := ast.GenerateToken(string(ast.OPS[op]), op, l.currSpec, c.GetStart(), c.GetStop())
 
 	rght := l.pop()
 	lft := l.pop()
@@ -815,19 +816,49 @@ func (l *FaultListener) ExitLrExpr(c *parser.LrExprContext) {
 	if pre, ok := lft.(*ast.PrefixExpression); ok {
 		if pre.Operator == "" {
 			pre.Token = token
-			pre.Operator = c.GetChild(1).(antlr.TerminalNode).GetText()
+			pre.Operator = op
 			pre.Right = rght.(ast.Expression)
 			l.push(pre)
+			l.checkLinearity(op, nil, rght)
 			return
 		}
 	}
 	e := &ast.InfixExpression{
 		Token:    token,
 		Left:     lft.(ast.Expression),
-		Operator: c.GetChild(1).(antlr.TerminalNode).GetText(),
+		Operator: op,
 		Right:    rght.(ast.Expression),
 	}
+	l.checkLinearity(op, lft, rght)
 	l.push(e)
+}
+
+// checkLinearity clears IsLinear when a nonlinear arithmetic operation is detected.
+// Nonlinear: exponentiation (**), multiplication where both operands are non-literal,
+// or division where the denominator is non-literal.
+func (l *FaultListener) checkLinearity(op string, lft, rght ast.Node) {
+	if !l.IsLinear {
+		return // already marked nonlinear
+	}
+	isLiteral := func(n ast.Node) bool {
+		switch n.(type) {
+		case *ast.FloatLiteral, *ast.IntegerLiteral:
+			return true
+		}
+		return false
+	}
+	switch op {
+	case "**":
+		l.IsLinear = false
+	case "*":
+		if lft != nil && !isLiteral(lft) && !isLiteral(rght) {
+			l.IsLinear = false
+		}
+	case "/":
+		if !isLiteral(rght) {
+			l.IsLinear = false
+		}
+	}
 }
 
 func (l *FaultListener) ExitParamCall(c *parser.ParamCallContext) {

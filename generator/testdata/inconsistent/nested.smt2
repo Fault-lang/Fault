@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun nested_duck_0 () Bool)
 (declare-fun nested_animal_0 () Bool)
 (declare-fun nested_swims_0 () Bool)

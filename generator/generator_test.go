@@ -650,7 +650,7 @@ func TestBadSpecs(t *testing.T) {
 				}
 				sw := swaps.NewPrecompiler(ty)
 				tree := sw.Swap(ty.Checked)
-				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, false)
+				compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, l.IsLinear, false)
 				if err != nil {
 					pipelineErr = fmt.Errorf("llvm: %w", err)
 					return
@@ -1307,7 +1307,7 @@ func prepTest(filepath string, test string, specType bool, testRun bool) *Genera
 	}
 	sw := swaps.NewPrecompiler(ty)
 	tree := sw.Swap(ty.Checked)
-	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, true)
+	compiler, err := llvm.Execute(tree, ty.SpecStructs, l.Uncertains, l.Unknowns, l.Wholes, l.Params, sw.Alias, l.IsLinear, true)
 	if err != nil {
 		panic(err)
 	}
@@ -1381,14 +1381,127 @@ run init{r1 = new square;} {
 }`
 	g := prepTest("", test, true, false)
 	smt := g.SMT()
-	if !strings.Contains(smt, "(set-logic QF_NIA)") {
-		t.Fatalf("expected QF_NIA, got:\n%s", smt)
+	if !strings.Contains(smt, "(set-logic QF_LIA)") {
+		t.Fatalf("expected QF_LIA (integer mode + linear ops), got:\n%s", smt)
 	}
 	if !strings.Contains(smt, "(declare-fun testwhole_r1_value_0 () Int)") {
 		t.Fatalf("expected Int sort, got:\n%s", smt)
 	}
 	if strings.Contains(smt, "is_int") {
 		t.Fatalf("expected no is_int in integer mode, got:\n%s", smt)
+	}
+}
+
+func TestLinearityDetectionLinear(t *testing.T) {
+	// A model with only +/- operations should emit QF_LRA, not QF_NRA.
+	test := `spec testlinear;
+def s = stock{
+    a: 10,
+    b: 5,
+};
+def f = flow{
+    data: new s,
+    fn: func{
+        data.a <- data.b;
+    },
+};
+run init{r = new f;} {
+    r.fn;
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	if !strings.Contains(smt, "(set-logic QF_LRA)") {
+		t.Fatalf("expected QF_LRA for linear model, got:\n%s", smt)
+	}
+}
+
+func TestLinearityDetectionNonLinearMul(t *testing.T) {
+	// variable * variable in a flow body must stay on QF_NRA.
+	test := `spec testmul;
+def s = stock{
+    x: 3,
+    y: 4,
+    z: 0,
+};
+def f = flow{
+    data: new s,
+    fn: func{
+        data.z = data.x * data.y;
+    },
+};
+run init{r = new f;} {
+    r.fn;
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	if strings.Contains(smt, "(set-logic QF_LRA)") || strings.Contains(smt, "(set-logic QF_LIA)") {
+		t.Fatalf("variable*variable model must not downgrade to linear logic, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(set-logic QF_NRA)") {
+		t.Fatalf("expected QF_NRA for variable*variable model, got:\n%s", smt)
+	}
+}
+
+func TestLinearityDetectionNonLinearDiv(t *testing.T) {
+	// variable / variable (non-constant denominator) must stay on QF_NRA.
+	test := `spec testdiv;
+def s = stock{
+    x: 10,
+    y: 2,
+    z: 0,
+};
+def f = flow{
+    data: new s,
+    fn: func{
+        data.z = data.x / data.y;
+    },
+};
+run init{r = new f;} {
+    r.fn;
+}`
+	g := prepTest("", test, true, false)
+	smt := g.SMT()
+	if strings.Contains(smt, "(set-logic QF_LRA)") || strings.Contains(smt, "(set-logic QF_LIA)") {
+		t.Fatalf("variable/variable model must not downgrade to linear logic, got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(set-logic QF_NRA)") {
+		t.Fatalf("expected QF_NRA for variable/variable model, got:\n%s", smt)
+	}
+}
+
+func TestLinearityDetectionMultipleInstance(t *testing.T) {
+	// multiple-instance models emit (is_int countVar) which is outside QF_LRA.
+	data, err := os.ReadFile("testdata/multiple.fspec")
+	if err != nil {
+		t.Fatalf("could not read multiple.fspec: %v", err)
+	}
+	g := prepTest("testdata/multiple.fspec", string(data), true, false)
+	smt := g.SMT()
+	if strings.Contains(smt, "(set-logic QF_LRA)") {
+		t.Fatalf("multiple-instance model must not use QF_LRA (emits is_int), got:\n%s", smt)
+	}
+	// must contain is_int for the count variable
+	if !strings.Contains(smt, "is_int") {
+		t.Fatalf("expected is_int in multiple-instance SMT, got:\n%s", smt)
+	}
+}
+
+func TestLinearityDetectionMultipleInstanceIntegerMode(t *testing.T) {
+	// multiple + whole() triggers integer mode (all free vars are whole) AND
+	// generates scaledDelta: (* delta countVar) — var×var — after the listener
+	// has finished. The listener sees no nonlinear user code and sets IsLinear=true,
+	// but the generated product is nonlinear, so the logic must stay QF_NIA.
+	data, err := os.ReadFile("testdata/multiple_whole.fspec")
+	if err != nil {
+		t.Fatalf("could not read multiple_whole.fspec: %v", err)
+	}
+	g := prepTest("testdata/multiple_whole.fspec", string(data), true, false)
+	smt := g.SMT()
+	if strings.Contains(smt, "(set-logic QF_LIA)") {
+		t.Fatalf("multiple-instance integer-mode model must not downgrade to QF_LIA (scaledDelta is nonlinear), got:\n%s", smt)
+	}
+	if !strings.Contains(smt, "(set-logic QF_NIA)") {
+		t.Fatalf("expected QF_NIA for multiple-instance integer-mode model, got:\n%s", smt)
 	}
 }
 

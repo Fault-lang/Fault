@@ -1,4 +1,4 @@
-(set-logic QF_NRA)
+(set-logic QF_LRA)
 (declare-fun swaps_s2_v_0 () Real)
 (declare-fun swaps_s2_v_1 () Real)
 (declare-fun swaps_s2_v_2 () Real)
