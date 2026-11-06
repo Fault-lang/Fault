@@ -127,7 +127,7 @@ func TestFullSuite(t *testing.T) {
 
 		sw := swaps.NewPrecompiler(ty)
 		tree := sw.Swap(ty.Checked)
-		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, sw.Alias, false)
+		compiler, err := llvm.Execute(tree, ty.SpecStructs, lstnr.Uncertains, lstnr.Unknowns, lstnr.Wholes, lstnr.Params, sw.Alias, lstnr.IsLinear, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "Missing run block") {
 				return nil

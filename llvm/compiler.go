@@ -69,6 +69,10 @@ type RawInputs struct {
 	// Annotations collects all ::inconsistent annotation statements from the spec.
 	// The generator uses these to emit Belnap four-valued logic SMT helpers.
 	Annotations []*ast.AnnotationStatement
+	// IsLinear is set by the listener when no nonlinear arithmetic (*var*var, /var,
+	// **) is detected during the parse walk. The generator uses this to downgrade
+	// the SMT logic from QF_NRA → QF_LRA (or QF_NIA → QF_LIA).
+	IsLinear bool
 }
 
 // UnfuncInfo stores the requires/emits/assumes expression trees for an unfunc state.
@@ -181,9 +185,9 @@ func NewCompiler() *Compiler {
 }
 
 // Execute is a convenience function that creates a compiler, loads metadata, and compiles an AST spec in one call.
-func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, testing bool) (*Compiler, error) {
+func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, isLinear bool, testing bool) (*Compiler, error) {
 	compiler := NewCompiler()
-	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, params, aliases, testing)
+	compiler.LoadMeta(specRec, uncertains, unknowns, wholes, params, aliases, isLinear, testing)
 
 	err := compiler.Compile(tree)
 	if err != nil {
@@ -193,13 +197,14 @@ func Execute(tree *ast.Spec, specRec map[string]*preprocess.SpecRecord, uncertai
 }
 
 // LoadMeta populates the compiler with spec records, solver variable classifications (unknowns, uncertains, wholes, params), and aliases.
-func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, test bool) {
+func (c *Compiler) LoadMeta(structs map[string]*preprocess.SpecRecord, uncertains map[string][]float64, unknowns []string, wholes []string, params []string, aliases map[string]string, isLinear bool, test bool) {
 
 	c.specStructs = structs
 	c.RawInputs.Unknowns = unknowns
 	c.RawInputs.Uncertains = uncertains
 	c.RawInputs.Wholes = wholes
 	c.RawInputs.Params = params
+	c.RawInputs.IsLinear = isLinear
 	c.isTesting = test
 	c.Alias = aliases
 }

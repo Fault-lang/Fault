@@ -16,8 +16,6 @@ import (
 
 	"github.com/llir/llvm/asm"
 	"github.com/llir/llvm/ir"
-	"github.com/llir/llvm/ir/constant"
-	"github.com/llir/llvm/ir/value"
 )
 
 const (
@@ -130,71 +128,26 @@ func (g *Generator) Run(llopt string) error {
 		return fmt.Errorf("invalid LLVM IR: %w", err)
 	}
 
-	// Linearity detection: downgrade to QF_LRA/QF_LIA when no nonlinear
-	// arithmetic is present. This lets Z3 use simplex instead of CAD.
-	// We skip the upgrade when whole-number variables are used in non-integer
-	// mode because those emit (is_int x) assertions that are not in QF_LRA.
-	if isLinearModule(m) {
-		ri := g.RawInputs
-		switch {
-		case ri.IntegerMode:
+	g.newCallgraph(m)
+
+	// Linearity detection: downgrade logic to QF_LRA/QF_LIA when the listener
+	// detected no nonlinear arithmetic during the parse walk.
+	//
+	// Keep the broader nonlinear logic when any (is_int x) assertions were
+	// emitted, since is_int is outside QF_LRA/QF_LIA:
+	//   - whole() variables in non-integer mode emit (is_int x)
+	//   - multiple-instance count variables in non-integer mode also emit (is_int x)
+	ri := g.RawInputs
+	hasIsInt := !ri.IntegerMode && (len(ri.Wholes) > 0 || len(ri.MultipleInstances) > 0)
+	if !hasIsInt && ri.IsLinear {
+		if ri.IntegerMode {
 			g.smt[g.logicIdx] = "(set-logic QF_LIA)"
-		case len(ri.Wholes) == 0:
+		} else {
 			g.smt[g.logicIdx] = "(set-logic QF_LRA)"
 		}
 	}
 
-	g.newCallgraph(m)
 	return nil
-}
-
-// isLinearModule reports whether every arithmetic operation in m is linear.
-// An operation is nonlinear when both operands of a multiply are non-constant,
-// or when the denominator of a divide is non-constant.
-func isLinearModule(m *ir.Module) bool {
-	for _, f := range m.Funcs {
-		for _, b := range f.Blocks {
-			for _, inst := range b.Insts {
-				switch i := inst.(type) {
-				case *ir.InstFMul:
-					if !isConstantVal(i.X) && !isConstantVal(i.Y) {
-						return false
-					}
-				case *ir.InstFDiv:
-					if !isConstantVal(i.Y) {
-						return false
-					}
-				case *ir.InstMul:
-					if !isConstantVal(i.X) && !isConstantVal(i.Y) {
-						return false
-					}
-				case *ir.InstSDiv, *ir.InstUDiv:
-					if !isConstantDivisor(i) {
-						return false
-					}
-				}
-			}
-		}
-	}
-	return true
-}
-
-// isConstantVal reports whether v is a compile-time constant (not a variable).
-func isConstantVal(v value.Value) bool {
-	_, ok := v.(constant.Constant)
-	return ok
-}
-
-// isConstantDivisor extracts the divisor from an integer divide instruction
-// and reports whether it is a compile-time constant.
-func isConstantDivisor(inst ir.Instruction) bool {
-	switch i := inst.(type) {
-	case *ir.InstSDiv:
-		return isConstantVal(i.Y)
-	case *ir.InstUDiv:
-		return isConstantVal(i.Y)
-	}
-	return true
 }
 
 // emitMultipleInstanceDecls emits a declare-const and >= 1 constraint for each
