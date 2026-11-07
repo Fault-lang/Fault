@@ -142,85 +142,85 @@ run init { loop = new f; } {
 // ----------------------------------------------------------------------------
 
 func BenchmarkStage_AST_Minimal(b *testing.B) {
+	path := writeTempSpecB(b, minimalSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, minimalSpec)
 		runTo(b, path, "ast")
 	}
 }
 
 func BenchmarkStage_IR_Minimal(b *testing.B) {
+	path := writeTempSpecB(b, minimalSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, minimalSpec)
 		runTo(b, path, "ir")
 	}
 }
 
 func BenchmarkStage_SMT_Minimal(b *testing.B) {
+	path := writeTempSpecB(b, minimalSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, minimalSpec)
 		runTo(b, path, "smt")
 	}
 }
 
 func BenchmarkStage_AST_Branching(b *testing.B) {
+	path := writeTempSpecB(b, branchingSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, branchingSpec)
 		runTo(b, path, "ast")
 	}
 }
 
 func BenchmarkStage_IR_Branching(b *testing.B) {
+	path := writeTempSpecB(b, branchingSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, branchingSpec)
 		runTo(b, path, "ir")
 	}
 }
 
 func BenchmarkStage_SMT_Branching(b *testing.B) {
+	path := writeTempSpecB(b, branchingSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, branchingSpec)
 		runTo(b, path, "smt")
 	}
 }
 
 func BenchmarkStage_AST_Parallel(b *testing.B) {
+	path := writeTempSpecB(b, parallelSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, parallelSpec)
 		runTo(b, path, "ast")
 	}
 }
 
 func BenchmarkStage_IR_Parallel(b *testing.B) {
+	path := writeTempSpecB(b, parallelSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, parallelSpec)
 		runTo(b, path, "ir")
 	}
 }
 
 func BenchmarkStage_SMT_Parallel(b *testing.B) {
+	path := writeTempSpecB(b, parallelSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, parallelSpec)
 		runTo(b, path, "smt")
 	}
 }
 
 func BenchmarkStage_AST_Unknowns(b *testing.B) {
+	path := writeTempSpecB(b, unknownsSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, unknownsSpec)
 		runTo(b, path, "ast")
 	}
 }
 
 func BenchmarkStage_IR_Unknowns(b *testing.B) {
+	path := writeTempSpecB(b, unknownsSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, unknownsSpec)
 		runTo(b, path, "ir")
 	}
 }
 
 func BenchmarkStage_SMT_Unknowns(b *testing.B) {
+	path := writeTempSpecB(b, unknownsSpec)
 	for b.Loop() {
-		path := writeTempSpecB(b, unknownsSpec)
 		runTo(b, path, "smt")
 	}
 }
