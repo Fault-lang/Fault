@@ -40,6 +40,10 @@ jobs:
             gotestsum --junitfile /tmp/test-reports/unit-tests.xml $(go list ./... | grep -v fault/execute | grep -v fault/runner )
       - store_test_results:
           path: /tmp/test-reports
+      - run:
+          name: Compile benchmarks
+          command: |
+            go test -bench=. -benchtime=1x -run=^$ fault/runner
   
   # mutate:
   #   working_directory: ~/Fault
