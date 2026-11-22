@@ -73,6 +73,10 @@ type RawInputs struct {
 	// **) is detected during the parse walk. The generator uses this to downgrade
 	// the SMT logic from QF_NRA → QF_LRA (or QF_NIA → QF_LIA).
 	IsLinear bool
+	// AssertVarInstances is the union of all AssertVar instance names referenced in
+	// assume/assert constraints and annotation evidence conditions. Pre-computed at
+	// the end of Compile() so the generator does not need to re-scan the AST.
+	AssertVarInstances map[string]bool
 }
 
 // UnfuncInfo stores the requires/emits/assumes expression trees for an unfunc state.
@@ -100,6 +104,7 @@ func NewRawInputs() *RawInputs {
 		MultipleInstances:    make(map[string]string),
 		MultipleFuncPrefixes: make(map[string]string),
 		Annotations:          []*ast.AnnotationStatement{},
+		AssertVarInstances:   make(map[string]bool),
 	}
 }
 
@@ -389,6 +394,7 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			}
 			if rs, ok := fileNode.(*ast.RunStatement); ok {
 				runStmt = rs
+				c.prescanMultipleInstances(rs)
 				c.compileRunInit(rs)
 				continue
 			}
@@ -433,6 +439,20 @@ func (c *Compiler) processSpec(root ast.Node) ([]*ast.AssertionStatement, []*ast
 			}
 			c.compileAssert(stmt)
 		}
+	}
+
+	// Pre-compute Bool variable names and assert var instance sets from the
+	// finalized Asserts/Assumes so the generator does not need to re-scan.
+	allStmts := append(c.RawInputs.Asserts, c.RawInputs.Assumes...)
+	c.RawInputs.BoolVarNames = inferBoolVarNames(allStmts)
+	for k := range c.RawInputs.BoolUnknowns {
+		c.RawInputs.BoolVarNames[k] = true
+	}
+	for inst := range findAssertVarInstances(allStmts) {
+		c.RawInputs.AssertVarInstances[inst] = true
+	}
+	for inst := range findAnnotationEvidenceInstances(c.RawInputs.Annotations) {
+		c.RawInputs.AssertVarInstances[inst] = true
 	}
 
 	return c.RawInputs.Asserts, c.RawInputs.Assumes
@@ -576,6 +596,29 @@ func (c *Compiler) collectInitInstanceParams(inits *ast.BlockStatement) {
 		}
 		params := c.generateParameters(inst.Id(), branches, false)
 		c.sysGlobals = append(c.sysGlobals, params...)
+	}
+}
+
+// prescanMultipleInstances walks the run init block before compilation to
+// collect all `multiple`-instantiated flows into RawInputs. Doing this as a
+// pre-pass ensures MultipleInstances is fully populated before IR emission
+// begins, separating metadata collection from code generation.
+func (c *Compiler) prescanMultipleInstances(rs *ast.RunStatement) {
+	if rs.Inits == nil {
+		return
+	}
+	for _, stmt := range rs.Inits.Statements {
+		exp, ok := stmt.(*ast.ExpressionStatement)
+		if !ok {
+			continue
+		}
+		inst, ok := exp.Expression.(*ast.StructInstance)
+		if !ok || !inst.Multiple {
+			continue
+		}
+		countVar := fmt.Sprintf("__%s_%s_count_0", inst.Spec, inst.Name)
+		c.RawInputs.MultipleInstances[inst.Name] = countVar
+		c.RawInputs.MultipleFuncPrefixes[inst.IdString()] = countVar
 	}
 }
 
@@ -746,17 +789,6 @@ func (c *Compiler) compileInstance(node *ast.StructInstance) {
 		children = c.processStruct(node)
 	case "FLOW":
 		children = c.processStruct(node)
-		if node.Multiple {
-			// Generate the SMT count variable name as an SSA-versioned variable
-			// (index 0) so the execute layer can parse it from the Z3 model.
-			// Format: __specname_instancename_count_0
-			countVar := fmt.Sprintf("__%s_%s_count_0", node.Spec, node.Name)
-			c.RawInputs.MultipleInstances[node.Name] = countVar
-			// Also index by the LLVM function prefix (e.g. "retries_l") so the
-			// unroll phase can match CurrentFunction without string-scanning.
-			funcPrefix := node.IdString() // e.g. "retries_l"
-			c.RawInputs.MultipleFuncPrefixes[funcPrefix] = countVar
-		}
 	default:
 		panic(fmt.Sprintf("no stock or flow named %s %s", id, node.GetToken().Location()))
 	}
